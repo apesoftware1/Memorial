@@ -25,10 +25,11 @@ export default function FilterDropdown({
   dropdownRefs
 }) {
   return (
-    <div className="relative" ref={(el) => (dropdownRefs.current[name] = el)}>
+    <div className="relative w-full" ref={(el) => (dropdownRefs.current[name] = el)}>
       <button
         onClick={() => toggleDropdown(name)}
-        className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
+        className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 h-9"
+        style={{ borderRadius: '2px' }}
         aria-expanded={openDropdown === name}
         aria-haspopup="true"
       >
@@ -39,7 +40,7 @@ export default function FilterDropdown({
       </button>
 
       {openDropdown === name && (
-        <div className="absolute z-[100] mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 animate-slide-in">
+        <div className="absolute z-[100] mt-1 w-full bg-white shadow-lg border border-gray-200 animate-slide-in" style={{ borderRadius: '2px' }}>
           <ul className="py-1 max-h-60 overflow-auto" role="menu" aria-orientation="vertical">
             {options.map((option, index) => (
               <li

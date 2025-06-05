@@ -16,25 +16,24 @@ const CategoryTabs = ({
   ];
 
   return (
-    <div className="w-full md:max-w-lg bg-[#1a2238] overflow-hidden">
-      <div className="flex overflow-x-auto hide-scrollbar">
+    <div className="w-full md:max-w-lg bg-[#1a2238] overflow-hidden py-0">
+      <div className="flex overflow-x-auto hide-scrollbar h-[56px]">
         {categories.map((item, index) => (
           <div
             key={index}
-            className={`flex-1 min-w-[80px] text-center py-2 cursor-pointer transition-colors whitespace-nowrap overflow-hidden text-ellipsis ${index < categories.length - 1 ? 'border-r border-[#D4AF37]' : ''} ${selectedCategory === item.name ? "bg-[#333] text-[#D4AF37] font-bold" : "text-[#D4AF37]"}`}
+            className={`flex-1 min-w-[80px] text-center cursor-pointer transition-colors whitespace-nowrap overflow-hidden text-ellipsis h-full flex flex-col justify-center items-center ${index < categories.length - 1 ? 'border-r border-[#D4AF37]' : ''} ${selectedCategory === item.name ? "bg-[#333] text-[#D4AF37] font-bold" : "text-[#D4AF37]"}`}
             onClick={() => setSelectedCategory(item.name)}
+            style={{ height: '100%' }}
           >
-            <div
-              className={`flex flex-col items-center justify-center h-full`}
-            >
+            <div className="flex flex-col items-center justify-center h-full w-full">
               <Image
                 src={item.icon}
                 alt={`${item.name} icon`}
-                width={16}
-                height={16}
-                className="h-4 w-4 mb-1"
+                width={24}
+                height={24}
+                className="h-6 w-6 mb-1"
               />
-              <span className="text-[0.65rem] leading-tight">{item.name}</span>
+              <span className="text-[0.7rem] leading-tight w-full">{item.name}</span>
             </div>
           </div>
         ))}

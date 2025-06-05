@@ -1,27 +1,44 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState, useCallback } from "react"
 import Image from "next/image"
-import { Heart, MapPin } from "lucide-react"
+import { Heart, MapPin, Camera, Check } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { FavoriteButton } from "./favorite-button"
 import type { FavoriteProduct } from "@/context/favorites-context"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
-type PremiumListingCardProps = {
-  listing: any
+interface PremiumListing {
+  id?: string
+  title: string
+  price: string
+  image: string
+  details: string
+  features: string
+  manufacturer: string
+  location: string
+  tag: string
+  tagColor: string
+  thumbnailImages?: string[]
+  enquiries?: string
+  distance?: string
+}
+
+interface PremiumListingCardProps {
+  listing: PremiumListing
   href?: string
 }
 
-export function PremiumListingCard({ listing, href = "#" }: PremiumListingCardProps) {
-  // Get thumbnails from listing or create placeholders first
-  const thumbnails = listing.thumbnailImages || Array(6).fill("/placeholder.svg?height=80&width=80")
+export function PremiumListingCard({ listing, href = "#" }: PremiumListingCardProps): React.ReactElement {
+  const router = useRouter()
 
-  // Initialize selectedImage state to show the main image by default (index equal to the number of thumbnails)
-  const [selectedImage, setSelectedImage] = useState(thumbnails.length)
-  
-  // Convert listing to FavoriteProduct format and ensure it has an id
+  // Ensure we always have exactly 6 thumbnails
+  const defaultThumbnails = Array(6).fill("/placeholder.svg?height=80&width=120")
+  const thumbnails = listing.thumbnailImages?.slice(0, 6) || defaultThumbnails
+  const paddedThumbnails = [...thumbnails, ...defaultThumbnails].slice(0, 6)
+
+  // Convert listing to FavoriteProduct format
   const product: FavoriteProduct = {
     id: listing.id || listing.title.replace(/\s+/g, "-").toLowerCase(),
     title: listing.title,
@@ -35,103 +52,131 @@ export function PremiumListingCard({ listing, href = "#" }: PremiumListingCardPr
     tagColor: listing.tagColor,
   }
 
-  const productUrl = href || `/tombstones-for-sale/${listing.id}`
+  const productUrl = href || `/tombstones/${listing.id}`
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 border border-gray-200 rounded-md p-3 max-w-3xl mx-auto bg-white mb-6">
-      <div className="w-full md:w-1/2">
-        <div className="relative">
-          <Link href={productUrl}>
-          <div className="bg-gray-100 aspect-square relative rounded overflow-hidden max-w-[250px]">
-            <Image
-              src={selectedImage < thumbnails.length ? thumbnails[selectedImage] : product.image}
-              alt={product.title}
-              fill
-              className="object-cover"
-              priority
-            />
-            </div>
-          </Link>
-          <div className="absolute top-2 right-2">
-            <FavoriteButton product={product} size="sm"/>
-          </div>
-          <div className="grid grid-cols-6 gap-2 mt-2">
-            {thumbnails.map((src: string, index: number) => (
-              <button
-                key={index}
-                className={cn(
-                  "bg-gray-100 aspect-square relative rounded overflow-hidden border-2 transition-colors",
-                  selectedImage === index ? "border-blue-500" : "border-transparent hover:border-gray-300"
-                )}
-                onClick={() => setSelectedImage(index)}
-              >
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto">
+      {/* Main content area */}
+      <div className="flex min-h-[300px]">
+        {/* Left side - Main Image */}
+        <div className="w-1/2 flex-shrink-0 flex flex-col">
+          <div className="relative flex-1">
+            <Link href={productUrl}>
+              <div className="relative w-full h-full min-h-[300px]">
                 <Image
-                  src={src}
-                  alt=""
+                  src={listing.image}
+                  alt={listing.title}
                   fill
                   className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 50vw"
+                  priority
                 />
-              </button>
-            ))}
+
+                {/* Photo Count - only on left side */}
+                <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-black/70 text-white px-2 py-1 rounded text-sm">
+                  <Camera className="w-4 h-4" />
+                  <span>{thumbnails.length}</span>
+                </div>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+        {/* Right side - Content */}
+        <div className="w-1/2 p-6 bg-gray-50 flex flex-col">
+          <Link href={productUrl} className="flex-1">
+            {/* Price and Heart */}
+            <div className="flex justify-between items-start mb-3">
+              <div className="text-3xl font-bold text-blue-600">{listing.price}</div>
+              <Heart className="w-6 h-6 text-gray-400" />
+            </div>
+
+            {/* Badge */}
+            <div className="mb-3">
+              <Badge className={cn("text-white text-sm px-3 py-1", listing.tagColor)}>
+                {listing.tag}
+              </Badge>
+            </div>
+
+            {/* Title */}
+            <h2 className="text-xl font-bold text-gray-900 mb-3">{listing.title}</h2>
+
+            {/* Details */}
+            <div className="text-sm text-gray-600 mb-3">
+              {listing.details}
+            </div>
+
+            {/* Features */}
+            <div className="text-sm text-gray-600 mb-6">
+              {listing.features}
+            </div>
+          </Link>
+
+          {/* Manufacturer Information */}
+          <div className="space-y-2 mt-auto">
+            <div className="font-medium text-gray-900 text-lg">{listing.manufacturer}</div>
+
+            {/* Enquiries */}
+            <div className="flex items-center text-green-600">
+              <Check className="w-4 h-4 mr-1" />
+              <span className="text-sm">{listing.enquiries} enquiries to this Manufacturer</span>
+            </div>
+
+            {/* Location */}
+            <div className="text-sm text-gray-600">{listing.location}</div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1 text-sm text-blue-600">
+                <Image
+                  src="/new files/newIcons/Google_Pin_Icon/GooglePin_Icon.svg"
+                  alt="Location Pin Icon"
+                  width={16}
+                  height={16}
+                  className="object-contain"
+                />
+                <span>{listing.distance}</span>
+              </div>
+
+              {/* Logo */}
+              <div className="flex items-center gap-3">
+                <Image
+                  src="/new files/company logos/Tombstone Manufacturer Logo-SwissStone.svg"
+                  alt="Tombstone Manufacturer Logo"
+                  width={100}
+                  height={100}
+                  className="object-contain"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="w-full md:w-1/2">
-        <div className="flex flex-col h-full">
-          <Link href={productUrl}>
-          <div className="flex justify-between items-start mb-3">
-            <div>
-              <div className="text-blue-700 font-medium text-xl">{listing.price || "R 8 820"}</div>
-              <h1 className="text-xl font-bold mt-1">{listing.title || "CATHEDRAL C14"}</h1>
-            </div>
-            <Badge className={cn("text-white hover:opacity-90 flex-shrink-0", listing.tagColor || "bg-red-600 hover:bg-red-700")}>
-              {listing.tag || "Unique Design"}
-            </Badge>
-          </div>
-
-          <div className="mb-4">
-            <p className="text-gray-700 mb-1">{listing.details || "Full Tombstone | Granite | Cross Theme"}</p>
-            <p className="text-gray-700">{listing.features || "Photo Engraving Available | Self Install & Pick-Up Available"}</p>
-          </div>
-          </Link>
-
-          <div className="border-t pt-0">
-            <div className="flex items-start justify-between">
-              <div className="flex-1 min-w-0 mt-32">
-                <h2 className="font-medium text-gray-900">{listing.manufacturer || "Example Tombstone Co."}</h2>
-                <div className="flex items-center text-green-600 mt-1">
-                  <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <span className="text-sm">{listing.enquiries || "21"} enquiries to this Manufacturer</span>
-                </div>
-                <div className="text-gray-600 text-sm mt-1">{listing.location || "Durban North, KZN"}</div>
-                <div className="text-blue-600 text-sm flex items-center mt-1">
-                  <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
-                  {listing.distance || "38km from you"}
-                </div>
-              </div>
-              <div className="ml-4 flex-shrink-0 mt-32">
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden">
-                  <Image
-                    src="/placeholder.svg"
-                    alt={`${listing.manufacturer || "Manufacturer"} Logo`}
-                    width={48}
-                    height={48}
-                    className="rounded-full object-cover"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* Thumbnails spanning full width */}
+      <div className="p-4 bg-white border-t border-gray-100">
+        <div className="grid grid-cols-6 gap-3">
+          {paddedThumbnails.map((src: string, index: number) => (
+            <button
+              key={index}
+              className={cn(
+                "relative aspect-[4/3] rounded overflow-hidden border-2 transition-colors",
+                "border-gray-200 hover:border-gray-300"
+              )}
+              // On thumbnail click, navigate to the product detail page
+              onClick={() => router.push(productUrl)}
+              aria-label={`View image ${index + 1}`}
+            >
+              <Image
+                src={src}
+                alt={`View ${index + 1}`}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 50vw, 200px"
+              />
+            </button>
+          ))}
         </div>
       </div>
     </div>
   )
 }
+ 

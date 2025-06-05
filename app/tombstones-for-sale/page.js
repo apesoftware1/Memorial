@@ -9,6 +9,9 @@ import { useFavorites } from "@/context/favorites-context"
 import { ProductCard } from "@/components/product-card"
 import { PremiumListingCard } from "@/components/premium-listing-card"
 
+// Import premium listings from lib/data.js
+import { premiumListings } from '@/lib/data';
+
 export default function TombstonesForSale() {
   // State for filter visibility on mobile
   const [showFilters, setShowFilters] = useState(false)
@@ -60,34 +63,6 @@ export default function TombstonesForSale() {
       details: "Full Tombstone | Marble | Cross Theme",
       tag: "Great Price",
       tagColor: "bg-green-500",
-    },
-  ]
-
-  // Premium listings data
-  const premiumListings = [
-    {
-      id: "cathedral-c14",
-      image: "/placeholder.svg?height=300&width=400",
-      price: "R 8 820",
-      title: "CATHEDRAL C14",
-      details: "Full Tombstone | Granite | Cross Theme",
-      features: "Photo Engraving Available | Self Install & Pick-Up Available",
-      manufacturer: "Example Tombstone Co.",
-      location: "Durban North, KZN",
-      tag: "Unique Design",
-      tagColor: "bg-red-600",
-    },
-    {
-      id: "grey-memorial",
-      image: "/placeholder.svg?height=300&width=400",
-      price: "R 6 500",
-      title: "GREY MEMORIAL",
-      details: "Full Tombstone | Granite | Simple Theme",
-      features: "Laser Engraving | 5-Year Warranty",
-      manufacturer: "Stone Masters",
-      location: "Cape Town, Western Cape",
-      tag: "Premium Quality",
-      tagColor: "bg-orange-500",
     },
   ]
 
@@ -326,65 +301,20 @@ export default function TombstonesForSale() {
               </div>
 
               {/* Premium Listings */}
-              <div className="mb-8">
-                <h2 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">PREMIUM LISTINGS</h2>
-                <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
+              <section className="py-4">
+                <div className="container mx-auto px-4">
+                  <div className="max-w-4xl mx-auto">
+                    <h3 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">PREMIUM LISTINGS</h3>
+                    <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
 
-                {/* Update the premium listings section */}
-                {/* Find this code: */}
-                {/* <div className="space-y-4">
-                  {premiumListings.map((product, index) => (
-                    <div
-                      key={index}
-                      className="border border-gray-300 rounded bg-white p-4 hover:shadow-md transition-shadow"
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="relative h-48 md:h-auto">
-                          <Image
-                            src={product.image || "/placeholder.svg"}
-                            alt={product.title}
-                            fill
-                            className="object-cover rounded"
-                          />
-                          <div
-                            className={`absolute top-2 left-2 ${product.tagColor} text-white text-xs px-2 py-1 rounded`}
-                          >
-                            {product.tag}
-                          </div>
-                        </div>
-                        <div className="md:col-span-2">
-                          <div className="flex justify-between items-start">
-                            <h3 className="font-bold text-gray-800 text-xl">{product.title}</h3>
-                            <p className="font-bold text-blue-800 text-xl">{product.price}</p>
-                          </div>
-                          <p className="text-sm text-gray-600 mt-2">{product.details}</p>
-                          <p className="text-sm text-gray-600 mt-1">{product.features}</p>
-
-                          <div className="mt-4 flex flex-col sm:flex-row justify-between items-start">
-                            <div>
-                              <p className="font-semibold text-gray-800">{product.manufacturer}</p>
-                              <p className="text-sm text-gray-600">{product.location}</p>
-                            </div>
-                            <Link
-                              href={`/tombstones-for-sale/${product.id}`}
-                              className="mt-2 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm transition-colors"
-                            >
-                              View Details
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
+                    <div className="space-y-6">
+                      {premiumListings.map((listing) => (
+                        <PremiumListingCard key={listing.id} listing={listing} href={`/memorial/${listing.id}`} />
+                      ))}
                     </div>
-                  ))}
-                </div> */}
-
-                {/* And replace it with: */}
-                <div className="space-y-4">
-                  {premiumListings.map((product, index) => (
-                    <PremiumListingCard key={index} listing={product} href={`/memorial/${product.id}`} />
-                  ))}
+                  </div>
                 </div>
-              </div>
+              </section>
 
               {/* Regular Listings */}
               <div>

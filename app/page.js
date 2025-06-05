@@ -7,17 +7,21 @@ import { ChevronDown, Check, Info, X, LandmarkIcon as Monument, Landmark, Layers
 import { ClientOnly } from "@/components/client-only"
 import { useFavorites } from "@/context/favorites-context"
 import { ProductCard } from "@/components/product-card"
-import { PremiumListingCard } from "@/components/premium-listing-card"
 import { StandardListingCard } from "@/components/standard-listing-card"
 import SearchBox from "@/components/SearchBox"
 import CategoryTabs from "@/components/CategoryTabs.jsx"
 import FaqSection from "@/components/FaqSection"
 import LocationModal from "@/components/LocationModal"
 import FilterDropdown from "@/components/FilterDropdown"
-import FeaturedListings from '@/components/FeaturedListings'
 import SearchForm from "@/components/SearchForm"
 import SearchContainer from "@/components/SearchContainer.jsx"
 import Pagination from "@/components/Pagination"
+import { PremiumListingCard } from "@/components/premium-listing-card"
+import dynamic from "next/dynamic"
+import HeaderWrapper from "@/components/HeaderWrapper"
+
+// Import necessary data from lib/data.js
+import { premiumListings, manufacturerProducts, standardListings } from '@/lib/data'
 
 // Static data moved outside component
   const filterOptions = {
@@ -138,343 +142,25 @@ import Pagination from "@/components/Pagination"
     },
 ];
 
-  const premiumListings = [
-    {
-      id: "cathedral-c14",
-      image: "/X20Tombstone_Pic Sets/flower/Flower_Main.jpg",
-      thumbnailImages: [
-        "/X20Tombstone_Pic Sets/flower/Flower_1.jpg",
-        "/X20Tombstone_Pic Sets/flower/Flower_2.jpg"
-      ],
-      price: "R 8 820",
-      title: "CATHEDRAL C14",
-      details: "Full Tombstone | Granite | Cross Theme",
-      features: "Photo Engraving Available | Self Install & Pick-Up Available",
-      manufacturer: "Example Tombstone Co.",
-      enquiries: "21",
-      location: "Durban North, KZN",
-      distance: "38km from you",
-      tag: "Unique Design",
-      tagColor: "bg-red-600 hover:bg-red-700",
-      tagRingColor: "red-400",
-    },
-    {
-      id: "elegant-marble",
-      image: "/X20Tombstone_Pic Sets/cross3/Cross2_Main.jpg",
-      thumbnailImages: [
-        "/X20Tombstone_Pic Sets/cross3/Cross2_1.jpg",
-        "/X20Tombstone_Pic Sets/cross3/Cross2_2.jpg",
-        "/X20Tombstone_Pic Sets/cross3/Cross2_3.jpg",
-      ],
-      price: "R 12 450",
-      title: "ELEGANT MARBLE MEMORIAL",
-      details: "Full Tombstone | Marble | Angel Theme",
-      features: "Gold Leaf Lettering Available | Delivery Included",
-      manufacturer: "Marble Masters",
-      enquiries: "15",
-      location: "Cape Town, Western Cape",
-      distance: "120km from you",
-      tag: "Premium Quality",
-      tagColor: "bg-blue-600 hover:bg-blue-700",
-      tagRingColor: "blue-400",
-    },
-    {
-      id: "black-granite",
-      image: "/X20Tombstone_Pic Sets/mausoleam/mausoleam_main.jpg",
-      thumbnailImages: [
-        "/X20Tombstone_Pic Sets/mausoleam/mausoleam_1.jpg",
-        "/X20Tombstone_Pic Sets/mausoleam/mausoleam_2.jpg",
-        "/X20Tombstone_Pic Sets/mausoleam/mausoleam_3.jpg",
-      ],
-      price: "R 15 750",
-      title: "BLACK GRANITE MEMORIAL",
-      details: "Full Tombstone | Black Granite | Modern Theme",
-      features: "Laser Engraving | 5-Year Warranty",
-      manufacturer: "Granite Specialists",
-      enquiries: "32",
-      location: "Johannesburg, Gauteng",
-      distance: "25km from you",
-      tag: "Best Seller",
-      tagColor: "bg-purple-600 hover:bg-purple-700",
-      tagRingColor: "purple-400",
-    },
-    {
-      id: "traditional-double",
-      image: "/X20Tombstone_Pic Sets/mausoleam2/Mausoleam2_Main.jpg",
-      thumbnailImages: [
-        "/X20Tombstone_Pic Sets/mausoleam2/Mausoleam2_1.jpg",
-        "/X20Tombstone_Pic Sets/mausoleam2/Mausoleam2_2.jpg",
-        "/X20Tombstone_Pic Sets/mausoleam2/Mausoleam2_Main.jpg",
-      ],
-      price: "R 22 980",
-      title: "TRADITIONAL DOUBLE HEADSTONE",
-      details: "Double Tombstone | Granite | Traditional Theme",
-      features: "Dual Inscription | Installation Included",
-      manufacturer: "Family Memorials Ltd",
-      enquiries: "18",
-      location: "Bloemfontein, Free State",
-      distance: "210km from you",
-      tag: "Family Option",
-      tagColor: "bg-green-600 hover:bg-green-700",
-      tagRingColor: "green-400",
-    },
-    {
-      id: "cultural-heritage",
-      image: "/X20Tombstone_Pic Sets/bigbible_mainPIc/BigBible_Main.jpg",
-      thumbnailImages: [
-        "/X20Tombstone_Pic Sets/bigbible_mainPIc/BigBible_Main.jpg",
-        "/X20Tombstone_Pic Sets/bigbible_mainPIc/BigBible_Main.jpg",
-        "/X20Tombstone_Pic Sets/bigbible_mainPIc/BigBible_Main.jpg"
-      ],
-      price: "R 18 350",
-      title: "CULTURAL HERITAGE MEMORIAL",
-      details: "Full Tombstone | Granite & Bronze | Cultural Theme",
-      features: "Custom Cultural Symbols | Multilingual Inscriptions",
-      manufacturer: "Heritage Memorials",
-      enquiries: "24",
-      location: "Pretoria, Gauteng",
-      distance: "45km from you",
-      tag: "Cultural Design",
-      tagColor: "bg-amber-600 hover:bg-amber-700",
-      tagRingColor: "amber-400",
-    },
-    {
-      id: "modern-abstract",
-      image: "/X20Tombstone_Pic Sets/Abstract/Abstract_Main.jpg",
-      thumbnailImages: [
-        "/X20Tombstone_Pic Sets/Abstract/Abstract_1.jpg",
-        "/X20Tombstone_Pic Sets/Abstract/Abstract_2.jpg",
-        "/X20Tombstone_Pic Sets/Abstract/Abstract_3.jpg",
-      ],
-      price: "R 21 000",
-      title: "MODERN ABSTRACT SCULPTURE",
-      details: "Sculpture | Granite | Abstract Theme",
-      features: "Unique Shape | Artistic Design | Custom Engraving",
-      manufacturer: "Artful Memorials",
-      enquiries: "19",
-      location: "Cape Town, Western Cape",
-      distance: "110km from you",
-      tag: "Artistic",
-      tagColor: "bg-teal-600 hover:bg-teal-700",
-      tagRingColor: "teal-400",
-    },
-    {
-      id: "garden-style-marker",
-      image: "/X20Tombstone_Pic Sets/stepped/Stepped_Main.jpg",
-      thumbnailImages: [
-        "/X20Tombstone_Pic Sets/stepped/Stepped_1.jpg",
-        "/X20Tombstone_Pic Sets/stepped/Stepped_2.jpg",
-        "/X20Tombstone_Pic Sets/stepped/Stepped_3.jpg",
-      ],
-      price: "R 7 500",
-      title: "GARDEN STYLE FLAT MARKER",
-      details: "Flat Marker | Bronze | Nature Theme",
-      features: "Integrated Vase | Low Profile | Durable Bronze",
-      manufacturer: "Bronze Crafters",
-      enquiries: "14",
-      location: "Durban, KZN",
-      distance: "60km from you",
-      tag: "Garden Accent",
-      tagColor: "bg-yellow-600 hover:bg-yellow-700",
-      tagRingColor: "yellow-400",
-    },
-    {
-      id: "religious-themed-upright",
-      image: "/X20Tombstone_Pic Sets/cross1/Cross_Main.jpg",
-      thumbnailImages: [
-        "/X20Tombstone_Pic Sets/cross1/Cross_1.jpg",
-        "/X20Tombstone_Pic Sets/cross1/Cross_2.jpg",
-        "/X20Tombstone_Pic Sets/cross1/Cross_3.jpg",
-      ],
-      price: "R 16 500",
-      title: "RELIGIOUS THEMED UPRIGHT",
-      details: "Upright Tombstone | Granite | Religious Theme",
-      features: "Cross/Star of David/Crescent Symbol | Custom Verses",
-      manufacturer: "Sacred Stones",
-      enquiries: "35",
-      location: "Johannesburg, Gauteng",
-      distance: "20km from you",
-      tag: "Faith Inspired",
-      tagColor: "bg-orange-600 hover:bg-orange-700",
-      tagRingColor: "orange-400",
-    },
-    {
-      id: "companion-bench-memorial",
-      image: "/X20Tombstone_Pic Sets/mausoleam3/mausoleam3_main.jpg",
-      thumbnailImages: [
-        "/X20Tombstone_Pic Sets/mausoleam3/mausoleam3_1.jpg",
-        "/X20Tombstone_Pic Sets/mausoleam3/mausoleam3_2.jpg",
-        "/X20Tombstone_Pic Sets/mausoleam3/mausoleam3_3.jpg",
-      ],
-      price: "R 25 000",
-      title: "COMPANION BENCH MEMORIAL",
-      details: "Bench Memorial | Granite | Shared Theme",
-      features: "Seating Area | Double Inscription | Durable",
-      manufacturer: "Comforting Creations",
-      enquiries: "22",
-      location: "Pretoria, Gauteng",
-      distance: "55km from you",
-      tag: "Shared Memory",
-      tagColor: "bg-brown-600 hover:bg-brown-700",
-      tagRingColor: "brown-400",
-    },
-    {
-      id: "unique-child-design",
-      image: "/X20Tombstone_Pic Sets/child/Child_Main.jpg",
-      thumbnailImages: [
-        "/X20Tombstone_Pic Sets/child/Child_1.jpg",
-        "/X20Tombstone_Pic Sets/child/Child_2.jpg",
-        "/X20Tombstone_Pic Sets/child/Child_3.jpg",
-      ],
-      price: "R 8 000",
-      title: "UNIQUE CHILD MEMORIAL DESIGN",
-      details: "Child Memorial | Marble | Custom Design",
-      features: "Personalized Artwork | Smaller Scale",
-      manufacturer: "Little Angels Memorials",
-      enquiries: "9",
-      location: "Bloemfontein, Free State",
-      tag: "Personalized",
-      tagColor: "bg-pink-400 hover:bg-pink-500",
-      tagRingColor: "pink-200",
-    },
-];
+// Dynamic imports for large sections
+const DynamicFeaturedListings = dynamic(() => import('@/components/FeaturedListings'), {
+  loading: () => <div className="animate-pulse">Loading featured listings...</div>,
+  ssr: false
+})
 
-  const manufacturerProducts = [
-    {
-      id: "royal-granite",
-      image: "/X20Tombstone_Pic Sets/Glass/Glass_Main.jpg",
-      price: "R 14 500",
-      title: "ROYAL GRANITE",
-      details: "Full Tombstone | Black Granite | Royal Theme",
-      tag: "Premium",
-    },
-    {
-      id: "dove-memorial",
-      image: "/X20Tombstone_Pic Sets/Head/Head_Main.jpg",
-      price: "R 9 750",
-      title: "DOVE MEMORIAL",
-      details: "Headstone | White Marble | Dove Theme",
-      tag: "Great Price",
-    },
-    {
-      id: "family-monument",
-      image: "/X20Tombstone_Pic Sets/stepped/Stepped_Main.jpg",
-      price: "R 22 800",
-      title: "FAMILY MONUMENT",
-      details: "Double Tombstone | Granite | Traditional",
-      tag: "Family Size",
-    },
-];
+const DynamicPremiumListings = dynamic(() => import('@/components/PremiumListings'), {
+  loading: () => <div className="animate-pulse">Loading premium listings...</div>,
+  ssr: false
+})
 
-  // Standard listings data (using the 5 items provided by the user)
-  const standardListings = [
-    {
-      id: "modern-abstract-sculpture",
-      image: "/X20Tombstone_Pic Sets/Abstract/Abstract_Main.jpg",
-      thumbnailImages: [
-        "/X20Tombstone_Pic Sets/Abstract/Abstract_1.jpg",
-        "/X20Tombstone_Pic Sets/Abstract/Abstract_2.jpg",
-        "/X20Tombstone_Pic Sets/Abstract/Abstract_3.jpg"
-      ],
-      price: "R 21 000",
-      title: "MODERN ABSTRACT SCULPTURE",
-      details: "Sculpture | Granite | Abstract Theme",
-      features: "Unique Shape | Artistic Design | Custom Engraving",
-      manufacturer: "Artful Memorials",
-      enquiries: "0",
-      location: "Cape Town, Western Cape",
-      distance: "110km from you",
-      tag: "Artistic",
-      tagColor: "bg-teal-600 hover:bg-teal-700",
-      tagRingColor: "teal-400",
-    },
-    {
-      id: "garden-style-flat-marker",
-      image: "/X20Tombstone_Pic Sets/stepped/Stepped_Main.jpg",
-      thumbnailImages: [
-        "/X20Tombstone_Pic Sets/stepped/Stepped_1.jpg",
-        "/X20Tombstone_Pic Sets/stepped/Stepped_2.jpg",
-        "/X20Tombstone_Pic Sets/stepped/Stepped_3.jpg"
-      ],
-      price: "R 7 500",
-      title: "GARDEN STYLE FLAT MARKER",
-      details: "Flat Marker | Bronze | Nature Theme",
-      features: "Integrated Vase | Low Profile | Durable Bronze",
-      manufacturer: "Bronze Crafters",
-      enquiries: "0",
-      location: "Durban, KZN",
-      distance: "60km from you",
-      tag: "Garden Accent",
-      tagColor: "bg-yellow-600 hover:bg-yellow-700",
-      tagRingColor: "yellow-400",
-    },
-    {
-      id: "religious-themed-upright",
-      image: "/X20Tombstone_Pic Sets/cross1/Cross_Main.jpg",
-      thumbnailImages: [
-        "/X20Tombstone_Pic Sets/cross1/Cross_1.jpg",
-        "/X20Tombstone_Pic Sets/cross1/Cross_2.jpg",
-        "/X20Tombstone_Pic Sets/cross1/Cross_3.jpg"
-      ],
-      price: "R 16 500",
-      title: "RELIGIOUS THEMED UPRIGHT",
-      details: "Upright Tombstone | Granite | Religious Theme",
-      features: "Cross/Star of David/Crescent Symbol | Custom Verses",
-      manufacturer: "Sacred Stones",
-      enquiries: "0",
-      location: "Johannesburg, Gauteng",
-      distance: "20km from you",
-      tag: "Faith Inspired",
-      tagColor: "bg-orange-600 hover:bg-orange-700",
-      tagRingColor: "orange-400",
-    },
-    {
-      id: "companion-bench-memorial",
-      image: "/X20Tombstone_Pic Sets/mausoleam3/mausoleam3_main.jpg",
-      thumbnailImages: [
-        "/X20Tombstone_Pic Sets/mausoleam3/mausoleam3_1.jpg",
-        "/X20Tombstone_Pic Sets/mausoleam3/mausoleam3_2.jpg",
-        "/X20Tombstone_Pic Sets/mausoleam3/mausoleam3_3.jpg"
-      ],
-      price: "R 25 000",
-      title: "COMPANION BENCH MEMORIAL",
-      details: "Bench Memorial | Granite | Shared Theme",
-      features: "Seating Area | Double Inscription | Durable",
-      manufacturer: "Comforting Creations",
-      enquiries: "0",
-      location: "Pretoria, Gauteng",
-      distance: "55km from you",
-      tag: "Shared Memory",
-      tagColor: "bg-brown-600 hover:bg-brown-700",
-      tagRingColor: "brown-400",
-    },
-    {
-      id: "unique-child-memorial-design",
-      image: "/X20Tombstone_Pic Sets/child/Child_Main.jpg",
-      thumbnailImages: [
-        "/X20Tombstone_Pic Sets/child/Child_1.jpg",
-        "/X20Tombstone_Pic Sets/child/Child_2.jpg",
-        "/X20Tombstone_Pic Sets/child/Child_3.jpg"
-      ],
-      price: "R 8 000",
-      title: "UNIQUE CHILD MEMORIAL DESIGN",
-      details: "Child Memorial | Marble | Custom Design",
-      features: "Personalized Artwork | Smaller Scale",
-      manufacturer: "Little Angels Memorials",
-      enquiries: "0",
-      location: "Bloemfontein, Free State",
-      distance: "38km from you",
-      tag: "Personalized",
-      tagColor: "bg-pink-400 hover:bg-pink-500",
-      tagRingColor: "pink-200",
-    },
-];
+const DynamicStandardListings = dynamic(() => import('@/components/StandardListings'), {
+  loading: () => <div className="animate-pulse">Loading standard listings...</div>,
+  ssr: false
+})
 
 export default function Home() {
   // Combined state for UI controls
   const [uiState, setUiState] = useState({
-    mobileMenuOpen: false,
-    mobileDropdown: null,
     showAllOptions: false,
     openDropdown: null,
     searchDropdownOpen: false,
@@ -510,7 +196,7 @@ export default function Home() {
       setUiState(prev => ({ ...prev, openDropdown: null }))
     }
     if (uiState.searchDropdownOpen && dropdownRefs.current['search'] && !dropdownRefs.current['search'].contains(event.target)) {
-      setUiState(prev => ({ ...prev, searchDropdownOpen: false }))
+      setUiState(prev => ({ ...prev, searchDropdownOpen: false }));
     }
     if (uiState.openDropdown === 'location' && dropdownRefs.current['location'] && !dropdownRefs.current['location'].contains(event.target)) {
       setUiState(prev => ({ ...prev, openDropdown: null }))
@@ -541,28 +227,8 @@ export default function Home() {
     }
   }, []);
 
-  const handleMobileMenuToggle = useCallback(() => {
-    setUiState(prev => ({ ...prev, mobileMenuOpen: !prev.mobileMenuOpen }))
-  }, []);
-
-  const handleMobileDropdownToggle = useCallback((section) => {
-    setUiState(prev => ({ ...prev, mobileDropdown: prev.mobileDropdown === section ? null : section }))
-  }, []);
-
-  const handleShowAllOptionsToggle = useCallback(() => {
-    setUiState(prev => ({ ...prev, showAllOptions: !prev.showAllOptions }))
-  }, []);
-
-  const handleTooltipToggle = useCallback((index) => {
-    setUiState(prev => ({ ...prev, activeTooltip: prev.activeTooltip === index ? null : index }))
-  }, []);
-
-  const handleSearchDropdownToggle = useCallback(() => {
-    setUiState(prev => ({ ...prev, searchDropdownOpen: !prev.searchDropdownOpen }))
-  }, []);
-
   const handleLocationModalClose = useCallback(() => {
-    setUiState(prev => ({ ...prev, locationModalOpen: false }))
+    setUiState(prev => ({ ...prev, locationModalOpen: false }));
   }, []);
 
   useEffect(() => {
@@ -768,8 +434,15 @@ export default function Home() {
         </div>
       );
     }
-    const categoryText = selectedCategory === "TOMBSTONES" ? "" : ` in ${selectedCategory}`;
-    return `Search ${filteredCount} Tombstones${categoryText}`;
+    if (selectedCategory === "CREMATION") {
+      return `Search ${filteredCount} Cremation Memorials`;
+    }
+    if (selectedCategory && selectedCategory !== "TOMBSTONES") {
+      // Capitalize first letter, lowercase the rest for category
+      const category = selectedCategory.charAt(0) + selectedCategory.slice(1).toLowerCase();
+      return `Search ${filteredCount} ${category} Tombstones`;
+    }
+    return `Search ${filteredCount} Tombstones`;
   };
 
   // Add search suggestions data
@@ -829,291 +502,9 @@ export default function Home() {
   const totalPages = Math.ceil(totalListings / itemsPerPage);
 
   return (
+    <div>
+      <HeaderWrapper />
     <main className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center">
-            <h1 className="text-xl md:text-2xl font-bold text-gray-800">TombstoneFinder.CO.ZA</h1>
-
-            {/* Desktop Navigation with Dropdowns */}
-            <nav className="ml-4 md:ml-8 hidden md:flex">
-              {/* Find a Tombstone Dropdown */}
-              <div className="relative group">
-                <button className="px-2 md:px-3 py-2 text-xs md:text-sm text-gray-700 hover:text-gray-900 transition-colors flex items-center">
-                  Find a Tombstone
-                  <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
-                </button>
-                <div className="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50">
-                  <div className="py-1">
-                    <Link
-                      href="/tombstones-for-sale"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      TOMBSTONES FOR SALE
-                    </Link>
-                    <Link
-                      href="/tombstones-on-special"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      TOMBSTONES ON SPECIAL
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              {/* Find a Manufacturer Dropdown */}
-              <div className="relative group">
-                <button className="px-2 md:px-3 py-2 text-xs md:text-sm text-gray-700 hover:text-gray-900 transition-colors flex items-center">
-                  Find a Manufacturer
-                  <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
-                </button>
-                <div className="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50">
-                  <div className="py-1">
-                    <Link
-                      href="/manufacturers"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      MANUFACTURERS
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              {/* Services Dropdown */}
-              <div className="relative group">
-                <button className="px-2 md:px-3 py-2 text-xs md:text-sm text-gray-700 hover:text-gray-900 transition-colors flex items-center">
-                  Services
-                  <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
-                </button>
-                <div className="absolute left-0 mt-1 w-64 bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50">
-                  <div className="py-1">
-                    <Link
-                      href="#"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      LET US HANDLE EVERYTHING
-                    </Link>
-                    <Link
-                      href="#"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      TOMBSTONE FINANCE
-                    </Link>
-                    <Link
-                      href="#"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      TOMBSTONE INSTALLATION GUIDE
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              {/* Favourites Dropdown */}
-              <div className="relative group">
-                <button className="px-2 md:px-3 py-2 text-xs md:text-sm text-gray-700 hover:text-gray-900 transition-colors flex items-center">
-                  Favourites
-                  <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
-                </button>
-                <div className="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50">
-                  <div className="py-1">
-                    <Link
-                      href="/favorites"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center justify-between"
-                    >
-                      <span>FAVOURITES</span>
-                      {totalFavorites > 0 ? (
-                        <span className="bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">
-                          {totalFavorites}
-                        </span>
-                      ) : null}
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </nav>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
-            onClick={handleMobileMenuToggle}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-
-          {/* Login/Register Dropdown */}
-          <div className="hidden md:block relative group">
-            <button className="text-teal-500 text-xs md:text-sm hover:text-teal-600 transition-colors flex items-center">
-              Login / Register
-              <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
-            </button>
-            <div className="absolute right-0 mt-1 w-64 bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50">
-              <div className="py-1">
-                <Link
-                  href="/login/manufacturer"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                >
-                  MANUFACTURERS LOGIN PORTAL
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Navigation - Slide from right */}
-        <nav
-          className={`fixed top-0 right-0 bottom-0 w-3/4 max-w-xs bg-white px-4 py-16 md:hidden border-l border-gray-200 shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${uiState.mobileMenuOpen ? "translate-x-0" : "translate-x-full"}`}
-        >
-          <button
-            className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-            onClick={handleMobileMenuToggle}
-          >
-            <X className="h-4 w-4 text-gray-600" />
-          </button>
-
-          {/* Mobile Find a Tombstone */}
-          <div className="py-2">
-            <button
-              className="flex justify-between items-center w-full text-gray-700 hover:text-gray-900 transition-colors"
-              onClick={() => handleMobileDropdownToggle("tombstone")}
-            >
-              <span>Find a Tombstone</span>
-              <ChevronDown
-                className={`h-4 w-4 transition-transform duration-200 ${uiState.mobileDropdown === "tombstone" ? "transform rotate-180" : ""}`}
-              />
-            </button>
-            {uiState.mobileDropdown === "tombstone" && (
-              <div className="pl-4 mt-2 space-y-2">
-                <Link
-                  href="/tombstones-for-sale"
-                  className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  TOMBSTONES FOR SALE
-                </Link>
-                <Link
-                  href="/tombstones-on-special"
-                  className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  TOMBSTONES ON SPECIAL
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Mobile Find a Manufacturer */}
-          <div className="py-2">
-            <button
-              className="flex justify-between items-center w-full text-gray-700 hover:text-gray-900 transition-colors"
-              onClick={() => handleMobileDropdownToggle("manufacturer")}
-            >
-              <span>Find a Manufacturer</span>
-              <ChevronDown
-                className={`h-4 w-4 transition-transform duration-200 ${uiState.mobileDropdown === "manufacturer" ? "transform rotate-180" : ""}`}
-              />
-            </button>
-            {uiState.mobileDropdown === "manufacturer" && (
-              <div className="pl-4 mt-2">
-                <Link href="/manufacturers" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
-                  MANUFACTURERS
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Mobile Services */}
-          <div className="py-2">
-            <button
-              className="flex justify-between items-center w-full text-gray-700 hover:text-gray-900 transition-colors"
-              onClick={() => handleMobileDropdownToggle("services")}
-            >
-              <span>Services</span>
-              <ChevronDown
-                className={`h-4 w-4 transition-transform duration-200 ${uiState.mobileDropdown === "services" ? "transform rotate-180" : ""}`}
-              />
-            </button>
-            {uiState.mobileDropdown === "services" && (
-              <div className="pl-4 mt-2 space-y-2">
-                <Link href="#" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
-                  LET US HANDLE EVERYTHING
-                </Link>
-                <Link href="#" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
-                  TOMBSTONE FINANCE
-                </Link>
-                <Link href="#" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
-                  TOMBSTONE INSTALLATION GUIDE
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Mobile Favourites */}
-          <div className="py-2">
-            <button
-              className="flex justify-between items-center w-full text-gray-700 hover:text-gray-900 transition-colors"
-              onClick={() => handleMobileDropdownToggle("favourites")}
-            >
-              <span>Favourites</span>
-              {totalFavorites > 0 ? (
-                <span className="bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full mr-2">
-                  {totalFavorites}
-                </span>
-              ) : (
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform duration-200 ${uiState.mobileDropdown === "favourites" ? "transform rotate-180" : ""}`}
-                />
-              )}
-            </button>
-            {uiState.mobileDropdown === "favourites" && (
-              <div className="pl-4 mt-2">
-                <Link href="/favorites" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
-                  FAVOURITES
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Mobile Login/Register */}
-          <div className="py-2">
-            <button
-              className="flex justify-between items-center w-full text-teal-500 hover:text-teal-600 transition-colors"
-              onClick={() => handleMobileDropdownToggle("login")}
-            >
-              <span>Login / Register</span>
-              <ChevronDown
-                className={`h-4 w-4 transition-transform duration-200 ${uiState.mobileDropdown === "login" ? "transform rotate-180" : ""}`}
-              />
-            </button>
-            {uiState.mobileDropdown === "login" && (
-              <div className="pl-4 mt-2">
-                <Link
-                  href="/login/manufacturer"
-                  className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  MANUFACTURERS LOGIN PORTAL
-                </Link>
-              </div>
-            )}
-          </div>
-        </nav>
-        {/* Overlay when mobile menu is open */}
-        {uiState.mobileMenuOpen && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-            onClick={handleMobileMenuToggle}
-          ></div>
-        )}
-      </header>
-
       {/* Hero Section with Search */}
       <section className="relative flex items-center justify-center bg-[#333]">
         {/* Background Image - Hidden on mobile */}
@@ -1128,12 +519,14 @@ export default function Home() {
         </div>
 
         {/* Content Container */}
-        <div className="relative z-10 w-full md:max-w-lg md:ml-32 md:mr-auto flex flex-col items-center h-full md:pt-8">
+          <div className="relative z-10 w-full md:max-w-lg md:ml-32 md:mr-auto flex flex-col items-center h-full pt-48 md:pt-20">
           {/* Category Tabs Container */}
+            <div className="w-full md:max-w-lg bg-[#1a2238] overflow-hidden">
           <CategoryTabs
             selectedCategory={selectedCategory}
             setSelectedCategory={setSelectedCategory}
           />
+            </div>
 
           {/* Main Search Box */}
           <SearchContainer
@@ -1175,22 +568,30 @@ export default function Home() {
       <MemoizedBannerAd />
 
       {/* 2. X3 Featured Listings */}
-      <FeaturedListings listings={featuredListings} />
+      <section className="py-4">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center mb-4">
+              <div className="flex-grow border-t border-gray-300"></div>
+              <h3 className="flex-shrink-0 mx-4 text-center text-gray-600">FEATURED LISTINGS</h3>
+              <div className="flex-grow border-t border-gray-300"></div>
+            </div>
+            <DynamicFeaturedListings listings={featuredListings} />
+          </div>
+        </div>
+      </section>
 
       {/* 3. X5 Premium Listings */}
       <section className="py-4">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <h3 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">PREMIUM LISTINGS</h3>
-            <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
-
-            <div className="space-y-6">
-              {premiumListingsSection1.map((listing) => (
-                <div key={listing.id}>
-                  <PremiumListingCard listing={listing} href={`/memorial/${listing.id}`} />
-                </div>
-              ))}
+            <div className="flex items-center">
+              <div className="flex-grow border-t border-gray-300"></div>
+              <h3 className="flex-shrink-0 mx-4 text-center text-gray-600">PREMIUM LISTINGS</h3>
+              <div className="flex-grow border-t border-gray-300"></div>
             </div>
+            <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
+            <DynamicPremiumListings listings={premiumListingsSection1} />
           </div>
         </div>
       </section>
@@ -1202,16 +603,13 @@ export default function Home() {
       <section className="py-4">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <h3 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">PREMIUM LISTINGS</h3>
-            <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
-
-            <div className="space-y-6">
-              {premiumListingsSection2.map((listing) => (
-                <div key={listing.id}>
-                  <PremiumListingCard listing={listing} href={`/memorial/${listing.id}`} />
-                </div>
-              ))}
+            <div className="flex items-center">
+              <div className="flex-grow border-t border-gray-300"></div>
+              <h3 className="flex-shrink-0 mx-4 text-center text-gray-600">PREMIUM LISTINGS</h3>
+              <div className="flex-grow border-t border-gray-300"></div>
             </div>
+            <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
+            <DynamicPremiumListings listings={premiumListingsSection2} />
           </div>
         </div>
       </section>
@@ -1230,7 +628,7 @@ export default function Home() {
                 </div>
                 <div>
                   <Image
-                    src="/placeholder.svg"
+                      src="/new files/company logos/Tombstone Manufacturer Logo-SwissStone.svg"
                     alt="ABC Tombstones Logo"
                     width={80}
                     height={80}
@@ -1259,16 +657,13 @@ export default function Home() {
       <section className="py-4">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <h3 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">STANDARD LISTINGS</h3>
-            <p className="text-center text-xs text-gray-500 mb-4">*Non-Sponsored</p>
-
-            <div className="space-y-6">
-              {standardListings.map((listing) => (
-                <Link key={listing.id} href={`/memorial/${listing.id}`}>
-                  <StandardListingCard listing={listing} />
-                </Link>
-              ))}
+            <div className="flex items-center">
+              <div className="flex-grow border-t border-gray-300"></div>
+              <h3 className="flex-shrink-0 mx-4 text-center text-gray-600">STANDARD LISTINGS</h3>
+              <div className="flex-grow border-t border-gray-300"></div>
             </div>
+            <p className="text-center text-xs text-gray-500 mb-4">*Non-Sponsored</p>
+            <DynamicStandardListings listings={standardListings} />
           </div>
         </div>
       </section>
@@ -1280,16 +675,13 @@ export default function Home() {
       <section className="py-4">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <h3 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">STANDARD LISTINGS</h3>
-            <p className="text-center text-xs text-gray-500 mb-4">*Non-Sponsored</p>
-
-            <div className="space-y-6">
-              {standardListings.map((listing) => (
-                <Link key={listing.id} href={`/memorial/${listing.id}`}>
-                  <StandardListingCard listing={listing} />
-                </Link>
-              ))}
+            <div className="flex items-center">
+              <div className="flex-grow border-t border-gray-300"></div>
+              <h3 className="flex-shrink-0 mx-4 text-center text-gray-600">STANDARD LISTINGS</h3>
+              <div className="flex-grow border-t border-gray-300"></div>
             </div>
+            <p className="text-center text-xs text-gray-500 mb-4">*Non-Sponsored</p>
+            <DynamicStandardListings listings={standardListings} />
           </div>
         </div>
       </section>
@@ -1372,5 +764,6 @@ export default function Home() {
         }
       `}</style>
     </main>
+    </div>
   )
 }

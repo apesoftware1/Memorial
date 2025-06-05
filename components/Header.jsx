@@ -18,7 +18,17 @@ export default function Header({
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         <div className="flex items-center">
-          <h1 className="text-xl md:text-2xl font-bold text-gray-800">TombstoneFinder.CO.ZA</h1>
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/new files/company logos/TombstonesFinder_logo.svg"
+              alt="TombstonesFinder Logo"
+              width={464}
+              height={70}
+              className="h-12 w-auto"
+              priority
+              unoptimized
+            />
+          </Link>
 
           {/* Desktop Navigation with Dropdowns */}
           <nav className="ml-4 md:ml-8 hidden md:flex">

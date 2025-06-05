@@ -6,7 +6,6 @@ const FeaturedListings = ({ listings }) => {
     <section className="py-4">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
-          <h3 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">FEATURED LISTINGS</h3>
           <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">

@@ -16,12 +16,13 @@ export default function ProductShowcase() {
     description:
       "Crafted from high-quality polished granite, this timeless tombstone features a sleek rectangular base with a raised center slab and a striking upright headstone. The beautiful two-tone design is accented with black and brown granite, creating an elegant memorial. With its sophisticated appearance, durable patterns and durable construction, this monument is designed to honor your loved one with grace and permanence.",
     images: [
-      "/placeholder.svg?height=400&width=300",
-      "/placeholder.svg?height=100&width=100",
-      "/placeholder.svg?height=100&width=100",
-      "/placeholder.svg?height=100&width=100",
-      "/placeholder.svg?height=100&width=100",
-      "/placeholder.svg?height=100&width=100",
+      "/new files/new demo images/Demo 2_Main.jpg",
+      "/new files/new demo images/1.jpg",
+      "/new files/new demo images/2.jpg",
+      "/new files/new demo images/3.jpg",
+      "/new files/new demo images/4.jpg",
+      "/new files/new demo images/5.jpg",
+      "/new files/new demo images/6.jpg",
     ],
     features: [
       { icon: "🏛️", label: "Full Tombstone" },
