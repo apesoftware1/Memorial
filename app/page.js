@@ -18,7 +18,7 @@ import SearchContainer from "@/components/SearchContainer.jsx"
 import Pagination from "@/components/Pagination"
 import { PremiumListingCard } from "@/components/premium-listing-card"
 import dynamic from "next/dynamic"
-import HeaderWrapper from "@/components/HeaderWrapper"
+import Header from "@/components/Header"
 
 // Import necessary data from lib/data.js
 import { premiumListings, manufacturerProducts, standardListings } from '@/lib/data'
@@ -165,7 +165,9 @@ export default function Home() {
     openDropdown: null,
     searchDropdownOpen: false,
     locationModalOpen: false,
-    activeTooltip: null
+    activeTooltip: null,
+    mobileMenuOpen: false,
+    mobileDropdown: null,
   });
 
   // State for filter selections
@@ -501,269 +503,283 @@ export default function Home() {
   const totalListings = premiumListings.length + standardListings.length;
   const totalPages = Math.ceil(totalListings / itemsPerPage);
 
+  // Header state handlers
+  const handleMobileMenuToggle = useCallback(() => {
+    setUiState(prev => ({ ...prev, mobileMenuOpen: !prev.mobileMenuOpen }))
+  }, []);
+
+  const handleMobileDropdownToggle = useCallback((section) => {
+    setUiState(prev => ({ ...prev, mobileDropdown: prev.mobileDropdown === section ? null : section }))
+  }, []);
+
   return (
     <div>
-      <HeaderWrapper />
-    <main className="min-h-screen bg-white">
-      {/* Hero Section with Search */}
-      <section className="relative flex items-center justify-center bg-[#333]">
-        {/* Background Image - Hidden on mobile */}
-        <div className="absolute inset-0 z-0 hidden sm:block">
-          <Image
-            src={categoryBackgrounds[selectedCategory] || "/2560(w)x400px(h)_Banner_OldYoungCouple.jpg"}
-            alt={`${selectedCategory} background`}
-            fill
-            className="object-cover"
-            priority
-          />
-        </div>
-
-        {/* Content Container */}
-          <div className="relative z-10 w-full md:max-w-lg md:ml-32 md:mr-auto flex flex-col items-center h-full pt-48 md:pt-20">
-          {/* Category Tabs Container */}
-            <div className="w-full md:max-w-lg bg-[#1a2238] overflow-hidden">
-          <CategoryTabs
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
-          />
-            </div>
-
-          {/* Main Search Box */}
-          <SearchContainer
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
-            filters={filters}
-            setFilters={setFilters}
-            setSelectedTown={setSelectedTown}
-            handleSearch={handleSearch}
-            locationsData={locationsData}
-            filterOptions={filterOptions}
-            isSearching={isSearching}
-            getSearchButtonText={getSearchButtonText}
-            locationModalOpen={uiState.locationModalOpen}
-            handleLocationModalClose={handleLocationModalClose}
-            parentToggleDropdown={toggleDropdown}
-          />
-        </div>
-      </section>
-
-      {/* FAQ Section */}
-      <section className="bg-white py-8">
-        <div className="container mx-auto px-4">
-          <FaqSection />
-        </div>
-      </section>
-
-      {/* Location Selection Modal (Mobile Only) */}
-      <LocationModal
-        isOpen={uiState.locationModalOpen}
-        onClose={handleLocationModalClose}
-        locationsData={locationsData}
-        onSelectLocation={(locationName) => selectOption('location', locationName)}
+      <Header
+        mobileMenuOpen={uiState.mobileMenuOpen}
+        handleMobileMenuToggle={handleMobileMenuToggle}
+        mobileDropdown={uiState.mobileDropdown}
+        handleMobileDropdownToggle={handleMobileDropdownToggle}
       />
-
-      {/* Following the order from the image */}
-
-      {/* 1. Banner Ad (Animated Gif - Linked to Google Ads) */}
-      <MemoizedBannerAd />
-
-      {/* 2. X3 Featured Listings */}
-      <section className="py-4">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center mb-4">
-              <div className="flex-grow border-t border-gray-300"></div>
-              <h3 className="flex-shrink-0 mx-4 text-center text-gray-600">FEATURED LISTINGS</h3>
-              <div className="flex-grow border-t border-gray-300"></div>
-            </div>
-            <DynamicFeaturedListings listings={featuredListings} />
+      <main className="min-h-screen bg-white">
+        {/* Hero Section with Search */}
+        <section className="relative flex items-center justify-center bg-[#333]">
+          {/* Background Image - Hidden on mobile */}
+          <div className="absolute inset-0 z-0 hidden sm:block">
+            <Image
+              src={categoryBackgrounds[selectedCategory] || "/2560(w)x400px(h)_Banner_OldYoungCouple.jpg"}
+              alt={`${selectedCategory} background`}
+              fill
+              className="object-cover"
+              priority
+            />
           </div>
-        </div>
-      </section>
 
-      {/* 3. X5 Premium Listings */}
-      <section className="py-4">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center">
-              <div className="flex-grow border-t border-gray-300"></div>
-              <h3 className="flex-shrink-0 mx-4 text-center text-gray-600">PREMIUM LISTINGS</h3>
-              <div className="flex-grow border-t border-gray-300"></div>
-            </div>
-            <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
-            <DynamicPremiumListings listings={premiumListingsSection1} />
-          </div>
-        </div>
-      </section>
-
-      {/* 4. Banner Ad (Animated Gif - Linked to Google Ads) */}
-      <MemoizedBannerAd />
-
-      {/* 5. X5 Premium Listings */}
-      <section className="py-4">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center">
-              <div className="flex-grow border-t border-gray-300"></div>
-              <h3 className="flex-shrink-0 mx-4 text-center text-gray-600">PREMIUM LISTINGS</h3>
-              <div className="flex-grow border-t border-gray-300"></div>
-            </div>
-            <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
-            <DynamicPremiumListings listings={premiumListingsSection2} />
-          </div>
-        </div>
-      </section>
-
-      {/* 6. Featured Manufacturer */}
-      <section className="py-4">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <h3 className="text-center text-gray-600 mb-2">Featured Manufacturer</h3>
-            <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
-
-            <div className="border border-gray-300 rounded bg-white p-4 mb-4 hover:shadow-md transition-shadow">
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0">
-                <div>
-                  <h4 className="font-bold text-gray-800 text-xl mb-1">ABC Tombstones PTY Ltd</h4>
-                </div>
-                <div>
-                  <Image
-                      src="/new files/company logos/Tombstone Manufacturer Logo-SwissStone.svg"
-                    alt="ABC Tombstones Logo"
-                    width={80}
-                    height={80}
-                    className="rounded-full"
-                  />
-                </div>
+          {/* Content Container */}
+            <div className="relative z-10 w-full md:max-w-lg md:ml-32 md:mr-auto flex flex-col items-center h-full pt-0 md:pt-20">
+            {/* Category Tabs Container */}
+              <div className="w-full md:max-w-lg bg-[#1a2238] overflow-hidden">
+            <CategoryTabs
+              selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
+            />
               </div>
-              <Link
-                href="#"
-                className="text-blue-600 text-sm hover:text-blue-700 hover:underline transition-colors inline-block mt-2"
-              >
-                View more matching tombstones
-              </Link>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {manufacturerProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+            {/* Main Search Box */}
+            <SearchContainer
+              selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
+              filters={filters}
+              setFilters={setFilters}
+              setSelectedTown={setSelectedTown}
+              handleSearch={handleSearch}
+              locationsData={locationsData}
+              filterOptions={filterOptions}
+              isSearching={isSearching}
+              getSearchButtonText={getSearchButtonText}
+              locationModalOpen={uiState.locationModalOpen}
+              handleLocationModalClose={handleLocationModalClose}
+              parentToggleDropdown={toggleDropdown}
+            />
+          </div>
+        </section>
+
+        {/* FAQ Section */}
+        <section className="bg-white py-8">
+          <div className="container mx-auto px-4">
+            <FaqSection />
+          </div>
+        </section>
+
+        {/* Location Selection Modal (Mobile Only) */}
+        <LocationModal
+          isOpen={uiState.locationModalOpen}
+          onClose={handleLocationModalClose}
+          locationsData={locationsData}
+          onSelectLocation={(locationName) => selectOption('location', locationName)}
+        />
+
+        {/* Following the order from the image */}
+
+        {/* 1. Banner Ad (Animated Gif - Linked to Google Ads) */}
+        <MemoizedBannerAd />
+
+        {/* 2. X3 Featured Listings */}
+        <section className="pt-4 pb-0 bg-gray-50">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center mb-0">
+                <div className="flex-grow border-t border-gray-300"></div>
+                <h3 className="flex-shrink-0 mx-4 text-center text-gray-600 text-sm uppercase">FEATURED LISTINGS</h3>
+                <div className="flex-grow border-t border-gray-300"></div>
+              </div>
+              <DynamicFeaturedListings listings={featuredListings} />
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 7. Standard Listings */}
-      <section className="py-4">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center">
-              <div className="flex-grow border-t border-gray-300"></div>
-              <h3 className="flex-shrink-0 mx-4 text-center text-gray-600">STANDARD LISTINGS</h3>
-              <div className="flex-grow border-t border-gray-300"></div>
+        {/* 3. X5 Premium Listings */}
+        <section className="pt-4 bg-gray-50">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center mb-0">
+                <div className="flex-grow border-t border-gray-300"></div>
+                <h3 className="flex-shrink-0 mx-4 text-center text-gray-600  text-sm uppercase">PREMIUM LISTINGS</h3>
+                <div className="flex-grow border-t border-gray-300"></div>
+              </div>
+              <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
+              <DynamicPremiumListings listings={premiumListingsSection1} />
             </div>
-            <p className="text-center text-xs text-gray-500 mb-4">*Non-Sponsored</p>
-            <DynamicStandardListings listings={standardListings} />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 8. Banner Ad (Animated Gif - Linked to Google Ads) */}
-      <MemoizedBannerAd />
+        {/* 4. Banner Ad (Animated Gif - Linked to Google Ads) */}
+        <MemoizedBannerAd />
 
-      {/* 9. Standard Listings */}
-      <section className="py-4">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center">
-              <div className="flex-grow border-t border-gray-300"></div>
-              <h3 className="flex-shrink-0 mx-4 text-center text-gray-600">STANDARD LISTINGS</h3>
-              <div className="flex-grow border-t border-gray-300"></div>
+        {/* 5. X5 Premium Listings */}
+        <section className="pt-4 bg-gray-50">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center mb-0">
+                <div className="flex-grow border-t border-gray-300"></div>
+                <h3 className="flex-shrink-0 mx-4 text-center text-gray-600 text-sm uppercase">PREMIUM LISTINGS</h3>
+                <div className="flex-grow border-t border-gray-300"></div>
+              </div>
+              <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
+              <DynamicPremiumListings listings={premiumListingsSection2} />
             </div>
-            <p className="text-center text-xs text-gray-500 mb-4">*Non-Sponsored</p>
-            <DynamicStandardListings listings={standardListings} />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Add pagination just before footer */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        </div>
-      </div>
+        {/* 6. Featured Manufacturer */}
+        <section className="py-4">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto">
+              <h3 className="text-center text-gray-600 mb-2">Featured Manufacturer</h3>
+              <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
 
-      {/* Footer */}
-      <footer className="bg-gray-800 text-white py-8 mt-8">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <h4 className="text-lg font-semibold mb-4">About TombstoneFinder.CO.ZA</h4>
-              <p className="text-gray-600">
-                TombstoneFinder.CO.ZA connects you with trusted tombstone manufacturers and suppliers across South Africa.
-              </p>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
-              <ul className="space-y-2">
-                {["Home", "Find a Tombstone", "Find a Manufacturer", "Services", "Contact Us"].map((link, index) => (
-                  <li key={index}>
-                    <Link href="#" className="text-gray-300 hover:text-white transition-colors text-sm">
-                      {link}
-                    </Link>
-                  </li>
+              <div className="border border-gray-300 rounded bg-white p-4 mb-4 hover:shadow-md transition-shadow">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0">
+                  <div>
+                    <h4 className="font-bold text-gray-800 text-xl mb-1">ABC Tombstones PTY Ltd</h4>
+                  </div>
+                  <div>
+                    <Image
+                        src="/new files/company logos/Tombstone Manufacturer Logo-SwissStone.svg"
+                      alt="ABC Tombstones Logo"
+                      width={80}
+                      height={80}
+                      className="rounded-full"
+                    />
+                  </div>
+                </div>
+                <Link
+                  href="#"
+                  className="text-blue-600 text-sm hover:text-blue-700 hover:underline transition-colors inline-block mt-2"
+                >
+                  View more matching tombstones
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {manufacturerProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
                 ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Contact</h4>
-              <address className="text-gray-300 text-sm not-italic">
-                <p>Email: info@tombstonefinder.co.za</p>
-                <p>Phone: +27 12 345 6789</p>
-                <p>Address: 123 Memorial Street, Pretoria, South Africa</p>
-              </address>
+              </div>
             </div>
           </div>
-          <div className="border-t border-gray-700 mt-8 pt-4 text-center text-gray-400 text-sm">
-            <p>&copy; {new Date().getFullYear()} TombstoneFinder.CO.ZA. All rights reserved.</p>
+        </section>
+
+        {/* 7. Standard Listings */}
+        <section className="py-4">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center">
+                <div className="flex-grow border-t border-gray-300"></div>
+                <h3 className="flex-shrink-0 mx-4 text-center text-gray-600 text-sm uppercase">STANDARD LISTINGS</h3>
+                <div className="flex-grow border-t border-gray-300"></div>
+              </div>
+              <p className="text-center text-xs text-gray-500 mb-4">*Non-Sponsored</p>
+              <DynamicStandardListings listings={standardListings} />
+            </div>
+          </div>
+        </section>
+
+        {/* 8. Banner Ad (Animated Gif - Linked to Google Ads) */}
+        <MemoizedBannerAd />
+
+        {/* 9. Standard Listings */}
+        <section className="py-4">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center">
+                <div className="flex-grow border-t border-gray-300"></div>
+                <h3 className="flex-shrink-0 mx-4 text-center text-gray-600  text-sm uppercase">STANDARD LISTINGS</h3>
+                <div className="flex-grow border-t border-gray-300"></div>
+              </div>
+              <p className="text-center text-xs text-gray-500 mb-4">*Non-Sponsored</p>
+              <DynamicStandardListings listings={standardListings} />
+            </div>
+          </div>
+        </section>
+
+        {/* Add pagination just before footer */}
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         </div>
-      </footer>
 
-      <style jsx>{`
-        .more-options-slide {
-          transform: translateX(100%);
-          transition: transform 0.7s ease-in-out;
-        }
-        .more-options-slide.open {
-          transform: translateX(0);
-        }
-        .hide-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .hide-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        @keyframes slide-in {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
+        {/* Footer */}
+        <footer className="bg-gray-800 text-white py-8 mt-8">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div>
+                <h4 className="text-lg font-semibold mb-4">About TombstoneFinder.CO.ZA</h4>
+                <p className="text-gray-600">
+                  TombstoneFinder.CO.ZA connects you with trusted tombstone manufacturers and suppliers across South Africa.
+                </p>
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
+                <ul className="space-y-2">
+                  {["Home", "Find a Tombstone", "Find a Manufacturer", "Services", "Contact Us"].map((link, index) => (
+                    <li key={index}>
+                      <Link href="#" className="text-gray-300 hover:text-white transition-colors text-sm">
+                        {link}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold mb-4">Contact</h4>
+                <address className="text-gray-300 text-sm not-italic">
+                  <p>Email: info@tombstonefinder.co.za</p>
+                  <p>Phone: +27 12 345 6789</p>
+                  <p>Address: 123 Memorial Street, Pretoria, South Africa</p>
+                </address>
+              </div>
+            </div>
+            <div className="border-t border-gray-700 mt-8 pt-4 text-center text-gray-400 text-sm">
+              <p>&copy; {new Date().getFullYear()} TombstoneFinder.CO.ZA. All rights reserved.</p>
+            </div>
+          </div>
+        </footer>
+
+        <style jsx>{`
+          .more-options-slide {
+            transform: translateX(100%);
+            transition: transform 0.7s ease-in-out;
           }
-          to {
-            opacity: 1;
-            transform: translateY(0);
+          .more-options-slide.open {
+            transform: translateX(0);
           }
-        }
-        .animate-slide-in {
-          animation: slide-in 0.2s ease-out;
-        }
-      `}</style>
-    </main>
+          .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+          }
+          @keyframes slide-in {
+            from {
+              opacity: 0;
+              transform: translateY(-10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          .animate-slide-in {
+            animation: slide-in 0.2s ease-out;
+          }
+        `}</style>
+      </main>
     </div>
   )
 }

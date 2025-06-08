@@ -169,7 +169,7 @@ const SearchContainer = ({
       </div>
 
       {/* Action Buttons Container */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-1 w-full">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-8 w-full">
         {/* More Options Button */}
         {isDesktop ? (
           <button
@@ -189,7 +189,7 @@ const SearchContainer = ({
           </button>
         )}
         {/* Search Button */}
-        <div className={`w-full sm:w-[220px] sm:ml-auto transition-transform duration-300 ease-in-out ${moreOptionsOpen ? 'translate-x-[233%]' : 'translate-x-0'} relative z-[5]`}>
+        <div className={`w-full sm:w-[220px] sm:ml-auto transition-transform duration-300 ease-in-out ${moreOptionsOpen ? 'translate-x-[233%]' : 'translate-x-0'} relative z-[5] mb-4 md:mb-0`}>
           <button
             type="button"
             onClick={handleSearch}

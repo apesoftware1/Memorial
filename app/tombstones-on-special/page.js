@@ -1,16 +1,23 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ChevronDown, Search, ChevronRight } from "lucide-react"
 import CountdownTimer from "@/components/countdown-timer"
+import Header from "@/components/Header"
 
 // Import the useFavorites hook and our new components
 import { useFavorites } from "@/context/favorites-context"
 import { FavoriteButton } from "@/components/favorite-button"
 
 export default function TombstonesOnSpecial() {
+  // State for UI controls (for Header component)
+  const [uiState, setUiState] = useState({
+    mobileMenuOpen: false,
+    mobileDropdown: null,
+  });
+
   // State for filter visibility on mobile
   const [showFilters, setShowFilters] = useState(false)
 
@@ -30,8 +37,16 @@ export default function TombstonesOnSpecial() {
   const [sortOrder, setSortOrder] = useState("Default")
 
   // Add the useFavorites hook to the component
-  // Add this near the top of the component, with the other useState declarations:
   const { totalFavorites } = useFavorites()
+
+  // Handlers for Header component
+  const handleMobileMenuToggle = useCallback(() => {
+    setUiState(prev => ({ ...prev, mobileMenuOpen: !prev.mobileMenuOpen }))
+  }, []);
+
+  const handleMobileDropdownToggle = useCallback((section) => {
+    setUiState(prev => ({ ...prev, mobileDropdown: prev.mobileDropdown === section ? null : section }))
+  }, []);
 
   // Special offer listings data
   const specialOffers = [
@@ -298,129 +313,12 @@ export default function TombstonesOnSpecial() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center">
-            <Link href="/" className="text-2xl font-bold text-gray-800">
-              MemorialHub
-            </Link>
-
-            {/* Desktop Navigation with Dropdowns */}
-            <nav className="ml-8 hidden md:flex">
-              {/* Find a Tombstone Dropdown */}
-              <div className="relative group">
-                <button className="px-3 py-2 text-sm text-gray-700 hover:text-gray-900 transition-colors flex items-center">
-                  Find a Tombstone
-                  <ChevronDown className="ml-1 h-4 w-4" />
-                </button>
-                <div className="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50">
-                  <div className="py-1">
-                    <Link
-                      href="/tombstones-for-sale"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      TOMBSTONES FOR SALE
-                    </Link>
-                    <Link
-                      href="/tombstones-on-special"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors bg-amber-50"
-                    >
-                      TOMBSTONES ON SPECIAL
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              {/* Find a Manufacturer Dropdown */}
-              <div className="relative group">
-                <button className="px-3 py-2 text-sm text-gray-700 hover:text-gray-900 transition-colors flex items-center">
-                  Find a Manufacturer
-                  <ChevronDown className="ml-1 h-4 w-4" />
-                </button>
-                <div className="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50">
-                  <div className="py-1">
-                    <Link
-                      href="#"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      MANUFACTURERS
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              {/* Services Dropdown */}
-              <div className="relative group">
-                <button className="px-3 py-2 text-sm text-gray-700 hover:text-gray-900 transition-colors flex items-center">
-                  Services
-                  <ChevronDown className="ml-1 h-4 w-4" />
-                </button>
-                <div className="absolute left-0 mt-1 w-64 bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50">
-                  <div className="py-1">
-                    <Link
-                      href="#"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      LET US HANDLE EVERYTHING
-                    </Link>
-                    <Link
-                      href="#"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      TOMBSTONE FINANCE
-                    </Link>
-                    <Link
-                      href="#"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      TOMBSTONE INSTALLATION GUIDE
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              {/* Favourites Dropdown */}
-              <div className="relative group">
-                <button className="px-3 py-2 text-sm text-gray-700 hover:text-gray-900 transition-colors flex items-center">
-                  Favourites
-                  <ChevronDown className="ml-1 h-4 w-4" />
-                </button>
-                <div className="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50">
-                  <div className="py-1">
-                    <Link
-                      href="/favorites"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      FAVOURITES
-                      {totalFavorites > 0 && (
-                        <span className="ml-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">
-                          {totalFavorites}
-                        </span>
-                      )}
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </nav>
-          </div>
-
-          {/* Login/Register Dropdown */}
-          <div className="hidden md:block relative group">
-            <button className="text-teal-500 text-sm hover:text-teal-600 transition-colors flex items-center">
-              Login / Register
-              <ChevronDown className="ml-1 h-4 w-4" />
-            </button>
-            <div className="absolute right-0 mt-1 w-64 bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50">
-              <div className="py-1">
-                <Link href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
-                  MANUFACTURERS LOGIN PORTAL
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header
+        mobileMenuOpen={uiState.mobileMenuOpen}
+        handleMobileMenuToggle={handleMobileMenuToggle}
+        mobileDropdown={uiState.mobileDropdown}
+        handleMobileDropdownToggle={handleMobileDropdownToggle}
+      />
 
       {/* Search Bar */}
       <div className="bg-gray-800 py-4">

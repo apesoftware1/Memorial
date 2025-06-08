@@ -29,9 +29,10 @@ const CategoryTabs = ({
               <Image
                 src={item.icon}
                 alt={`${item.name} icon`}
-                width={24}
-                height={24}
-                className="h-6 w-6 mb-1"
+                width={item.name === 'FAMILY' ? 32 : 24}
+                height={item.name === 'FAMILY' ? 32 : 24}
+                className={item.name === 'FAMILY' ? "h-8 w-8 mb-1" : "h-6 w-6 mb-1"}
+                style={{ marginTop: item.name === 'FAMILY' ? '3px' : '0' }}
               />
               <span className="text-[0.7rem] leading-tight w-full">{item.name}</span>
             </div>
