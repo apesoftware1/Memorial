@@ -29,10 +29,10 @@ export default function CategoryTabs() {
                 href={category.href}
                 className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
                   isActive ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600'
-                }`}
+                } ${category.name === 'FAMILY' ? 'mt-[-2px]' : ''}`}
                 onClick={() => setActiveCategory(category.id)}
               >
-                {category.name}
+                <span className={`text-[0.7rem] leading-tight w-full ${category.name === 'FAMILY' ? 'mt-[-2px]' : ''}`}>{category.name}</span>
               </Link>
             )
           })}
