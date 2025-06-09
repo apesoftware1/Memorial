@@ -16,113 +16,150 @@ export default function ProductShowcase({ listing }) {
 
   return (
     <div className="max-w-6xl mx-auto bg-white">
+      {/* Breadcrumbs */}
+      <div className="text-sm text-gray-600 mb-4 px-4 md:px-0">
+        <Link href="/" className="hover:underline">Home</Link>
+        <span className="mx-1">&gt;</span>
+        <Link href="/tombstones-for-sale" className="hover:underline">Tombstones For Sale</Link>
+        <span className="mx-1">&gt;</span>
+        <Link href="#" className="hover:underline">Durban North</Link>
+        <span className="mx-1">&gt;</span>
+        <Link href="#" className="hover:underline">Full Tombstone</Link>
+        <span className="mx-1">&gt;</span>
+        <Link href="#" className="hover:underline">Granite</Link>
+        <span className="mx-1">&gt;</span>
+        <span>{listing.id}(Ad Id)</span>
+      </div>
+
+      {/* Product Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 px-4 md:px-0">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">{listing.title} For Sale</h1>
+          {listing.badge && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-600 text-white mb-2">
+              {listing.badge}
+            </span>
+          )}
+          <p className="text-sm text-gray-700 mb-4">{listing.location} | {listing.distance} from you</p>
+        </div>
+        <div className="md:text-right mt-4 md:mt-0">
+          <div className="text-blue-600 text-3xl font-bold mb-2">{listing.price}</div>
+          <div className="text-sm text-gray-600">
+            <Link href="#" className="hover:underline">&lt; Previous</Link>
+            <span className="mx-1">|</span>
+            <Link href="#" className="hover:underline">Next &gt;</Link>
+          </div>
+        </div>
+      </div>
+
       {/* Product Content */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Column - Product Images and Details */}
         <div className="md:col-span-2">
-          <div className="mb-4">
-            <div className="relative h-[350px] w-full mb-4 border border-gray-200">
-              <Image
-                src={listing.thumbnailImages[0] || "/placeholder.svg"}
-                alt={listing.title}
-                fill
-                className="object-contain"
-              />
+          <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
+            <div className="mb-4">
+              <div className="relative h-[350px] w-full mb-4 border border-gray-200">
+                <Image
+                  src={listing.thumbnailImages[0] || "/placeholder.svg"}
+                  alt={listing.title}
+                  fill
+                  className="object-contain"
+                />
+              </div>
+              <div className="grid grid-cols-6 gap-2">
+                {listing.thumbnailImages.map((image, index) => (
+                  <div
+                    key={index}
+                    className="relative h-16 w-full border cursor-pointer border-gray-200"
+                  >
+                    <Image
+                      src={image || "/placeholder.svg"}
+                      alt={`Thumbnail ${index + 1}`}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-6 gap-2">
-              {listing.thumbnailImages.map((image, index) => (
-                <div
-                  key={index}
-                  className="relative h-16 w-full border cursor-pointer border-gray-200"
-                >
-                  <Image
-                    src={image || "/placeholder.svg"}
-                    alt={`Thumbnail ${index + 1}`}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              ))}
+
+            {/* Product Metadata/Features */}
+            <div className="border-y border-gray-200 py-4 mb-6">
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-700">
+                {listing.tombstoneType && (
+                  <div className="flex items-center">
+                    <User2 size={16} className="text-gray-500 mr-1" />
+                    <span>Tombstone Type: <span className="font-semibold">{listing.tombstoneType}</span></span>
+                    <span className="mx-1 text-gray-400">|</span>
+                  </div>
+                )}
+                {listing.style && (
+                  <div className="flex items-center">
+                    <Cross size={16} className="text-gray-500 mr-1" />
+                    <span>Style: <span className="font-semibold">{listing.style}</span></span>
+                    <span className="mx-2 text-gray-400">|</span>
+                  </div>
+                )}
+                {listing.colour && (Object.values(listing.colour).some(val => val)) && (
+                  <div className="flex items-center">
+                    <span>Colour:</span>
+                    {listing.colour.black && <span className="w-4 h-4 bg-black rounded-sm border border-gray-300 ml-1"></span>}
+                    {listing.colour.gold && <span className="w-4 h-4 bg-yellow-500 rounded-sm border border-gray-300 ml-1"></span>}
+                    <span className="mx-1 text-gray-400">|</span>
+                  </div>
+                )}
+                {listing.culture && (
+                  <div className="flex items-center">
+                    <Image src="/new files/newIcons/Culture_Icons/Culture_Icons-50.svg" alt="Culture Icon" width={16} height={16} className="text-gray-500 mr-1" />
+                    <span>Culture: <span className="font-semibold">{listing.culture}</span></span>
+                    <span className="mx-1 text-gray-400">|</span>
+                  </div>
+                )}
+                {listing.stoneType && (
+                  <div className="flex items-center">
+                    <Gem size={16} className="text-gray-500 mr-1" />
+                    <span>Stone Type: <span className="font-semibold">{listing.stoneType}</span></span>
+                    <span className="mx-1 text-gray-400">|</span>
+                  </div>
+                )}
+                {listing.customisation && (listing.customisation.photoEngraving || listing.customisation.builtInFlowerVase) && (
+                  <div className="flex items-center">
+                    <span>Customisation:</span>
+                    {listing.customisation.photoEngraving &&
+                      <span className="flex items-center ml-1">
+                        <Camera size={16} className="text-gray-500 mr-1" />
+                        <span className="font-semibold">Photo Engraving</span>
+                      </span>
+                    }
+                    {listing.customisation.builtInFlowerVase &&
+                      <span className="flex items-center ml-1">
+                        <Flower size={16} className="text-gray-500 mr-1" />
+                        <span className="font-semibold">Built-In Flower Vase</span>
+                      </span>
+                    }
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Product Description */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold mb-2">Tombstone Description</h2>
+              <p className="text-sm text-gray-700 mb-4">{listing.description}</p>
+            </div>
+
+            {/* Additional Tombstone Details */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold mb-2">Additional Tombstone Details</h2>
+              <div className="space-y-2 text-sm">
+                {listing.additionalDetails && listing.additionalDetails.map((detail, index) => (
+                  <div key={index} className="bg-gray-100 p-3 rounded-md border border-gray-200">
+                    {detail}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-
-          {/* Product Metadata/Features */}
-          <div className="border-y border-gray-200 py-4 mb-6">
-            <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-700">
-              {listing.tombstoneType && (
-                <div className="flex items-center">
-                  <User2 size={16} className="text-gray-500 mr-1" />
-                  <span>Tombstone Type: <span className="font-semibold">{listing.tombstoneType}</span></span>
-                  <span className="mx-1 text-gray-400">|</span>
-                </div>
-              )}
-              {listing.style && (
-                <div className="flex items-center">
-                  <Cross size={16} className="text-gray-500 mr-1" />
-                  <span>Style: <span className="font-semibold">{listing.style}</span></span>
-                  <span className="mx-2 text-gray-400">|</span>
-                </div>
-              )}
-              {listing.colour && (Object.values(listing.colour).some(val => val)) && (
-                <div className="flex items-center">
-                  <span>Colour:</span>
-                  {listing.colour.black && <span className="w-4 h-4 bg-black rounded-sm border border-gray-300 ml-1"></span>}
-                  {listing.colour.gold && <span className="w-4 h-4 bg-yellow-500 rounded-sm border border-gray-300 ml-1"></span>}
-                  <span className="mx-1 text-gray-400">|</span>
-                </div>
-              )}
-              {listing.culture && (
-                <div className="flex items-center">
-                  <Image src="/new files/newIcons/Culture_Icons/Culture_Icons-50.svg" alt="Culture Icon" width={16} height={16} className="text-gray-500 mr-1" />
-                  <span>Culture: <span className="font-semibold">{listing.culture}</span></span>
-                  <span className="mx-1 text-gray-400">|</span>
-                </div>
-              )}
-              {listing.stoneType && (
-                <div className="flex items-center">
-                  <Gem size={16} className="text-gray-500 mr-1" />
-                  <span>Stone Type: <span className="font-semibold">{listing.stoneType}</span></span>
-                  <span className="mx-1 text-gray-400">|</span>
-                </div>
-              )}
-              {listing.customisation && (listing.customisation.photoEngraving || listing.customisation.builtInFlowerVase) && (
-                <div className="flex items-center">
-                  <span>Customisation:</span>
-                  {listing.customisation.photoEngraving && 
-                    <span className="flex items-center ml-1">
-                      <Camera size={16} className="text-gray-500 mr-1" /> 
-                      <span className="font-semibold">Photo Engraving</span>
-                    </span>
-                  }
-                  {listing.customisation.builtInFlowerVase && 
-                    <span className="flex items-center ml-1">
-                      <Flower size={16} className="text-gray-500 mr-1" /> 
-                      <span className="font-semibold">Built-In Flower Vase</span>
-                    </span>
-                  }
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Product Description */}
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-2">Tombstone Description</h2>
-            <p className="text-sm text-gray-700 mb-4">{listing.description}</p>
-          </div>
-
-          {/* Additional Tombstone Details */}
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-2">Additional Tombstone Details</h2>
-            <div className="space-y-2 text-sm">
-              {listing.additionalDetails && listing.additionalDetails.map((detail, index) => (
-                <div key={index} className="bg-gray-100 p-3 rounded-md border border-gray-200">
-                  {detail}
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Price and Notes Card */}
           <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
             <h3 className="text-sm text-gray-700 font-semibold mb-1">Price</h3>
@@ -137,7 +174,6 @@ export default function ProductShowcase({ listing }) {
               T&C's apply.
             </p>
           </div>
-
           {/* Send Message Card */}
           <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
             <h2 className="text-lg font-semibold mb-4">Send Message</h2>
