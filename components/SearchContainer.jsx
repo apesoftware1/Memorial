@@ -155,7 +155,7 @@ const SearchContainer = ({
           selectOption={selectOption}
           filters={filters}
           dropdownRefs={dropdownRefs}
-                />
+        />
         <FilterDropdown
           name="bodyType"
           label="Body Type"
@@ -166,6 +166,50 @@ const SearchContainer = ({
           filters={filters}
           dropdownRefs={dropdownRefs}
         />
+        {!isDesktop && uiState.showAllOptions && (
+          <>
+            <FilterDropdown
+              name="designTheme"
+              label="Design Theme"
+              options={filterOptions.designTheme}
+              openDropdown={uiState.openDropdown}
+              toggleDropdown={toggleDropdown}
+              selectOption={selectOption}
+              filters={filters}
+              dropdownRefs={dropdownRefs}
+            />
+            <FilterDropdown
+              name="stoneType"
+              label="Stone Type"
+              options={filterOptions.stoneType}
+              openDropdown={uiState.openDropdown}
+              toggleDropdown={toggleDropdown}
+              selectOption={selectOption}
+              filters={filters}
+              dropdownRefs={dropdownRefs}
+            />
+            <FilterDropdown
+              name="culture"
+              label="Culture"
+              options={filterOptions.culture}
+              openDropdown={uiState.openDropdown}
+              toggleDropdown={toggleDropdown}
+              selectOption={selectOption}
+              filters={filters}
+              dropdownRefs={dropdownRefs}
+            />
+            <FilterDropdown
+              name="custom"
+              label="Custom"
+              options={filterOptions.custom}
+              openDropdown={uiState.openDropdown}
+              toggleDropdown={toggleDropdown}
+              selectOption={selectOption}
+              filters={filters}
+              dropdownRefs={dropdownRefs}
+            />
+          </>
+        )}
       </div>
 
       {/* Action Buttons Container */}
@@ -204,7 +248,7 @@ const SearchContainer = ({
         </div>
       </div>
 
-      {/* More Options Container */}
+      {/* Desktop More Options Container */}
       {isDesktop && (
         <div
           className={`absolute top-0 left-0 w-full md:max-w-lg h-full bg-[#333] p-4 sm:p-6 transition-all duration-300 ease-in-out z-[1] 

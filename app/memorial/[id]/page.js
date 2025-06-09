@@ -3,7 +3,7 @@
 import { use, useState, useCallback, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Heart, Share2, Phone, MessageSquare, MapPin, Star, ChevronLeft, X, ChevronDown } from "lucide-react"
+import { Heart, Share2, Phone, MessageSquare, MapPin, Star, ChevronLeft, X, ChevronDown, User2, Cross } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ProductShowcase from "@/components/product-showcase"
@@ -12,10 +12,38 @@ import ContactForm from "@/components/contact-form"
 import ProductPage from "@/components/product-page"
 import Header from "@/components/Header.jsx"
 
-import { BuildingIcon, SquareIcon, PaletteIcon, CrossIcon, CameraIcon } from "lucide-react"
+// Import specific icons for product metadata
+import Camera from 'lucide-react/dist/esm/icons/camera';
+import Flower from 'lucide-react/dist/esm/icons/flower';
+
+// Import premiumListings data
+import { premiumListings } from '@/lib/data';
 
 export default function MemorialPage({ params }) {
   const { id } = use(params)
+
+  // Find the product from premiumListings
+  const listing = premiumListings.find(item => item.id === id);
+
+  // If no listing is found, display a message
+  if (!listing) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900">Listing Not Found</h1>
+            <p className="mt-4 text-gray-600">The memorial listing you're looking for doesn't exist.</p>
+            <Link
+              href="/tombstones-on-special"
+              className="mt-6 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+            >
+              Back to Special Offers
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // State for UI controls (for Header component)
   const [uiState, setUiState] = useState({
@@ -50,45 +78,6 @@ export default function MemorialPage({ params }) {
     };
   }, [uiState.mobileMenuOpen]); // Depend on mobileMenuOpen state
 
-
-  // Static data for demonstration
-  const memorial = {
-    id: "traditional-double",
-    title: "TRADITIONAL DOUBLE HEADSTONE",
-    price: "R 22 980",
-    tag: "Family Option",
-    enquiries: "18",
-    details: "Double Tombstone | Granite | Traditional Theme",
-    description: "A traditional double headstone with dual inscriptions. Perfect for families seeking a meaningful and lasting memorial.",
-    specifications: {
-      material: "Granite",
-      dimensions: "150cm x 70cm x 20cm",
-      weight: "Approximately 200kg",
-      finish: "Polished",
-      warranty: "5 years"
-    },
-    manufacturer: {
-      name: "Family Memorials Ltd",
-      rating: "4.9/5",
-      totalSales: "250",
-      responseTime: "Within 48 hours"
-    },
-    images: [
-      "/X20Tombstone_Pic Sets/mausoleam2/mausoleam2_main.jpg",
-      "/X20Tombstone_Pic Sets/mausoleam2/mausoleam2_1.jpg",
-      "/X20Tombstone_Pic Sets/mausoleam2/mausoleam2_2.jpg",
-      "/X20Tombstone_Pic Sets/mausoleam2/mausoleam2_3.jpg"
-    ],
-    features: [
-      { name: "Full Tombstone", icon: BuildingIcon },
-      { name: "Granite", icon: SquareIcon },
-      { name: "Black in Colour", icon: PaletteIcon },
-      { name: "Cross Theme", icon: CrossIcon },
-      { name: "Christian", icon: CrossIcon },
-      { name: "Photo Engraving Possible", icon: CameraIcon },
-    ]
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header Section */}
@@ -107,29 +96,51 @@ export default function MemorialPage({ params }) {
       )}
 
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-5xl mx-auto">
-          <Link href="/" className="text-blue-600 hover:underline mb-4 block">Back to Search</Link>
-          <h1 className="text-3xl font-bold mb-6">{memorial.title}</h1>
+        <div className="max-w-6xl mx-auto">
+          <Link href="/tombstones-on-special" className="text-blue-600 hover:underline mb-4 block">Back to Special Offers</Link>
+          <h1 className="text-3xl font-bold mb-6">{listing.title}</h1>
 
-          <Tabs defaultValue="products" className="w-full">
-            <TabsList className="mb-6">
-              <TabsTrigger value="products" className="px-4 py-2 rounded-md hover:bg-blue-50">Products</TabsTrigger>
-              <TabsTrigger value="featured" className="px-4 py-2 rounded-md hover:bg-blue-50">Featured</TabsTrigger>
-              <TabsTrigger value="contact" className="px-4 py-2 rounded-md hover:bg-blue-50">Contact Us</TabsTrigger>
-            </TabsList>
+          <ProductShowcase listing={listing} />
 
-            <TabsContent value="products" className="space-y-8">
-              <ProductPage images={memorial.images} hideHeader={true} />
-            </TabsContent>
+          <div className="mt-6">
+            <h2 className="text-2xl font-bold mb-4">Product Details</h2>
+            <div className="flex items-center">
+              {listing.stoneType && (
+                <div className="flex items-center">
+                  <Image src="/new files/newIcons/Material_Icons/Material_Icons-40.svg" alt="Stone Type Icon" width={16} height={16} className="text-gray-500 mr-1" />
+                  <span>Stone Type: <span className="font-semibold">{listing.stoneType}</span></span>
+                  <span className="mx-2 text-gray-400">|</span>
+                </div>
+              )}
+              {listing.culture && (
+                <div className="flex items-center">
+                  <Image src="/new files/newIcons/Culture_Icons/Culture_Icons-50.svg" alt="Culture Icon" width={16} height={16} className="text-gray-500 mr-1" />
+                  <span>Culture: <span className="font-semibold">{listing.culture}</span></span>
+                  <span className="mx-2 text-gray-400">|</span>
+                </div>
+              )}
+              {listing.customisation && (listing.customisation.photoEngraving || listing.customisation.builtInFlowerVase) && (
+                <div className="flex items-center">
+                  <span>Customisation:</span>
+                  {listing.customisation.photoEngraving && 
+                    <span className="flex items-center ml-1">
+                      <Camera size={16} className="text-gray-500 mr-1" /> 
+                      <span className="font-semibold">Photo Engraving</span>
+                    </span>
+                  }
+                  {listing.customisation.builtInFlowerVase && 
+                    <span className="flex items-center ml-1">
+                      <Flower size={16} className="text-gray-500 mr-1" /> 
+                      <span className="font-semibold">Built-In Flower Vase</span>
+                    </span>
+                  }
+                </div>
+              )}
+            </div>
+          </div>
 
-            <TabsContent value="featured" className="space-y-8">
-              <FeaturedProducts />
-            </TabsContent>
-
-            <TabsContent value="contact" className="space-y-8">
-              <ContactForm />
-            </TabsContent>
-          </Tabs>
+          {/* Product Description */}
+          {/* ... existing code ... */}
         </div>
       </div>
     </div>

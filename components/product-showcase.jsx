@@ -2,86 +2,35 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Facebook, Twitter, Mail, MapPin, X } from "lucide-react"
+import { Facebook, Twitter, Mail, MapPin, X, Whatsapp, FacebookMessenger, Heart, User2, Cross, Gem, Camera, Flower } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import React from "react"
 
-export default function ProductShowcase() {
-  const product = {
-    id: "c14",
-    name: "CATHEDRAL C14",
-    price: "R 8,820",
-    description:
-      "Crafted from high-quality polished granite, this timeless tombstone features a sleek rectangular base with a raised center slab and a striking upright headstone. The beautiful two-tone design is accented with black and brown granite, creating an elegant memorial. With its sophisticated appearance, durable patterns and durable construction, this monument is designed to honor your loved one with grace and permanence.",
-    images: [
-      "/new files/new demo images/Demo 2_Main.jpg",
-      "/new files/new demo images/1.jpg",
-      "/new files/new demo images/2.jpg",
-      "/new files/new demo images/3.jpg",
-      "/new files/new demo images/4.jpg",
-      "/new files/new demo images/5.jpg",
-      "/new files/new demo images/6.jpg",
-    ],
-    features: [
-      { icon: "🏛️", label: "Full Tombstone" },
-      { icon: "🪨", label: "Granite" },
-      { icon: "⬛", label: "Black in Colour" },
-      { icon: "✝️", label: "Cross Theme" },
-      { icon: "✝️", label: "Christian" },
-      { icon: "📷", label: "Photo Engraving Possible" },
-    ],
-    details: [
-      { label: "Base 2 Line Brick Foundation", value: "Included in Price" },
-      { label: "Stone Type", value: "Granite & Marble" },
-      { label: "Colour", value: "Black and Marble Tones" },
-      { label: "Extra Custom Options", value: "Photo Engraving + Flower Vase" },
-      { label: "Transport & Installation", value: "FREE with a 25 km Radius of Factory" },
-      { label: "Warranty", value: "25 yrs Manufacturers Warranty" },
-    ],
-    similarProducts: [
-      {
-        id: 1,
-        name: "Full Tombstone",
-        price: "R 12 900",
-        material: "Marble",
-        image: "/placeholder.svg?height=100&width=80",
-      },
-      {
-        id: 2,
-        name: "Premium",
-        price: "R 35 000",
-        material: "Granite",
-        image: "/placeholder.svg?height=100&width=80",
-      },
-      {
-        id: 3,
-        name: "Double",
-        price: "R 28 600",
-        material: "Marble",
-        image: "/placeholder.svg?height=100&width=80",
-      },
-    ],
+export default function ProductShowcase({ listing }) {
+  if (!listing) {
+    return null;
   }
 
   return (
     <div className="max-w-6xl mx-auto bg-white">
       {/* Product Content */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Left Column - Product Images */}
+        {/* Left Column - Product Images and Details */}
         <div className="md:col-span-2">
           <div className="mb-4">
             <div className="relative h-[350px] w-full mb-4 border border-gray-200">
               <Image
-                src={product.images[0] || "/placeholder.svg"}
-                alt={product.name}
+                src={listing.thumbnailImages[0] || "/placeholder.svg"}
+                alt={listing.title}
                 fill
                 className="object-contain"
               />
             </div>
             <div className="grid grid-cols-6 gap-2">
-              {product.images.map((image, index) => (
+              {listing.thumbnailImages.map((image, index) => (
                 <div
                   key={index}
                   className="relative h-16 w-full border cursor-pointer border-gray-200"
@@ -97,234 +46,311 @@ export default function ProductShowcase() {
             </div>
           </div>
 
-          {/* Product Features */}
-          <div className="flex flex-wrap gap-4 mb-6 text-sm text-gray-700">
-            {product.features.map((feature, index) => (
-              <div key={index} className="flex flex-col items-center">
-                <span className="mb-1">{feature.icon}</span>
-                <span>{feature.label}</span>
-              </div>
-            ))}
+          {/* Product Metadata/Features */}
+          <div className="border-y border-gray-200 py-4 mb-6">
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-700">
+              {listing.tombstoneType && (
+                <div className="flex items-center">
+                  <User2 size={16} className="text-gray-500 mr-1" />
+                  <span>Tombstone Type: <span className="font-semibold">{listing.tombstoneType}</span></span>
+                  <span className="mx-1 text-gray-400">|</span>
+                </div>
+              )}
+              {listing.style && (
+                <div className="flex items-center">
+                  <Cross size={16} className="text-gray-500 mr-1" />
+                  <span>Style: <span className="font-semibold">{listing.style}</span></span>
+                  <span className="mx-2 text-gray-400">|</span>
+                </div>
+              )}
+              {listing.colour && (Object.values(listing.colour).some(val => val)) && (
+                <div className="flex items-center">
+                  <span>Colour:</span>
+                  {listing.colour.black && <span className="w-4 h-4 bg-black rounded-sm border border-gray-300 ml-1"></span>}
+                  {listing.colour.gold && <span className="w-4 h-4 bg-yellow-500 rounded-sm border border-gray-300 ml-1"></span>}
+                  <span className="mx-1 text-gray-400">|</span>
+                </div>
+              )}
+              {listing.culture && (
+                <div className="flex items-center">
+                  <Image src="/new files/newIcons/Culture_Icons/Culture_Icons-50.svg" alt="Culture Icon" width={16} height={16} className="text-gray-500 mr-1" />
+                  <span>Culture: <span className="font-semibold">{listing.culture}</span></span>
+                  <span className="mx-1 text-gray-400">|</span>
+                </div>
+              )}
+              {listing.stoneType && (
+                <div className="flex items-center">
+                  <Gem size={16} className="text-gray-500 mr-1" />
+                  <span>Stone Type: <span className="font-semibold">{listing.stoneType}</span></span>
+                  <span className="mx-1 text-gray-400">|</span>
+                </div>
+              )}
+              {listing.customisation && (listing.customisation.photoEngraving || listing.customisation.builtInFlowerVase) && (
+                <div className="flex items-center">
+                  <span>Customisation:</span>
+                  {listing.customisation.photoEngraving && 
+                    <span className="flex items-center ml-1">
+                      <Camera size={16} className="text-gray-500 mr-1" /> 
+                      <span className="font-semibold">Photo Engraving</span>
+                    </span>
+                  }
+                  {listing.customisation.builtInFlowerVase && 
+                    <span className="flex items-center ml-1">
+                      <Flower size={16} className="text-gray-500 mr-1" /> 
+                      <span className="font-semibold">Built-In Flower Vase</span>
+                    </span>
+                  }
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Product Description */}
           <div className="mb-6">
             <h2 className="text-lg font-semibold mb-2">Tombstone Description</h2>
-            <p className="text-sm text-gray-700 mb-4">{product.description}</p>
+            <p className="text-sm text-gray-700 mb-4">{listing.description}</p>
           </div>
 
-          {/* Tombstone Details */}
+          {/* Additional Tombstone Details */}
           <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-2">Tombstone Details</h2>
-            <div className="grid grid-cols-2 gap-2 text-sm border-t border-gray-200">
-              {product.details.map((detail, index) => (
-                <>
-                  <div key={`label-${index}`} className="py-2 border-b border-gray-200 font-medium">
-                    {detail.label}
-                  </div>
-                  <div key={`value-${index}`} className="py-2 border-b border-gray-200">
-                    {detail.value}
-                  </div>
-                </>
+            <h2 className="text-lg font-semibold mb-2">Additional Tombstone Details</h2>
+            <div className="space-y-2 text-sm">
+              {listing.additionalDetails && listing.additionalDetails.map((detail, index) => (
+                <div key={index} className="bg-gray-100 p-3 rounded-md border border-gray-200">
+                  {detail}
+                </div>
               ))}
             </div>
           </div>
 
-          {/* Send Message Form (Bottom) */}
-          <div className="mb-6">
+          {/* Price and Notes Card */}
+          <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
+            <h3 className="text-sm text-gray-700 font-semibold mb-1">Price</h3>
+            <div className="text-blue-600 text-2xl font-bold mb-4">{listing.price}</div>
+
+            <p className="text-xs text-gray-600 mb-2">
+              <span className="font-semibold">Please note:</span> The data displayed above may not be the exact data for the actual Tombstone being offered for
+              sale. We recommend that you always check the details with the seller prior to purchase.
+            </p>
+            <p className="text-xs text-gray-600">
+              <span className="font-semibold">Please be aware</span> on all possible costs presented and possible hidden ones.
+              T&C's apply.
+            </p>
+          </div>
+
+          {/* Send Message Card */}
+          <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
             <h2 className="text-lg font-semibold mb-4">Send Message</h2>
-            <form className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column - Form */}
               <div>
-                <label className="text-sm text-gray-600 mb-1 block">Name & Surname *</label>
-                <Input className="w-full" />
+                <form className="space-y-4">
+                  <div>
+                    <label className="text-sm text-gray-600 mb-1 block">Name & Surname *</label>
+                    <Input className="w-full" />
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-gray-600 mb-1 block">Mobile Number *</label>
+                    <Input className="w-full" />
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-gray-600 mb-1 block">Email</label>
+                    <Input className="w-full" />
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-gray-600 mb-1 block">Message *</label>
+                    <Textarea
+                      className="w-full h-24"
+                      placeholder={`I would like to find out more about the ${listing.title} Tombstone for sale.`}
+                    />
+                  </div>
+
+                  <button className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded">Send Message</button>
+
+                  <div className="text-xs text-gray-500 mt-4">
+                    By continuing I understand and agree with Memorial Hub's{" "}
+                    <Link href="#" className="text-blue-500 hover:underline">
+                      Terms & Conditions
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="#" className="text-blue-500 hover:underline">
+                      Privacy Policy
+                    </Link>
+                    .
+                  </div>
+                </form>
               </div>
 
-              <div>
-                <label className="text-sm text-gray-600 mb-1 block">Mobile Number *</label>
-                <Input className="w-full" />
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-600 mb-1 block">Email</label>
-                <Input className="w-full" />
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-600 mb-1 block">Message *</label>
-                <Textarea
-                  className="w-full h-32"
-                  placeholder="I would like to find out more about the CATHEDRAL C14 Tombstone for sale."
-                />
-              </div>
-
-              <div className="flex justify-between items-center">
-                <div className="relative w-16 h-16">
-                  <Image
-                    src="/placeholder.svg?height=60&width=60"
-                    alt="Company Logo"
-                    fill
-                    className="object-contain"
-                  />
+              {/* Right Column - Manufacturer Info */}
+              <div className="flex flex-col items-center justify-start text-center">
+                <div className="relative h-24 w-24 mb-2">
+                  <Image src={listing.companyLogo || "/placeholder.svg?height=60&width=60"} alt="Company Logo" fill className="object-contain" />
                 </div>
-                <div className="text-sm">
-                  Example Tombstone Co. 1
-                  <div className="text-xs text-blue-500">Current Google Rating: 4.7 out of 5</div>
-                </div>
+                <div className="text-lg font-semibold mb-1">{listing.manufacturer}</div>
+                <div className="text-xs text-blue-500 mb-4">Current Google Rating: 4.7 out of 5</div>
+                <button className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded max-w-xs">
+                  Show Contact Number
+                </button>
               </div>
-
-              <button className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded">Send Message</button>
-
-              <div className="text-xs text-gray-500">
-                By continuing I understand and agree with Memorial Hub's{" "}
-                <Link href="#" className="text-blue-500 hover:underline">
-                  Terms & Conditions
-                </Link>{" "}
-                and{" "}
-                <Link href="#" className="text-blue-500 hover:underline">
-                  Privacy Policy
-                </Link>
-                .
-              </div>
-            </form>
+            </div>
           </div>
         </div>
 
-        {/* Right Column - Contact Form */}
+        {/* Right Column - Contact Form and Other Info */}
         <div className="md:col-span-1">
-          <div className="bg-gray-800 text-white p-3 text-center mb-4">CONTACT THE MANUFACTURER</div>
-
-          <button className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded mb-4">
-            Show Contact Number
-          </button>
-
-          <div className="mb-4">
-            <button className="flex items-center text-blue-500 hover:underline text-sm">
-              <MapPin size={16} className="mr-1" /> View Manufacturers Address
-            </button>
-          </div>
-
-          <form className="space-y-4 mb-6">
-            <div>
-              <label className="text-sm text-gray-600 mb-1 block">Name & Surname *</label>
-              <Input className="w-full" />
+          {/* Main contact card container */}
+          <div className="rounded mb-6 shadow-sm overflow-hidden">
+            {/* Dark blue header */}
+            <div className="bg-blue-900 text-white py-6 text-center px-4 rounded-t-lg">
+              CONTACT THE MANUFACTURER
+              <button className="w-full max-w-sm bg-red-600 hover:bg-red-700 text-white py-2 rounded mx-auto block mt-6">
+                Show Contact Number
+              </button>
             </div>
-
-            <div>
-              <label className="text-sm text-gray-600 mb-1 block">Mobile Number *</label>
-              <Input className="w-full" />
-            </div>
-
-            <div>
-              <label className="text-sm text-gray-600 mb-1 block">Email</label>
-              <Input className="w-full" />
-            </div>
-
-            <div>
-              <label className="text-sm text-gray-600 mb-1 block">Message *</label>
-              <Textarea
-                className="w-full h-24"
-                placeholder="I would like to find out more about the CATHEDRAL C14 Tombstone for sale."
-              />
-            </div>
-
-            <button className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded">Send Message</button>
-
-            <div className="text-xs text-gray-500">
-              By continuing I understand and agree with Memorial Hub's{" "}
-              <Link href="#" className="text-blue-500 hover:underline">
-                Terms & Conditions
-              </Link>{" "}
-              and{" "}
-              <Link href="#" className="text-blue-500 hover:underline">
-                Privacy Policy
-              </Link>
-              .
-            </div>
-          </form>
-
-          {/* Share with Friends */}
-          <div className="mb-6">
-            <h3 className="text-sm font-medium mb-2">Share with Friends</h3>
-            <div className="flex space-x-2">
-              <Link href="#" className="bg-blue-600 text-white p-1 rounded">
-                <Facebook size={16} />
-              </Link>
-              <Link href="#" className="bg-green-600 text-white p-1 rounded">
-                <span className="text-xs font-bold">W</span>
-              </Link>
-              <Link href="#" className="bg-blue-400 text-white p-1 rounded">
-                <Twitter size={16} />
-              </Link>
-              <Link href="#" className="bg-red-500 text-white p-1 rounded">
-                <Mail size={16} />
-              </Link>
-              <Link href="#" className="bg-blue-500 text-white p-1 rounded">
-                <Telegram size={16} />
-              </Link>
-            </div>
-          </div>
-
-          {/* Add to Favorites */}
-          <div className="mb-6">
-            <button className="text-sm text-blue-500 hover:underline flex items-center">
-              <span className="mr-1">+</span> Add to Favourites
-            </button>
-          </div>
-
-          {/* Company Info */}
-          <div className="border border-gray-200 rounded p-4 mb-6 text-center">
-            <div className="flex justify-center mb-2">
-              <div className="relative h-16 w-16">
-                <Image src="/placeholder.svg?height=60&width=60" alt="Company Logo" fill className="object-contain" />
+            {/* White content area */}
+            <div className="bg-white rounded-b-lg">
+              <div className="pt-4 px-4 mb-4">
+                <button className="flex items-center text-blue-500 hover:underline text-sm">
+                  <MapPin size={16} className="mr-1" /> View Manufacturers Address
+                </button>
               </div>
-            </div>
-            <div className="mb-1">Example Tombstone Co. 1</div>
-            <div className="text-xs text-blue-500 mb-4">Current Google Rating: 4.7 out of 5</div>
-          </div>
 
-          {/* Business Hours */}
-          <div className="mb-6">
-            <div className="grid grid-cols-2 gap-1 text-sm">
-              <div className="font-medium">Monday to Friday</div>
-              <div>09:00 - 16:00</div>
+              <form className="space-y-4 px-4 pb-4">
+                <div>
+                  <label className="text-sm text-gray-600 mb-1 block">Name & Surname *</label>
+                  <Input className="w-full" />
+                </div>
 
-              <div className="font-medium">Saturday</div>
-              <div>09:00 - 14:00</div>
+                <div>
+                  <label className="text-sm text-gray-600 mb-1 block">Mobile Number *</label>
+                  <Input className="w-full" />
+                </div>
 
-              <div className="font-medium">Sundays</div>
-              <div>Closed</div>
+                <div>
+                  <label className="text-sm text-gray-600 mb-1 block">Email</label>
+                  <Input className="w-full" />
+                </div>
 
-              <div className="font-medium">Public Holidays</div>
-              <div>09:30 - 14:00</div>
-            </div>
-          </div>
-
-          {/* More Tombstones */}
-          <div className="mb-6">
-            <h3 className="text-sm font-medium mb-3">More Tombstones from this Manufacturer</h3>
-
-            {product.similarProducts.map((product) => (
-              <div key={product.id} className="flex border-b border-gray-200 py-3">
-                <div className="relative h-20 w-20 flex-shrink-0">
-                  <Image
-                    src={product.image || "/placeholder.svg"}
-                    alt={product.name}
-                    fill
-                    className="object-contain"
+                <div>
+                  <label className="text-sm text-gray-600 mb-1 block">Message *</label>
+                  <Textarea
+                    className="w-full h-24"
+                    placeholder={`I would like to find out more about the ${listing.title} Tombstone for sale.`}
                   />
                 </div>
-                <div className="ml-3 flex-grow">
-                  <div className="text-blue-600 font-medium">{product.price}</div>
-                  <div className="text-sm">{product.name}</div>
-                  <div className="text-xs text-gray-600">{product.material}</div>
+
+                <button className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded">Send Message</button>
+
+                <div className="text-xs text-gray-500">
+                  By continuing I understand and agree with Memorial Hub's{" "}
+                  <Link href="#" className="text-blue-500 hover:underline">
+                    Terms & Conditions
+                  </Link>{" "}
+                  and{" "}
+                  <Link href="#" className="text-blue-500 hover:underline">
+                    Privacy Policy
+                  </Link>
+                  .
+                </div>
+              </form>
+            </div>
+          </div>
+
+          {/* Share with Friends */}
+          <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
+            {/* Add to Favorites - moved to top */}
+            <div className="mb-4">
+              <button className="text-sm text-blue-500 hover:underline flex items-center justify-start">
+                <Heart size={20} className="mr-1 text-gray-400" /> Add to Favourites
+              </button>
+            </div>
+
+            <hr className="my-4 border-gray-200" />
+
+            <h3 className="text-sm font-medium mb-2">Share with Friends</h3>
+            <div className="flex space-x-2">
+              <Link href="#" className="bg-blue-600 text-white p-2 rounded">
+                <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-03.svg" alt="Facebook" width={24} height={24} />
+              </Link>
+              <Link href="#" className="bg-green-500 text-white p-2 rounded">
+                <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-04.svg" alt="WhatsApp" width={24} height={24} />
+              </Link>
+              <Link href="#" className="bg-gray-800 text-white p-2 rounded">
+                <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-05.svg" alt="X" width={24} height={24} />
+              </Link>
+              <Link href="#" className="bg-purple-600 text-white p-2 rounded">
+                <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-06.svg" alt="Messenger" width={24} height={24} />
+              </Link>
+              <Link href="#" className="bg-blue-500 text-white p-2 rounded">
+                <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-07.svg" alt="Telegram" width={24} height={24} />
+              </Link>
+            </div>
+          </div>
+
+          {/* Combined Company Info, Business Hours, and More Tombstones */}
+          <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
+            {/* Company Info */}
+            <div className="text-center mb-4">
+              <div className="flex justify-center mb-2">
+                <div className="relative h-16 w-16">
+                  <Image src={listing.companyLogo || "/placeholder.svg?height=60&width=60"} alt="Company Logo" fill className="object-contain" />
                 </div>
               </div>
-            ))}
+              <div className="mb-1">{listing.manufacturer}</div>
+              <div className="text-xs text-blue-500">Current Google Rating: 4.7 out of 5</div>
+            </div>
 
-            <div className="mt-3">
-              <Link href="#" className="text-blue-500 hover:underline text-sm">
-                View all Tombstones
-              </Link>
+            {/* Business Hours */}
+            <div className="mb-4">
+              <div className="grid grid-cols-2 gap-1 text-sm">
+                <div className="font-medium">Monday to Friday</div>
+                <div>09:00 - 16:00</div>
+
+                <div className="font-medium">Saturday</div>
+                <div>09:00 - 14:00</div>
+
+                <div className="font-medium">Sundays</div>
+                <div>Closed</div>
+
+                <div className="font-medium">Public Holidays</div>
+                <div>09:30 - 14:00</div>
+              </div>
+            </div>
+
+            {/* More Tombstones from this Manufacturer */}
+            <div>
+              <h3 className="text-sm font-medium mb-3">More Tombstones from this Manufacturer</h3>
+
+              {listing.similarProducts && listing.similarProducts.length > 0 ? (
+                listing.similarProducts.map((product) => (
+                  <div key={product.id} className="flex border-b border-gray-200 py-3">
+                    <div className="relative h-20 w-20 flex-shrink-0">
+                      <Image
+                        src={product.image || "/placeholder.svg"}
+                        alt={product.name}
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                    <div className="ml-3 flex-grow">
+                      <div className="text-blue-600 font-medium">{product.price}</div>
+                      <div className="text-sm">{product.name}</div>
+                      <div className="text-xs text-gray-600">{product.material}</div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-gray-600">No similar products available.</div>
+              )}
+
+              <div className="mt-3">
+                <Link href="#" className="text-blue-500 hover:underline text-sm">
+                  View all Tombstones
+                </Link>
+              </div>
             </div>
           </div>
         </div>

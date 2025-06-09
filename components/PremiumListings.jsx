@@ -9,7 +9,7 @@ export default function PremiumListings({ listings }) {
         <PremiumListingCard 
           key={listing.id} 
           listing={listing} 
-          href={`/tombstones-for-sale/${listing.id}`} 
+          href={`/memorial/${listing.id}`} 
         />
       ))}
     </div>
