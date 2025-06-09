@@ -16,25 +16,9 @@ export default function ProductShowcase({ listing }) {
 
   return (
     <div className="max-w-6xl mx-auto bg-white">
-      {/* Breadcrumbs */}
-      <div className="text-sm text-gray-600 mb-4 px-4 md:px-0">
-        <Link href="/" className="hover:underline">Home</Link>
-        <span className="mx-1">&gt;</span>
-        <Link href="/tombstones-for-sale" className="hover:underline">Tombstones For Sale</Link>
-        <span className="mx-1">&gt;</span>
-        <Link href="#" className="hover:underline">Durban North</Link>
-        <span className="mx-1">&gt;</span>
-        <Link href="#" className="hover:underline">Full Tombstone</Link>
-        <span className="mx-1">&gt;</span>
-        <Link href="#" className="hover:underline">Granite</Link>
-        <span className="mx-1">&gt;</span>
-        <span>{listing.id}(Ad Id)</span>
-      </div>
-
       {/* Product Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 px-4 md:px-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">{listing.title} For Sale</h1>
           {listing.badge && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-600 text-white mb-2">
               {listing.badge}
@@ -222,10 +206,9 @@ export default function ProductShowcase({ listing }) {
 
               {/* Right Column - Manufacturer Info */}
               <div className="flex flex-col items-center justify-start text-center">
-                <div className="relative h-24 w-24 mb-2">
-                  <Image src={listing.companyLogo || "/placeholder.svg?height=60&width=60"} alt="Company Logo" fill className="object-contain" />
+                <div className="relative h-24 w-48 mb-2">
+                  <Image src="/new files/company logos/Tombstone Manufacturer Logo-SwissStone.svg" alt="SwissStone Logo" fill className="object-contain" />
                 </div>
-                <div className="text-lg font-semibold mb-1">{listing.manufacturer}</div>
                 <div className="text-xs text-blue-500 mb-4">Current Google Rating: 4.7 out of 5</div>
                 <button className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded max-w-xs">
                   Show Contact Number
@@ -331,11 +314,10 @@ export default function ProductShowcase({ listing }) {
             {/* Company Info */}
             <div className="text-center mb-4">
               <div className="flex justify-center mb-2">
-                <div className="relative h-16 w-16">
-                  <Image src={listing.companyLogo || "/placeholder.svg?height=60&width=60"} alt="Company Logo" fill className="object-contain" />
+                <div className="relative h-24 w-48">
+                  <Image src="/new files/company logos/Tombstone Manufacturer Logo-SwissStone.svg" alt="SwissStone Logo" fill className="object-contain" />
                 </div>
               </div>
-              <div className="mb-1">{listing.manufacturer}</div>
               <div className="text-xs text-blue-500">Current Google Rating: 4.7 out of 5</div>
             </div>
 

@@ -97,47 +97,24 @@ export default function MemorialPage({ params }) {
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
-          <Link href="/tombstones-on-special" className="text-blue-600 hover:underline mb-4 block">Back to Special Offers</Link>
+          {/* Breadcrumbs */}
+          <div className="text-sm text-gray-600 mb-4 px-4 md:px-0">
+            <Link href="/" className="hover:underline">Home</Link>
+            <span className="mx-1">&gt;</span>
+            <Link href="/tombstones-for-sale" className="hover:underline">Tombstones For Sale</Link>
+            <span className="mx-1">&gt;</span>
+            <Link href="#" className="hover:underline">Durban North</Link>
+            <span className="mx-1">&gt;</span>
+            <Link href="#" className="hover:underline">Full Tombstone</Link>
+            <span className="mx-1">&gt;</span>
+            <Link href="#" className="hover:underline">Granite</Link>
+            <span className="mx-1">&gt;</span>
+            <span>{listing.id}(Ad Id)</span>
+          </div>
+
           <h1 className="text-3xl font-bold mb-6">{listing.title}</h1>
 
           <ProductShowcase listing={listing} />
-
-          <div className="mt-6">
-            <h2 className="text-2xl font-bold mb-4">Product Details</h2>
-            <div className="flex items-center">
-              {listing.stoneType && (
-                <div className="flex items-center">
-                  <Image src="/new files/newIcons/Material_Icons/Material_Icons-40.svg" alt="Stone Type Icon" width={16} height={16} className="text-gray-500 mr-1" />
-                  <span>Stone Type: <span className="font-semibold">{listing.stoneType}</span></span>
-                  <span className="mx-2 text-gray-400">|</span>
-                </div>
-              )}
-              {listing.culture && (
-                <div className="flex items-center">
-                  <Image src="/new files/newIcons/Culture_Icons/Culture_Icons-50.svg" alt="Culture Icon" width={16} height={16} className="text-gray-500 mr-1" />
-                  <span>Culture: <span className="font-semibold">{listing.culture}</span></span>
-                  <span className="mx-2 text-gray-400">|</span>
-                </div>
-              )}
-              {listing.customisation && (listing.customisation.photoEngraving || listing.customisation.builtInFlowerVase) && (
-                <div className="flex items-center">
-                  <span>Customisation:</span>
-                  {listing.customisation.photoEngraving && 
-                    <span className="flex items-center ml-1">
-                      <Camera size={16} className="text-gray-500 mr-1" /> 
-                      <span className="font-semibold">Photo Engraving</span>
-                    </span>
-                  }
-                  {listing.customisation.builtInFlowerVase && 
-                    <span className="flex items-center ml-1">
-                      <Flower size={16} className="text-gray-500 mr-1" /> 
-                      <span className="font-semibold">Built-In Flower Vase</span>
-                    </span>
-                  }
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* Product Description */}
           {/* ... existing code ... */}
