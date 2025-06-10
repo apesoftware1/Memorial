@@ -15,7 +15,7 @@ export default function Header({
   const { totalFavorites } = useFavorites();
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         <div className="flex items-center md:ml-28">
           <Link href="/" className="flex items-center">
