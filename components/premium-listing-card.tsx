@@ -68,23 +68,35 @@ export function PremiumListingCard({
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto">
       {/* Mobile Layout (up to 768px) */}
-      <div className="flex flex-col md:hidden">
+      <div className="relative flex flex-col md:hidden">
+        {/* Manufacturer Logo in its own box, bottom right corner (Mobile only) */}
+        <div className="absolute bottom-3 right-3 z-20 bg-gray-50 p-2 rounded-lg md:hidden">
+          <Image
+            src="/new files/company logos/Tombstone Manufacturer Logo-SwissStone.svg"
+            alt="Tombstone Manufacturer Logo"
+            width={96}
+            height={96}
+            className="object-contain"
+          />
+        </div>
         {/* Main Image Container */}
         <div className="bg-white px-3 py-3">
-          <div className="relative h-[350px] w-full rounded-lg overflow-hidden border border-gray-200">
-            <Image
-              src={currentMainImage}
-              alt={listing.title}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw"
-            />
-            {/* Camera icon and counter overlay for main image */}
-            <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/80 text-white px-2 py-0.5 rounded text-xs font-medium z-10">
-              <Camera className="w-4 h-4" />
-              <span>{allImages.length}</span>
+          <Link href={productUrl}>
+            <div className="relative h-[350px] w-full rounded-lg overflow-hidden border border-gray-200">
+              <Image
+                src={currentMainImage}
+                alt={listing.title}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw"
+              />
+              {/* Camera icon and counter overlay for main image */}
+              <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/80 text-white px-2 py-0.5 rounded text-xs font-medium z-10">
+                <Camera className="w-4 h-4" />
+                <span>{allImages.length}</span>
+              </div>
             </div>
-          </div>
+          </Link>
         </div>
 
         {/* Thumbnails Row Below Main Image (Mobile) */}
@@ -135,16 +147,7 @@ export function PremiumListingCard({
 
           {/* Manufacturer Information (Mobile) */}
           <div className="flex flex-col mt-0">
-            <div className="flex justify-between items-center mb-2">
-              <div className="font-medium text-gray-900 text-base">{isFirstCard ? "Swiss Stone" : listing.manufacturer}</div>
-              <Image
-                src="/new files/company logos/Tombstone Manufacturer Logo-SwissStone.svg"
-                alt="Tombstone Manufacturer Logo"
-                width={64}
-                height={64}
-                className="object-contain ml-auto"
-              />
-            </div>
+            <div className="font-medium text-gray-900 text-base mb-2">{isFirstCard ? "Swiss Stone" : listing.manufacturer}</div>
             <div className="space-y-1.5">
               {listing.enquiries && (
                 <div className="flex items-center text-green-600">
@@ -238,8 +241,8 @@ export function PremiumListingCard({
                   <span>{listing.distance}</span>
                 </div>
               </div>
-              {/* Right Column for Logo */}
-              <div className="w-1/4 flex-shrink-0 flex flex-col items-end justify-end">
+              {/* Right Column for Logo (Desktop only) */}
+              <div className="w-1/3 flex-shrink-0 flex flex-col items-end justify-end hidden md:flex">
                 <Image
                   src="/new files/company logos/Tombstone Manufacturer Logo-SwissStone.svg"
                   alt="Tombstone Manufacturer Logo"
