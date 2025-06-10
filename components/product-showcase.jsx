@@ -14,6 +14,10 @@ export default function ProductShowcase({ listing }) {
     return null;
   }
 
+  // Combine main image and thumbnails, ensuring no duplicates
+  const allImages = [listing.image, ...(listing.thumbnailImages?.filter(img => img !== listing.image) || [])];
+  const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
+
   return (
     <div className="max-w-6xl mx-auto bg-white">
       {/* Product Header */}
@@ -44,17 +48,18 @@ export default function ProductShowcase({ listing }) {
             <div className="mb-4">
               <div className="relative h-[350px] w-full mb-4 border border-gray-200">
                 <Image
-                  src={listing.thumbnailImages[0] || "/placeholder.svg"}
+                  src={allImages[selectedImageIndex] || "/placeholder.svg"}
                   alt={listing.title}
                   fill
                   className="object-contain"
                 />
               </div>
               <div className="grid grid-cols-6 gap-2">
-                {listing.thumbnailImages.map((image, index) => (
+                {allImages.map((image, index) => (
                   <div
                     key={index}
-                    className="relative h-16 w-full border cursor-pointer border-gray-200"
+                    className={`relative h-16 w-full border cursor-pointer border-gray-200 ${selectedImageIndex === index ? "ring-2 ring-blue-500" : ""}`}
+                    onClick={() => setSelectedImageIndex(index)}
                   >
                     <Image
                       src={image || "/placeholder.svg"}
