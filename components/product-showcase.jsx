@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Facebook, Twitter, Mail, MapPin, X, Whatsapp, FacebookMessenger, Heart, User2, Cross, Gem, Camera, Flower } from "lucide-react"
+import { Facebook, Twitter, Mail, MapPin, X, Whatsapp, FacebookMessenger, Heart, User2, Cross, Gem, Camera, Flower, Truck, Info, CircleX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -46,12 +46,12 @@ export default function ProductShowcase({ listing }) {
         <div className="md:col-span-2">
           <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
             <div className="mb-4">
-              <div className="relative h-[350px] w-full mb-4 border border-gray-200">
+              <div className="relative w-full mb-4 border border-gray-200 h-[400px] flex justify-center items-center">
                 <Image
                   src={allImages[selectedImageIndex] || "/placeholder.svg"}
                   alt={listing.title}
                   fill
-                  className="object-contain"
+                  className="object-cover"
                 />
               </div>
               <div className="grid grid-cols-6 gap-2">
@@ -142,8 +142,11 @@ export default function ProductShowcase({ listing }) {
               <h2 className="text-lg font-semibold mb-2">Additional Tombstone Details</h2>
               <div className="space-y-2 text-sm">
                 {listing.additionalDetails && listing.additionalDetails.map((detail, index) => (
-                  <div key={index} className="bg-gray-100 p-3 rounded-md border border-gray-200">
-                    {detail}
+                  <div key={index} className="bg-gray-100 p-3 rounded-md border border-gray-200 flex items-center">
+                    {detail === "Free Transport and Installation within a 20km radius of Factory" && <Truck size={30} className="mr-2 text-gray-600 md:size-[15px] md:text-gray-600" />}
+                    {detail === "Final Transport and installation cost to be confirmed by Manufacturer" && <Info size={30} className="mr-2 text-gray-600 md:size-[15px] md:text-gray-600" />}
+                    {detail === "No Foundation costs included in price" && <CircleX size={20} className="mr-2 text-gray-600 md:size-[15px] md:text-gray-600" />}
+                    <span>{detail}</span>
                   </div>
                 ))}
               </div>
@@ -238,7 +241,13 @@ export default function ProductShowcase({ listing }) {
             <div className="bg-white rounded-b-lg">
               <div className="pt-4 px-4 mb-4">
                 <button className="flex items-center text-blue-500 hover:underline text-sm">
-                  <MapPin size={16} className="mr-1" /> View Manufacturers Address
+                  <Image
+                    src="/new files/newIcons/GooglePin_Icon.svg"
+                    alt="Location Pin Icon"
+                    width={16}
+                    height={16}
+                    className="mr-1 object-contain"
+                  /> View Manufacturers Address
                 </button>
               </div>
 
