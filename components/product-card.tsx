@@ -33,6 +33,14 @@ export function ProductCard({ product, href = "#" }: ProductCardProps) {
           </div>
           <h4 className="font-bold text-gray-800 mb-1">{product.title}</h4>
           <p className="text-xs text-gray-600">{product.details}</p>
+          {product.colour && Object.keys(product.colour).some(key => product.colour[key]) && (
+            <p className="text-xs text-gray-600 mt-1">
+              Colors: {Object.keys(product.colour)
+                .filter(key => product.colour[key])
+                .map(color => color.charAt(0).toUpperCase() + color.slice(1))
+                .join(', ')}
+            </p>
+          )}
         </div>
       </Link>
     </div>

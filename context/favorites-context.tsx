@@ -14,6 +14,7 @@ export type FavoriteProduct = {
   location?: string
   tag?: string
   tagColor?: string
+  colour?: { [key: string]: boolean }
 }
 
 type FavoritesContextType = {

@@ -72,7 +72,7 @@ const SearchContainer = ({
   }, [setFilters]);
 
   return (
-    <div className="w-full md:max-w-lg flex flex-col gap-3 sm:gap-4 justify-between relative p-4 sm:p-6 bg-[#333]">
+    <div className="w-full md:max-w-lg flex flex-col gap-3 sm:gap-4 justify-between relative p-4 sm:p-6 bg-[#58585B]">
       {/* Search Heading */}
       <h2 className="text-xl sm:text-2xl text-[#D4AF37] font-semibold mb-0 tracking-wide leading-tight">
         Find Your Loved One A Tombstone!
@@ -169,9 +169,19 @@ const SearchContainer = ({
         {!isDesktop && uiState.showAllOptions && (
           <>
             <FilterDropdown
-              name="designTheme"
-              label="Design Theme"
-              options={filterOptions.designTheme}
+              name="style"
+              label="Style"
+              options={filterOptions.style}
+              openDropdown={uiState.openDropdown}
+              toggleDropdown={toggleDropdown}
+              selectOption={selectOption}
+              filters={filters}
+              dropdownRefs={dropdownRefs}
+            />
+            <FilterDropdown
+              name="colour"
+              label="Colour"
+              options={filterOptions.colour}
               openDropdown={uiState.openDropdown}
               toggleDropdown={toggleDropdown}
               selectOption={selectOption}
@@ -218,7 +228,7 @@ const SearchContainer = ({
         {isDesktop ? (
           <button
             onClick={() => setMoreOptionsOpen(!moreOptionsOpen)}
-            className="w-full sm:w-[180px] bg-[#333] text-white font-bold text-sm h-9 transition-colors border border-[#555555] hover:bg-[#444] whitespace-nowrap"
+            className="w-full sm:w-[180px] bg-[#68686B] text-white font-bold text-sm h-9 transition-colors border border-black hover:bg-[#58585B] whitespace-nowrap shadow"
             style={{ borderRadius: '2px' }}
           >
             {moreOptionsOpen ? '- Less Options' : '+ More Options'}
@@ -226,7 +236,7 @@ const SearchContainer = ({
         ) : (
           <button
             onClick={() => setUiState(prev => ({ ...prev, showAllOptions: !prev.showAllOptions }))}
-            className="w-full sm:w-[180px] bg-[#333] text-white font-bold text-sm h-9 transition-colors border border-[#555555] hover:bg-[#444] whitespace-nowrap"
+            className="w-full sm:w-[180px] bg-[#68686B] text-white font-bold text-sm h-9 transition-colors border border-black hover:bg-[#58585B] whitespace-nowrap shadow"
             style={{ borderRadius: '2px' }}
           >
             {uiState.showAllOptions ? '- Less Options' : '+ More Options'}
@@ -274,9 +284,19 @@ const SearchContainer = ({
           {/* Additional Filters */}
           <div className="grid grid-cols-2 gap-1 mb-2 sm:gap-2 mt-28">
             <FilterDropdown
-              name="designTheme"
-              label="Design Theme"
-              options={filterOptions.designTheme}
+              name="style"
+              label="Style"
+              options={filterOptions.style}
+              openDropdown={uiState.openDropdown}
+              toggleDropdown={toggleDropdown}
+              selectOption={selectOption}
+              filters={filters}
+              dropdownRefs={dropdownRefs}
+            />
+            <FilterDropdown
+              name="colour"
+              label="Colour"
+              options={filterOptions.colour}
               openDropdown={uiState.openDropdown}
               toggleDropdown={toggleDropdown}
               selectOption={selectOption}

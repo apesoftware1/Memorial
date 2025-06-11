@@ -19,6 +19,7 @@ import Pagination from "@/components/Pagination"
 import { PremiumListingCard } from "@/components/premium-listing-card"
 import dynamic from "next/dynamic"
 import Header from "@/components/Header"
+import BannerAd from "@/components/BannerAd"
 
 // Import necessary data from lib/data.js
 import { premiumListings, manufacturerProducts, standardListings } from '@/lib/data'
@@ -53,8 +54,8 @@ import { premiumListings, manufacturerProducts, standardListings } from '@/lib/d
     "R 200,000",
     "R 200,000+"
   ],
-    colour: ["Black", "White", "Grey", "Brown", "Blue Pearl", "Red"],
-    designTheme: ["Cross", "Angel", "Heart", "Book", "Traditional", "Modern", "Custom"],
+    colour: ["BLACK", "DARK GREY", "LIGHT GREY", "WHITE", "LIGHT PINK", "RED", "MAROON", "GOLD", "BLUE", "GREEN", "MIXED"],
+    style: ["CHRISTIAN CROSS", "HEART", "BIBLE", "PILLARS", "TRADITIONAL AFRICAN", "ABSTRACT", "PRAYING HANDS", "SCROLL", "ANGEL", "MAUSOLEAM", "OBELISK", "PLAIN", "TEDDY BEAR", "BUTTERFLY", "CAR", "BIKE", "SPORTS"],
     location: ["Gauteng", "Western Cape", "KwaZulu-Natal", "Eastern Cape", "Free State"],
     stoneType: ["Granite", "Marble", "Sandstone", "Limestone", "Bronze"],
     culture: ["Christian", "Jewish", "Muslim", "Hindu", "Traditional African"],
@@ -175,7 +176,7 @@ export default function Home() {
     minPrice: null,
     maxPrice: null,
     colour: null,
-    designTheme: null,
+    style: null,
     location: null,
     stoneType: null,
     culture: null,
@@ -286,15 +287,13 @@ export default function Home() {
     )
   });
 
-  const MemoizedBannerAd = memo(() => (
-    <div className="max-w-4xl mx-auto my-6 border border-gray-300 rounded overflow-hidden">
-      <Link href="https://ads.google.com" target="_blank" rel="noopener noreferrer">
-        <div className="relative h-24 bg-gray-100 flex items-center justify-center">
-          <p className="text-gray-500 text-sm">Banner Ad (Animated Gif - Linked to Google Ads)</p>
-          <div className="absolute top-1 right-1 bg-gray-200 px-1 text-xs text-gray-500 rounded">Ad</div>
-        </div>
-      </Link>
-    </div>
+  const MemoizedBannerAd = memo(({ mobileImageSrc, desktopImageSrc, mobileContainerClasses, desktopContainerClasses }) => (
+    <BannerAd
+      mobileImageSrc={mobileImageSrc}
+      desktopImageSrc={desktopImageSrc}
+      mobileContainerClasses={mobileContainerClasses}
+      desktopContainerClasses={desktopContainerClasses}
+    />
   ));
 
   const MemoizedFeaturedListingCard = memo(({ product }) => (
@@ -375,9 +374,16 @@ export default function Home() {
     }
 
     // Filter by design theme
-    if (filters.designTheme) {
+    if (filters.style) {
       filteredListings = filteredListings.filter(listing => 
-        listing.details && listing.details.toLowerCase().includes(filters.designTheme.toLowerCase())
+        listing.details && listing.details.toLowerCase().includes(filters.style.toLowerCase())
+      );
+    }
+
+    // Filter by colour
+    if (filters.colour) {
+      filteredListings = filteredListings.filter(listing => 
+        listing.details && listing.details.toLowerCase().includes(filters.colour.toLowerCase())
       );
     }
 
@@ -581,7 +587,14 @@ export default function Home() {
         {/* Following the order from the image */}
 
         {/* 1. Banner Ad (Animated Gif - Linked to Google Ads) */}
-        <MemoizedBannerAd />
+        <div className="max-w-4xl mx-auto px-0">
+          <MemoizedBannerAd
+            mobileImageSrc="/banner/Generic Banner AD.jpg"
+            desktopImageSrc="/banner/Generic Banner AD.jpg"
+            mobileContainerClasses="w-full h-24"
+            desktopContainerClasses="h-24"
+          />
+        </div>
 
         {/* 2. X3 Featured Listings */}
         <section className="pt-4 pb-0 bg-gray-50">
@@ -612,8 +625,10 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 4. Banner Ad (Animated Gif - Linked to Google Ads) */}
-        <MemoizedBannerAd />
+        {/* 4. Banner Ad (Animated Gif - Linked to Google Ads)other banner ads mobile only*/}
+        <div className="max-w-4xl mx-auto px-0">
+          <MemoizedBannerAd mobileImageSrc={null} desktopImageSrc={null} mobileContainerClasses="w-full h-24" desktopContainerClasses="h-24" />
+        </div>
 
         {/* 5. X5 Premium Listings */}
         <section className="pt-4 bg-gray-50">
@@ -684,8 +699,10 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 8. Banner Ad (Animated Gif - Linked to Google Ads) */}
-        <MemoizedBannerAd />
+        {/* 8. Banner Ad (Animated Gif - Linked to Google Ads) desktop only*/}
+        <div className="max-w-4xl mx-auto px-0">
+          <MemoizedBannerAd mobileImageSrc={null} desktopImageSrc={null} mobileContainerClasses="w-full h-24" desktopContainerClasses="h-24" />
+        </div>
 
         {/* 9. Standard Listings */}
         <section className="py-4">

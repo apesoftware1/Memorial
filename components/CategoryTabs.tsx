@@ -18,17 +18,17 @@ export default function CategoryTabs() {
   const [activeCategory, setActiveCategory] = useState('tombstones')
 
   return (
-    <div className="w-full bg-white border-b border-gray-200">
+    <div className="w-full bg-[#2E2E30] border-b border-gray-200">
       <div className="container mx-auto px-4">
         <div className="flex space-x-8 overflow-x-auto py-4">
           {categories.map((category) => {
-            const isActive = pathname === category.href
+            const isActive = activeCategory === category.id
             return (
               <Link
                 key={category.id}
                 href={category.href}
-                className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
-                  isActive ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600'
+                className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-[#E6E7E8] ${
+                  isActive ? 'text-[#D4AF37] border-b-2 border-[#58585B]' : 'text-[#D4AF37]'
                 }`}
                 onClick={() => setActiveCategory(category.id)}
               >

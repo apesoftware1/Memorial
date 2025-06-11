@@ -16,12 +16,12 @@ const CategoryTabs = ({
   ];
 
   return (
-    <div className="w-full md:max-w-lg bg-[#1a2238] overflow-hidden py-0">
+    <div className="w-full md:max-w-lg overflow-hidden py-0">
       <div className="flex overflow-x-auto hide-scrollbar h-[56px]">
         {categories.map((item, index) => (
           <div
             key={index}
-            className={`flex-1 min-w-[80px] text-center cursor-pointer transition-colors whitespace-nowrap overflow-hidden text-ellipsis h-full flex flex-col justify-center items-center ${index < categories.length - 1 ? 'border-r border-[#D4AF37]' : ''} ${selectedCategory === item.name ? "bg-[#333] text-[#D4AF37] font-bold" : "text-[#D4AF37]"}`}
+            className={`flex-1 min-w-[80px] text-center cursor-pointer transition-colors whitespace-nowrap overflow-hidden text-ellipsis h-full flex flex-col justify-center items-center ${index < categories.length - 1 ? 'border-r border-black' : ''} ${selectedCategory === item.name ? "bg-[#58585B] text-[#D4AF37] font-bold border-b-0 border-[#58585B]" : "bg-[#2E2E30] text-[#D4AF37] hover:text-[#E6E7E8]"}`}
             onClick={() => setSelectedCategory(item.name)}
             style={{ height: '100%' }}
           >
