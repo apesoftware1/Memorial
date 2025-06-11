@@ -140,14 +140,22 @@ export function PremiumListingCard({
 
             {/* Title, Details, Features (Mobile) */}
             <h2 className="text-lg font-bold text-gray-900 mb-2">{listing.title}</h2>
-            <p className="text-xs text-gray-600 mb-1">{listing.details}</p>
+            <p className="text-xs text-gray-600 mb-1">
+              {listing.details.includes("Full Tombstone") ? (
+                <>
+                  <strong>Full Tombstone</strong>{listing.details.replace("Full Tombstone", "")}
+                </>
+              ) : (
+                listing.details
+              )}
+            </p>
             <p className="text-xs text-gray-600 mb-1">{listing.features}</p>
             <p className="text-xs text-gray-600 mb-4">3 weeks manufacturing time</p>
           </Link>
 
           {/* Manufacturer Information (Mobile) */}
           <div className="flex flex-col mt-0">
-            <div className="font-medium text-gray-900 text-base mb-2">{isFirstCard ? "Swiss Stone" : listing.manufacturer}</div>
+            <div className="font-medium text-gray-900 text-base mb-2">{isFirstCard ? "Swiss Stone Masons" : listing.manufacturer}</div>
             <div className="space-y-1.5">
               {listing.enquiries && (
                 <div className="flex items-center text-green-600">
@@ -213,7 +221,15 @@ export function PremiumListingCard({
 
               {/* Title, Details, Features */}
               <h2 className="text-lg font-bold text-gray-900 mb-2">{listing.title}</h2>
-              <p className="text-xs text-gray-600 mb-1">{listing.details}</p>
+              <p className="text-xs text-gray-600 mb-1">
+                {listing.details.includes("Full Tombstone") ? (
+                  <>
+                    <strong>Full Tombstone</strong>{listing.details.replace("Full Tombstone", "")}
+                  </>
+                ) : (
+                  listing.details
+                )}
+              </p>
               <p className="text-xs text-gray-600 mb-1">{listing.features}</p>
               <p className="text-xs text-gray-600 mb-4">3 weeks manufacturing time</p>
             </Link>
@@ -222,7 +238,7 @@ export function PremiumListingCard({
             <div className="flex justify-between items-stretch space-x-4 mt-2">
               {/* Left Column for text details */}
               <div className="flex-1 space-y-1.5">
-                <div className="font-medium text-gray-900 text-base">{listing.manufacturer}</div>
+                <div className="font-medium text-gray-900 text-base">{isFirstCard ? "Swiss Stone Masons" : listing.manufacturer}</div>
                 {listing.enquiries && (
                   <div className="flex items-center text-green-600">
                     <Check className="w-3.5 h-3.5 mr-1" />

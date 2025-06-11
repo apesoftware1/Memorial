@@ -46,7 +46,7 @@ const FeaturedListings = ({ listings }) => {
             {listings.map((_, index) => (
               <div 
                 key={index} 
-                className={`w-5 h-5 rounded-full transition-colors duration-200 ${index === activeIndex ? 'bg-blue-500' : 'border border-gray-400'}`}
+                className={`w-4 h-4 rounded-full transition-colors duration-200 ${index === activeIndex ? 'bg-blue-500' : 'border border-gray-400'}`}
               ></div>
             ))}
           </div>

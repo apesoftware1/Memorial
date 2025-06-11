@@ -53,6 +53,10 @@ export default function ProductShowcase({ listing }) {
                   fill
                   className="object-cover"
                 />
+                {/* Heart Icon Overlay */}
+                <div className="absolute top-3 right-3 z-10">
+                  <Heart className="w-6 h-6 text-gray-400" />
+                </div>
               </div>
               <div className="grid grid-cols-6 gap-2">
                 {allImages.map((image, index) => (
@@ -74,58 +78,60 @@ export default function ProductShowcase({ listing }) {
 
             {/* Product Metadata/Features */}
             <div className="border-y border-gray-200 py-4 mb-6">
-              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-700">
+              <div className="flex flex-col md:flex-row md:flex-wrap gap-4 text-sm text-gray-700">
                 {listing.tombstoneType && (
-                  <div className="flex items-center">
-                    <User2 size={16} className="text-gray-500 mr-1" />
+                  <div className="flex items-center border-b md:border-b-0 pb-0 md:pb-0">
+                    <User2 size={16} className="text-gray-500 mr-2" />
                     <span>Tombstone Type: <span className="font-semibold">{listing.tombstoneType}</span></span>
-                    <span className="mx-1 text-gray-400">|</span>
+                    <span className="hidden md:inline mx-1 text-gray-400">|</span>
                   </div>
                 )}
                 {listing.style && (
-                  <div className="flex items-center">
-                    <Cross size={16} className="text-gray-500 mr-1" />
+                  <div className="flex items-center border-b md:border-b-0 pb-0 md:pb-0">
+                    <Cross size={16} className="text-gray-500 mr-2" />
                     <span>Style: <span className="font-semibold">{listing.style}</span></span>
-                    <span className="mx-2 text-gray-400">|</span>
+                    <span className="hidden md:inline mx-2 text-gray-400">|</span>
                   </div>
                 )}
                 {listing.colour && (Object.values(listing.colour).some(val => val)) && (
-                  <div className="flex items-center">
+                  <div className="flex items-center border-b md:border-b-0 pb-0 md:pb-0">
                     <span>Colour:</span>
-                    {listing.colour.black && <span className="w-4 h-4 bg-black rounded-sm border border-gray-300 ml-1"></span>}
-                    {listing.colour.gold && <span className="w-4 h-4 bg-yellow-500 rounded-sm border border-gray-300 ml-1"></span>}
-                    <span className="mx-1 text-gray-400">|</span>
+                    {listing.colour.black && <span className="w-4 h-4 bg-black rounded-sm border border-gray-300 ml-2"></span>}
+                    {listing.colour.gold && <span className="w-4 h-4 bg-yellow-500 rounded-sm border border-gray-300 ml-2"></span>}
+                    <span className="hidden md:inline mx-1 text-gray-400">|</span>
                   </div>
                 )}
                 {listing.culture && (
-                  <div className="flex items-center">
-                    <Image src="/new files/newIcons/Culture_Icons/Culture_Icons-50.svg" alt="Culture Icon" width={16} height={16} className="text-gray-500 mr-1" />
+                  <div className="flex items-center border-b md:border-b-0 pb-0 md:pb-0">
+                    <Image src="/new files/newIcons/Culture_Icons/Culture_Icons-50.svg" alt="Culture Icon" width={16} height={16} className="text-gray-500 mr-2" />
                     <span>Culture: <span className="font-semibold">{listing.culture}</span></span>
-                    <span className="mx-1 text-gray-400">|</span>
+                    <span className="hidden md:inline mx-1 text-gray-400">|</span>
                   </div>
                 )}
                 {listing.stoneType && (
-                  <div className="flex items-center">
-                    <Gem size={16} className="text-gray-500 mr-1" />
+                  <div className="flex items-center border-b md:border-b-0 pb-0 md:pb-0">
+                    <Gem size={16} className="text-gray-500 mr-2" />
                     <span>Stone Type: <span className="font-semibold">{listing.stoneType}</span></span>
-                    <span className="mx-1 text-gray-400">|</span>
+                    <span className="hidden md:inline mx-1 text-gray-400">|</span>
                   </div>
                 )}
                 {listing.customisation && (listing.customisation.photoEngraving || listing.customisation.builtInFlowerVase) && (
-                  <div className="flex items-center">
-                    <span>Customisation:</span>
-                    {listing.customisation.photoEngraving &&
-                      <span className="flex items-center ml-1">
-                        <Camera size={16} className="text-gray-500 mr-1" />
-                        <span className="font-semibold">Photo Engraving</span>
-                      </span>
-                    }
-                    {listing.customisation.builtInFlowerVase &&
-                      <span className="flex items-center ml-1">
-                        <Flower size={16} className="text-gray-500 mr-1" />
-                        <span className="font-semibold">Built-In Flower Vase</span>
-                      </span>
-                    }
+                  <div className="flex flex-col md:flex-row items-start md:items-center border-b md:border-b-0 pb-2 md:pb-0">
+                    <span className="mb-2 md:mb-0">Customisation:</span>
+                    <div className="flex flex-col md:flex-row gap-1 ml-24 md:ml-0">
+                      {listing.customisation.photoEngraving &&
+                        <span className="flex items-center">
+                          <Camera size={16} className="text-gray-500 mr-2" />
+                          <span className="font-semibold">Photo Engraving</span>
+                        </span>
+                      }
+                      {listing.customisation.builtInFlowerVase &&
+                        <span className="flex items-center">
+                          <Flower size={16} className="text-gray-500 mr-2" />
+                          <span className="font-semibold">Built-In Flower Vase</span>
+                        </span>
+                      }
+                    </div>
                   </div>
                 )}
               </div>
@@ -167,7 +173,7 @@ export default function ProductShowcase({ listing }) {
             </p>
           </div>
           {/* Send Message Card */}
-          <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
+          <div className="hidden md:block border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
             <h2 className="text-lg font-semibold mb-4">Send Message</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left Column - Form */}
@@ -231,7 +237,7 @@ export default function ProductShowcase({ listing }) {
           {/* Main contact card container */}
           <div className="rounded mb-6 shadow-sm overflow-hidden">
             {/* Dark blue header */}
-            <div className="bg-blue-900 text-white py-6 text-center px-4 rounded-t-lg">
+            <div className="bg-[#1F2B45] text-white py-6 text-center px-4 rounded-t-lg">
               CONTACT THE MANUFACTURER
               <button className="w-full max-w-sm bg-red-600 hover:bg-red-700 text-white py-2 rounded mx-auto block mt-6">
                 Show Contact Number
@@ -247,7 +253,7 @@ export default function ProductShowcase({ listing }) {
                     width={16}
                     height={16}
                     className="mr-1 object-contain"
-                  /> View Manufacturers Address
+                  /> View Manufacturer's Address
                 </button>
               </div>
 
