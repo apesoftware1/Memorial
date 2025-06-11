@@ -28,7 +28,7 @@ const FeaturedListings = ({ listings }) => {
   }, [handleScroll]);
 
   return (
-    <section className="pt-0 pb-0">
+    <section className="pt-0 pb-4">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
           <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>

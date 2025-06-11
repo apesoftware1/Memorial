@@ -38,9 +38,9 @@ export function StandardListingCard({ listing, href = "#" }: StandardListingCard
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto mb-6">
       {/* Main content area */}
-      <div className="flex min-h-[300px]">
+      <div className="flex flex-col sm:flex-row min-h-[300px]">
         {/* Left side - Main Image */}
-        <div className="w-1/2 flex-shrink-0 flex flex-col">
+        <div className="w-full sm:w-1/2 flex-shrink-0 flex flex-col">
           <div className="relative flex-1">
             <div className="relative w-full h-full min-h-[300px]">
               <Image
@@ -62,7 +62,7 @@ export function StandardListingCard({ listing, href = "#" }: StandardListingCard
         </div>
 
         {/* Right side - Content */}
-        <div className="w-1/2 p-6 bg-gray-50 flex flex-col">
+        <div className="w-full sm:w-1/2 p-6 bg-gray-50 flex flex-col">
           <div className="flex-1">
             {/* Price and Heart */}
             <div className="flex justify-between items-start mb-3">
