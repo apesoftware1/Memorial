@@ -22,7 +22,7 @@ export default function ProductShowcase({ listing }) {
     <div className="max-w-6xl mx-auto bg-white">
       {/* Product Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 px-4 md:px-0">
-        <div>
+        <div className="pt-12">
           {listing.badge && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-600 text-white mb-2">
               {listing.badge}
@@ -311,20 +311,20 @@ export default function ProductShowcase({ listing }) {
 
             <h3 className="text-sm font-medium mb-2">Share with Friends</h3>
             <div className="flex space-x-2">
-              <Link href="#" className="bg-blue-600 text-white p-2 rounded">
-                <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-03.svg" alt="Facebook" width={24} height={24} />
+              <Link href="#">
+                <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-03.svg" alt="Facebook" width={40} height={40} />
               </Link>
-              <Link href="#" className="bg-green-500 text-white p-2 rounded">
-                <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-04.svg" alt="WhatsApp" width={24} height={24} />
+              <Link href="#">
+                <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-04.svg" alt="WhatsApp" width={40} height={40} />
               </Link>
-              <Link href="#" className="bg-gray-800 text-white p-2 rounded">
-                <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-05.svg" alt="X" width={24} height={24} />
+              <Link href="#">
+                <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-05.svg" alt="X" width={40} height={40} />
               </Link>
-              <Link href="#" className="bg-purple-600 text-white p-2 rounded">
-                <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-06.svg" alt="Messenger" width={24} height={24} />
+              <Link href="#">
+                <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-06.svg" alt="Messenger" width={40} height={40} />
               </Link>
-              <Link href="#" className="bg-blue-500 text-white p-2 rounded">
-                <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-07.svg" alt="Telegram" width={24} height={24} />
+              <Link href="#">
+                <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-07.svg" alt="Telegram" width={40} height={40} />
               </Link>
             </div>
           </div>
@@ -334,7 +334,7 @@ export default function ProductShowcase({ listing }) {
             {/* Company Info */}
             <div className="text-center mb-4">
               <div className="flex justify-center mb-2">
-                <div className="relative h-24 w-48">
+                <div className="relative h-32 w-64">
                   <Image src="/new files/company logos/Tombstone Manufacturer Logo-SwissStone.svg" alt="SwissStone Logo" fill className="object-contain" />
                 </div>
               </div>

@@ -74,7 +74,7 @@ export default function ProductPage({ images, hideHeader }: { images: string[], 
       <div className="container mx-auto px-4 py-4">
         {/* Product Title and Price */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
-          <h1 className="text-2xl font-bold text-gray-800">CATHEDRAL C14 For Sale</h1>
+          <h1 className="text-2xl font-bold text-gray-800 mt-4">CATHEDRAL C14 For Sale</h1>
           <div className="text-2xl font-bold text-blue-600">R 8 820</div>
         </div>
 
