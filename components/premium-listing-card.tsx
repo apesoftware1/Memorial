@@ -66,7 +66,7 @@ export function PremiumListingCard({
   const productUrl = href || `/tombstones/${listing.id}`
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto">
+    <div className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto hover:shadow-md hover:ring-2 hover:ring-[#D4AF37] transition-all duration-300">
       {/* Mobile Layout (up to 768px) */}
       <div className="relative flex flex-col md:hidden">
         {/* Manufacturer Logo in its own box, bottom right corner (Mobile only) */}
@@ -133,8 +133,8 @@ export function PremiumListingCard({
 
             {/* Badge (Mobile) */}
             <div className="mb-2">
-              <Badge className={cn("text-white text-xs px-2 py-0.5", listing.tagColor)}>
-                {listing.tag}
+              <Badge className={cn("text-white text-xs px-2 py-0.5", isFirstCard ? "bg-memoryPink" : listing.tagColor)}>
+                {isFirstCard ? "HeartFelt Memory" : listing.tag}
               </Badge>
             </div>
 
@@ -206,8 +206,8 @@ export function PremiumListingCard({
 
               {/* Badge */}
               <div className="mb-2">
-                <Badge className={cn("text-white text-xs px-2 py-0.5", listing.tagColor)}>
-                  {listing.tag}
+                <Badge className={cn("text-white text-xs px-2 py-0.5", isFirstCard ? "bg-memoryPink" : listing.tagColor)}>
+                  {isFirstCard ? "HeartFelt Memory" : listing.tag}
                 </Badge>
               </div>
 

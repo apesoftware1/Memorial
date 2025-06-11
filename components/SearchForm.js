@@ -25,7 +25,7 @@ export default function SearchForm() {
         />
         <Button
           type="submit"
-          className="absolute right-2 p-2 text-gray-500 hover:text-blue-600"
+          className="absolute right-2 p-2 bg-white rounded-lg text-gray-700 hover:text-gray-900"
         >
           <Search className="w-5 h-5" />
         </Button>
