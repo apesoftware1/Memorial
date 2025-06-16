@@ -541,7 +541,7 @@ export default function Home() {
           </div>
 
           {/* Content Container */}
-            <div className="relative z-10 w-full md:max-w-lg md:ml-32 md:mr-auto flex flex-col items-center h-full pt-0 md:pt-20">
+            <div className="relative z-10 w-full md:max-w-lg md:ml-64 md:mr-auto flex flex-col items-center h-full pt-0 md:pt-20">
             {/* Category Tabs Container */}
               <div className="w-full md:max-w-lg bg-[#1a2238] overflow-hidden">
             <CategoryTabs

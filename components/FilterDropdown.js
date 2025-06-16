@@ -28,7 +28,7 @@ export default function FilterDropdown({
     <div className="relative w-full" ref={(el) => (dropdownRefs.current[name] = el)}>
       <button
         onClick={() => toggleDropdown(name)}
-        className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-white bg-[#68686B] hover:bg-[#58585B] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#78787B] h-9 border border-black shadow"
+        className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-white bg-[#0D7C99] hover:bg-[#0D7C99]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0D7C99] h-9 shadow"
         style={{ borderRadius: '2px' }}
         aria-expanded={openDropdown === name}
         aria-haspopup="true"

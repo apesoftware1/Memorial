@@ -72,7 +72,7 @@ const SearchContainer = ({
   }, [setFilters]);
 
   return (
-    <div className="w-full md:max-w-lg flex flex-col gap-3 sm:gap-4 justify-between relative p-4 sm:p-6 bg-[#58585B]">
+    <div className="w-full md:max-w-lg flex flex-col gap-3 sm:gap-4 justify-between relative p-4 sm:p-6 bg-[#005D77]">
       {/* Search Heading */}
       <h2 className="text-xl sm:text-2xl text-[#D4AF37] font-semibold mb-0 tracking-wide leading-tight">
         Find Your Loved One A Tombstone!
@@ -228,7 +228,7 @@ const SearchContainer = ({
         {isDesktop ? (
           <button
             onClick={() => setMoreOptionsOpen(!moreOptionsOpen)}
-            className="w-full sm:w-[180px] bg-[#68686B] text-white font-bold text-sm h-9 transition-colors border border-black hover:bg-[#58585B] whitespace-nowrap shadow"
+            className="w-full sm:w-[180px] bg-[#0D7C99] text-white font-bold text-sm h-9 transition-colors hover:bg-[#0D7C99]/90 whitespace-nowrap shadow"
             style={{ borderRadius: '2px' }}
           >
             {moreOptionsOpen ? '- Less Options' : '+ More Options'}
@@ -236,7 +236,7 @@ const SearchContainer = ({
         ) : (
           <button
             onClick={() => setUiState(prev => ({ ...prev, showAllOptions: !prev.showAllOptions }))}
-            className="w-full sm:w-[180px] bg-[#68686B] text-white font-bold text-sm h-9 transition-colors border border-black hover:bg-[#58585B] whitespace-nowrap shadow"
+            className="w-full sm:w-[180px] bg-[#0D7C99] text-white font-bold text-sm h-9 transition-colors hover:bg-[#0D7C99]/90 whitespace-nowrap shadow"
             style={{ borderRadius: '2px' }}
           >
             {uiState.showAllOptions ? '- Less Options' : '+ More Options'}
@@ -261,7 +261,7 @@ const SearchContainer = ({
       {/* Desktop More Options Container */}
       {isDesktop && (
         <div
-          className={`absolute top-0 left-0 w-full md:max-w-lg h-full bg-[#333] p-4 sm:p-6 transition-all duration-300 ease-in-out z-[1] 
+          className={`absolute top-0 left-0 w-full md:max-w-lg h-full bg-[#005D77] p-4 sm:p-6 transition-all duration-300 ease-in-out z-[1] 
             ${moreOptionsOpen ? 'translate-x-[100%] opacity-100 pointer-events-auto' : 'translate-x-0 opacity-0 pointer-events-none'}`}
           style={{
             width: '100%',
