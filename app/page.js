@@ -184,7 +184,7 @@ export default function Home() {
   });
 
   // State for selected category
-  const [selectedCategory, setSelectedCategory] = useState("TOMBSTONES");
+  const [selectedCategory, setSelectedCategory] = useState("FULL");
   const [selectedTown, setSelectedTown] = useState(null);
 
   // Add the useFavorites hook to the component
