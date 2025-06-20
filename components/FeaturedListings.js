@@ -35,7 +35,7 @@ const FeaturedListings = ({ listings }) => {
 
           <div 
             ref={scrollContainerRef}
-            className="flex overflow-x-auto gap-4 sm:grid sm:grid-cols-2 md:grid-cols-3 scrollbar-hide snap-x snap-mandatory"
+            className="flex overflow-x-auto gap-4 sm:grid sm:grid-cols-2 md:grid-cols-3 snap-x snap-mandatory"
           >
             {listings.map((product, index) => (
               <ProductCard key={product.id} product={product} />
