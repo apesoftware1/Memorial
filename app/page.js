@@ -543,12 +543,12 @@ export default function Home() {
           {/* Content Container */}
           <div className="relative z-10 w-full md:max-w-lg md:ml-56 md:mr-auto flex flex-col items-center h-full pt-0 md:pt-20 -ml-[4px]">
             {/* Category Tabs Container */}
-              <div className="w-full md:max-w-lg bg-[#1a2238] overflow-hidden">
-            <CategoryTabs
-              selectedCategory={selectedCategory}
-              setSelectedCategory={setSelectedCategory}
-            />
-              </div>
+            <div className="w-full md:max-w-lg bg-[#1a2238] overflow-hidden">
+              <CategoryTabs
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
+              />
+            </div>
 
             {/* Main Search Box */}
             <SearchContainer

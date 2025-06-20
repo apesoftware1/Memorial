@@ -8,12 +8,12 @@ const CategoryTabs = ({
   setSelectedCategory,
 }) => {
   const categories = [
-    { name: "FULL", icon: "/final icons/tombstones.svg" },
-    { name: "PREMIUM", icon: "/final icons/premium.svg" },
-    { name: "FAMILY", icon: "/final icons/family.svg" },
-    { name: "CHILD", icon: "/final icons/child.svg" },
-    { name: "HEAD", icon: "/final icons/head.svg" },
-    { name: "CREMATION", icon: "/final icons/cremation.svg" },
+    { name: "FULL", icon: "/final-icons/tombstones.svg" },
+    { name: "PREMIUM", icon: "/final-icons/premium.svg" },
+    { name: "FAMILY", icon: "/final-icons/family.svg" },
+    { name: "CHILD", icon: "/final-icons/child.svg" },
+    { name: "HEAD", icon: "/final-icons/head.svg" },
+    { name: "CREMATION", icon: "/final-icons/cremation.svg" },
   ];
 
   return (
