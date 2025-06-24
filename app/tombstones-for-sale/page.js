@@ -3,14 +3,19 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ChevronDown, Search, ChevronRight } from "lucide-react"
+import Header from "@/components/Header"
 
 // Import the useFavorites hook and our new components
 import { useFavorites } from "@/context/favorites-context"
 import { ProductCard } from "@/components/product-card"
 import { PremiumListingCard } from "@/components/premium-listing-card"
+import TombstonesForSaleFilters from "@/components/TombstonesForSaleFilters"
 
 // Import premium listings from lib/data.js
 import { premiumListings } from '@/lib/data';
+
+// Remove the local featuredListings array and import it from the homepage
+import { featuredListings } from '../page';
 
 export default function TombstonesForSale() {
   // State for filter visibility on mobile
@@ -35,37 +40,6 @@ export default function TombstonesForSale() {
   // Add this near the top of the component, with the other useState declarations:
   const { totalFavorites } = useFavorites()
 
-  // Featured listings data
-  const featuredListings = [
-    {
-      id: "white-angel",
-      image: "/placeholder.svg?height=200&width=300",
-      price: "R 10 200",
-      title: "WHITE ANGEL",
-      details: "Full Tombstone | Granite | Bible Theme",
-      tag: "Great Price",
-      tagColor: "bg-green-500",
-    },
-    {
-      id: "palace",
-      image: "/placeholder.svg?height=200&width=300",
-      price: "R 28 500",
-      title: "PALACE",
-      details: "Full Tombstone | Granite | Mausoleum Theme",
-      tag: "Great Price",
-      tagColor: "bg-green-500",
-    },
-    {
-      id: "gold-cross",
-      image: "/placeholder.svg?height=200&width=300",
-      price: "R 19 900",
-      title: "GOLD CROSS",
-      details: "Full Tombstone | Marble | Cross Theme",
-      tag: "Great Price",
-      tagColor: "bg-green-500",
-    },
-  ]
-
   // Filter options
   const filterOptions = {
     location: ["Gauteng", "Western Cape", "KwaZulu-Natal", "Eastern Cape", "Free State"],
@@ -76,101 +50,85 @@ export default function TombstonesForSale() {
     custom: ["Engraving", "Photo", "Gold Leaf", "Special Shape", "Lighting"],
   }
 
-  // Toggle filter dropdown
-  const toggleFilter = (filter) => {
-    setShowFilters(showFilters === filter ? null : filter)
+  // --- FILTERING LOGIC ---
+  function parsePrice(priceStr) {
+    if (!priceStr) return 0;
+    return Number(priceStr.replace(/[^\d]/g, ""));
   }
 
-  // Set filter value
-  const setFilter = (category, value) => {
+  // Store the initial total count for display
+  const totalListingsCount = premiumListings.length;
+
+  // Filtering
+  const filteredPremiumListings = premiumListings.filter(listing => {
+    // Location
+    if (activeFilters.location && activeFilters.location !== "All" && activeFilters.location !== "") {
+      if (!listing.location?.toLowerCase().includes(activeFilters.location.toLowerCase())) return false;
+    }
+    // Stone Type
+    if (activeFilters.stoneType && activeFilters.stoneType !== "All" && activeFilters.stoneType !== "") {
+      const stoneType = listing.stoneType || listing.details || "";
+      if (!stoneType.toLowerCase().includes(activeFilters.stoneType.toLowerCase())) return false;
+    }
+    // Color
+    if (activeFilters.color && activeFilters.color !== "All" && activeFilters.color !== "") {
+      if (!listing.colour || !listing.colour[activeFilters.color.toLowerCase()]) return false;
+    }
+    // Culture
+    if (activeFilters.culture && activeFilters.culture !== "All" && activeFilters.culture !== "") {
+      if (!listing.culture || !listing.culture.toLowerCase().includes(activeFilters.culture.toLowerCase())) return false;
+    }
+    // Design Theme
+    if (activeFilters.designTheme && activeFilters.designTheme !== "All" && activeFilters.designTheme !== "") {
+      const theme = listing.details || listing.style || "";
+      if (!theme.toLowerCase().includes(activeFilters.designTheme.toLowerCase())) return false;
+    }
+    // Custom
+    if (activeFilters.custom && activeFilters.custom !== "All" && activeFilters.custom !== "") {
+      const features = listing.features || "";
+      if (!features.toLowerCase().includes(activeFilters.custom.toLowerCase())) return false;
+    }
+    // Min Price
+    if (activeFilters.minPrice && activeFilters.minPrice !== "Min Price" && activeFilters.minPrice !== "") {
+      const min = parsePrice(activeFilters.minPrice);
+      if (parsePrice(listing.price) < min) return false;
+    }
+    // Max Price
+    if (activeFilters.maxPrice && activeFilters.maxPrice !== "Max Price" && activeFilters.maxPrice !== "") {
+      const max = parsePrice(activeFilters.maxPrice);
+      if (parsePrice(listing.price) > max) return false;
+    }
+    return true;
+  });
+
+  // --- SORTING LOGIC ---
+  let sortedPremiumListings = [...filteredPremiumListings];
+  if (sortOrder === "Price: Low to High") {
+    sortedPremiumListings.sort((a, b) => parsePrice(a.price) - parsePrice(b.price));
+  } else if (sortOrder === "Price: High to Low") {
+    sortedPremiumListings.sort((a, b) => parsePrice(b.price) - parsePrice(a.price));
+  } else if (sortOrder === "Newest First") {
+    // If you have a date field, use it. Otherwise, sort by id descending as a fallback.
+    sortedPremiumListings.sort((a, b) => (b.id > a.id ? 1 : -1));
+  }
+
+  // --- RESET FILTERS ---
+  function handleResetFilters() {
     setActiveFilters({
-      ...activeFilters,
-      [category]: value,
-    })
-    setShowFilters(null)
+      minPrice: "Min Price",
+      maxPrice: "Max Price",
+      location: null,
+      stoneType: null,
+      color: null,
+      culture: null,
+      designTheme: null,
+      custom: null,
+    });
   }
-
-  // Filter component
-  const FilterDropdown = ({ name, label, options }) => {
-    return (
-      <div className="relative mb-4">
-        <button
-          onClick={() => toggleFilter(name)}
-          className="w-full bg-white hover:bg-gray-50 border border-gray-300 p-2 rounded flex justify-between items-center text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-gray-400"
-          aria-expanded={showFilters === name}
-          aria-haspopup="true"
-        >
-          <span className="text-gray-700">{activeFilters[name] || label}</span>
-          <ChevronDown
-            className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${showFilters === name ? "transform rotate-180" : ""}`}
-          />
-        </button>
-
-        {showFilters === name && (
-          <div className="absolute z-50 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 animate-slide-in">
-            <ul className="py-1 max-h-60 overflow-auto" role="menu" aria-orientation="vertical">
-              {options.map((option, index) => (
-                <li
-                  key={index}
-                  onClick={() => setFilter(name, option)}
-                  className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex justify-between items-center cursor-pointer"
-                  role="menuitem"
-                >
-                  {option}
-                  {activeFilters[name] === option && (
-                    <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  // Product card component
-  // Replace the ProductCard component with our new one
-  // Find this code:
-  // const ProductCard = ({ product, featured = true }) => (
-  //   <div className="border border-gray-300 rounded bg-white overflow-hidden hover:shadow-md transition-shadow">
-  //     <div className="relative h-48">
-  //       <Image src={product.image || "/placeholder.svg"} alt={product.title} fill className="object-cover" />
-  //       <button className="absolute top-2 right-2 bg-white hover:bg-gray-100 rounded-full p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300">
-  //         <Heart className="h-5 w-5 text-gray-400 hover:text-red-500 transition-colors" />
-  //       </button>
-  //       <div className={`absolute bottom-2 left-2 ${product.tagColor} text-white text-xs px-2 py-1 rounded`}>
-  //         {product.tag}
-  //       </div>
-  //     </div>
-  //     <div className="p-3">
-  //       <div className="flex justify-between items-center mb-2">
-  //         <p className="font-bold text-blue-800">{product.price}</p>
-  //       </div>
-  //       <h4 className="font-bold text-gray-800 mb-1">{product.title}</h4>
-  //       <p className="text-xs text-gray-600">{product.details}</p>
-  //       {!featured && (
-  //         <div className="mt-2 text-xs text-gray-600">
-  //           <p>{product.manufacturer}</p>
-  //           <p>{product.location}</p>
-  //         </div>
-  //       )}
-  //       <div className="mt-3">
-  //         <Link
-  //           href={`/tombstones-for-sale/${product.id}`}
-  //           className="text-blue-600 hover:text-blue-800 text-sm hover:underline"
-  //         >
-  //           View Details
-  //         </Link>
-  //       </div>
-  //     </div>
-  //   </div>
-  // )
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Header />
       {/* Search Bar */}
       <div className="bg-gray-800 py-4">
         <div className="container mx-auto px-4">
@@ -191,7 +149,7 @@ export default function TombstonesForSale() {
             </button>
           </div>
           <div className="max-w-4xl mx-auto mt-2">
-            <button className="text-gray-300 hover:text-white text-sm transition-colors">Reset</button>
+            <button className="text-gray-300 hover:text-white text-sm transition-colors" onClick={handleResetFilters}>Reset</button>
           </div>
         </div>
       </div>
@@ -218,52 +176,24 @@ export default function TombstonesForSale() {
           <div className="flex flex-col md:flex-row gap-6">
             {/* Filters - Left Side */}
             <div className="w-full md:w-1/4">
-              <div className="bg-white p-4 rounded border border-gray-300 mb-4">
-                <h2 className="font-bold text-gray-800 mb-4">Price</h2>
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  <div>
-                    <select
-                      className="w-full p-2 border border-gray-300 rounded text-sm"
-                      value={activeFilters.minPrice}
-                      onChange={(e) => setActiveFilters({ ...activeFilters, minPrice: e.target.value })}
-                    >
-                      <option>Min Price</option>
-                      <option>R 1,000</option>
-                      <option>R 5,000</option>
-                      <option>R 10,000</option>
-                      <option>R 15,000</option>
-                    </select>
-                  </div>
-                  <div>
-                    <select
-                      className="w-full p-2 border border-gray-300 rounded text-sm"
-                      value={activeFilters.maxPrice}
-                      onChange={(e) => setActiveFilters({ ...activeFilters, maxPrice: e.target.value })}
-                    >
-                      <option>Max Price</option>
-                      <option>R 10,000</option>
-                      <option>R 20,000</option>
-                      <option>R 30,000</option>
-                      <option>R 50,000</option>
-                      <option>R 100,000+</option>
-                    </select>
-                  </div>
-                </div>
-
-                <FilterDropdown name="location" label="LOCATION" options={filterOptions.location} />
-                <FilterDropdown name="stoneType" label="STONE TYPE" options={filterOptions.stoneType} />
-                <FilterDropdown name="color" label="COLOUR" options={filterOptions.color} />
-                <FilterDropdown name="culture" label="CULTURE" options={filterOptions.culture} />
-                <FilterDropdown name="designTheme" label="DESIGN THEME" options={filterOptions.designTheme} />
-                <FilterDropdown name="custom" label="CUSTOM" options={filterOptions.custom} />
-              </div>
+              <TombstonesForSaleFilters
+                activeFilters={activeFilters}
+                setActiveFilters={setActiveFilters}
+                showFilters={showFilters}
+                setShowFilters={setShowFilters}
+                filterOptions={filterOptions}
+              />
             </div>
 
             {/* Product Listings - Right Side */}
             <div className="w-full md:w-3/4">
               {/* Results Header */}
               <div className="flex justify-between items-center mb-4">
-                <p className="text-gray-600">2769 Results</p>
+                <p className="text-gray-600">
+                  {filteredPremiumListings.length === totalListingsCount
+                    ? `${totalListingsCount} Listings For Sale`
+                    : `${filteredPremiumListings.length} Results (of ${totalListingsCount})`}
+                </p>
                 <div className="flex items-center">
                   <span className="text-sm text-gray-600 mr-2">Sort by</span>
                   <select
@@ -284,15 +214,6 @@ export default function TombstonesForSale() {
                 <h2 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">FEATURED LISTINGS</h2>
                 <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
 
-                {/* Update the featured listings section to use our new ProductCard component */}
-                {/* Find this code: */}
-                {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {featuredListings.map((product, index) => (
-                    <ProductCard key={index} product={product} />
-                  ))}
-                </div> */}
-
-                {/* And replace it with: */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {featuredListings.map((product, index) => (
                     <ProductCard key={index} product={product} />
@@ -308,7 +229,7 @@ export default function TombstonesForSale() {
                     <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
 
                     <div className="space-y-6">
-                      {premiumListings.map((listing) => (
+                      {sortedPremiumListings.map((listing) => (
                         <PremiumListingCard key={listing.id} listing={listing} href={`/memorial/${listing.id}`} />
                       ))}
                     </div>
@@ -320,18 +241,6 @@ export default function TombstonesForSale() {
               <div>
                 <h2 className="text-gray-600 border-b border-gray-300 pb-2 mb-4">ALL TOMBSTONES</h2>
 
-                {/* Update the regular listings section */}
-                {/* Find this code: */}
-                {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[...featuredListings, ...featuredListings].map((product, index) => (
-                    <ProductCard
-                      key={`regular-${index}`}
-                      product={{ ...product, id: `regular-${product.id}-${index}` }}
-                    />
-                  ))}
-                </div> */}
-
-                {/* And replace it with: */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {[...featuredListings, ...featuredListings].map((product, index) => (
                     <ProductCard

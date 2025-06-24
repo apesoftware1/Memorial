@@ -25,7 +25,7 @@ const CategoryTabs = ({
         {categories.map((item, index) => (
           <div
             key={index}
-            className={`flex-1 min-w-[80px] text-center cursor-pointer transition-colors whitespace-nowrap overflow-hidden text-ellipsis h-full flex flex-col justify-center items-center ${index < categories.length - 1 ? 'border-r border-black' : ''} ${activeCategory === item.name ? "bg-[#005D77] font-bold" : "bg-[#2E2E30] hover:text-[#E6E7E8]"}`}
+            className={`flex-1 min-w-[80px] text-center cursor-pointer transition-colors whitespace-nowrap overflow-hidden text-ellipsis h-full flex flex-col justify-center items-center ${index < categories.length - 1 && activeCategory !== item.name ? 'border-r border-black' : ''} ${activeCategory === item.name ? "bg-[#005D77] font-bold" : "bg-[#2E2E30] hover:text-[#E6E7E8]"}`}
             onClick={() => setSelectedCategory(item.name)}
             style={{
               height: '100%',

@@ -69,7 +69,7 @@ export function StandardListingCard({ listing, href = "#" }: StandardListingCard
               <div className="text-3xl font-bold text-blue-600">{listing.price || "R 8 820"}</div>
               {/* Favorite Button positioned here to match premium card layout */}
               <div onClick={(e) => e.stopPropagation()}>
-                 <FavoriteButton product={product} size="sm"/>
+                 <FavoriteButton product={product} size="md"/>
               </div>
             </div>
 

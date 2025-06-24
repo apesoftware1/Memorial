@@ -8,6 +8,7 @@ import { Heart, MapPin, Camera, Check } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import type { FavoriteProduct } from "@/context/favorites-context"
+import { FavoriteButton } from "./favorite-button"
 
 interface PremiumListing {
   id?: string
@@ -128,7 +129,9 @@ export function PremiumListingCard({
             {/* Price and Heart (Mobile) */}
             <div className="flex justify-between items-start mb-3">
               <div className="text-2xl font-bold text-blue-600">{listing.price}</div>
-              <Heart className="w-5 h-5 text-gray-400" />
+              <div onClick={e => e.stopPropagation()}>
+                <FavoriteButton product={product} size="md" />
+              </div>
             </div>
 
             {/* Badge (Mobile) */}
@@ -209,7 +212,9 @@ export function PremiumListingCard({
               {/* Price and Heart */}
               <div className="flex justify-between items-start mb-3">
                 <div className="text-2xl font-bold text-blue-600">{listing.price}</div>
-                <Heart className="w-5 h-5 text-gray-400" />
+                <div onClick={e => e.stopPropagation()}>
+                  <FavoriteButton product={product} size="md" />
+                </div>
               </div>
 
               {/* Badge */}

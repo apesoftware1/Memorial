@@ -313,12 +313,7 @@ export default function TombstonesOnSpecial() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header
-        mobileMenuOpen={uiState.mobileMenuOpen}
-        handleMobileMenuToggle={handleMobileMenuToggle}
-        mobileDropdown={uiState.mobileDropdown}
-        handleMobileDropdownToggle={handleMobileDropdownToggle}
-      />
+      <Header />
 
       {/* Search Bar */}
       <div className="bg-gray-800 py-4">

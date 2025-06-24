@@ -1,0 +1,141 @@
+import { useState } from "react"
+import { ChevronDown } from "lucide-react"
+
+interface TombstonesForSaleFiltersProps {
+  activeFilters: any;
+  setActiveFilters: (filters: any) => void;
+  showFilters: any;
+  setShowFilters: (show: any) => void;
+  filterOptions: any;
+}
+
+const defaultFilterOptions = {
+  minPrice: ["Min Price", "R 1,000", "R 5,000", "R 10,000", "R 15,000"],
+  maxPrice: ["Max Price", "R 10,000", "R 20,000", "R 30,000", "R 50,000", "R 100,000+"],
+  location: ["Gauteng", "Western Cape", "KwaZulu-Natal", "Eastern Cape", "Free State"],
+  bodyType: ["Full Tombstone", "Headstone", "Double Headstone", "Cremation Memorial", "Family Monument", "Child Memorial", "Custom Design"],
+  stoneType: ["Granite", "Marble", "Sandstone", "Limestone", "Bronze"],
+  style: ["Classic", "Modern", "Traditional", "Custom"],
+  colour: ["Black", "White", "Grey", "Brown", "Blue Pearl", "Red"],
+  color: ["Black", "White", "Grey", "Brown", "Blue Pearl", "Red"],
+  culture: ["Christian", "Jewish", "Muslim", "Hindu", "Traditional African"],
+  designTheme: ["Cross", "Angel", "Heart", "Book", "Traditional", "Modern", "Custom"],
+  custom: ["Engraving", "Photo", "Gold Leaf", "Special Shape", "Lighting"],
+};
+
+export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions }: TombstonesForSaleFiltersProps) {
+  const [showMore, setShowMore] = useState(false);
+  const mergedOptions = { ...defaultFilterOptions, ...filterOptions };
+
+  // Toggle filter dropdown
+  const toggleFilter = (filter: string) => {
+    setShowFilters(showFilters === filter ? null : filter)
+  }
+
+  // Set filter value
+  const setFilter = (category: string, value: string) => {
+    setActiveFilters({
+      ...activeFilters,
+      [category]: value,
+    })
+    setShowFilters(null)
+  }
+
+  // FilterDropdown component
+  const FilterDropdown = ({ name, label, options }: { name: string; label: string; options: string[] }) => (
+    <div className="mb-2 relative w-full">
+      <button
+        onClick={() => toggleFilter(name)}
+        className="w-full flex justify-between items-center py-2 px-2 bg-white text-gray-800 font-semibold text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-amber-400 min-h-[36px]"
+        aria-expanded={showFilters === name}
+        aria-haspopup="true"
+        style={{ textAlign: 'left' }}
+      >
+        <span className="text-gray-700 font-semibold">{label}</span>
+        <ChevronDown
+          className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${showFilters === name ? "transform rotate-180" : ""}`}
+        />
+      </button>
+      {showFilters === name && (
+        <div className="absolute left-0 top-full z-50 mt-1 w-full bg-[#2E2E30] rounded-md shadow-lg border border-gray-700 animate-slide-in">
+          <ul className="py-1 max-h-60 overflow-auto" role="menu" aria-orientation="vertical">
+            {options.map((option: string) => (
+              <li
+                key={option}
+                onClick={() => setFilter(name, option)}
+                className="px-3 py-2 text-sm text-gray-300 hover:bg-[#3E3E40] flex justify-between items-center cursor-pointer"
+                role="menuitem"
+              >
+                {option}
+                {activeFilters[name] === option && (
+                  <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+
+  return (
+    <div className="w-full">
+      {/* Price Section */}
+      <div className="mb-4">
+        <div className="font-bold text-xs text-gray-700 mb-2 tracking-wide">PRICE</div>
+        <div className="grid grid-cols-2 gap-2">
+          <select
+            className="w-full p-2 border border-gray-300 rounded text-sm min-h-[36px]"
+            value={activeFilters.minPrice}
+            onChange={(e) => setActiveFilters({ ...activeFilters, minPrice: e.target.value })}
+          >
+            {mergedOptions.minPrice.map((option: string) => (
+              <option key={option}>{option}</option>
+            ))}
+          </select>
+          <select
+            className="w-full p-2 border border-gray-300 rounded text-sm min-h-[36px]"
+            value={activeFilters.maxPrice}
+            onChange={(e) => setActiveFilters({ ...activeFilters, maxPrice: e.target.value })}
+          >
+            {mergedOptions.maxPrice.map((option: string) => (
+              <option key={option}>{option}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="border-t border-gray-200 my-2"></div>
+      <FilterDropdown name="location" label="LOCATION" options={mergedOptions.location} />
+      <div className="border-t border-gray-200 my-2"></div>
+      <FilterDropdown name="bodyType" label="BODY TYPE" options={mergedOptions.bodyType} />
+      <div className="border-t border-gray-200 my-2"></div>
+      <FilterDropdown name="stoneType" label="STONE TYPE" options={mergedOptions.stoneType} />
+      <div className="border-t border-gray-200 my-2"></div>
+      <FilterDropdown name="designTheme" label="DESIGN THEME" options={mergedOptions.designTheme} />
+      <div className="border-t border-gray-200 my-2"></div>
+      <FilterDropdown name="culture" label="CULTURE" options={mergedOptions.culture} />
+      <div className="border-t border-gray-200 my-2"></div>
+      <button
+        className="w-full text-left py-2 px-2 text-amber-700 font-semibold text-sm bg-white border border-gray-200 rounded mb-2"
+        onClick={() => setShowMore((prev) => !prev)}
+        type="button"
+      >
+        {showMore ? "- Less Options" : "+ More Options"}
+      </button>
+      {showMore && (
+        <>
+          <div className="border-t border-gray-200 my-2"></div>
+          <FilterDropdown name="style" label="STYLE" options={mergedOptions.style} />
+          <div className="border-t border-gray-200 my-2"></div>
+          <FilterDropdown name="colour" label="COLOUR" options={mergedOptions.colour} />
+          <div className="border-t border-gray-200 my-2"></div>
+          <FilterDropdown name="color" label="COLOR" options={mergedOptions.color} />
+          <div className="border-t border-gray-200 my-2"></div>
+          <FilterDropdown name="custom" label="CUSTOM" options={mergedOptions.custom} />
+        </>
+      )}
+    </div>
+  )
+} 

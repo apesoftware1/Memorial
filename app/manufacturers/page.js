@@ -15,6 +15,8 @@ export default function ManufacturersPage() {
 
   // State for active province filter
   const [activeProvince, setActiveProvince] = useState(null)
+  // State for active city filter
+  const [activeCity, setActiveCity] = useState(null)
 
   // State for search filters
   const [searchFilters, setSearchFilters] = useState({
@@ -26,12 +28,22 @@ export default function ManufacturersPage() {
   // State for sort order
   const [sortOrder, setSortOrder] = useState("Default")
 
+  // Category tabs copied from CategoryTabs.tsx
+  const CATEGORY_TABS = [
+    { id: 'tombstones', name: 'TOMBSTONES' },
+    { id: 'premium', name: 'PREMIUM' },
+    { id: 'family', name: 'FAMILY' },
+    { id: 'child', name: 'CHILD' },
+    { id: 'head', name: 'HEAD' },
+    { id: 'cremation', name: 'CREMATION' },
+  ];
+
   // Manufacturers data
   const manufacturers = [
     {
       id: "example-tombstone",
       name: "Example Tombstone Co.",
-      logo: "/placeholder.svg?height=120&width=120&text=ET",
+      logo: "",
       rating: 4.7,
       description:
         "Example Tombstone Company is based in Durban North, KZN and prides itself on quality craftsmanship and attention to detail.",
@@ -39,11 +51,12 @@ export default function ManufacturersPage() {
       location: "Durban North",
       distance: "38km from you",
       province: "KwaZulu Natal",
+      category: 'tombstones',
     },
     {
       id: "shine-tombstones",
       name: "Shine Tombstones",
-      logo: "/placeholder.svg?height=120&width=120&text=ST",
+      logo: "",
       rating: 4.7,
       description:
         "Shine Tombstones is based in Richards Bay, KZN and prides itself on innovative designs and premium materials.",
@@ -51,11 +64,12 @@ export default function ManufacturersPage() {
       location: "Richards Bay",
       distance: "150km from you",
       province: "KwaZulu Natal",
+      category: 'tombstones',
     },
     {
       id: "forever-tombstones",
       name: "Forever Tombstones",
-      logo: "/placeholder.svg?height=120&width=120&text=FT",
+      logo: "",
       rating: 4.7,
       description:
         "Forever Tombstones was founded in 1993. Each tombstone is carefully gone through a rigorous quality control process.",
@@ -63,33 +77,36 @@ export default function ManufacturersPage() {
       location: "Pinetown",
       distance: "45km from you",
       province: "KwaZulu Natal",
+      category: 'tombstones',
     },
     {
       id: "marble-masters",
       name: "Marble Masters",
-      logo: "/placeholder.svg?height=120&width=120&text=MM",
+      logo: "",
       rating: 4.5,
       description: "Marble Masters specializes in high-quality marble tombstones with custom engravings and designs.",
       tombstonesListed: 47,
       location: "Pretoria",
       distance: "15km from you",
       province: "Gauteng",
+      category: 'tombstones',
     },
     {
       id: "granite-specialists",
       name: "Granite Specialists",
-      logo: "/placeholder.svg?height=120&width=120&text=GS",
+      logo: "",
       rating: 4.8,
       description: "Granite Specialists offers premium granite tombstones with a 25-year warranty on all products.",
       tombstonesListed: 83,
       location: "Johannesburg",
       distance: "25km from you",
       province: "Gauteng",
+      category: 'tombstones',
     },
     {
       id: "cape-memorials",
       name: "Cape Memorials",
-      logo: "/placeholder.svg?height=120&width=120&text=CM",
+      logo: "",
       rating: 4.6,
       description:
         "Cape Memorials has been serving the Western Cape region for over 30 years with quality memorial products.",
@@ -97,6 +114,7 @@ export default function ManufacturersPage() {
       location: "Cape Town",
       distance: "5km from you",
       province: "Western Cape",
+      category: 'tombstones',
     },
   ]
 
@@ -160,56 +178,93 @@ export default function ManufacturersPage() {
     "Family Monuments",
   ]
 
-  // Filter manufacturers by province
-  const filteredManufacturers = activeProvince
-    ? manufacturers.filter((m) => m.province === activeProvince)
-    : manufacturers
+  // Add a category field to each manufacturer (for demo, assign all to 'tombstones')
+  const [activeCategory, setActiveCategory] = useState(CATEGORY_TABS[0].id)
+
+  // Filter manufacturers by province, city and category
+  const filteredManufacturers = manufacturers.filter((m) => {
+    const provinceMatch = activeProvince ? m.province === activeProvince : true;
+    const cityMatch = activeCity ? m.location === activeCity : true;
+    const categoryMatch = activeCategory ? m.category === activeCategory : true;
+    return provinceMatch && cityMatch && categoryMatch;
+  });
+
+  // Sort manufacturers based on sortOrder
+  const sortedManufacturers = [...filteredManufacturers];
+  if (sortOrder === "Rating: High to Low") {
+    sortedManufacturers.sort((a, b) => b.rating - a.rating);
+  } else if (sortOrder === "Listings: Most to Least") {
+    sortedManufacturers.sort((a, b) => b.tombstonesListed - a.tombstonesListed);
+  } else if (sortOrder === "Distance: Nearest First") {
+    // Extract numeric distance from string (e.g., '38km from you')
+    const getDistance = (m) => {
+      const match = m.distance.match(/(\d+)/);
+      return match ? parseInt(match[1], 10) : Infinity;
+    };
+    sortedManufacturers.sort((a, b) => getDistance(a) - getDistance(b));
+  } else if (sortOrder === "Alphabetical: A-Z") {
+    sortedManufacturers.sort((a, b) => a.name.localeCompare(b.name));
+  }
 
   // Get total results count
-  const resultsCount = filteredManufacturers.length
+  const resultsCount = sortedManufacturers.length
 
   // Handle province click
   const handleProvinceClick = (provinceName) => {
-    setActiveProvince(provinceName === activeProvince ? null : provinceName)
+    if (provinceName === activeProvince) {
+      setActiveProvince(null)
+      setActiveCity(null) // Reset city when province is deselected
+    } else {
+      setActiveProvince(provinceName)
+      setActiveCity(null) // Reset city when new province is selected
+    }
   }
+
+  // Handle city click
+  const handleCityClick = (cityName) => {
+    setActiveCity(cityName === activeCity ? null : cityName)
+  }
+
+  // Get cities for active province
+  const activeCities = activeProvince 
+    ? provinces.find(p => p.name === activeProvince)?.cities || []
+    : []
 
   // Manufacturer card component
   const ManufacturerCard = ({ manufacturer }) => (
-    <div className="border border-gray-300 rounded bg-white overflow-hidden hover:shadow-md transition-shadow mb-4">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
-        <div className="flex justify-center items-center">
-          <div className="relative h-32 w-32">
-            <Image
-              src={manufacturer.logo || "/placeholder.svg"}
-              alt={manufacturer.name}
-              fill
-              className="object-contain"
-            />
+    <div className="bg-[#fafbfc] border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow mb-4 w-full max-w-xl ml-0 mr-auto p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+      {/* Logo */}
+      <div className="flex-shrink-0 flex items-center justify-center w-full h-40 sm:w-28 sm:h-28 bg-white rounded-md border border-gray-100 mb-2 sm:mb-0">
+        {manufacturer.logo ? (
+          <Image
+            src={manufacturer.logo}
+            alt={manufacturer.name}
+            fill
+            className="object-contain"
+          />
+        ) : (
+          <div className="w-full h-full" />
+        )}
+      </div>
+      {/* Content */}
+      <div className="flex-1 min-w-0 w-full">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+          <h3 className="font-bold text-gray-900 text-base sm:text-lg truncate">{manufacturer.name}</h3>
+          <div className="flex items-center text-xs sm:text-sm text-gray-600 mt-1 sm:mt-0">
+            <Star className="h-4 w-4 text-blue-400 mr-1" />
+            <span className="font-semibold text-blue-500 mr-1">{manufacturer.rating}</span>
+            <span className="text-gray-500">(15 reviews)</span>
+            <span className="ml-1 text-blue-400 cursor-pointer" title="More info">&#9432;</span>
           </div>
         </div>
-        <div className="md:col-span-3">
-          <div className="flex justify-between items-start">
-            <h3 className="font-bold text-gray-800 text-xl">{manufacturer.name}</h3>
-            <div className="flex items-center">
-              <div className="text-sm text-gray-600 mr-1">Current Google Rating:</div>
-              <div className="flex items-center">
-                <span className="font-bold text-gray-800 mr-1">{manufacturer.rating}</span>
-                <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                <span className="text-sm text-gray-600 ml-1">out of 5</span>
-              </div>
-            </div>
-          </div>
-
-          <p className="text-sm text-gray-600 my-2">{manufacturer.description}</p>
-
-          <div className="flex justify-between items-center mt-4">
-            <div className="text-blue-600 font-semibold">{manufacturer.tombstonesListed} Tombstones Listed</div>
-            <div className="flex items-center text-gray-600">
-              <MapPin className="h-4 w-4 mr-1" />
-              <span>
-                {manufacturer.location} • {manufacturer.distance}
-              </span>
-            </div>
+        <p className="text-xs sm:text-sm text-gray-700 mt-1 truncate">{manufacturer.description}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 gap-1">
+          <Link href="#" className="text-blue-600 font-semibold text-xs sm:text-sm hover:underline">
+            {manufacturer.tombstonesListed} Tombstones Listed
+          </Link>
+          <div className="flex items-center text-gray-500 text-xs mt-1 sm:mt-0">
+            <MapPin className="h-4 w-4 mr-1" />
+            <span>{manufacturer.location} • {manufacturer.distance}</span>
           </div>
         </div>
       </div>
@@ -236,26 +291,25 @@ export default function ManufacturersPage() {
 
       {/* Category Tabs */}
       <div className="bg-gray-800 text-white">
-        <div className="container mx-auto">
-          <div className="flex overflow-x-auto">
-            {["FULL TOMBSTONE", "PREMIUM", "DOUBLE / FAMILY", "CHILD", "HEAD & BASE", "CREMATION & URNS"].map(
-              (tab, index) => (
-                <button
-                  key={index}
-                  className={`px-4 py-3 text-xs font-medium whitespace-nowrap ${index === 0 ? "bg-gray-700" : ""}`}
-                >
-                  {tab}
-                </button>
-              ),
-            )}
+        <div className="container mx-auto px-4">
+          <div className="flex overflow-x-auto w-full max-w-6xl mx-auto md:ml-52">
+            {CATEGORY_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                className={`px-4 py-3 text-xs font-medium whitespace-nowrap ${activeCategory === tab.id ? "bg-gray-700" : ""}`}
+                onClick={() => setActiveCategory(tab.id)}
+              >
+                {tab.name}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Search Filters */}
       <div className="bg-gray-800 py-4">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row gap-2">
+        <div className="container mx-auto px-4 flex justify-center">
+          <div className="flex flex-col md:flex-row gap-2 w-full max-w-4xl justify-center items-center">
             <div className="relative flex-grow">
               <div className="relative">
                 <input
@@ -327,16 +381,16 @@ export default function ManufacturersPage() {
                 </div>
               </div>
             </div>
-            <button className="bg-amber-500 hover:bg-amber-600 text-white p-2 px-4 rounded transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400">
+            <button className="bg-amber-500 hover:bg-amber-600 text-white h-10 px-4 py-0 text-sm rounded transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400 whitespace-nowrap">
               <Search className="h-4 w-4" />
-              <span>Search for Manufacturers</span>
+              <span className="truncate">Search for Manufacturers</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Breadcrumb */}
-      <div className="container mx-auto px-4 py-4 bg-gray-50">
+      <div className="container mx-auto px-4 py-4 bg-gray-50 md:ml-32">
         <div className="max-w-6xl mx-auto">
           <nav className="text-sm mb-4" aria-label="Breadcrumb">
             <ol className="flex items-center space-x-1">
@@ -373,143 +427,128 @@ export default function ManufacturersPage() {
           </nav>
 
           <h1 className="text-2xl font-bold text-gray-800 mb-6">Manufacturers in {activeProvince || "South Africa"}</h1>
-        </div>
-      </div>
 
-      <div className="container mx-auto px-4 py-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col lg:flex-row gap-6">
-            {/* Manufacturers Listing - Left Side */}
-            <div className="w-full lg:w-2/3">
-              {/* Results Header */}
-              <div className="flex justify-between items-center mb-4">
-                <p className="text-gray-600">{resultsCount} Results</p>
-                <div className="flex items-center">
-                  <span className="text-sm text-gray-600 mr-2">Sort by</span>
-                  <select
-                    className="p-1 border border-gray-300 rounded text-sm"
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value)}
-                  >
-                    <option>Default</option>
-                    <option>Rating: High to Low</option>
-                    <option>Listings: Most to Least</option>
-                    <option>Distance: Nearest First</option>
-                    <option>Alphabetical: A-Z</option>
-                  </select>
-                </div>
+          {/* Results Header and columns in same max-width container */}
+          <div className="ml-0 sm:ml-0 w-full max-w-4xl">
+            <div className="flex justify-between items-center mb-4 w-full bg-gray-100 px-4 py-2 pr-0 rounded">
+              <span className="font-bold text-lg text-gray-800">{resultsCount}</span>
+              <span className="text-gray-600 ml-2">Results</span>
+              <div className="flex items-center w-full max-w-xs justify-end">
+                <span className="text-sm font-semibold text-gray-700 mr-2">Sort by</span>
+                <select
+                  className="p-1 border border-gray-300 rounded text-sm font-semibold text-blue-600 bg-white"
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                >
+                  <option>Default</option>
+                  <option>Rating: High to Low</option>
+                  <option>Listings: Most to Least</option>
+                  <option>Distance: Nearest First</option>
+                  <option>Alphabetical: A-Z</option>
+                </select>
               </div>
-
-              {/* Manufacturers List */}
-              <div className="space-y-4">
-                {filteredManufacturers.map((manufacturer) => (
-                  <ManufacturerCard key={manufacturer.id} manufacturer={manufacturer} />
-                ))}
-              </div>
-
-              {/* Pagination */}
-              {resultsCount > 5 && (
-                <div className="mt-8 flex justify-center">
-                  <nav className="inline-flex rounded-md shadow">
-                    <a
-                      href="#"
-                      className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                    >
-                      Previous
-                    </a>
-                    <a
-                      href="#"
-                      className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-blue-600 hover:bg-blue-50"
-                    >
-                      1
-                    </a>
-                    <a
-                      href="#"
-                      className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                    >
-                      2
-                    </a>
-                    <a
-                      href="#"
-                      className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                    >
-                      Next
-                    </a>
-                  </nav>
-                </div>
-              )}
             </div>
 
-            {/* Sidebar - Right Side */}
-            <div className="w-full lg:w-1/3">
-              {/* Manufacturers by Province */}
-              <div className="bg-white border border-gray-300 rounded p-4 mb-6">
-                <h2 className="font-bold text-gray-800 mb-4">
-                  {activeProvince ? `Manufacturers in ${activeProvince}` : "Manufacturers by Province"}
-                </h2>
-
-                {!activeProvince ? (
-                  // Show all provinces
-                  <ul className="space-y-2">
-                    {provinces.map((province) => (
-                      <li key={province.name}>
-                        <button
-                          onClick={() => handleProvinceClick(province.name)}
-                          className="text-blue-600 hover:text-blue-800 hover:underline transition-colors text-left w-full"
-                        >
-                          {province.name}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  // Show cities in the active province
-                  <div>
-                    <div className="mb-4 text-sm bg-blue-50 p-3 rounded border border-blue-100">
-                      <p>By Province then by Town or City filtering</p>
-                      <p className="mt-1">
-                        When you click on a province, all manufacturers only relevant to that province will show up.
-                      </p>
-                      <p className="mt-1">
-                        Then if a more specific town or city in that province is selected, only manufacturers in that
-                        town or city will show up.
-                      </p>
-                    </div>
-
-                    <ul className="space-y-2">
-                      {provinces
-                        .find((p) => p.name === activeProvince)
-                        ?.cities.map((city) => (
-                          <li key={city}>
-                            <button className="text-blue-600 hover:text-blue-800 hover:underline transition-colors text-left w-full">
-                              {city}
-                            </button>
-                          </li>
-                        ))}
-                    </ul>
-
-                    <button
-                      onClick={() => setActiveProvince(null)}
-                      className="mt-4 text-gray-600 hover:text-gray-800 text-sm flex items-center"
-                    >
-                      ← Back to all provinces
-                    </button>
+            {/* Two-column layout under results header */}
+            <div className="flex flex-col md:flex-row gap-0 w-auto">
+              {/* Left: Manufacturers List and Pagination */}
+              <div className="w-auto md:w-4/5 flex flex-col space-y-4 items-start">
+                {sortedManufacturers.map((manufacturer) => (
+                  <ManufacturerCard key={manufacturer.id} manufacturer={manufacturer} />
+                ))}
+                {resultsCount > 5 && (
+                  <div className="mt-8 flex justify-start w-auto">
+                    <nav className="inline-flex rounded-md shadow">
+                      <a
+                        href="#"
+                        className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                      >
+                        Previous
+                      </a>
+                      <a
+                        href="#"
+                        className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-blue-600 hover:bg-blue-50"
+                      >
+                        1
+                      </a>
+                      <a
+                        href="#"
+                        className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                      >
+                        2
+                      </a>
+                      <a
+                        href="#"
+                        className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                      >
+                        Next
+                      </a>
+                    </nav>
                   </div>
                 )}
               </div>
-
-              {/* Other Manufacturer Groups */}
-              <div className="bg-white border border-gray-300 rounded p-4">
-                <h2 className="font-bold text-gray-800 mb-4">Other Manufacturer Groups</h2>
-                <ul className="space-y-2">
-                  {manufacturerGroups.map((group) => (
-                    <li key={group}>
-                      <Link href="#" className="text-blue-600 hover:text-blue-800 hover:underline transition-colors">
-                        {group}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+              {/* Right: Sidebar */}
+              <div className="w-auto md:w-1/5 flex flex-col gap-4 items-start">
+                <div className="bg-white border border-gray-300 rounded p-2 w-full">
+                  <h2 className="font-bold text-gray-800 mb-4">
+                    {activeProvince ? `Manufacturers in ${activeProvince}` : "Manufacturers by Province"}
+                  </h2>
+                  {/* Province filters */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-3 text-gray-800">Manufacturers by Province</h3>
+                    <div className="space-y-2">
+                      {provinces.map((province) => (
+                        <div key={province.name}>
+                          <button
+                            onClick={() => handleProvinceClick(province.name)}
+                            className={`flex items-center justify-between w-full px-3 py-2 text-left rounded-md transition-colors ${
+                              activeProvince === province.name
+                                ? "bg-blue-100 text-blue-700"
+                                : "hover:bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            <span>{province.name}</span>
+                            <ChevronRight className={`w-4 h-4 transition-transform ${
+                              activeProvince === province.name ? "rotate-90" : ""
+                            }`} />
+                          </button>
+                          
+                          {/* City list - only show for active province */}
+                          {activeProvince === province.name && (
+                            <div className="ml-4 mt-2 space-y-1">
+                              {province.cities.map((city) => (
+                                <button
+                                  key={city}
+                                  onClick={() => handleCityClick(city)}
+                                  className={`block w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${
+                                    activeCity === city
+                                      ? "bg-blue-50 text-blue-700"
+                                      : "hover:bg-gray-50 text-gray-600"
+                                  }`}
+                                >
+                                  {city}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Other manufacturer groups */}
+                  <div className="bg-white border border-gray-300 rounded p-2 w-full">
+                    <h2 className="font-bold text-gray-800 mb-4">Other Manufacturer Groups</h2>
+                    <ul className="space-y-2">
+                      {manufacturerGroups.map((group) => (
+                        <li key={group}>
+                          <Link href="#" className="text-blue-600 hover:text-blue-800 hover:underline transition-colors">
+                            {group}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import React from "react"
+import { FavoriteButton } from "./favorite-button"
 
 export default function ProductShowcase({ listing }) {
   if (!listing) {
@@ -31,7 +32,12 @@ export default function ProductShowcase({ listing }) {
           <p className="text-sm text-gray-700 mb-4">{listing.location} | {listing.distance} from you</p>
         </div>
         <div className="md:text-right mt-4 md:mt-0">
-          <div className="text-blue-600 text-3xl font-bold mb-2">{listing.price}</div>
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-blue-600 text-3xl font-bold">{listing.price}</span>
+            {listing.originalPrice && (
+              <span className="text-gray-500 text-xl line-through">{listing.originalPrice}</span>
+            )}
+          </div>
           <div className="text-sm text-gray-600">
             <Link href="#" className="hover:underline">&lt; Previous</Link>
             <span className="mx-1">|</span>
@@ -53,9 +59,9 @@ export default function ProductShowcase({ listing }) {
                   fill
                   className="object-cover"
                 />
-                {/* Heart Icon Overlay */}
+                {/* Favorite Button Overlay */}
                 <div className="absolute top-3 right-3 z-10">
-                  <Heart className="w-6 h-6 text-gray-400" />
+                  <FavoriteButton product={listing} size="md" />
                 </div>
               </div>
               <div className="grid grid-cols-6 gap-2">
@@ -161,7 +167,12 @@ export default function ProductShowcase({ listing }) {
           {/* Price and Notes Card */}
           <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
             <h3 className="text-sm text-gray-700 font-semibold mb-1">Price</h3>
-            <div className="text-blue-600 text-2xl font-bold mb-4">{listing.price}</div>
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-blue-600 text-2xl font-bold">{listing.price}</span>
+              {listing.originalPrice && (
+                <span className="text-gray-500 text-lg line-through">{listing.originalPrice}</span>
+              )}
+            </div>
 
             <p className="text-xs text-gray-600 mb-2">
               <span className="font-semibold">Please note:</span> The data displayed above may not be the exact data for the actual Tombstone being offered for
@@ -302,9 +313,7 @@ export default function ProductShowcase({ listing }) {
           <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
             {/* Add to Favorites - moved to top */}
             <div className="mb-4">
-              <button className="text-sm text-blue-500 hover:underline flex items-center justify-start">
-                <Heart size={20} className="mr-1 text-gray-400" /> Add to Favourites
-              </button>
+              <FavoriteButton product={listing} size="md" />
             </div>
 
             <hr className="my-4 border-gray-200" />

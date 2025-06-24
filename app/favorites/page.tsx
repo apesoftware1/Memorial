@@ -6,12 +6,6 @@ export const metadata = {
   description: "View and manage your favorite tombstones",
 }
 
-/*
 export default function FavoritesPage() {
-  return (
-    <div>
-      Favorites Page Content
-    </div>
-  )
+  return <FavoritesClientContent />
 }
-*/

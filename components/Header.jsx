@@ -138,10 +138,10 @@ export default function Header({
           <div className="absolute right-0 mt-1 w-64 bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50">
             <div className="py-1">
               <Link
-                href="/login/manufacturer"
+                href="/manufacturers/login-page"
                 className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
               >
-                MANUFACTURERS LOGIN PORTAL
+                MANUFACTURER LOGIN PORTAL
               </Link>
             </div>
           </div>
@@ -293,10 +293,10 @@ export default function Header({
           {mobileDropdown === "login" && (
             <div className="pl-4 mt-2">
               <Link
-                href="/login/manufacturer"
+                href="/manufacturers/login-page"
                 className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
               >
-                MANUFACTURERS LOGIN PORTAL
+                MANUFACTURER LOGIN PORTAL
               </Link>
             </div>
           )}

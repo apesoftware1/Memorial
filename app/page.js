@@ -116,7 +116,7 @@ import { premiumListings, manufacturerProducts, standardListings } from '@/lib/d
     "CREMATION": "/2560(w)x400px(h)_Banner_OldYoungCouple.jpg",
 };
 
-  const featuredListings = [
+export const featuredListings = [
     {
       id: "white-Cross",
       image: "/X20Tombstone_Pic Sets/cross1/Cross_Main.jpg",
@@ -411,8 +411,13 @@ export default function Home() {
     return filteredListings;
   }, [filters, selectedCategory]);
 
+  // Get filtered listings
+  const filteredListings = getFilteredListings();
+  const filteredPremiumListings = filteredListings.filter(l => premiumListings.some(p => p.id === l.id));
+  const filteredStandardListings = filteredListings.filter(l => standardListings.some(s => s.id === l.id));
+
   // Get filtered listings count
-  const filteredCount = getFilteredListings().length;
+  const filteredCount = filteredListings.length;
 
   // Add loading state
   const [isSearching, setIsSearching] = useState(false);
@@ -543,12 +548,12 @@ export default function Home() {
           {/* Content Container */}
           <div className="relative z-10 w-full md:max-w-lg md:ml-56 md:mr-auto flex flex-col items-center h-full pt-0 md:pt-20 -ml-[4px]">
             {/* Category Tabs Container */}
-            <div className="w-full md:max-w-lg bg-[#1a2238] overflow-hidden">
-              <CategoryTabs
-                selectedCategory={selectedCategory}
-                setSelectedCategory={setSelectedCategory}
-              />
-            </div>
+              <div className="w-full md:max-w-lg bg-[#1a2238] overflow-hidden">
+            <CategoryTabs
+              selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
+            />
+              </div>
 
             {/* Main Search Box */}
             <SearchContainer
@@ -620,7 +625,7 @@ export default function Home() {
                 <div className="flex-grow border-t border-gray-300"></div>
               </div>
               <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
-              <DynamicPremiumListings listings={premiumListingsSection1} />
+              <DynamicPremiumListings listings={filteredPremiumListings.slice(0, 5)} />
             </div>
           </div>
         </section>
@@ -640,7 +645,7 @@ export default function Home() {
                 <div className="flex-grow border-t border-gray-300"></div>
               </div>
               <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
-              <DynamicPremiumListings listings={premiumListingsSection2} />
+              <DynamicPremiumListings listings={filteredPremiumListings.slice(5, 10)} />
             </div>
           </div>
         </section>
