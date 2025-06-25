@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import type { FavoriteProduct } from "@/context/favorites-context"
 import { FavoriteButton } from "./favorite-button"
+import { manufacturerLogos, getManufacturerSlug } from "@/lib/data"
 
 interface PremiumListing {
   id?: string
@@ -64,21 +65,27 @@ export function PremiumListingCard({
     tagColor: listing.tagColor,
   }
 
-  const productUrl = href || `/tombstones/${listing.id}`
+  const productUrl = href || `/tombstones-for-sale/${listing.id}`
+
+  const logoSrc = manufacturerLogos[listing.manufacturer as keyof typeof manufacturerLogos] || "/placeholder-logo.svg"
+  const profileSlug = getManufacturerSlug(listing.manufacturer)
+  const profileUrl = `/manufacturers/manufacturers-Profile-Page/${profileSlug}`
 
   return (
-    <div className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto hover:shadow-md hover:ring-2 hover:ring-[#D4AF37] transition-all duration-300">
+    <div className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto hover:shadow-md hover:ring-2 hover:ring-[#D4AF37] transition-all duration-300 h-full flex flex-col">
       {/* Mobile Layout (up to 768px) */}
       <div className="relative flex flex-col md:hidden">
         {/* Manufacturer Logo in its own box, bottom right corner (Mobile only) */}
         <div className="absolute bottom-3 right-3 z-20 bg-gray-50 p-2 rounded-lg md:hidden">
-          <Image
-            src="/new files/company logos/Tombstone Manufacturer Logo-SwissStone.svg"
-            alt="Tombstone Manufacturer Logo"
-            width={96}
-            height={96}
-            className="object-contain"
-          />
+          <Link href={profileUrl} prefetch={false} aria-label={`View ${listing.manufacturer} profile`}>
+            <Image
+              src={logoSrc}
+              alt={`${listing.manufacturer} Logo`}
+              width={96}
+              height={96}
+              className="object-contain"
+            />
+          </Link>
         </div>
         {/* Main Image Container */}
         <div className="bg-white px-3 py-3">
@@ -136,8 +143,8 @@ export function PremiumListingCard({
 
             {/* Badge (Mobile) */}
             <div className="mb-2">
-              <Badge className={cn("text-white text-xs px-2 py-0.5", isFirstCard ? "bg-memoryPink" : listing.tagColor)}>
-                {isFirstCard ? "HeartFelt Memory" : listing.tag}
+              <Badge className={cn("text-white text-xs px-2 py-0.5", listing.tagColor)}>
+                {listing.tag}
               </Badge>
             </div>
 
@@ -158,7 +165,9 @@ export function PremiumListingCard({
 
           {/* Manufacturer Information (Mobile) */}
           <div className="flex flex-col mt-0">
-            <div className="font-medium text-gray-900 text-base mb-2">{isFirstCard ? "Swiss Stone Masons" : listing.manufacturer}</div>
+            <Link href={profileUrl} prefetch={false} className="font-medium text-gray-900 text-base mb-2 underline" aria-label={`View ${listing.manufacturer} profile`}>
+              {listing.manufacturer}
+            </Link>
             <div className="space-y-1.5">
               {listing.enquiries && (
                 <div className="flex items-center text-green-600">
@@ -219,8 +228,8 @@ export function PremiumListingCard({
 
               {/* Badge */}
               <div className="mb-2">
-                <Badge className={cn("text-white text-xs px-2 py-0.5", isFirstCard ? "bg-memoryPink" : listing.tagColor)}>
-                  {isFirstCard ? "HeartFelt Memory" : listing.tag}
+                <Badge className={cn("text-white text-xs px-2 py-0.5", listing.tagColor)}>
+                  {listing.tag}
                 </Badge>
               </div>
 
@@ -243,7 +252,9 @@ export function PremiumListingCard({
             <div className="flex justify-between items-stretch space-x-4 mt-2">
               {/* Left Column for text details */}
               <div className="flex-1 space-y-1.5">
-                <div className="font-medium text-gray-900 text-base">{isFirstCard ? "Swiss Stone Masons" : listing.manufacturer}</div>
+                <Link href={profileUrl} prefetch={false} className="font-medium text-gray-900 text-base mb-2 underline" aria-label={`View ${listing.manufacturer} profile`}>
+                  {listing.manufacturer}
+                </Link>
                 {listing.enquiries && (
                   <div className="flex items-center text-green-600">
                     <Check className="w-3.5 h-3.5 mr-1" />
@@ -264,13 +275,15 @@ export function PremiumListingCard({
               </div>
               {/* Right Column for Logo (Desktop only) */}
               <div className="w-1/3 flex-shrink-0 flex flex-col items-end justify-end hidden md:flex">
-                <Image
-                  src="/new files/company logos/Tombstone Manufacturer Logo-SwissStone.svg"
-                  alt="Tombstone Manufacturer Logo"
-                  width={150}
-                  height={300}
-                  className="object-contain mt-auto mb-2"
-                />
+                <Link href={profileUrl} prefetch={false} aria-label={`View ${listing.manufacturer} profile`}>
+                  <Image
+                    src={logoSrc}
+                    alt={`${listing.manufacturer} Logo`}
+                    width={150}
+                    height={300}
+                    className="object-contain mt-auto mb-2"
+                  />
+                </Link>
               </div>
             </div>
           </div>

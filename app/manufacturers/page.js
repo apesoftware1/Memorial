@@ -1,10 +1,13 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ChevronDown, MapPin, Search, Star, ChevronRight } from "lucide-react"
 import Header from "@/components/Header"
+import { manufacturerLogos, getManufacturerSlug } from "@/lib/data"
+import LocationModal from "@/components/LocationModal"
+import { createPortal } from "react-dom"
 
 export default function ManufacturersPage() {
   // State for UI controls (for Header component)
@@ -41,12 +44,11 @@ export default function ManufacturersPage() {
   // Manufacturers data
   const manufacturers = [
     {
-      id: "example-tombstone",
-      name: "Example Tombstone Co.",
-      logo: "",
+      id: "swiss-stone-masons",
+      name: "Swiss Stone Masons",
+      logo: manufacturerLogos["Swiss Stone Masons"] || "/placeholder-logo.svg",
       rating: 4.7,
-      description:
-        "Example Tombstone Company is based in Durban North, KZN and prides itself on quality craftsmanship and attention to detail.",
+      description: "Swiss Stone Masons is based in Durban North, KZN and prides itself on quality craftsmanship and attention to detail.",
       tombstonesListed: 38,
       location: "Durban North",
       distance: "38km from you",
@@ -54,66 +56,15 @@ export default function ManufacturersPage() {
       category: 'tombstones',
     },
     {
-      id: "shine-tombstones",
-      name: "Shine Tombstones",
-      logo: "",
-      rating: 4.7,
-      description:
-        "Shine Tombstones is based in Richards Bay, KZN and prides itself on innovative designs and premium materials.",
-      tombstonesListed: 62,
-      location: "Richards Bay",
-      distance: "150km from you",
-      province: "KwaZulu Natal",
-      category: 'tombstones',
-    },
-    {
-      id: "forever-tombstones",
-      name: "Forever Tombstones",
-      logo: "",
-      rating: 4.7,
-      description:
-        "Forever Tombstones was founded in 1993. Each tombstone is carefully gone through a rigorous quality control process.",
-      tombstonesListed: 125,
-      location: "Pinetown",
-      distance: "45km from you",
-      province: "KwaZulu Natal",
-      category: 'tombstones',
-    },
-    {
-      id: "marble-masters",
-      name: "Marble Masters",
-      logo: "",
+      id: "acme-inc",
+      name: "Acme Inc.",
+      logo: manufacturerLogos["Acme Inc."] || "/placeholder-logo.svg",
       rating: 4.5,
-      description: "Marble Masters specializes in high-quality marble tombstones with custom engravings and designs.",
-      tombstonesListed: 47,
-      location: "Pretoria",
-      distance: "15km from you",
-      province: "Gauteng",
-      category: 'tombstones',
-    },
-    {
-      id: "granite-specialists",
-      name: "Granite Specialists",
-      logo: "",
-      rating: 4.8,
-      description: "Granite Specialists offers premium granite tombstones with a 25-year warranty on all products.",
-      tombstonesListed: 83,
+      description: "Acme Inc. is a leading provider of innovative memorial solutions across South Africa.",
+      tombstonesListed: 42,
       location: "Johannesburg",
       distance: "25km from you",
       province: "Gauteng",
-      category: 'tombstones',
-    },
-    {
-      id: "cape-memorials",
-      name: "Cape Memorials",
-      logo: "",
-      rating: 4.6,
-      description:
-        "Cape Memorials has been serving the Western Cape region for over 30 years with quality memorial products.",
-      tombstonesListed: 56,
-      location: "Cape Town",
-      distance: "5km from you",
-      province: "Western Cape",
       category: 'tombstones',
     },
   ]
@@ -231,45 +182,48 @@ export default function ManufacturersPage() {
     : []
 
   // Manufacturer card component
-  const ManufacturerCard = ({ manufacturer }) => (
-    <div className="bg-[#fafbfc] border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow mb-4 w-full max-w-xl ml-0 mr-auto p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-      {/* Logo */}
-      <div className="flex-shrink-0 flex items-center justify-center w-full h-40 sm:w-28 sm:h-28 bg-white rounded-md border border-gray-100 mb-2 sm:mb-0">
-        {manufacturer.logo ? (
-          <Image
-            src={manufacturer.logo}
-            alt={manufacturer.name}
-            fill
-            className="object-contain"
-          />
-        ) : (
-          <div className="w-full h-full" />
-        )}
-      </div>
-      {/* Content */}
-      <div className="flex-1 min-w-0 w-full">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-          <h3 className="font-bold text-gray-900 text-base sm:text-lg truncate">{manufacturer.name}</h3>
-          <div className="flex items-center text-xs sm:text-sm text-gray-600 mt-1 sm:mt-0">
-            <Star className="h-4 w-4 text-blue-400 mr-1" />
-            <span className="font-semibold text-blue-500 mr-1">{manufacturer.rating}</span>
-            <span className="text-gray-500">(15 reviews)</span>
-            <span className="ml-1 text-blue-400 cursor-pointer" title="More info">&#9432;</span>
-          </div>
-        </div>
-        <p className="text-xs sm:text-sm text-gray-700 mt-1 truncate">{manufacturer.description}</p>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 gap-1">
-          <Link href="#" className="text-blue-600 font-semibold text-xs sm:text-sm hover:underline">
-            {manufacturer.tombstonesListed} Tombstones Listed
+  const ManufacturerCard = ({ manufacturer }) => {
+    const profileUrl = `/manufacturers/manufacturers-Profile-Page/${getManufacturerSlug(manufacturer.name)}`;
+    return (
+      <div className="bg-[#fafbfc] border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow mb-4 w-full max-w-xl ml-0 mr-auto p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+        {/* Logo */}
+        <div className="relative flex-shrink-0 flex items-center justify-center w-full h-40 sm:w-28 sm:h-28 bg-white rounded-md border border-gray-100 mb-2 sm:mb-0">
+          <Link href={profileUrl} prefetch={false} aria-label={`View ${manufacturer.name} profile`}>
+            <Image
+              src={manufacturer.logo}
+              alt={manufacturer.name}
+              fill
+              className="object-contain"
+            />
           </Link>
-          <div className="flex items-center text-gray-500 text-xs mt-1 sm:mt-0">
-            <MapPin className="h-4 w-4 mr-1" />
-            <span>{manufacturer.location} • {manufacturer.distance}</span>
+        </div>
+        {/* Content */}
+        <div className="flex-1 min-w-0 w-full">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <Link href={profileUrl} prefetch={false} className="font-bold text-gray-900 text-base sm:text-lg truncate" aria-label={`View ${manufacturer.name} profile`}>
+              {manufacturer.name}
+            </Link>
+            <div className="flex items-center text-xs sm:text-sm text-gray-600 mt-1 sm:mt-0">
+              <Star className="h-4 w-4 text-blue-400 mr-1" />
+              <span className="font-semibold text-blue-500 mr-1">{manufacturer.rating}</span>
+              <span className="text-gray-500">(15 reviews)</span>
+              <span className="ml-1 text-blue-400 cursor-pointer" title="More info">&#9432;</span>
+            </div>
+          </div>
+          <p className="text-xs sm:text-sm text-gray-700 mt-1 truncate">{manufacturer.description}</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 gap-1">
+            <Link href="#" className="text-blue-600 font-semibold text-xs sm:text-sm hover:underline">
+              {manufacturer.tombstonesListed} Tombstones Listed
+            </Link>
+            <div className="flex items-center text-gray-500 text-xs mt-1 sm:mt-0">
+              <MapPin className="h-4 w-4 mr-1" />
+              <span>{manufacturer.location} • {manufacturer.distance}</span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   // Handlers for Header component
   const handleMobileMenuToggle = useCallback(() => {
@@ -279,6 +233,17 @@ export default function ManufacturersPage() {
   const handleMobileDropdownToggle = useCallback((section) => {
     setUiState(prev => ({ ...prev, mobileDropdown: prev.mobileDropdown === section ? null : section }))
   }, []);
+
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => { setIsClient(true); }, []);
+
+  // Sample locations data (replace with real data as needed)
+  const locationsData = [
+    { id: 'all', name: 'All Locations', count: 2 },
+    { id: 'durban-north', name: 'Durban North', count: 1 },
+    { id: 'johannesburg', name: 'Johannesburg', count: 1 },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -369,9 +334,10 @@ export default function ManufacturersPage() {
                 <input
                   type="text"
                   placeholder="Location"
-                  className="w-full p-2 pl-10 pr-8 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  className="w-full p-2 pl-10 pr-8 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent cursor-pointer bg-white"
                   value={searchFilters.location}
-                  onChange={(e) => setSearchFilters({ ...searchFilters, location: e.target.value })}
+                  readOnly
+                  onClick={() => setLocationModalOpen(true)}
                 />
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                   <MapPin className="h-4 w-4 text-gray-400" />
@@ -379,6 +345,19 @@ export default function ManufacturersPage() {
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                   <ChevronDown className="h-4 w-4 text-gray-400" />
                 </div>
+                {locationModalOpen && isClient &&
+                  createPortal(
+                    <LocationModal
+                      isOpen={locationModalOpen}
+                      onClose={() => setLocationModalOpen(false)}
+                      locationsData={locationsData}
+                      onSelectLocation={(loc) => {
+                        setSearchFilters({ ...searchFilters, location: typeof loc === 'string' ? loc : 'Near me' });
+                        setLocationModalOpen(false);
+                      }}
+                    />, document.body
+                  )
+                }
               </div>
             </div>
             <button className="bg-amber-500 hover:bg-amber-600 text-white h-10 px-4 py-0 text-sm rounded transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400 whitespace-nowrap">
@@ -615,3 +594,8 @@ export default function ManufacturersPage() {
     </div>
   )
 }
+
+export const manufacturerProfileSlugs = {
+  "Swiss Stone Masons": "swiss-stone-masons",
+  "Acme Inc.": "acme-inc",
+};

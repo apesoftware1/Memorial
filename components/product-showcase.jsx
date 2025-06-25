@@ -10,6 +10,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import React from "react"
 import { FavoriteButton } from "./favorite-button"
 
+// Manufacturer info mapping
+const manufacturerInfo = {
+  "Swiss Stone Masons": {
+    logo: "/new files/company logos/Tombstone Manufacturer Logo-SwissStone.svg",
+    rating: 4.7,
+    hours: [
+      { day: "Monday to Friday", time: "09:00 - 16:00" },
+      { day: "Saturday", time: "09:00 - 14:00" },
+      { day: "Sundays", time: "Closed" },
+      { day: "Public Holidays", time: "09:30 - 14:00" },
+    ],
+  },
+  "Acme Inc.": {
+    logo: "/placeholder-logo.svg",
+    rating: 4.5,
+    hours: [
+      { day: "Monday to Friday", time: "08:00 - 17:00" },
+      { day: "Saturday", time: "09:00 - 13:00" },
+      { day: "Sundays", time: "Closed" },
+      { day: "Public Holidays", time: "09:00 - 13:00" },
+    ],
+  },
+};
+
 export default function ProductShowcase({ listing }) {
   if (!listing) {
     return null;
@@ -18,6 +42,9 @@ export default function ProductShowcase({ listing }) {
   // Combine main image and thumbnails, ensuring no duplicates
   const allImages = [listing.image, ...(listing.thumbnailImages?.filter(img => img !== listing.image) || [])];
   const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
+
+  // Manufacturer info
+  const info = manufacturerInfo[listing.manufacturer] || manufacturerInfo["Swiss Stone Masons"];
 
   return (
     <div className="max-w-6xl mx-auto bg-white">
@@ -232,9 +259,9 @@ export default function ProductShowcase({ listing }) {
               {/* Right Column - Manufacturer Info */}
               <div className="flex flex-col items-center justify-start text-center">
                 <div className="relative h-24 w-48 mb-2">
-                  <Image src="/new files/company logos/Tombstone Manufacturer Logo-SwissStone.svg" alt="SwissStone Logo" fill className="object-contain" />
+                  <Image src={info.logo} alt={listing.manufacturer + ' Logo'} fill className="object-contain" />
                 </div>
-                <div className="text-xs text-blue-500 mb-4">Current Google Rating: 4.7 out of 5</div>
+                <div className="text-xs text-blue-500 mb-4">Current Google Rating: {info.rating} out of 5</div>
                 <button className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded max-w-xs">
                   Show Contact Number
                 </button>
@@ -344,26 +371,21 @@ export default function ProductShowcase({ listing }) {
             <div className="text-center mb-4">
               <div className="flex justify-center mb-2">
                 <div className="relative h-32 w-64">
-                  <Image src="/new files/company logos/Tombstone Manufacturer Logo-SwissStone.svg" alt="SwissStone Logo" fill className="object-contain" />
+                  <Image src={info.logo} alt={listing.manufacturer + ' Logo'} fill className="object-contain" />
                 </div>
               </div>
-              <div className="text-xs text-blue-500">Current Google Rating: 4.7 out of 5</div>
+              <div className="text-xs text-blue-500">Current Google Rating: {info.rating} out of 5</div>
             </div>
 
             {/* Business Hours */}
             <div className="mb-4">
               <div className="grid grid-cols-2 gap-1 text-sm">
-                <div className="font-medium">Monday to Friday</div>
-                <div>09:00 - 16:00</div>
-
-                <div className="font-medium">Saturday</div>
-                <div>09:00 - 14:00</div>
-
-                <div className="font-medium">Sundays</div>
-                <div>Closed</div>
-
-                <div className="font-medium">Public Holidays</div>
-                <div>09:30 - 14:00</div>
+                {info.hours.map((h, i) => (
+                  <React.Fragment key={i}>
+                    <div className="font-medium">{h.day}</div>
+                    <div>{h.time}</div>
+                  </React.Fragment>
+                ))}
               </div>
             </div>
 

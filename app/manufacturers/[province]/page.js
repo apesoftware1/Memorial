@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { ChevronDown, MapPin, Search, Star, ChevronRight } from "lucide-react"
 import Header from "@/components/Header"
+import { manufacturerLogos } from "@/lib/data"
 
 export default function ProvinceManufacturersPage({ params }) {
   const { province } = params
@@ -193,7 +194,7 @@ export default function ProvinceManufacturersPage({ params }) {
         <div className="flex justify-center items-center">
           <div className="relative h-32 w-32">
             <Image
-              src={manufacturer.logo || "/placeholder.svg"}
+              src={manufacturerLogos[manufacturer.name] || "/placeholder-logo.svg"}
               alt={manufacturer.name}
               fill
               className="object-contain"
