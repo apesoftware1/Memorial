@@ -330,7 +330,7 @@ export default function TombstonesOnSpecial() {
       <Header />
 
       {/* Search Bar */}
-      <div className="bg-gray-800 py-4">
+      <div className="bg-[#00647A] py-4">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto flex flex-col sm:flex-row gap-2">
             <div className="relative flex-grow">
