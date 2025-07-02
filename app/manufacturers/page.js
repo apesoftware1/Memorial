@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ChevronDown, MapPin, Search, Star, ChevronRight } from "lucide-react"
@@ -185,9 +185,9 @@ export default function ManufacturersPage() {
   const ManufacturerCard = ({ manufacturer }) => {
     const profileUrl = `/manufacturers/manufacturers-Profile-Page/${getManufacturerSlug(manufacturer.name)}`;
     return (
-      <div className="bg-[#fafbfc] border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow mb-4 w-full max-w-xl ml-0 mr-auto p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+      <div className="bg-[#fafbfc] border border-gray-200 shadow-sm hover:shadow-md transition-shadow mb-6 w-full max-w-2xl ml-0 mr-auto p-6 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 min-h-[200px]">
         {/* Logo */}
-        <div className="relative flex-shrink-0 flex items-center justify-center w-full h-40 sm:w-28 sm:h-28 bg-white rounded-md border border-gray-100 mb-2 sm:mb-0">
+        <div className="relative flex-shrink-0 flex items-center justify-center w-full h-44 sm:w-56 sm:h-36 bg-white border border-gray-100 mb-2 sm:mb-0">
           <Link href={profileUrl} prefetch={false} aria-label={`View ${manufacturer.name} profile`}>
             <Image
               src={manufacturer.logo}
@@ -199,11 +199,11 @@ export default function ManufacturersPage() {
         </div>
         {/* Content */}
         <div className="flex-1 min-w-0 w-full">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+          <div className="flex flex-col gap-0">
             <Link href={profileUrl} prefetch={false} className="font-bold text-gray-900 text-base sm:text-lg truncate" aria-label={`View ${manufacturer.name} profile`}>
               {manufacturer.name}
             </Link>
-            <div className="flex items-center text-xs sm:text-sm text-gray-600 mt-1 sm:mt-0">
+            <div className="flex items-center text-xs sm:text-sm text-gray-600 mt-1">
               <Star className="h-4 w-4 text-blue-400 mr-1" />
               <span className="font-semibold text-blue-500 mr-1">{manufacturer.rating}</span>
               <span className="text-gray-500">(15 reviews)</span>
@@ -211,11 +211,11 @@ export default function ManufacturersPage() {
             </div>
           </div>
           <p className="text-xs sm:text-sm text-gray-700 mt-1 truncate">{manufacturer.description}</p>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 gap-1">
+          <div className="flex flex-col gap-1 mt-3">
             <Link href="#" className="text-blue-600 font-semibold text-xs sm:text-sm hover:underline">
               {manufacturer.tombstonesListed} Tombstones Listed
             </Link>
-            <div className="flex items-center text-gray-500 text-xs mt-1 sm:mt-0">
+            <div className="flex items-center text-gray-500 text-xs mt-1">
               <MapPin className="h-4 w-4 mr-1" />
               <span>{manufacturer.location} • {manufacturer.distance}</span>
             </div>
@@ -245,6 +245,19 @@ export default function ManufacturersPage() {
     { id: 'johannesburg', name: 'Johannesburg', count: 1 },
   ];
 
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const sortModalRef = useRef();
+  useEffect(() => {
+    if (!showSortDropdown) return;
+    function handleClick(e) {
+      if (sortModalRef.current && !sortModalRef.current.contains(e.target)) {
+        setShowSortDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showSortDropdown]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header
@@ -255,7 +268,7 @@ export default function ManufacturersPage() {
       />
 
       {/* Category Tabs */}
-      <div className="bg-gray-800 text-white">
+      <div className="bg-[#00647A] text-white">
         <div className="container mx-auto px-4">
           <div className="flex overflow-x-auto w-full max-w-6xl mx-auto md:ml-52">
             {CATEGORY_TABS.map((tab) => (
@@ -272,7 +285,7 @@ export default function ManufacturersPage() {
       </div>
 
       {/* Search Filters */}
-      <div className="bg-gray-800 py-4">
+      <div className="bg-[#00647A] py-4">
         <div className="container mx-auto px-4 flex justify-center">
           <div className="flex flex-col md:flex-row gap-2 w-full max-w-4xl justify-center items-center">
             <div className="relative flex-grow">
@@ -413,18 +426,46 @@ export default function ManufacturersPage() {
               <span className="font-bold text-lg text-gray-800">{resultsCount}</span>
               <span className="text-gray-600 ml-2">Results</span>
               <div className="flex items-center w-full max-w-xs justify-end">
-                <span className="text-sm font-semibold text-gray-700 mr-2">Sort by</span>
-                <select
-                  className="p-1 border border-gray-300 rounded text-sm font-semibold text-blue-600 bg-white"
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value)}
-                >
-                  <option>Default</option>
-                  <option>Rating: High to Low</option>
-                  <option>Listings: Most to Least</option>
-                  <option>Distance: Nearest First</option>
-                  <option>Alphabetical: A-Z</option>
-                </select>
+                {/* Mobile Sort Button */}
+                <div className="sm:hidden flex items-center text-blue-600 font-semibold cursor-pointer select-none" onClick={() => setShowSortDropdown(!showSortDropdown)}>
+                  <span className="mr-1">Sort</span>
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5" stroke="#2196f3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+                {/* Mobile Sort Modal */}
+                {showSortDropdown && (
+                  <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-40 sm:hidden">
+                    <div ref={sortModalRef} className="w-full max-w-md mx-auto rounded-t-2xl bg-[#232323] p-4 pb-8 animate-slide-in-up">
+                      {['Default', 'Rating: High to Low', 'Listings: Most to Least', 'Distance: Nearest First', 'Alphabetical: A-Z'].map(option => (
+                        <div
+                          key={option}
+                          className={`flex items-center justify-between px-2 py-4 text-lg border-b border-[#333] last:border-b-0 cursor-pointer ${sortOrder === option ? 'text-white font-bold' : 'text-gray-200'}`}
+                          onClick={() => { setSortOrder(option); setShowSortDropdown(false); }}
+                        >
+                          <span>{option}</span>
+                          <span className={`ml-2 w-6 h-6 flex items-center justify-center rounded-full border-2 ${sortOrder === option ? 'border-blue-500' : 'border-gray-500'}`}
+                                style={{ background: sortOrder === option ? '#2196f3' : 'transparent' }}>
+                            {sortOrder === option && <span className="block w-3 h-3 bg-white rounded-full"></span>}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Desktop Sort Dropdown */}
+                <div className="hidden sm:flex items-center">
+                  <span className="text-sm font-semibold text-gray-700 mr-2">Sort by</span>
+                  <select
+                    className="p-1 border border-gray-300 rounded text-sm font-semibold text-blue-600 bg-white"
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                  >
+                    <option>Default</option>
+                    <option>Rating: High to Low</option>
+                    <option>Listings: Most to Least</option>
+                    <option>Distance: Nearest First</option>
+                    <option>Alphabetical: A-Z</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -474,7 +515,6 @@ export default function ManufacturersPage() {
                   </h2>
                   {/* Province filters */}
                   <div className="mb-6">
-                    <h3 className="text-lg font-semibold mb-3 text-gray-800">Manufacturers by Province</h3>
                     <div className="space-y-2">
                       {provinces.map((province) => (
                         <div key={province.name}>

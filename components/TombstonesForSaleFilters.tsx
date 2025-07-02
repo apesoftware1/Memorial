@@ -43,10 +43,10 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
 
   // FilterDropdown component
   const FilterDropdown = ({ name, label, options }: { name: string; label: string; options: string[] }) => (
-    <div className="mb-2 relative w-full">
+    <div className="mb-2 relative w-full sm:rounded-none sm:border-b sm:border-gray-200">
       <button
         onClick={() => toggleFilter(name)}
-        className="w-full flex justify-between items-center py-2 px-2 bg-white text-gray-800 font-semibold text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-amber-400 min-h-[36px]"
+        className="w-full flex justify-between items-center py-2 px-2 bg-white text-gray-800 font-semibold text-sm border border-gray-200 sm:border-0 rounded sm:rounded-none focus:outline-none focus:ring-2 focus:ring-amber-400 min-h-[36px] h-[36px] sm:min-h-[56px] sm:h-[56px]"
         aria-expanded={showFilters === name}
         aria-haspopup="true"
         style={{ textAlign: 'left' }}
@@ -84,26 +84,28 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
     <div className="w-full">
       {/* Price Section */}
       <div className="mb-4">
-        <div className="font-bold text-xs text-gray-700 mb-2 tracking-wide">PRICE</div>
-        <div className="grid grid-cols-2 gap-2">
-          <select
-            className="w-full p-2 border border-gray-300 rounded text-sm min-h-[36px]"
-            value={activeFilters.minPrice}
-            onChange={(e) => setActiveFilters({ ...activeFilters, minPrice: e.target.value })}
-          >
-            {mergedOptions.minPrice.map((option: string) => (
-              <option key={option}>{option}</option>
-            ))}
-          </select>
-          <select
-            className="w-full p-2 border border-gray-300 rounded text-sm min-h-[36px]"
-            value={activeFilters.maxPrice}
-            onChange={(e) => setActiveFilters({ ...activeFilters, maxPrice: e.target.value })}
-          >
-            {mergedOptions.maxPrice.map((option: string) => (
-              <option key={option}>{option}</option>
-            ))}
-          </select>
+        <div className="bg-white sm:rounded-none sm:shadow-sm sm:border sm:border-gray-200 p-4 sm:p-4">
+          <div className="font-bold text-xs text-gray-700 mb-3 tracking-wide">PRICE</div>
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              className="w-full p-2 border border-gray-300 rounded text-sm min-h-[36px] h-[36px] sm:min-h-[56px] sm:h-[56px]"
+              value={activeFilters.minPrice}
+              onChange={(e) => setActiveFilters({ ...activeFilters, minPrice: e.target.value })}
+            >
+              {mergedOptions.minPrice.map((option: string) => (
+                <option key={option}>{option}</option>
+              ))}
+            </select>
+            <select
+              className="w-full p-2 border border-gray-300 rounded text-sm min-h-[36px] h-[36px] sm:min-h-[56px] sm:h-[56px]"
+              value={activeFilters.maxPrice}
+              onChange={(e) => setActiveFilters({ ...activeFilters, maxPrice: e.target.value })}
+            >
+              {mergedOptions.maxPrice.map((option: string) => (
+                <option key={option}>{option}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
       <div className="border-t border-gray-200 my-2"></div>

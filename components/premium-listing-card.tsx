@@ -165,7 +165,7 @@ export function PremiumListingCard({
 
           {/* Manufacturer Information (Mobile) */}
           <div className="flex flex-col mt-0">
-            <Link href={profileUrl} prefetch={false} className="font-medium text-gray-900 text-base mb-2 underline" aria-label={`View ${listing.manufacturer} profile`}>
+            <Link href={profileUrl} prefetch={false} className="font-medium text-gray-900 text-base mb-2" aria-label={`View ${listing.manufacturer} profile`}>
               {listing.manufacturer}
             </Link>
             <div className="space-y-1.5">
@@ -252,7 +252,7 @@ export function PremiumListingCard({
             <div className="flex justify-between items-stretch space-x-4 mt-2">
               {/* Left Column for text details */}
               <div className="flex-1 space-y-1.5">
-                <Link href={profileUrl} prefetch={false} className="font-medium text-gray-900 text-base mb-2 underline" aria-label={`View ${listing.manufacturer} profile`}>
+                <Link href={profileUrl} prefetch={false} className="font-medium text-gray-900 text-base mb-2" aria-label={`View ${listing.manufacturer} profile`}>
                   {listing.manufacturer}
                 </Link>
                 {listing.enquiries && (

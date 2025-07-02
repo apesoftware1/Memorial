@@ -8,7 +8,7 @@ const CategoryTabs = ({
   setSelectedCategory,
 }) => {
   const categories = [
-    { name: "FULL", icon: "/final-icons/tombstones.svg" },
+    { name: "FULL", icon: "/final icons/MainMenu_Icons_Tombstone.svg" },
     { name: "PREMIUM", icon: "/final-icons/premium.svg" },
     { name: "FAMILY", icon: "/final-icons/family.svg" },
     { name: "CHILD", icon: "/final-icons/child.svg" },
@@ -38,9 +38,9 @@ const CategoryTabs = ({
               <Image
                 src={item.icon}
                 alt={`${item.name} icon`}
-                width={32}
-                height={32}
-                className="object-contain mb-[0px] mx-auto"
+                width={item.name === 'FULL' ? 28 : 32}
+                height={item.name === 'FULL' ? 20 : 24}
+                className={`object-contain mb-[0px] mx-auto${item.name === 'FULL' ? ' mt-[0px]' : ''}`}
               />
               <span
                 className="text-[0.7rem] leading-tight w-full"

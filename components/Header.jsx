@@ -5,19 +5,32 @@ import Image from "next/image"
 import Link from "next/link"
 import { ChevronDown, X } from "lucide-react"
 import { useFavorites } from "@/context/favorites-context"
+import { usePathname } from "next/navigation"
 
 export default function Header({
   mobileMenuOpen,
   handleMobileMenuToggle,
   mobileDropdown,
   handleMobileDropdownToggle,
+  onMobileFilterClick,
 }) {
   const { totalFavorites } = useFavorites();
+  const pathname = usePathname();
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         <div className="flex items-center md:ml-52">
+          {/* Mobile Filter Button (left) */}
+          {onMobileFilterClick && pathname !== "/" && (
+            <button
+              className="sm:hidden mr-2 p-2 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={onMobileFilterClick}
+              aria-label="Open Filters"
+            >
+              <Image src="/align-left-svgrepo-com.svg" alt="Open Filters" width={16} height={16} />
+            </button>
+          )}
           <Link href="/" className="flex items-center">
             <Image
               src="/new files/company logos/TombstonesFinder_logo.svg"
@@ -270,46 +283,8 @@ export default function Header({
               />
             )}
           </button>
-          {mobileDropdown === "favourites" && (
-            <div className="pl-4 mt-2">
-              <Link href="/favorites" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
-                FAVOURITES
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* Mobile Login/Register */}
-        <div className="py-2">
-          <button
-            className="flex justify-between items-center w-full text-teal-500 hover:text-teal-600 transition-colors"
-            onClick={() => handleMobileDropdownToggle("login")}
-          >
-            <span>Login / Register</span>
-            <ChevronDown
-              className={`h-4 w-4 transition-transform duration-200 ${mobileDropdown === "login" ? "transform rotate-180" : ""}`}
-            />
-          </button>
-          {mobileDropdown === "login" && (
-            <div className="pl-4 mt-2">
-              <Link
-                href="/manufacturers/login-page"
-                className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                MANUFACTURER LOGIN PORTAL
-              </Link>
-            </div>
-          )}
         </div>
       </nav>
-
-      {/* Overlay when mobile menu is open */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-          onClick={handleMobileMenuToggle}
-        ></div>
-      )}
     </header>
   )
-} 
+}

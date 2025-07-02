@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Star, MapPin, Edit2, ChevronRight } from "lucide-react";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import React from 'react';
 import { PremiumListingCard } from "@/components/premium-listing-card";
 import { premiumListings } from "@/lib/data";
@@ -17,6 +17,8 @@ export default function ManufacturerProfileEditor({ isOwner = false, manufacture
   const [mobile, setMobile] = useState(false);
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState("");
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const sortModalRef = useRef();
 
   // Set company info based on manufacturerName
   const companyInfo = {
@@ -77,6 +79,16 @@ export default function ManufacturerProfileEditor({ isOwner = false, manufacture
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+  useEffect(() => {
+    if (!showSortDropdown) return;
+    function handleClick(e) {
+      if (sortModalRef.current && !sortModalRef.current.contains(e.target)) {
+        setShowSortDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showSortDropdown]);
   if (mobile && isOwner) {
     return (
       <div style={{
@@ -407,15 +419,43 @@ export default function ManufacturerProfileEditor({ isOwner = false, manufacture
         </div>
         <div style={{ fontSize: 15, fontWeight: 700 }}>{filteredListings.length} Active Listings</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 13, color: "#888" }}>Sort by:</span>
-          <select
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value)}
-            style={{ fontSize: 13, border: "1px solid #e0e0e0", borderRadius: 4, padding: "2px 8px" }}
-          >
-            <option value="Price">Price</option>
-            <option value="Listing Date">Listing Date</option>
-          </select>
+          {/* Mobile Sort Button */}
+          <div className="sm:hidden flex items-center text-blue-600 font-semibold cursor-pointer select-none" onClick={() => setShowSortDropdown(!showSortDropdown)}>
+            <span className="mr-1">Sort</span>
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5" stroke="#2196f3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </div>
+          {/* Mobile Sort Modal */}
+          {showSortDropdown && (
+            <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-40 sm:hidden">
+              <div ref={sortModalRef} className="w-full max-w-md mx-auto rounded-t-2xl bg-[#232323] p-4 pb-8 animate-slide-in-up">
+                {["Price", "Listing Date"].map(option => (
+                  <div
+                    key={option}
+                    className={`flex items-center justify-between px-2 py-4 text-lg border-b border-[#333] last:border-b-0 cursor-pointer ${sortBy === option ? 'text-white font-bold' : 'text-gray-200'}`}
+                    onClick={() => { setSortBy(option); setShowSortDropdown(false); }}
+                  >
+                    <span>{option}</span>
+                    <span className={`ml-2 w-6 h-6 flex items-center justify-center rounded-full border-2 ${sortBy === option ? 'border-blue-500' : 'border-gray-500'}`}
+                          style={{ background: sortBy === option ? '#2196f3' : 'transparent' }}>
+                      {sortBy === option && <span className="block w-3 h-3 bg-white rounded-full"></span>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* Desktop Sort Dropdown */}
+          <div className="hidden sm:flex items-center">
+            <span style={{ fontSize: 13, color: "#888" }}>Sort by:</span>
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              style={{ fontSize: 13, border: "1px solid #e0e0e0", borderRadius: 4, padding: "2px 8px" }}
+            >
+              <option value="Price">Price</option>
+              <option value="Listing Date">Listing Date</option>
+            </select>
+          </div>
         </div>
       </div>
 

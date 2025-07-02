@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
-import { ChevronDown, Search, ChevronRight } from "lucide-react"
+import { ChevronDown, Search, ChevronRight, Menu, X } from "lucide-react"
 import Header from "@/components/Header"
+import Image from "next/image"
 
 // Import the useFavorites hook and our new components
 import { useFavorites } from "@/context/favorites-context"
@@ -49,6 +50,25 @@ export default function TombstonesForSale() {
     designTheme: ["Cross", "Angel", "Heart", "Book", "Traditional", "Modern", "Custom"],
     custom: ["Engraving", "Photo", "Gold Leaf", "Special Shape", "Lighting"],
   }
+
+  // State for mobile filter drawer
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+  // State for mobile sort dropdown
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+
+  // For closing modal on outside click
+  const sortModalRef = useRef();
+  useEffect(() => {
+    if (!showSortDropdown) return;
+    function handleClick(e) {
+      if (sortModalRef.current && !sortModalRef.current.contains(e.target)) {
+        setShowSortDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showSortDropdown]);
 
   // --- FILTERING LOGIC ---
   function parsePrice(priceStr) {
@@ -128,7 +148,31 @@ export default function TombstonesForSale() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header onMobileFilterClick={() => setMobileFilterOpen(true)} />
+      {/* Mobile Filter Drawer Overlay */}
+      {mobileFilterOpen && (
+        <div className="fixed inset-0 z-50 bg-white flex flex-col sm:hidden">
+          <div className="flex justify-between items-center p-4 border-b border-gray-200">
+            <span className="font-bold text-lg">Filters</span>
+            <button
+              className="p-2 rounded-full hover:bg-gray-100"
+              onClick={() => setMobileFilterOpen(false)}
+              aria-label="Close Filters"
+            >
+              <X className="h-6 w-6 text-gray-700" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            <TombstonesForSaleFilters
+              activeFilters={activeFilters}
+              setActiveFilters={setActiveFilters}
+              showFilters={showFilters}
+              setShowFilters={setShowFilters}
+              filterOptions={filterOptions}
+            />
+          </div>
+        </div>
+      )}
       {/* Search Bar */}
       <div className="bg-gray-800 py-4">
         <div className="container mx-auto px-4">
@@ -175,7 +219,7 @@ export default function TombstonesForSale() {
 
           <div className="flex flex-col md:flex-row gap-6">
             {/* Filters - Left Side */}
-            <div className="w-full md:w-1/4">
+            <div className="w-full md:w-1/4 hidden sm:block">
               <TombstonesForSaleFilters
                 activeFilters={activeFilters}
                 setActiveFilters={setActiveFilters}
@@ -195,17 +239,45 @@ export default function TombstonesForSale() {
                     : `${filteredPremiumListings.length} Results (of ${totalListingsCount})`}
                 </p>
                 <div className="flex items-center">
-                  <span className="text-sm text-gray-600 mr-2">Sort by</span>
-                  <select
-                    className="p-1 border border-gray-300 rounded text-sm"
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value)}
-                  >
-                    <option>Default</option>
-                    <option>Price: Low to High</option>
-                    <option>Price: High to Low</option>
-                    <option>Newest First</option>
-                  </select>
+                  {/* Mobile Sort Button */}
+                  <div className="sm:hidden flex items-center text-blue-600 font-semibold cursor-pointer select-none" onClick={() => setShowSortDropdown(!showSortDropdown)}>
+                    <span className="mr-1">Sort</span>
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5" stroke="#2196f3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                  {/* Mobile Sort Modal */}
+                  {showSortDropdown && (
+                    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-40 sm:hidden">
+                      <div ref={sortModalRef} className="w-full max-w-md mx-auto rounded-t-2xl bg-[#232323] p-4 pb-8 animate-slide-in-up">
+                        {['Default', 'Price: Low to High', 'Price: High to Low', 'Newest First'].map(option => (
+                          <div
+                            key={option}
+                            className={`flex items-center justify-between px-2 py-4 text-lg border-b border-[#333] last:border-b-0 cursor-pointer ${sortOrder === option ? 'text-white font-bold' : 'text-gray-200'}`}
+                            onClick={() => { setSortOrder(option); setShowSortDropdown(false); }}
+                          >
+                            <span>{option}</span>
+                            <span className={`ml-2 w-6 h-6 flex items-center justify-center rounded-full border-2 ${sortOrder === option ? 'border-blue-500' : 'border-gray-500'}`}
+                                  style={{ background: sortOrder === option ? '#2196f3' : 'transparent' }}>
+                              {sortOrder === option && <span className="block w-3 h-3 bg-white rounded-full"></span>}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Desktop Sort Dropdown */}
+                  <div className="hidden sm:flex items-center">
+                    <span className="text-sm text-gray-600 mr-2">Sort by</span>
+                    <select
+                      className="p-1 border border-gray-300 rounded text-sm"
+                      value={sortOrder}
+                      onChange={(e) => setSortOrder(e.target.value)}
+                    >
+                      <option>Default</option>
+                      <option>Price: Low to High</option>
+                      <option>Price: High to Low</option>
+                      <option>Newest First</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
