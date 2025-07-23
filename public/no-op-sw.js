@@ -9,7 +9,6 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   // Claim any clients immediately
   event.waitUntil(self.clients.claim())
-  console.log("No-op service worker activated")
 })
 
 self.addEventListener("fetch", (event) => {

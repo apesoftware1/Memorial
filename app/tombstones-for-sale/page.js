@@ -5,20 +5,144 @@ import Link from "next/link"
 import { ChevronDown, Search, ChevronRight, Menu, X } from "lucide-react"
 import Header from "@/components/Header"
 import Image from "next/image"
-
 // Import the useFavorites hook and our new components
 import { useFavorites } from "@/context/favorites-context"
-import { ProductCard } from "@/components/product-card"
+import FeaturedListings from "@/components/FeaturedListings"
 import { PremiumListingCard } from "@/components/premium-listing-card"
 import TombstonesForSaleFilters from "@/components/TombstonesForSaleFilters"
+import FeaturedManufacturer from '@/components/FeaturedManufacturer';
+import BannerAd from '@/components/BannerAd';
 
-// Import premium listings from lib/data.js
-import { premiumListings } from '@/lib/data';
+// Import GraphQL queries
+import { useQuery } from '@apollo/client';
+import { GET_LISTINGS } from '@/graphql/queries/getListings';
+import { useListingCategories } from "@/hooks/use-ListingCategories"
 
-// Remove the local featuredListings array and import it from the homepage
-import { featuredListings } from '../page';
+export default function Home() {
+  const{categories ,_laoding } = useListingCategories()
+  
+  // GraphQL data
+  const { data, loading, error } = useQuery(GET_LISTINGS);
+  
+  // Use only backend data
+  const allListings = data?.listings || [];
+  const featuredManufacturers = [];
+  const seenManufacturers = new Set();
+  if (data?.listings) {
+    data.listings.forEach(l => {
+      if (l.company?.isFeatured && !seenManufacturers.has(l.company.name)) {
+        featuredManufacturers.push(l.company);
+        seenManufacturers.add(l.company.name);
+      }
+    });
+  }
+  const topFeaturedManufacturers = featuredManufacturers.slice(0, 3);
 
-export default function TombstonesForSale() {
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const listingsPerPage = 20;
+
+  // Helper to get the correct slice for the current page
+  function getPageListings(listings, page) {
+    const start = (page - 1) * listingsPerPage;
+    const end = start + listingsPerPage;
+    return listings.slice(start, end);
+  }
+
+  const paginatedListings = getPageListings(allListings, currentPage);
+
+  // Fallback card generator
+  const fallbackCard = (type = "listing") => (
+    <div className="border border-gray-300 rounded bg-white p-6 text-center text-gray-500">
+      <div className="mb-2 font-bold">No {type} available</div>
+      <div className="text-xs">Please check back later or adjust your filters.</div>
+    </div>
+  );
+
+  // Helper to chunk listings for the custom flow
+  function getCustomFlow(listings) {
+    let idx = 0;
+    const flow = [];
+    // 3 featured listings
+    flow.push(
+      <div key="featured-listings" className="mb-8">
+        <h2 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">FEATURED LISTINGS</h2>
+        <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {data?.listings?.filter(l => l.isFeatured).length > 0
+            ? data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, i) => (
+                <FeaturedListings key={product.id || i} listing={product} />
+              ))
+            : fallbackCard("featured listings")}
+        </div>
+      </div>
+    );
+    // 1 banner
+    flow.push(<div key="banner-1" className="my-6"><BannerAd /></div>);
+    // 5 listings
+    flow.push(
+      <div key="listings-1" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {listings.slice(idx, idx + 5).length > 0
+          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/memorial/${listing.id}`} />)
+          : fallbackCard("listings")}
+      </div>
+    );
+    idx += 5;
+    // 1 banner
+    flow.push(<div key="banner-2" className="my-6"><BannerAd /></div>);
+    // 5 listings
+    flow.push(
+      <div key="listings-2" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {listings.slice(idx, idx + 5).length > 0
+          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/memorial/${listing.id}`} />)
+          : fallbackCard("listings")}
+      </div>
+    );
+    idx += 5;
+    // featured manufacturercon  
+    let randomFeaturedManufacturer = null;
+    if (topFeaturedManufacturers.length > 0) {
+      const randomIndex = Math.floor(Math.random() * topFeaturedManufacturers.length);
+      randomFeaturedManufacturer = topFeaturedManufacturers[randomIndex];
+    }
+    if (randomFeaturedManufacturer) {
+      flow.push(
+        <FeaturedManufacturer key={`featured-manufacturer`} manufacturer={randomFeaturedManufacturer} />
+      );
+    } else {
+      flow.push(
+        <div key="fallback-featured-manufacturer" className="flex-1 flex justify-center">
+          {fallbackCard("featured manufacturer")}
+        </div>
+      );
+    }
+    // 5 listings
+    flow.push(
+      <div key="listings-3" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {listings.slice(idx, idx + 5).length > 0
+          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/memorial/${listing.id}`} />)
+          : fallbackCard("listings")}
+      </div>
+    );
+    idx += 5;
+    // 1 banner
+    flow.push(<div key="banner-3" className="my-6"><BannerAd /></div>);
+    // 5 listings
+    flow.push(
+      <div key="listings-4" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {listings.slice(idx, idx + 5).length > 0
+          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/memorial/${listing.id}`} />)
+          : fallbackCard("listings")}
+      </div>
+    );
+    return flow;
+  }
+
+  const customFlow = getCustomFlow(paginatedListings);
+
+  // Pagination controls
+  const totalPages = Math.ceil(allListings.length / listingsPerPage);
+  
   // State for filter visibility on mobile
   const [showFilters, setShowFilters] = useState(false)
 
@@ -70,6 +194,12 @@ export default function TombstonesForSale() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showSortDropdown]);
 
+  // Hamburger menu state and handlers for mobile
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileDropdown, setMobileDropdown] = useState(null);
+  const handleMobileMenuToggle = () => setMobileMenuOpen((open) => !open);
+  const handleMobileDropdownToggle = (section) => setMobileDropdown((prev) => prev === section ? null : section);
+
   // --- FILTERING LOGIC ---
   function parsePrice(priceStr) {
     if (!priceStr) return 0;
@@ -77,10 +207,14 @@ export default function TombstonesForSale() {
   }
 
   // Store the initial total count for display
-  const totalListingsCount = premiumListings.length;
+  const totalListingsCount = allListings.length;
+  
+  // Loading and error states
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error loading listings</div>;
 
   // Filtering
-  const filteredPremiumListings = premiumListings.filter(listing => {
+  const filteredPremiumListings = allListings.filter(listing => {
     // Location
     if (activeFilters.location && activeFilters.location !== "All" && activeFilters.location !== "") {
       if (!listing.location?.toLowerCase().includes(activeFilters.location.toLowerCase())) return false;
@@ -148,7 +282,20 @@ export default function TombstonesForSale() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header onMobileFilterClick={() => setMobileFilterOpen(true)} />
+      <Header
+        mobileMenuOpen={mobileMenuOpen}
+        handleMobileMenuToggle={handleMobileMenuToggle}
+        mobileDropdown={mobileDropdown}
+        handleMobileDropdownToggle={handleMobileDropdownToggle}
+        onMobileFilterClick={() => setMobileFilterOpen(true)}
+      />
+      {/* Overlay when mobile menu is open */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={handleMobileMenuToggle}
+        ></div>
+      )}
       {/* Mobile Filter Drawer Overlay */}
       {mobileFilterOpen && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col sm:hidden">
@@ -204,7 +351,7 @@ export default function TombstonesForSale() {
           <nav className="text-sm text-gray-500 mb-4" aria-label="Breadcrumb">
             <ol className="flex items-center space-x-1">
               <li>
-                <Link href="/" className="hover:text-gray-700 transition-colors">
+                <Link href="/" className="text-blue-600 hover:text-blue-800 transition-colors">
                   Home
                 </Link>
               </li>
@@ -232,7 +379,7 @@ export default function TombstonesForSale() {
             {/* Product Listings - Right Side */}
             <div className="w-full md:w-3/4">
               {/* Results Header */}
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-4 bg-gray-100 rounded px-4 py-2 shadow-sm">
                 <p className="text-gray-600">
                   {filteredPremiumListings.length === totalListingsCount
                     ? `${totalListingsCount} Listings For Sale`
@@ -287,8 +434,8 @@ export default function TombstonesForSale() {
                 <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {featuredListings.map((product, index) => (
-                    <ProductCard key={index} product={product} />
+                  {data?.listings?.filter(l => l.isFeatured).map((product, index) => (
+                    <FeaturedListings key={index} listing={product} />
                   ))}
                 </div>
               </div>
@@ -297,75 +444,45 @@ export default function TombstonesForSale() {
               <section className="py-4">
                 <div className="container mx-auto px-4">
                   <div className="max-w-4xl mx-auto">
-                    <h3 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">PREMIUM LISTINGS</h3>
+                    <h3 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4 text-base font-bold">PREMIUM LISTINGS SPONSORED</h3>
                     <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
 
                     <div className="space-y-6">
                       {sortedPremiumListings.map((listing) => (
-                        <PremiumListingCard key={listing.id} listing={listing} href={`/memorial/${listing.id}`} />
+                        <PremiumListingCard key={listing.documentId} listing={listing} href={`/memorial/${listing.id}`} />
                       ))}
                     </div>
                   </div>
                 </div>
               </section>
 
-              {/* Regular Listings */}
-              <div>
-                <h2 className="text-gray-600 border-b border-gray-300 pb-2 mb-4">ALL TOMBSTONES</h2>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[...featuredListings, ...featuredListings].map((product, index) => (
-                    <ProductCard
-                      key={`regular-${index}`}
-                      product={{ ...product, id: `regular-${product.id}-${index}` }}
-                    />
-                  ))}
-                </div>
-
                 {/* Pagination */}
                 <div className="mt-8 flex justify-center">
                   <nav className="inline-flex rounded-md shadow">
-                    <a
-                      href="#"
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                    disabled={currentPage === 1}
                     >
                       Previous
-                    </a>
-                    <a
-                      href="#"
-                      className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-blue-600 hover:bg-blue-50"
+                  </button>
+                  {[...Array(totalPages)].map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentPage(i + 1)}
+                      className={`py-2 px-4 border border-gray-300 bg-white text-sm font-medium ${currentPage === i + 1 ? 'text-blue-600' : 'text-gray-500'} hover:bg-blue-50`}
                     >
-                      1
-                    </a>
-                    <a
-                      href="#"
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                    >
-                      2
-                    </a>
-                    <a
-                      href="#"
-                      className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                    >
-                      3
-                    </a>
-                    <span className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                      ...
-                    </span>
-                    <a
-                      href="#"
-                      className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                    >
-                      10
-                    </a>
-                    <a
-                      href="#"
-                      className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                    disabled={currentPage === totalPages}
                     >
                       Next
-                    </a>
+                  </button>
                   </nav>
-                </div>
               </div>
             </div>
           </div>

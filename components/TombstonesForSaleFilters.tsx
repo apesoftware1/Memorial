@@ -10,8 +10,8 @@ interface TombstonesForSaleFiltersProps {
 }
 
 const defaultFilterOptions = {
-  minPrice: ["Min Price", "R 1,000", "R 5,000", "R 10,000", "R 15,000"],
-  maxPrice: ["Max Price", "R 10,000", "R 20,000", "R 30,000", "R 50,000", "R 100,000+"],
+  minPrice: ["Min Price", ...Array.from({length: 100}, (_, i) => `R ${(1000 + i * 2000).toLocaleString()}`)],
+  maxPrice: ["Max Price", ...Array.from({length: 100}, (_, i) => `R ${(3000 + i * 2000).toLocaleString()}`), "R 200,000+"],
   location: ["Gauteng", "Western Cape", "KwaZulu-Natal", "Eastern Cape", "Free State"],
   bodyType: ["Full Tombstone", "Headstone", "Double Headstone", "Cremation Memorial", "Family Monument", "Child Memorial", "Custom Design"],
   stoneType: ["Granite", "Marble", "Sandstone", "Limestone", "Bronze"],
@@ -119,15 +119,18 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
       <div className="border-t border-gray-200 my-2"></div>
       <FilterDropdown name="culture" label="CULTURE" options={mergedOptions.culture} />
       <div className="border-t border-gray-200 my-2"></div>
+      {/* More Options Toggle - always visible on mobile, unchanged on desktop */}
       <button
-        className="w-full text-left py-2 px-2 text-amber-700 font-semibold text-sm bg-white border border-gray-200 rounded mb-2"
+        className="w-full text-left py-2 px-2 text-amber-700 font-semibold text-sm bg-white border border-gray-200 rounded mb-2 block sm:hidden"
         onClick={() => setShowMore((prev) => !prev)}
         type="button"
       >
         {showMore ? "- Less Options" : "+ More Options"}
       </button>
+      {/* Desktop: showMore toggle as before; Mobile: showMore toggle always visible */}
+      {/* Expanded More Options - only show on mobile if showMore is true, desktop unchanged */}
       {showMore && (
-        <>
+        <div className="block sm:hidden">
           <div className="border-t border-gray-200 my-2"></div>
           <FilterDropdown name="style" label="STYLE" options={mergedOptions.style} />
           <div className="border-t border-gray-200 my-2"></div>
@@ -136,8 +139,31 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
           <FilterDropdown name="color" label="COLOR" options={mergedOptions.color} />
           <div className="border-t border-gray-200 my-2"></div>
           <FilterDropdown name="custom" label="CUSTOM" options={mergedOptions.custom} />
-        </>
+        </div>
       )}
+      {/* On desktop, keep original behavior: showMore toggle and expanded filters as before */}
+      {/** Desktop expanded filters (unchanged) */}
+      <div className="hidden sm:block">
+        <button
+          className="w-full text-left py-2 px-2 text-amber-700 font-semibold text-sm bg-white border border-gray-200 rounded mb-2"
+          onClick={() => setShowMore((prev) => !prev)}
+          type="button"
+        >
+          {showMore ? "- Less Options" : "+ More Options"}
+        </button>
+        {showMore && (
+          <>
+            <div className="border-t border-gray-200 my-2"></div>
+            <FilterDropdown name="style" label="STYLE" options={mergedOptions.style} />
+            <div className="border-t border-gray-200 my-2"></div>
+            <FilterDropdown name="colour" label="COLOUR" options={mergedOptions.colour} />
+            <div className="border-t border-gray-200 my-2"></div>
+            <FilterDropdown name="color" label="COLOR" options={mergedOptions.color} />
+            <div className="border-t border-gray-200 my-2"></div>
+            <FilterDropdown name="custom" label="CUSTOM" options={mergedOptions.custom} />
+          </>
+        )}
+      </div>
     </div>
   )
 } 

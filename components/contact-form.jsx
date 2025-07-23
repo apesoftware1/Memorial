@@ -22,7 +22,6 @@ export default function ContactForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    console.log("Form submitted:", formData)
     // Here you would typically send the data to your backend
     alert("Thank you for your message. We will contact you shortly.")
     setFormData({ name: "", email: "", phone: "", message: "" })

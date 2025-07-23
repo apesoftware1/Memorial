@@ -3,10 +3,27 @@ import Link from 'next/link'
 // Removed the old import for ProductCard
 // import { ProductCard } from '@/components/product-card'
 import { useState, useRef, useEffect } from 'react'
+import { useQuery } from '@apollo/client';
+import { GET_LISTINGS_BY_COMPANY_NAME } from '@/graphql/queries/getListingsByManufacturer';
+import FeaturedListings from './FeaturedListings';
 
-const FeaturedManufacturer = ({ manufacturer, products }) => {
+const FeaturedManufacturer = ({ manufacturer }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollContainerRef = useRef(null);
+
+  const { data, loading, error } = useQuery(GET_LISTINGS_BY_COMPANY_NAME, {
+    variables: { name: manufacturer?.name },
+    skip: !manufacturer?.name,
+  });
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error loading listings.</div>;
+{console.log(data)}
+  const products = data?.listings || [];
+
+  // Create an array of featured listings (where isFeatured is true)
+  const featuredProducts = products.filter(product => product.isFeatured);
+  const topFeaturedProducts = featuredProducts.slice(0, 3);
 
   // Function to handle scroll and update active index
   const handleScroll = () => {
@@ -64,13 +81,13 @@ const FeaturedManufacturer = ({ manufacturer, products }) => {
             ref={scrollContainerRef}
             className="flex overflow-x-auto gap-4 sm:grid sm:grid-cols-2 md:grid-cols-3 snap-x snap-mandatory"
           >
-            {products.map((product, index) => (
-              <ProductCard key={index} product={product} />
+            {topFeaturedProducts.map((product, index) => (
+              <FeaturedListings key={product.documentId || index} listing={product} />
             ))}
           </div>
           {/* Pagination Dots */}
           <div className="flex justify-center mt-4 space-x-2 md:hidden">
-            {products.map((_, index) => (
+            {topFeaturedProducts.map((_, index) => (
               <div 
                 key={index} 
                 className={`w-5 h-5 rounded-full transition-colors duration-200 ${index === activeIndex ? 'bg-blue-500' : 'border border-gray-400'}`}

@@ -3,13 +3,17 @@
 import { useState, useCallback, useRef, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ChevronDown, Search, ChevronRight } from "lucide-react"
+import { ChevronDown, Search, ChevronRight, Camera } from "lucide-react"
 import CountdownTimer from "@/components/countdown-timer"
 import Header from "@/components/Header"
 
 // Import the useFavorites hook and our new components
 import { useFavorites } from "@/context/favorites-context"
 import { FavoriteButton } from "@/components/favorite-button"
+
+// Import Apollo Client for data fetching
+import { useQuery } from "@apollo/client"
+import { GET_LISTINGS } from "@/graphql/queries/getListings"
 
 export default function TombstonesOnSpecial() {
   // State for UI controls (for Header component)
@@ -53,6 +57,9 @@ export default function TombstonesOnSpecial() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showSortDropdown]);
 
+  // Fetch real listings from GraphQL backend
+  const { data, loading, error } = useQuery(GET_LISTINGS);
+
   // Handlers for Header component
   const handleMobileMenuToggle = useCallback(() => {
     setUiState(prev => ({ ...prev, mobileMenuOpen: !prev.mobileMenuOpen }))
@@ -62,79 +69,54 @@ export default function TombstonesOnSpecial() {
     setUiState(prev => ({ ...prev, mobileDropdown: prev.mobileDropdown === section ? null : section }))
   }, []);
 
-  // Special offer listings data
-  const specialOffers = [
-    {
-      id: "white-angel-special",
-      image: "/placeholder.svg?height=200&width=300",
-      originalPrice: "R 12 500",
-      salePrice: "R 10 200",
-      discount: "18% OFF",
-      title: "WHITE ANGEL",
-      details: "Full Tombstone | Granite | Bible Theme",
-      tag: "SPECIAL OFFER",
-      tagColor: "bg-red-600",
-      endDate: "2025-06-15T23:59:59",
-    },
-    {
-      id: "palace-special",
-      image: "/placeholder.svg?height=200&width=300",
-      originalPrice: "R 32 000",
-      salePrice: "R 28 500",
-      discount: "11% OFF",
-      title: "PALACE",
-      details: "Full Tombstone | Granite | Mausoleum Theme",
-      tag: "SPECIAL OFFER",
-      tagColor: "bg-red-600",
-      endDate: "2025-05-20T23:59:59",
-    },
-    {
-      id: "gold-cross-special",
-      image: "/placeholder.svg?height=200&width=300",
-      originalPrice: "R 23 500",
-      salePrice: "R 19 900",
-      discount: "15% OFF",
-      title: "GOLD CROSS",
-      details: "Full Tombstone | Marble | Cross Theme",
-      tag: "SPECIAL OFFER",
-      tagColor: "bg-red-600",
-      endDate: "2025-05-05T23:59:59",
-    },
-  ]
+  // Map a raw listing from GraphQL to the format expected by our card components
+  const mapListingToProduct = useCallback((listing) => {
+    // Format price with proper South African formatting
+    const priceNum = typeof listing.price === "number"
+      ? listing.price
+      : parseFloat(String(listing.price).replace(/[^\d.]/g, "")) || 0;
 
-  // Premium special offers data
-  const premiumSpecials = [
-    {
-      id: "cathedral-c14-special",
-      image: "/placeholder.svg?height=300&width=400",
-      originalPrice: "R 10 500",
-      salePrice: "R 8 820",
-      discount: "16% OFF",
-      title: "CATHEDRAL C14",
-      details: "Full Tombstone | Granite | Cross Theme",
-      features: "Photo Engraving Available | Self Install & Pick-Up Available",
-      manufacturer: "Example Tombstone Co.",
-      location: "Durban North, KZN",
+    const formattedPrice = `R ${priceNum.toLocaleString("en-ZA", { 
+      minimumFractionDigits: 0, 
+      maximumFractionDigits: 0 
+    }).replace(/,/g, " ")}`;
+
+    // Build details string from available data
+    const details = [
+      listing.listing_category?.name,
+      listing.productDetails?.stoneType?.[0]?.value,
+      listing.productDetails?.style?.[0]?.value
+    ].filter(Boolean).join(" | ") || listing.description || "";
+
+    // Build features string from customization options
+    const features = listing.productDetails?.customization?.map(c => c.value).join(" | ") || "";
+
+    return {
+      id: listing.documentId,
+      image: listing.mainImage?.url || "/placeholder.svg",
+      originalPrice: formattedPrice, // For now, same as sale price since we don't have original price in schema
+      salePrice: formattedPrice,
+      discount: "", // Will be empty until we have discount data in the schema
+      title: listing.title || "Untitled",
+      details: details,
       tag: "SPECIAL OFFER",
       tagColor: "bg-red-600",
-      endDate: "2025-06-30T23:59:59",
-    },
-    {
-      id: "grey-memorial-special",
-      image: "/placeholder.svg?height=300&width=400",
-      originalPrice: "R 7 800",
-      salePrice: "R 6 500",
-      discount: "17% OFF",
-      title: "GREY MEMORIAL",
-      details: "Full Tombstone | Granite | Simple Theme",
-      features: "Laser Engraving | 5-Year Warranty",
-      manufacturer: "Stone Masters",
-      location: "Cape Town, Western Cape",
-      tag: "SPECIAL OFFER",
-      tagColor: "bg-red-600",
-      endDate: "2025-07-15T23:59:59",
-    },
-  ]
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now as placeholder
+      manufacturer: listing.company?.name || "",
+      location: listing.company?.location || "",
+      features: features,
+      logo: listing.company?.logo?.url || "/placeholder-logo.svg",
+    };
+  }, []);
+
+  // Process the fetched data
+  const allListings = data?.listings || [];
+  const specialListings = allListings.filter(listing => listing.isOnSpecial);
+  const standardSpecials = specialListings.filter(listing => listing.isStandard);
+  const premiumSpecials = specialListings.filter(listing => listing.isPremium);
+  
+  // For "more specials", we can use all specials or create additional logic
+  const moreSpecials = specialListings;
 
   // Filter options
   const filterOptions = {
@@ -224,15 +206,19 @@ export default function TombstonesOnSpecial() {
           <div className={`absolute top-2 left-2 ${product.tagColor} text-white text-xs px-2 py-1 rounded`}>
             {product.tag}
           </div>
-          <div className="absolute bottom-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded">
-            {product.discount}
-          </div>
+          {product.discount && (
+            <div className="absolute bottom-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded">
+              {product.discount}
+            </div>
+          )}
         </div>
         <div className="p-3">
           <div className="flex justify-between items-center mb-2">
             <div>
               <p className="font-bold text-blue-800">{product.salePrice}</p>
-              <p className="text-xs text-gray-500 line-through">{product.originalPrice}</p>
+              {product.originalPrice !== product.salePrice && (
+                <p className="text-xs text-gray-500 line-through">{product.originalPrice}</p>
+              )}
             </div>
           </div>
           <h4 className="font-bold text-gray-800 mb-1">{product.title}</h4>
@@ -275,7 +261,76 @@ export default function TombstonesOnSpecial() {
     }
 
     return (
-      <div className="border border-gray-300 rounded bg-white p-4 hover:shadow-md transition-shadow">
+      <div className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto transition-all duration-300 h-full flex flex-col hover:border-b-2 hover:border-[#0090e0] hover:shadow-2xl hover:shadow-gray-400 mb-6">
+        {/* Mobile Layout (up to 768px) */}
+        <div className="relative flex flex-col md:hidden">
+          {/* Manufacturer Logo in its own box, bottom right corner (Mobile only) */}
+          <div className="absolute bottom-3 right-3 z-20 bg-gray-50 p-2 rounded-lg md:hidden">
+            <Image
+              src={product.logo || "/placeholder-logo.svg"}
+              alt={product.manufacturer + " Logo"}
+              width={96}
+              height={96}
+              className="object-contain"
+            />
+          </div>
+          {/* Main Image Container */}
+          <div className="bg-white px-3 py-3">
+            <div className="relative h-[350px] w-full rounded-lg overflow-hidden border border-gray-200">
+              <Image
+                src={product.image || "/placeholder.svg"}
+                alt={product.title}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw"
+              />
+              {/* Camera icon and counter overlay for main image */}
+              <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/80 text-white px-2 py-0.5 rounded text-xs font-medium z-10">
+                <Camera className="w-4 h-4" />
+                <span>1</span>
+              </div>
+            </div>
+          </div>
+          {/* Content (Mobile) */}
+          <div className="w-full px-4 pt-4 pb-2 bg-gray-50 flex flex-col">
+            {/* Price, Badge */}
+            <div className="flex flex-col items-start mb-3">
+              <div className="text-2xl font-bold text-blue-600">{product.salePrice}</div>
+              <div className="mt-1 mb-0">
+                <span className={`text-white text-xs px-2 py-0.5 rounded ${product.tagColor || "bg-red-600"}`}>{product.tag || "Special Offer"}</span>
+              </div>
+              {product.discount && (
+                <div className="mt-1 mb-0">
+                  <span className="bg-green-600 text-white text-xs px-2 py-0.5 rounded">{product.discount}</span>
+                </div>
+              )}
+            </div>
+            {/* Title, Details, Features */}
+            <h2 className="text-lg font-bold text-gray-900 mb-2">{product.title}</h2>
+            <div className="space-y-0.5 mb-2">
+              <div className="text-xs text-gray-700">{product.details}</div>
+              <div className="text-xs text-gray-700">{product.features}</div>
+            </div>
+            {/* Manufacturer Information (Mobile) */}
+            <div className="flex flex-col mt-0">
+              <div className="font-medium text-gray-900 text-base mb-2">{product.manufacturer}</div>
+              <div className="text-xs text-gray-600 mb-1 mt-2">{product.location}</div>
+            </div>
+            <div className="mt-3 mb-3">
+              <CountdownTimer endDate={product.endDate} compact={true} />
+            </div>
+            <div className="mt-2">
+              <Link
+                href={`/tombstones-on-special/${product.id}`}
+                className="text-blue-600 hover:text-blue-800 text-sm hover:underline"
+              >
+                View Details
+              </Link>
+            </div>
+          </div>
+        </div>
+        {/* Desktop Layout (unchanged) */}
+        <div className="hidden md:block">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="relative h-48 md:h-auto">
             <Image
@@ -288,25 +343,27 @@ export default function TombstonesOnSpecial() {
             <div className={`absolute top-2 left-2 ${product.tagColor} text-white text-xs px-2 py-1 rounded`}>
               {product.tag}
             </div>
-            <div className="absolute bottom-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded">
-              {product.discount}
-            </div>
+            {product.discount && (
+              <div className="absolute bottom-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded">
+                {product.discount}
+              </div>
+            )}
           </div>
           <div className="md:col-span-2">
             <div className="flex justify-between items-start">
               <h3 className="font-bold text-gray-800 text-xl">{product.title}</h3>
               <div>
                 <p className="font-bold text-blue-800 text-xl">{product.salePrice}</p>
-                <p className="text-sm text-gray-500 line-through text-right">{product.originalPrice}</p>
+                {product.originalPrice !== product.salePrice && (
+                  <p className="text-sm text-gray-500 line-through text-right">{product.originalPrice}</p>
+                )}
               </div>
             </div>
             <p className="text-sm text-gray-600 mt-2">{product.details}</p>
             <p className="text-sm text-gray-600 mt-1">{product.features}</p>
-
             <div className="mt-3 mb-3">
               <CountdownTimer endDate={product.endDate} compact={true} />
             </div>
-
             <div className="mt-4 flex flex-col sm:flex-row justify-between items-start">
               <div>
                 <p className="font-semibold text-gray-800">{product.manufacturer}</p>
@@ -318,11 +375,57 @@ export default function TombstonesOnSpecial() {
               >
                 View Details
               </Link>
+              </div>
             </div>
           </div>
         </div>
       </div>
     )
+  }
+
+  // Handle loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-amber-500 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+            <p className="mt-4 text-gray-600">Loading special offers...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto text-center">
+            <p className="text-red-600">Error loading special offers. Please try again later.</p>
+            <p className="text-sm text-gray-500 mt-2">{error.message}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle empty state
+  if (specialListings.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto text-center">
+            <p className="text-gray-600">No special offers available at the moment.</p>
+            <p className="text-sm text-gray-500 mt-2">Please check back later for new deals.</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -360,7 +463,7 @@ export default function TombstonesOnSpecial() {
           <nav className="text-sm text-gray-500 mb-4" aria-label="Breadcrumb">
             <ol className="flex items-center space-x-1">
               <li>
-                <Link href="/" className="hover:text-gray-700 transition-colors">
+                <Link href="/" className="text-blue-600 hover:text-blue-800 transition-colors">
                   Home
                 </Link>
               </li>
@@ -421,7 +524,7 @@ export default function TombstonesOnSpecial() {
             <div className="w-full md:w-3/4">
               {/* Results Header */}
               <div className="flex justify-between items-center mb-4">
-                <p className="text-gray-600">15 Special Offers</p>
+                <p className="text-gray-600">{specialListings.length} Special Offers</p>
                 <div className="flex items-center">
                   {/* Mobile Sort Button */}
                   <div className="sm:hidden flex items-center text-blue-600 font-semibold cursor-pointer select-none" onClick={() => setShowSortDropdown(!showSortDropdown)}>
@@ -475,8 +578,8 @@ export default function TombstonesOnSpecial() {
                 <p className="text-center text-xs text-gray-500 mb-4">*Limited Time Only</p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {specialOffers.map((product, index) => (
-                    <SpecialOfferCard key={index} product={product} />
+                  {standardSpecials.map((listing) => (
+                    <SpecialOfferCard key={listing.documentId} product={mapListingToProduct(listing)} />
                   ))}
                 </div>
               </div>
@@ -487,8 +590,8 @@ export default function TombstonesOnSpecial() {
                 <p className="text-center text-xs text-gray-500 mb-4">*Limited Time Only</p>
 
                 <div className="space-y-4">
-                  {premiumSpecials.map((product, index) => (
-                    <PremiumSpecialOffer key={index} product={product} />
+                  {premiumSpecials.map((listing) => (
+                    <PremiumSpecialOffer key={listing.documentId} product={mapListingToProduct(listing)} />
                   ))}
                 </div>
               </div>
@@ -498,17 +601,11 @@ export default function TombstonesOnSpecial() {
                 <h2 className="text-gray-600 border-b border-gray-300 pb-2 mb-4">MORE SPECIAL OFFERS</h2>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[...specialOffers, ...specialOffers].map((product, index) => (
+                  {moreSpecials.map((listing) => (
                     <SpecialOfferCard
-                      key={`more-${index}`}
-                      product={{
-                        ...product,
-                        id: `more-${product.id}-${index}`,
-                        title: `${product.title} ${index + 1}`,
-                        endDate: new Date(
-                          new Date().getTime() + (Math.random() * 30 + 1) * 24 * 60 * 60 * 1000,
-                        ).toISOString(),
-                      }}
+                      key={`more-${listing.documentId}`}
+                      product={mapListingToProduct(listing)}
+                      featured={false}
                     />
                   ))}
                 </div>

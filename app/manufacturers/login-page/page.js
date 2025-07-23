@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 
 const cardStyle = {
   background: "#fff",
@@ -92,17 +93,15 @@ export default function ManufacturerLogin() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/auth/local", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier: email, password }),
+      const result = await signIn("credentials", {
+        redirect: false,
+        email,
+        password,
       });
-      const data = await res.json();
-      if (res.ok && data.jwt) {
-        // Optionally store JWT in localStorage or cookie here
+      if (result.ok) {
         router.push("/manufacturers/manufacturers-Profile-Page");
       } else {
-        setError(data.error?.message || "Login failed. Please check your credentials.");
+        setError("Login failed. Please check your credentials.");
       }
     } catch (err) {
       setError("Network error. Please try again.");
@@ -138,6 +137,7 @@ export default function ManufacturerLogin() {
   }
 
   return (
+    
     <div
       style={{
         minHeight: "100vh",

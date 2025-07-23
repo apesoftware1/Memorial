@@ -5,7 +5,6 @@ import Image from "next/image"
 import Link from "next/link"
 import { ChevronDown, MapPin, Search, Star, ChevronRight } from "lucide-react"
 import Header from "@/components/Header"
-import { manufacturerLogos } from "@/lib/data"
 
 export default function ProvinceManufacturersPage({ params }) {
   const { province } = params

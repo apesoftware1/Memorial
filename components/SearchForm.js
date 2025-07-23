@@ -10,7 +10,6 @@ export default function SearchForm() {
   const handleSubmit = (e) => {
     e.preventDefault()
     // Handle search submission
-    console.log('Searching for:', searchQuery)
   }
 
   return (

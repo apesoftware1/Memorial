@@ -16,14 +16,12 @@ import Header from "@/components/Header.jsx"
 import Camera from 'lucide-react/dist/esm/icons/camera';
 import Flower from 'lucide-react/dist/esm/icons/flower';
 
-// Import premiumListings data
-import { premiumListings } from '@/lib/data';
 
 export default function MemorialPage({ params }) {
   const { id } = use(params)
 
   // Find the product from premiumListings
-  const listing = premiumListings.find(item => item.id === id);
+  const listing = null;
 
   // If no listing is found, display a message
   if (!listing) {
