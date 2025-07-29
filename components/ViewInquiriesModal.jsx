@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 export default function ViewInquiriesModal({ open, onClose, listings }) {
   // Flatten all inquiries from all listings, each with its listing title
   const allInquiries = (Array.isArray(listings) ? listings : []).flatMap(listing =>
-    (listing.inquiries || []).map(inq => ({ ...inq, listingTitle: listing.title || '' }))
+    (listing.inquiries_c || []).map(inq => ({ ...inq, listingTitle: listing.title || '' }))
   );
 
   // Filter state
@@ -93,7 +93,7 @@ export default function ViewInquiriesModal({ open, onClose, listings }) {
                 </thead>
                 <tbody>
                   {filteredInquiries.map((inq, idx) => (
-                    <tr key={inq.id} className={idx % 2 === 0 ? 'bg-gray-50 hover:bg-blue-50' : 'bg-white hover:bg-blue-50'}>
+                    <tr key={`${inq.id || idx}-${inq.createdAt || Date.now()}`} className={idx % 2 === 0 ? 'bg-gray-50 hover:bg-blue-50' : 'bg-white hover:bg-blue-50'}>
                       <td className="py-2 px-4 font-semibold text-blue-700">{inq.listingTitle}</td>
                       <td className="py-2 px-4">{inq.name}</td>
                       <td className="py-2 px-4">{inq.email}</td>

@@ -69,7 +69,7 @@ export const GET_COMPANY_BY_USER = gql`
           foundationOptions { id value }
           warrantyOrGuarantee { id value }
         }
-        inquiries {
+        inquiries_c {
           documentId
           name
           email

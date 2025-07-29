@@ -7,8 +7,8 @@ import Header from "@/components/Header";
 import ViewInquiriesModal from '@/components/ViewInquiriesModal';
 import CreateSpecialModal from '@/components/CreateSpecialModal';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
-import { useManufacturerLocation } from '@/hooks/useManufacturerLocation'
-import ManufacturerLocationModal from '@/components/ManufacturerLocationModal';
+// import { useManufacturerLocation } from '@/hooks/useManufacturerLocation'
+// import ManufacturerLocationModal from '@/components/ManufacturerLocationModal';
 
 // SVG Settings (gear) icon component
 const SettingsIcon = (props) => (
@@ -42,6 +42,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
   const [editValue, setEditValue] = useState('');
   const [createSpecialModalOpen, setCreateSpecialModalOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState(null);
+  const [viewInquiriesModalOpen, setViewInquiriesModalOpen] = useState(false);
   
   // Company state management
   const [company, setCompany] = useState(initialCompany);
@@ -51,17 +52,26 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
     setCompany(initialCompany);
   }, [initialCompany]);
   
+  // Default value for isLocationSet since the hook is commented out
+  const isLocationSet = company?.latitude && company?.longitude;
+  
+  // Default values for location modal functions since the hook is commented out
+  const showLocationModal = false;
+  const openLocationModal = () => {};
+  const closeLocationModal = () => {};
+  const handleLocationUpdate = () => {};
+  
   // Location check hook with company update callback
-  const {
-    showLocationModal,
-    openLocationModal,
-    closeLocationModal,
-    handleLocationUpdate,
-    isLocationSet
-  } = useManufacturerLocation(company, (updatedCompany) => {
-    // Update the company state with the new location data
-    setCompany(updatedCompany);
-  });
+  // const {
+  //   showLocationModal,
+  //   openLocationModal,
+  //   closeLocationModal,
+  //   handleLocationUpdate,
+  //   isLocationSet
+  // } = useManufacturerLocation(company, (updatedCompany) => {
+  //   // Update the company state with the new location data
+  //   setCompany(updatedCompany);
+  // });
 
   useEffect(() => {
     setMobile(isMobile());
@@ -398,7 +408,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
             </div>
           </div>
         </div>
-  {console.log(companyListings)}
+  
         {/* Product Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, maxWidth: 1200, margin: '0 auto', alignItems: 'stretch' }}>
           {[...companyListings]
@@ -440,6 +450,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => window.location.href = `/manufacturers/manufacturers-Profile-Page/update-listing/${listing.documentId || listing.id}`}>Edit Listing</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setViewInquiriesModalOpen(true)}>View Inquiries</DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
                             if (
@@ -476,13 +487,53 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
           listing={selectedListing}
         />
 
+        {/* View Inquiries Modal */}
+        <ViewInquiriesModal
+          open={viewInquiriesModalOpen}
+          onClose={() => setViewInquiriesModalOpen(false)}
+          listings={companyListings}
+        />
+
         {/* Manufacturer Location Modal */}
-        <ManufacturerLocationModal
+        {/* <ManufacturerLocationModal
           isOpen={showLocationModal}
           onClose={closeLocationModal}
           company={company}
           onLocationUpdate={handleLocationUpdate}
-        />
+        /> */}
+
+        {/* Floating View All Inquiries Button */}
+        {isOwner && (
+          <button
+            onClick={() => setViewInquiriesModalOpen(true)}
+            style={{
+              position: 'fixed',
+              bottom: '30px',
+              right: '30px',
+              background: "#005bac",
+              color: "#fff",
+              borderRadius: "25px",
+              padding: "15px 25px",
+              fontWeight: 700,
+              fontSize: 14,
+              border: "none",
+              cursor: "pointer",
+              boxShadow: "0 4px 12px rgba(0,91,172,0.3)",
+              transition: "all 0.2s ease",
+              zIndex: 1000
+            }}
+            onMouseOver={(e) => {
+              e.target.style.background = "#004a8c";
+              e.target.style.transform = "scale(1.05)";
+            }}
+            onMouseOut={(e) => {
+              e.target.style.background = "#005bac";
+              e.target.style.transform = "scale(1)";
+            }}
+          >
+            View All Inquiries
+          </button>
+        )}
       </div>
     </>
   );

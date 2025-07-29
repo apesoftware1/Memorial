@@ -524,8 +524,8 @@ export default function CreateListingForm() {
                 <option key={option} value={option}>{option}</option>
               ))}
             </select>
-          </div>
         </div>
+      </div>
 
         {/* Action Buttons */}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>

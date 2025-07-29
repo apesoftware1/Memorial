@@ -40,6 +40,7 @@ export default function UpdateListingPage() {
   const [warranty, setWarranty] = useState("");
   const [price, setPrice] = useState("");
   const [flasher, setFlasher] = useState("");
+  const [manufacturingTimeframe, setManufacturingTimeframe] = useState("1");
   
   // Loading and success states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,6 +70,7 @@ export default function UpdateListingPage() {
       setWarranty(listing.additionalProductDetails?.warrantyOrGuarantee?.value || "");
       setPrice(listing.price?.toString() || "");
       setFlasher(listing.adFlasher || "");
+      setManufacturingTimeframe(listing.manufacturingTimeframe || "1");
     }
   }, [listing]);
 
@@ -87,22 +89,22 @@ export default function UpdateListingPage() {
     try {
       const payload = {
         data: {
-          title: title,
-          description: description,
-          price: parseFloat(price),
-          adFlasher: flasher,
+          title: title, // string
+          description: description, // string
+          price: parseFloat(price), // number
+          adFlasher: flasher, // string
+          manufacturingTimeframe: manufacturingTimeframe, // string
           productDetails: {
             color: selectedColour.map(color => ({ value: color })),
             style: selectedStyle.map(style => ({ value: style })),
             stoneType: selectedStoneType.map(stone => ({ value: stone })),
-            customization: selectedCustomisation.map(custom => ({ value: custom }))
+            customization: selectedCustomisation.map(custom => ({ value: custom })),
           },
           additionalProductDetails: {
-            transportAndInstallation: { value: transport },
-            foundationOptions: { value: foundation },
-            warrantyOrGuarantee: { value: warranty }
-          },
-          manufacturingTimeframe: "1" // Default value as per advert creator
+            transportAndInstallation: transport ? [{ value: transport }] : [],
+            foundationOptions: foundation ? [{ value: foundation }] : [],
+            warrantyOrGuarantee: warranty ? [{ value: warranty }] : [],
+          }
         }
       };
 console.log(payload);
@@ -563,6 +565,7 @@ console.log(payload);
               setWarranty(listing.additionalProductDetails?.warrantyOrGuarantee?.value || "");
               setPrice(listing.price?.toString() || "");
               setFlasher(listing.adFlasher || "");
+              setManufacturingTimeframe(listing.manufacturingTimeframe || "1");
             }
             router.push('/manufacturers/manufacturers-Profile-Page');
           }}
