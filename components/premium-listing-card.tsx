@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import type { FavoriteProduct } from "@/context/favorites-context"
 import { FavoriteButton } from "./favorite-button"
+import LocationTrigger from "./LocationTrigger"
+import { calculateDistanceFrom } from "@/lib/locationUtil";
 
 
 interface PremiumListingCardProps {
@@ -23,7 +25,8 @@ export function PremiumListingCard({
   isFirstCard = false,
 }: PremiumListingCardProps): React.ReactElement {
   const router = useRouter()
-console.log("baruti",listing)
+  const [distance, setDistance] = useState<number | null>(null);
+
   const defaultThumbnail = "/placeholder.svg?height=80&width=120"
   // Prepare thumbnails array using .url for both mobile and desktop
   const thumbnails = Array.isArray(listing.thumbnails) ? listing.thumbnails.map((t: any) => t.url) : [];
@@ -46,8 +49,22 @@ console.log("baruti",listing)
     if (target.closest('.manufacturer-link')) return;
     router.push(productUrl);
   };
-  
-  console.log(listing.company)
+
+  // Calculate distance when component mounts or listing changes
+  useEffect(() => {
+    if (listing?.company?.latitude && listing?.company?.longitude) {
+      try {
+        const lat = parseFloat(listing.company.latitude);
+        const lng = parseFloat(listing.company.longitude);
+        const dist = calculateDistanceFrom({ lat, lng });
+        setDistance(dist);
+      } catch (error) {
+        console.error('Error calculating distance:', error);
+        setDistance(null);
+      }
+    }
+  }, [listing]);
+
   return (
     <div
       className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto transition-all duration-300 h-full flex flex-col hover:border-b-2 hover:border-[#0090e0] hover:shadow-2xl hover:shadow-gray-400 cursor-pointer"
@@ -190,7 +207,7 @@ console.log("baruti",listing)
                   className="object-contain"
                 />
                 {/* TODO: algo to be added to the backend-distance */}
-                <span>{(listing.distance && listing.distance.trim() !== '') ? `${listing.distance} from you` : ' from you'}</span>
+                <span>{distance ? `${distance} km from you` : 'from you'}</span>
               </div>
             </div>
           </div>
@@ -224,10 +241,10 @@ console.log("baruti",listing)
                   <Badge className={cn("text-white text-xs px-2 py-0.5 rounded", "bg-pink-600")}>{listing.adFlasher}</Badge>
                 </div>
               </div>
-              {/* Badge (only if not duplicate) */}
-              {!(listing.tagColor === "bg-pink-600" && listing.tag === listing.adFlasher) && (
+              {/* Second Badge (only if different from adFlasher) */}
+              {listing.tag && listing.tag !== listing.adFlasher && (
               <div className="mb-2">
-                <Badge className={cn("text-white text-xs px-2 py-0.5", listing.tagColor)}>
+                <Badge className={cn("text-white text-xs px-2 py-0.5", listing.tagColor || "bg-gray-600")}>
                   {listing.tag}
                 </Badge>
               </div>
@@ -303,7 +320,7 @@ console.log("baruti",listing)
                         height={14}
                         className="object-contain"
                       />
-                      <span>{(listing.distance && listing.distance.trim() !== '') ? `${listing.distance} from you` : ' from you'}</span>
+                      <span>{distance ? `${distance} km from you` : 'from you'}</span>
                     </div>
                   </div>
                   {/* Right Column for Logo (Desktop only) */}

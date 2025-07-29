@@ -199,8 +199,9 @@ export default function TombstonesOnSpecial() {
     }
 
     return (
-      <div className="border border-gray-300 rounded bg-white overflow-hidden hover:shadow-md transition-shadow">
-        <div className="relative h-48">
+      <div className="bg-white border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+        {/* Image Container */}
+        <div className="relative h-56 bg-gray-100">
           <Image src={product.image || "/placeholder.svg"} alt={product.title} fill className="object-cover" />
           <FavoriteButton product={favoriteProduct} className="absolute top-2 right-2" />
           <div className={`absolute top-2 left-2 ${product.tagColor} text-white text-xs px-2 py-1 rounded`}>
@@ -212,27 +213,44 @@ export default function TombstonesOnSpecial() {
             </div>
           )}
         </div>
-        <div className="p-3">
-          <div className="flex justify-between items-center mb-2">
+        
+        {/* Content */}
+        <div className="p-4">
+          {/* Price Row */}
+          <div className="flex justify-between items-center mb-3">
             <div>
-              <p className="font-bold text-blue-800">{product.salePrice}</p>
+              <p className="font-bold text-blue-600 text-lg">{product.salePrice}</p>
               {product.originalPrice !== product.salePrice && (
                 <p className="text-xs text-gray-500 line-through">{product.originalPrice}</p>
               )}
             </div>
           </div>
-          <h4 className="font-bold text-gray-800 mb-1">{product.title}</h4>
-          <p className="text-xs text-gray-600">{product.details}</p>
+          
+          {/* Product Title */}
+          <h4 className="font-bold text-gray-800 mb-2 text-sm uppercase">
+            {product.title}
+          </h4>
+          
+          {/* Product Details */}
+          <p className="text-xs text-gray-600 mb-2">
+            {product.details}
+          </p>
+          
+          {/* Manufacturer and Location (if not featured) */}
           {!featured && product.manufacturer && product.location && (
-            <div className="mt-2 text-xs text-gray-600">
+            <div className="text-xs text-gray-600 mb-2">
               <p>{product.manufacturer}</p>
               <p>{product.location}</p>
             </div>
           )}
-          <div className="mt-2 mb-2">
+          
+          {/* Countdown Timer */}
+          <div className="mb-3">
             <CountdownTimer endDate={product.endDate} compact={true} />
           </div>
-          <div className="mt-2">
+          
+          {/* View Details Link */}
+          <div>
             <Link
               href={`/tombstones-on-special/${product.id}`}
               className="text-blue-600 hover:text-blue-800 text-sm hover:underline"

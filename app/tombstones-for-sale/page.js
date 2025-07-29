@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { ChevronDown, Search, ChevronRight, Menu, X } from "lucide-react"
 import Header from "@/components/Header"
@@ -12,6 +12,8 @@ import { PremiumListingCard } from "@/components/premium-listing-card"
 import TombstonesForSaleFilters from "@/components/TombstonesForSaleFilters"
 import FeaturedManufacturer from '@/components/FeaturedManufacturer';
 import BannerAd from '@/components/BannerAd';
+import { useSearchParams } from 'next/navigation';
+import { PageLoader, CardSkeleton } from "@/components/ui/loader";
 
 // Import GraphQL queries
 import { useQuery } from '@apollo/client';
@@ -20,9 +22,45 @@ import { useListingCategories } from "@/hooks/use-ListingCategories"
 
 export default function Home() {
   const{categories ,_laoding } = useListingCategories()
+  const searchParams = useSearchParams();
   
   // GraphQL data
   const { data, loading, error } = useQuery(GET_LISTINGS);
+  
+  // State for featured listings pagination
+  const [featuredActiveIndex, setFeaturedActiveIndex] = useState(0);
+  const featuredScrollRef = useRef(null);
+
+  // Function to handle featured listings scroll
+  const handleFeaturedScroll = () => {
+    if (featuredScrollRef.current) {
+      const scrollLeft = featuredScrollRef.current.scrollLeft;
+      const cardWidth = 320; // Card width + gap
+      const newIndex = Math.round(scrollLeft / cardWidth);
+      setFeaturedActiveIndex(Math.min(newIndex, 2)); // Max 3 cards (0, 1, 2)
+    }
+  };
+
+  // Function to scroll to specific featured card
+  const scrollToFeaturedCard = (index) => {
+    if (featuredScrollRef.current) {
+      const cardWidth = 320;
+      featuredScrollRef.current.scrollTo({
+        left: index * cardWidth,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  useEffect(() => {
+    const container = featuredScrollRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleFeaturedScroll);
+      return () => {
+        container.removeEventListener('scroll', handleFeaturedScroll);
+      };
+    }
+  }, []);
   
   // Use only backend data
   const allListings = data?.listings || [];
@@ -38,6 +76,57 @@ export default function Home() {
   }
   const topFeaturedManufacturers = featuredManufacturers.slice(0, 3);
 
+  // Filter listings based on URL parameters
+  const filteredListings = useMemo(() => {
+    if (!allListings.length) return allListings;
+
+    let filtered = [...allListings];
+
+    // Filter by category
+    const category = searchParams.get('category');
+    if (category) {
+      filtered = filtered.filter(listing => {
+        // Check if listing matches the category
+        const listingCategory = listing.productDetails?.bodyType?.[0]?.value || 
+                               listing.productDetails?.style?.[0]?.value ||
+                               listing.title?.toLowerCase();
+        
+        return listingCategory?.toLowerCase().includes(category.toLowerCase());
+      });
+    }
+
+    // Filter by other parameters
+    const filters = ['location', 'stoneType', 'colour', 'culture', 'custom'];
+    filters.forEach(filter => {
+      const value = searchParams.get(filter);
+      if (value) {
+        filtered = filtered.filter(listing => {
+          const listingValue = listing.productDetails?.[filter]?.[0]?.value ||
+                              listing[filter] ||
+                              listing.title?.toLowerCase();
+          
+          return listingValue?.toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
+
+    // Filter by price range
+    const minPrice = searchParams.get('minPrice');
+    const maxPrice = searchParams.get('maxPrice');
+    
+    if (minPrice && minPrice !== 'Min Price') {
+      const minPriceNum = parseInt(minPrice.replace(/[^\d]/g, ''));
+      filtered = filtered.filter(listing => listing.price >= minPriceNum);
+    }
+    
+    if (maxPrice && maxPrice !== 'Max Price') {
+      const maxPriceNum = parseInt(maxPrice.replace(/[^\d]/g, ''));
+      filtered = filtered.filter(listing => listing.price <= maxPriceNum);
+    }
+
+    return filtered;
+  }, [allListings, searchParams]);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const listingsPerPage = 20;
@@ -49,14 +138,11 @@ export default function Home() {
     return listings.slice(start, end);
   }
 
-  const paginatedListings = getPageListings(allListings, currentPage);
+  const paginatedListings = getPageListings(filteredListings, currentPage);
 
   // Fallback card generator
   const fallbackCard = (type = "listing") => (
-    <div className="border border-gray-300 rounded bg-white p-6 text-center text-gray-500">
-      <div className="mb-2 font-bold">No {type} available</div>
-      <div className="text-xs">Please check back later or adjust your filters.</div>
-    </div>
+    <CardSkeleton className="h-full" />
   );
 
   // Helper to chunk listings for the custom flow
@@ -68,7 +154,39 @@ export default function Home() {
       <div key="featured-listings" className="mb-8">
         <h2 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">FEATURED LISTINGS</h2>
         <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        
+        {/* Mobile: Horizontal scrolling cards */}
+        <div className="md:hidden">
+          <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide" ref={featuredScrollRef}>
+            {data?.listings?.filter(l => l.isFeatured).length > 0
+              ? data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, i) => (
+                  <div key={product.id || i} className="flex-shrink-0 w-80 snap-start">
+                    <FeaturedListings listing={product} />
+                  </div>
+                ))
+              : (
+                <div className="flex-shrink-0 w-80 snap-start flex justify-center">
+                  {fallbackCard("featured listings")}
+                </div>
+              )}
+          </div>
+          {/* Pagination Dots - Mobile only */}
+          <div className="flex justify-center mt-4 space-x-2">
+            {[0, 1, 2].map((index) => (
+              <button
+                key={index}
+                onClick={() => scrollToFeaturedCard(index)}
+                className={`w-3 h-3 rounded-full transition-colors duration-200 ${
+                  index === featuredActiveIndex ? 'bg-blue-500' : 'bg-gray-300 hover:bg-gray-400'
+                }`}
+                aria-label={`Go to card ${index + 1}`}
+              ></button>
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop: Grid layout */}
+        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {data?.listings?.filter(l => l.isFeatured).length > 0
             ? data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, i) => (
                 <FeaturedListings key={product.id || i} listing={product} />
@@ -141,7 +259,7 @@ export default function Home() {
   const customFlow = getCustomFlow(paginatedListings);
 
   // Pagination controls
-  const totalPages = Math.ceil(allListings.length / listingsPerPage);
+  const totalPages = Math.ceil(filteredListings.length / listingsPerPage);
   
   // State for filter visibility on mobile
   const [showFilters, setShowFilters] = useState(false)
@@ -207,14 +325,26 @@ export default function Home() {
   }
 
   // Store the initial total count for display
-  const totalListingsCount = allListings.length;
+  const totalListingsCount = filteredListings.length;
   
   // Loading and error states
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error loading listings</div>;
+  if (loading) return <PageLoader text="Loading listings..." />;
+  if (error) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <p className="text-red-600 font-medium mb-4">Error loading listings</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Refresh Page
+        </button>
+      </div>
+    </div>
+  );
 
   // Filtering
-  const filteredPremiumListings = allListings.filter(listing => {
+  const filteredPremiumListings = filteredListings.filter(listing => {
     // Location
     if (activeFilters.location && activeFilters.location !== "All" && activeFilters.location !== "") {
       if (!listing.location?.toLowerCase().includes(activeFilters.location.toLowerCase())) return false;
@@ -433,7 +563,32 @@ export default function Home() {
                 <h2 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">FEATURED LISTINGS</h2>
                 <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Mobile: Horizontal scrolling cards */}
+                <div className="md:hidden">
+                  <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide" ref={featuredScrollRef}>
+                    {data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
+                      <div key={index} className="flex-shrink-0 w-80 snap-start">
+                        <FeaturedListings listing={product} />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Pagination Dots - Mobile only */}
+                  <div className="flex justify-center mt-4 space-x-2">
+                    {[0, 1, 2].map((index) => (
+                      <button
+                        key={index}
+                        onClick={() => scrollToFeaturedCard(index)}
+                        className={`w-3 h-3 rounded-full transition-colors duration-200 ${
+                          index === featuredActiveIndex ? 'bg-blue-500' : 'bg-gray-300 hover:bg-gray-400'
+                        }`}
+                        aria-label={`Go to card ${index + 1}`}
+                      ></button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Desktop: Grid layout */}
+                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {data?.listings?.filter(l => l.isFeatured).map((product, index) => (
                     <FeaturedListings key={index} listing={product} />
                   ))}

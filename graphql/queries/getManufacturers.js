@@ -8,6 +8,8 @@ export const GET_MANUFACTURERS = gql`
       googleRating
       location
       address
+      latitude
+      longitude
       description
       logo {
         url

@@ -35,7 +35,7 @@ export default function Header({
                 <Image src="/align-left-svgrepo-com.svg" alt="Open Filters" width={16} height={16} />
               </button>
             )}
-            <Link href="/" className="flex items-center ml-0 px-2 w-full justify-center sm:justify-start">
+            <Link href="/" className="flex items-center -ml-3 px-2 w-full justify-center sm:justify-start">
               <Image
                 src="/new files/company logos/TombstonesFinder_logo.svg"
                 alt="TombstonesFinder Logo"

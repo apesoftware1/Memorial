@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Search } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 
 export default function SearchForm() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -22,12 +21,12 @@ export default function SearchForm() {
           placeholder="Search for tombstones, memorials, or manufacturers..."
           className="w-full px-4 py-3 pr-12 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
-        <Button
+        <button
           type="submit"
-          className="absolute right-2 p-2 bg-white rounded-lg text-gray-700 hover:text-gray-900"
+          className="absolute right-2 p-2 bg-white rounded-lg text-gray-700 hover:text-gray-900 transition-colors"
         >
           <Search className="w-5 h-5" />
-        </Button>
+        </button>
       </div>
     </form>
   )

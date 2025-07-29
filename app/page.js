@@ -12,11 +12,13 @@ import SearchBox from "@/components/SearchBox"
 import CategoryTabs from "@/components/CategoryTabs.jsx"
 import FaqSection from "@/components/FaqSection"
 import LocationModal from "@/components/LocationModal"
+import LocationPermissionModal from "@/components/LocationPermissionModal"
 import FilterDropdown from "@/components/FilterDropdown"
 import SearchForm from "@/components/SearchForm"
 import SearchContainer from "@/components/SearchContainer.jsx";
-
-
+import { useRouter } from "next/navigation";
+import { PageLoader } from "@/components/ui/loader"
+import { useGuestLocation } from "@/hooks/useGuestLocation"
 
 import Pagination from "@/components/Pagination"
 import { PremiumListingCard } from "@/components/premium-listing-card"
@@ -37,6 +39,24 @@ import { useListingCategories } from "@/hooks/use-ListingCategories"
 export default function Home() {
   const { categories, loading: _loading } = useListingCategories()
   const [activeTab, setActiveTab] = useState(0)
+  const router = useRouter();
+
+  // Location modal state
+  const { location, loading: locationLoading } = useGuestLocation()
+  const [showLocationModal, setShowLocationModal] = useState(false)
+
+  // Auto-show location modal if user location is not set
+  useEffect(() => {
+    const hasShownModal = localStorage.getItem('locationModalShown')
+    if (!location && !locationLoading && !hasShownModal) {
+      setShowLocationModal(true)
+      localStorage.setItem('locationModalShown', 'true')
+    }
+  }, [location, locationLoading])
+
+  const handleCloseLocationModal = () => {
+    setShowLocationModal(false)
+  }
 
   // Add state for mobile menu and dropdown
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -70,6 +90,34 @@ export default function Home() {
   const [selectedTown, setSelectedTown] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Navigation function for search results
+  const handleNavigateToResults = useCallback(() => {
+    // Build query parameters from current filters and category
+    const params = new URLSearchParams();
+    
+    // Add category if selected
+    if (activeTab !== 0) {
+      const category = categories[activeTab]?.name;
+      if (category) {
+        params.append('category', category);
+      }
+    }
+    
+    // Add filters if any are set
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value && value !== 'Min Price' && value !== 'Max Price') {
+          params.append(key, value);
+        }
+      });
+    }
+    
+    // Navigate to tombstones-for-sale with parameters
+    const queryString = params.toString();
+    const url = queryString ? `/tombstones-for-sale?${queryString}` : '/tombstones-for-sale';
+    router.push(url);
+  }, [router, activeTab, categories, filters]);
 
   // New state hooks for filtered listings
   const [premListings, setPremListings] = useState([]);
@@ -117,9 +165,15 @@ useEffect(() => {
   setStdListings(standard);
 }, [strapiListings, loading, error]);
 
-if (_loading) return <div>Loading...</div>
+if (_loading) return <PageLoader text="Loading categories..." />
   return (
     <div>
+      {/* Location Permission Modal */}
+      <LocationPermissionModal 
+        isOpen={showLocationModal} 
+        onClose={handleCloseLocationModal} 
+      />
+
       {/* 1. Header */}
       <Header 
         mobileMenuOpen={mobileMenuOpen}
@@ -150,6 +204,8 @@ if (_loading) return <div>Loading...</div>
           categories={categories}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
+          totalListings={strapiListings.length}
+          onNavigateToResults={handleNavigateToResults}
         />
       </section>
       

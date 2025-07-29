@@ -6,6 +6,7 @@ import { useQuery } from "@apollo/client";
 import { GET_LISTING_BY_ID } from '@/graphql/queries/getListingById';
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 function isMobile() {
   if (typeof window === 'undefined') return false;
@@ -15,6 +16,7 @@ function isMobile() {
 export default function UpdateListingPage() {
   const { listingId } = useParams();
   const { data: session, status } = useSession();
+  const router = useRouter();
   const { data, loading, error } = useQuery(GET_LISTING_BY_ID, {
     variables: { documentID: listingId },
     skip: !listingId,
@@ -31,6 +33,18 @@ export default function UpdateListingPage() {
   const [selectedCustomisation, setSelectedCustomisation] = useState([]);
   const [modalMsg, setModalMsg] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  
+  // Additional product details state
+  const [transport, setTransport] = useState("");
+  const [foundation, setFoundation] = useState("");
+  const [warranty, setWarranty] = useState("");
+  const [price, setPrice] = useState("");
+  const [flasher, setFlasher] = useState("");
+  
+  // Loading and success states
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState("");
+  const [showMessage, setShowMessage] = useState(false);
 
   const listing = data?.listing;
 
@@ -48,9 +62,90 @@ export default function UpdateListingPage() {
       setSelectedStoneType((listing.productDetails?.stoneType || []).map(st => st.value));
       setSelectedCulture((listing.productDetails?.culture || []).map(cu => cu.value));
       setSelectedCustomisation((listing.productDetails?.customization || []).map(cu => cu.value));
-      // ...set other fields here...
+      
+      // Set additional product details
+      setTransport(listing.additionalProductDetails?.transportAndInstallation?.value || "");
+      setFoundation(listing.additionalProductDetails?.foundationOptions?.value || "");
+      setWarranty(listing.additionalProductDetails?.warrantyOrGuarantee?.value || "");
+      setPrice(listing.price?.toString() || "");
+      setFlasher(listing.adFlasher || "");
     }
   }, [listing]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!listing?.documentId) {
+      setSubmitMessage("Error: Listing ID not found");
+      setShowMessage(true);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setShowMessage(false);
+
+    try {
+      const payload = {
+        data: {
+          title: title,
+          description: description,
+          price: parseFloat(price),
+          adFlasher: flasher,
+          productDetails: {
+            color: selectedColour.map(color => ({ value: color })),
+            style: selectedStyle.map(style => ({ value: style })),
+            stoneType: selectedStoneType.map(stone => ({ value: stone })),
+            customization: selectedCustomisation.map(custom => ({ value: custom }))
+          },
+          additionalProductDetails: {
+            transportAndInstallation: { value: transport },
+            foundationOptions: { value: foundation },
+            warrantyOrGuarantee: { value: warranty }
+          },
+          manufacturingTimeframe: "1" // Default value as per advert creator
+        }
+      };
+console.log(payload);
+      const response = await fetch(`https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/listings/${listing.documentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      setSubmitMessage("Listing updated successfully!");
+      setShowMessage(true);
+      
+      // Redirect to profile page after successful update
+      setTimeout(() => {
+        router.push('/manufacturers/manufacturers-Profile-Page');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error updating listing:', error);
+      setSubmitMessage(`Error updating listing: ${error.message}`);
+      setShowMessage(true);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCheckboxChange = (selected, setSelected, value, max) => {
+    if (selected.includes(value)) {
+      setSelected(selected.filter(x => x !== value));
+    } else if (selected.length < max) {
+      setSelected([...selected, value]);
+    } else {
+      setModalMsg(`You can only add ${max} characteristics.`);
+      setModalOpen(true);
+    }
+  };
 
   if (status === "loading") return <div>Loading session...</div>;
   if (!session) return <div>You must be logged in to update a listing.</div>;
@@ -206,17 +301,6 @@ export default function UpdateListingPage() {
         const cultureOptions = ["Christian", "Jewish", "Muslim", "Hindu", "Traditional African", "Any"];
         const customisationOptions = ["Photo Engraving", "Photo Etching", "Gold Leaf", "Leather Finish", "Engraving", "Special Shape", "Lighting"];
 
-        function handleCheckboxChange(selected, setSelected, value, max) {
-          if (selected.includes(value)) {
-            setSelected(selected.filter(x => x !== value));
-          } else if (selected.length < max) {
-            setSelected([...selected, value]);
-          } else {
-            setModalMsg(`You can only add ${max} characteristics.`);
-            setModalOpen(true);
-          }
-        }
-
         return (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 24, marginBottom: 32 }}>
             {/* STYLE */}
@@ -273,24 +357,7 @@ export default function UpdateListingPage() {
                 </label>
               ))}
             </div>
-            {/* CULTURE */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-                <Image src="/new files/newIcons/Culture_Icons/Culture_Icons-48.svg" alt="Culture" width={18} height={18} style={{ marginRight: 6 }} />
-                Culture
-              </div>
-              {cultureOptions.map((cu) => (
-                <label key={cu} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedCulture.includes(cu)}
-                    onChange={() => handleCheckboxChange(selectedCulture, setSelectedCulture, cu, 2)}
-                    style={{ marginRight: 6 }}
-                  />
-                  {cu}
-                </label>
-              ))}
-            </div>
+          
             {/* CUSTOMISATION */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
@@ -327,121 +394,217 @@ export default function UpdateListingPage() {
         <span style={{ marginRight: 8 }}>ADDITIONAL PRODUCT DETAILS</span>
       </div>
       <div style={{ height: 12 }} />
-      {/* ...repeat the logic for transport, foundation, warranty, pre-filling from listing.additionalProductDetails... */}
+      
+      {/* Additional Product Details Content */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 32 }}>
       {/* Transport */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Transport:</span>
-          <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} value={listing.additionalProductDetails?.transport || ""} onChange={e => {
-            const newDetails = { ...listing.additionalProductDetails, transport: e.target.value };
-            // This part of the logic needs to be updated to handle the full additionalProductDetails object
-            // For now, we'll just update the state, which will be reflected in the next render
-            // setListing(prev => ({ ...prev, additionalProductDetails: newDetails }));
-          }} />
+        <div>
+          <label style={{ fontSize: 12, marginBottom: 4, display: "block", fontWeight: 600, color: "#555" }}>Transport & Installation</label>
+          <select 
+            style={{ 
+              width: "100%", 
+              border: "1px solid #ccc", 
+              borderRadius: 4, 
+              padding: "8px 12px", 
+              outline: "none",
+              fontSize: 13,
+              background: "#fff"
+            }} 
+            value={transport} 
+            onChange={e => setTransport(e.target.value)}
+          >
+            <option value="">Select transport option</option>
+            <option value="Free delivery within 50km">Free delivery within 50km</option>
+            <option value="Free delivery within 100km">Free delivery within 100km</option>
+            <option value="Delivery included in price">Delivery included in price</option>
+            <option value="Delivery at additional cost">Delivery at additional cost</option>
+            <option value="Self-collection only">Self-collection only</option>
+            <option value="Installation included">Installation included</option>
+            <option value="Installation at additional cost">Installation at additional cost</option>
+          </select>
         </div>
+        
         {/* Foundation */}
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Foundation:</span>
-          <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} value={listing.additionalProductDetails?.foundation || ""} onChange={e => {
-            const newDetails = { ...listing.additionalProductDetails, foundation: e.target.value };
-            // This part of the logic needs to be updated to handle the full additionalProductDetails object
-            // For now, we'll just update the state, which will be reflected in the next render
-            // setListing(prev => ({ ...prev, additionalProductDetails: newDetails }));
-          }} />
+        <div>
+          <label style={{ fontSize: 12, marginBottom: 4, display: "block", fontWeight: 600, color: "#555" }}>Foundation Options</label>
+          <select 
+            style={{ 
+              width: "100%", 
+              border: "1px solid #ccc", 
+              borderRadius: 4, 
+              padding: "8px 12px", 
+              outline: "none",
+              fontSize: 13,
+              background: "#fff"
+            }} 
+            value={foundation} 
+            onChange={e => setFoundation(e.target.value)}
+          >
+            <option value="">Select foundation option</option>
+            <option value="Concrete base included">Concrete base included</option>
+            <option value="Concrete base at additional cost">Concrete base at additional cost</option>
+            <option value="No foundation provided">No foundation provided</option>
+            <option value="Foundation preparation included">Foundation preparation included</option>
+            <option value="Site clearing included">Site clearing included</option>
+            <option value="Custom foundation design">Custom foundation design</option>
+          </select>
         </div>
+        
         {/* Warranty */}
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Warranty:</span>
-          <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} value={listing.additionalProductDetails?.warranty || ""} onChange={e => {
-            const newDetails = { ...listing.additionalProductDetails, warranty: e.target.value };
-            // This part of the logic needs to be updated to handle the full additionalProductDetails object
-            // For now, we'll just update the state, which will be reflected in the next render
-            // setListing(prev => ({ ...prev, additionalProductDetails: newDetails }));
-          }} />
+        <div>
+          <label style={{ fontSize: 12, marginBottom: 4, display: "block", fontWeight: 600, color: "#555" }}>Warranty or Guarantee</label>
+          <select 
+            style={{ 
+              width: "100%", 
+              border: "1px solid #ccc", 
+              borderRadius: 4, 
+              padding: "8px 12px", 
+              outline: "none",
+              fontSize: 13,
+              background: "#fff"
+            }} 
+            value={warranty} 
+            onChange={e => setWarranty(e.target.value)}
+          >
+            <option value="">Select warranty option</option>
+            <option value="1-year warranty">1-year warranty</option>
+            <option value="2-year warranty">2-year warranty</option>
+            <option value="3-year warranty">3-year warranty</option>
+            <option value="5-year warranty">5-year warranty</option>
+            <option value="10-year warranty">10-year warranty</option>
+            <option value="Lifetime warranty">Lifetime warranty</option>
+            <option value="No warranty">No warranty</option>
+            <option value="Guarantee against defects">Guarantee against defects</option>
+          </select>
         </div>
+        
+        {/* Price */}
+        <div>
+          <label style={{ fontSize: 12, marginBottom: 4, display: "block", fontWeight: 600, color: "#555" }}>Price (R)</label>
+          <input 
+            style={{ 
+              width: "100%", 
+              border: "1px solid #ccc", 
+              borderRadius: 4, 
+              padding: "8px 12px", 
+              outline: "none",
+              fontSize: 13
+            }} 
+            value={price} 
+            onChange={e => setPrice(e.target.value)}
+            placeholder="e.g., 8600"
+            type="number"
+          />
       </div>
-
-      {/* Pricing, Discount, Flasher, Dates, and Action Buttons */}
-      {/* Pricing */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Price:</span>
-          <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} value={listing.price || ""} onChange={e => {
-            // This part of the logic needs to be updated to handle the full listing object
-            // For now, we'll just update the state, which will be reflected in the next render
-            // setListing(prev => ({ ...prev, price: e.target.value }));
-          }} />
-        </div>
-        {/* Discount */}
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Discount:</span>
-          <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} value={listing.discount || ""} onChange={e => {
-            // This part of the logic needs to be updated to handle the full listing object
-            // For now, we'll just update the state, which will be reflected in the next render
-            // setListing(prev => ({ ...prev, discount: e.target.value }));
-          }} />
-        </div>
+       
         {/* Flasher */}
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Flasher:</span>
-          <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} value={listing.flasher || ""} onChange={e => {
-            // This part of the logic needs to be updated to handle the full listing object
-            // For now, we'll just update the state, which will be reflected in the next render
-            // setListing(prev => ({ ...prev, flasher: e.target.value }));
-          }} />
-        </div>
-        {/* Dates */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Start Date:</span>
-            <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} value={listing.startDate || ""} onChange={e => {
-              // This part of the logic needs to be updated to handle the full listing object
-              // For now, we'll just update the state, which will be reflected in the next render
-              // setListing(prev => ({ ...prev, startDate: e.target.value }));
-            }} />
-          </div>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>End Date:</span>
-            <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} value={listing.endDate || ""} onChange={e => {
-              // This part of the logic needs to be updated to handle the full listing object
-              // For now, we'll just update the state, which will be reflected in the next render
-              // setListing(prev => ({ ...prev, endDate: e.target.value }));
-            }} />
-          </div>
+        <div>
+          <label style={{ fontSize: 12, marginBottom: 4, display: "block", fontWeight: 600, color: "#555" }}>Ad Flasher</label>
+          <select 
+            style={{ 
+              width: "100%", 
+              border: "1px solid #ccc", 
+              borderRadius: 4, 
+              padding: "8px 12px", 
+              outline: "none",
+              fontSize: 13,
+              background: "#fff"
+            }} 
+            value={flasher} 
+            onChange={e => setFlasher(e.target.value)}
+          >
+            <option value="">Select ad flasher</option>
+            <option value="Special offer">Special offer</option>
+            <option value="Limited time deal">Limited time deal</option>
+            <option value="New arrival">New arrival</option>
+            <option value="Best seller">Best seller</option>
+            <option value="Premium quality">Premium quality</option>
+            <option value="Handcrafted">Handcrafted</option>
+            <option value="Custom design">Custom design</option>
+            <option value="Exclusive">Exclusive</option>
+            <option value="Trending">Trending</option>
+            <option value="Popular choice">Popular choice</option>
+          </select>
         </div>
       </div>
 
       {/* Action Buttons */}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
-        <button style={{
-          background: "#005bac",
-          color: "#fff",
-          padding: "10px 20px",
-          borderRadius: 8,
-          border: "none",
-          cursor: "pointer",
-          fontSize: 14,
-          fontWeight: "bold",
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-        }}>
-          Save Changes
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 32 }}>
+        <button 
+          type="submit"
+          disabled={isSubmitting}
+          onClick={handleSubmit}
+          style={{
+            background: isSubmitting ? "#ccc" : "#005bac",
+            color: "#fff",
+            padding: "12px 24px",
+            borderRadius: 8,
+            border: "none",
+            cursor: isSubmitting ? "not-allowed" : "pointer",
+            fontSize: 14,
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+            transition: "background-color 0.2s ease"
+          }}
+          onMouseOver={(e) => !isSubmitting && (e.target.style.background = "#004a8c")}
+          onMouseOut={(e) => !isSubmitting && (e.target.style.background = "#005bac")}
+        >
+          {isSubmitting ? "Updating..." : "Save Changes"}
         </button>
-        <button style={{
-          background: "#ccc",
-          color: "#333",
-          padding: "10px 20px",
-          borderRadius: 8,
-          border: "none",
-          cursor: "pointer",
-          fontSize: 14,
-          fontWeight: "bold",
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-        }}>
+        <button 
+          onClick={() => {
+            // Reset form to original values
+            if (listing) {
+              setTitle(listing.title || "");
+              setDescription(listing.description || "");
+              setTransport(listing.additionalProductDetails?.transportAndInstallation?.value || "");
+              setFoundation(listing.additionalProductDetails?.foundationOptions?.value || "");
+              setWarranty(listing.additionalProductDetails?.warrantyOrGuarantee?.value || "");
+              setPrice(listing.price?.toString() || "");
+              setFlasher(listing.adFlasher || "");
+            }
+            router.push('/manufacturers/manufacturers-Profile-Page');
+          }}
+          disabled={isSubmitting}
+          style={{
+            background: isSubmitting ? "#eee" : "#ccc",
+            color: "#333",
+            padding: "12px 24px",
+            borderRadius: 8,
+            border: "none",
+            cursor: isSubmitting ? "not-allowed" : "pointer",
+            fontSize: 14,
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+            transition: "background-color 0.2s ease"
+          }}
+          onMouseOver={(e) => !isSubmitting && (e.target.style.background = "#bbb")}
+          onMouseOut={(e) => !isSubmitting && (e.target.style.background = "#ccc")}
+        >
           Cancel
         </button>
       </div>
+
+      {/* Success/Error Message */}
+      {showMessage && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          padding: '16px 24px',
+          borderRadius: '8px',
+          color: '#fff',
+          fontWeight: 'bold',
+          zIndex: 1000,
+          background: submitMessage.includes('Error') ? '#dc3545' : '#28a745',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          animation: 'slideIn 0.3s ease'
+        }}>
+          {submitMessage}
+        </div>
+      )}
     </div>
   );
 } 

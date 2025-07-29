@@ -18,25 +18,46 @@ export function ProductCard({ product, href = "#" }: ProductCardProps) {
   }
 
   return (
-    <div className="border border-gray-300 rounded bg-white overflow-hidden hover:shadow-md transition-shadow">
+    <div className="bg-white border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
       <Link href={href} className="block">
-        <div className="relative h-48">
-          <Image src={product.image || "/placeholder.svg"} alt={product.title} fill className="object-cover" />
+        {/* Image Container */}
+        <div className="relative h-56 bg-gray-100">
+          <Image 
+            src={product.image || "/placeholder.svg"} 
+            alt={product.title} 
+            fill 
+            className="object-cover" 
+          />
           <div className="absolute top-2 right-2">
             <FavoriteButton product={productWithId} />
           </div>
         </div>
-        <div className="p-3">
-          <div className="flex justify-between items-center mb-2">
-            <p className="font-bold text-blue-800">{product.price}</p>
-            <span className="bg-green-500 text-white text-xs px-2 py-1 rounded">{product.tag}</span>
+        
+        {/* Content */}
+        <div className="p-4">
+          {/* Price and Tag Row */}
+          <div className="flex justify-between items-center mb-3">
+            <p className="font-bold text-blue-600 text-lg">{product.price}</p>
+            <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded">
+              {product.tag || "Great Price"}
+            </span>
           </div>
-          <h4 className="font-bold text-gray-800 mb-1">{product.title}</h4>
-          <p className="text-xs text-gray-600">{product.details}</p>
-          {product.colour && Object.keys(product.colour).some(key => product.colour[key]) && (
+          
+          {/* Product Title */}
+          <h4 className="font-bold text-gray-800 mb-2 text-sm uppercase">
+            {product.title}
+          </h4>
+          
+          {/* Product Details */}
+          <p className="text-xs text-gray-600">
+            {product.details}
+          </p>
+          
+          {/* Colors (if available) */}
+          {product.colour && Object.keys(product.colour).some(key => product.colour?.[key]) && (
             <p className="text-xs text-gray-600 mt-1">
               Colors: {Object.keys(product.colour)
-                .filter(key => product.colour[key])
+                .filter(key => product.colour?.[key])
                 .map(color => color.charAt(0).toUpperCase() + color.slice(1))
                 .join(', ')}
             </p>

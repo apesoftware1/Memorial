@@ -24,8 +24,7 @@ query GetListings {
       id
       color { id value }
       style { id value }
-      stoneType { id value }
-     
+      stoneType { id value }   
       customization { id value }
     }
     slug
@@ -42,6 +41,8 @@ query GetListings {
       isFeatured
       location
       logo { url }
+      latitude
+      longitude
     }
   }
 }

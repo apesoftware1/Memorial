@@ -1,20 +1,29 @@
 "use client"
 
+import React, { useState, useEffect } from "react"
 import Image from "next/image"
-import { Heart, Camera, Check } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
-import { FavoriteButton } from "./favorite-button"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Heart, MapPin, Camera, Check, User2 } from "lucide-react"
+import { cn } from "@/lib/utils"
+import type { FavoriteProduct } from "@/context/favorites-context"
+import { FavoriteButton } from "./favorite-button"
+import LocationTrigger from "./LocationTrigger"
+import { calculateDistanceFrom } from "@/lib/locationUtil";
 
-type StandardListingCardProps = {
-  listing: any
-  href?: string
+interface StandardListingCardProps {
+  listing: any;
+  href: string;
+  isOwner?: boolean;
 }
 
-export function StandardListingCard({ listing, href = "#" }: StandardListingCardProps) {
+export function StandardListingCard({
+  listing,
+  href,
+  isOwner = false,
+}: StandardListingCardProps): React.ReactElement {
   const router = useRouter()
+  const [distance, setDistance] = useState<number | null>(null);
   
   
   const productUrl = href || `/tombstones-for-sale/${listing.documentId}`
@@ -22,6 +31,21 @@ export function StandardListingCard({ listing, href = "#" }: StandardListingCard
   const handleClick = () => {
     router.push(productUrl)
   }
+
+  // Calculate distance when component mounts or listing changes
+  useEffect(() => {
+    if (listing?.company?.latitude && listing?.company?.longitude) {
+      try {
+        const lat = parseFloat(listing.company.latitude);
+        const lng = parseFloat(listing.company.longitude);
+        const dist = calculateDistanceFrom({ lat, lng });
+        setDistance(dist);
+      } catch (error) {
+        console.error('Error calculating distance:', error);
+        setDistance(null);
+      }
+    }
+  }, [listing]);
 
   return (
     <div className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto transition-all duration-300 h-full flex flex-col hover:border-b-2 hover:border-[#0090e0] hover:shadow-2xl hover:shadow-gray-400 mb-6">
@@ -60,7 +84,7 @@ export function StandardListingCard({ listing, href = "#" }: StandardListingCard
           <div className="flex flex-col items-start mb-3">
             <div className="text-2xl font-bold text-blue-600">R{listing.price || "8 820"}</div>
             <div className="mt-1 mb-0">
-              <Badge className={cn("text-white text-xs px-2 py-0.5 rounded", listing.tagColor || "bg-red-600")}>{listing.tag || "Unique Design"}</Badge>
+              <div className="text-white text-xs px-2 py-0.5 rounded bg-red-600 font-semibold">{listing.tag || "Unique Design"}</div>
             </div>
           </div>
           {/* Title, Details, Features */}
@@ -97,17 +121,8 @@ export function StandardListingCard({ listing, href = "#" }: StandardListingCard
               <Check className="w-3.5 h-3.5 mr-1" />
               <span className="text-xs">Enquiries N/A</span>
             </div>
-            <div className="text-xs text-gray-600 mb-1 mt-2">{listing.location || "Pretoria, Gauteng"}</div>
-            <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
-              <Image
-                src={"/new files/newIcons/Google_Pin_Icon/GooglePin_Icon.svg"}
-                alt="Location Pin Icon"
-                width={14}
-                height={14}
-                className="object-contain"
-              />
-              <span>{listing.distance || "Distance N/A"}</span>
-            </div>
+            <div className="text-xs text-gray-600 mb-1 mt-2">{listing.location || "location not set"}</div>
+            {!isOwner && <LocationTrigger listing={listing} className="mt-1" />}
           </div>
         </div>
       </div>
@@ -143,7 +158,7 @@ export function StandardListingCard({ listing, href = "#" }: StandardListingCard
             <div className="flex flex-col items-start mb-3">
               <div className="text-2xl font-bold text-blue-600">R{listing.price || "8 820"}</div>
               <div className="mt-0">
-                <Badge className={cn("text-white text-xs px-2 py-0.5 rounded", listing.tagColor || "bg-red-600")}>{listing.tag || "Unique Design"}</Badge>
+                <div className="text-white text-xs px-2 py-0.5 rounded bg-red-600 font-semibold">{listing.tag || "Unique Design"}</div>
               </div>
             </div>
             {/* Title, Details, Features */}
@@ -181,18 +196,9 @@ export function StandardListingCard({ listing, href = "#" }: StandardListingCard
                       <Check className="w-3.5 h-3.5 mr-1" />
                       <span className="text-xs">Enquiries N/A</span>
                     </div>
-                    <div className="text-xs text-gray-600 mb-1 mt-2">{listing.location || "Pretoria, Gauteng"}</div>
-              </div>
-                  <div className="flex items-center gap-1 text-xs text-blue-600 mt-4">
-                <Image
-                      src={"/new files/newIcons/Google_Pin_Icon/GooglePin_Icon.svg"}
-                  alt="Location Pin Icon"
-                  width={14}
-                  height={14}
-                  className="object-contain"
-                />
-                <span>{listing.distance || "Distance N/A"}</span>
+                    <div className="text-xs text-gray-600 mb-1 mt-2">{listing.location || "location not set"}</div>
                   </div>
+                  {!isOwner && <LocationTrigger listing={listing} className="mt-4" />}
                 </div>
               </div>
               {/* Right column: logo (desktop only) */}

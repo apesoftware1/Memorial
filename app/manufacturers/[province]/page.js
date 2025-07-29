@@ -638,7 +638,6 @@ export default function ProvinceManufacturersPage({ params }) {
               <address className="text-gray-300 text-sm not-italic">
                 <p>Email: info@memorialhub.co.za</p>
                 <p>Phone: +27 12 345 6789</p>
-                <p>Address: 123 Memorial Street, Pretoria, South Africa</p>
               </address>
             </div>
           </div>

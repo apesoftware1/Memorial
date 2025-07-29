@@ -33,22 +33,40 @@ export default function FeaturedProducts() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((product) => (
-          <Card key={product.id} className="overflow-hidden">
-            <div className="relative h-48 w-full">
+          <div key={product.id} className="bg-white border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+            {/* Image Container */}
+            <div className="relative h-56 bg-gray-100">
               <Image src={product.image || "/placeholder.svg"} alt={product.name} fill className="object-cover" />
             </div>
-            <CardHeader>
-              <CardTitle>{product.name}</CardTitle>
-              <CardDescription>{product.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-lg font-semibold">{product.price}</p>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline">Details</Button>
-              <Button>Contact</Button>
-            </CardFooter>
-          </Card>
+            
+            {/* Content */}
+            <div className="p-4">
+              {/* Product Title */}
+              <h4 className="font-bold text-gray-800 mb-2 text-sm uppercase">
+                {product.name}
+              </h4>
+              
+              {/* Product Description */}
+              <p className="text-xs text-gray-600 mb-3">
+                {product.description}
+              </p>
+              
+              {/* Price */}
+              <p className="font-bold text-blue-600 text-lg mb-4">
+                {product.price}
+              </p>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-between">
+                <Button variant="outline" className="text-sm">
+                  Details
+                </Button>
+                <Button className="text-sm">
+                  Contact
+                </Button>
+              </div>
+            </div>
+          </div>
         ))}
       </div>
 

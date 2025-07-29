@@ -6,6 +6,7 @@ import SearchForm from "@/components/SearchForm"
 import FilterDropdown from "@/components/FilterDropdown"
 import LocationModal from "@/components/LocationModal"
 import CategoryTabs from "@/components/CategoryTabs.jsx"
+import { SearchLoader } from "@/components/ui/loader"
 
 // Default filter options with updated price ranges
 const defaultFilterOptions = {
@@ -38,7 +39,9 @@ const SearchContainer = ({
   parentToggleDropdown,
   categories,
   activeTab,
-  setActiveTab
+  setActiveTab,
+  totalListings = 0, // Add total listings count
+  onNavigateToResults = null // Add navigation callback
 }) => {
   // State for UI controls
   const [uiState, setUiState] = useState({
@@ -63,12 +66,25 @@ const SearchContainer = ({
   const defaultHandleSearch = useCallback(() => {
     setInternalIsSearching(true);
     setTimeout(() => setInternalIsSearching(false), 500);
-  }, []);
+    // Navigate to results page if callback provided
+    if (onNavigateToResults) {
+      onNavigateToResults();
+    }
+  }, [onNavigateToResults]);
 
   const defaultGetSearchButtonText = useCallback(() => {
     const searching = isSearching !== undefined ? isSearching : internalIsSearching;
-    return searching ? 'Searching...' : 'Search';
-  }, [isSearching, internalIsSearching]);
+    if (searching) return 'Searching...';
+    return totalListings > 0 ? `Search (${totalListings})` : 'Search';
+  }, [isSearching, internalIsSearching, totalListings]);
+
+  const renderSearchButtonContent = () => {
+    const searching = isSearching !== undefined ? isSearching : internalIsSearching;
+    if (searching) {
+      return <SearchLoader />;
+    }
+    return totalListings > 0 ? `Search (${totalListings})` : 'Search';
+  };
 
   // Use provided functions or defaults
   const finalHandleSearch = handleSearch || defaultHandleSearch;
@@ -305,7 +321,7 @@ const SearchContainer = ({
                 }`}
                 style={{ borderRadius: '2px' }}
               >
-                {finalGetSearchButtonText()}
+                {renderSearchButtonContent()}
               </button>
             </div>
           )) || (isDesktop && uiState.openDropdown !== 'custom' && (
@@ -319,7 +335,7 @@ const SearchContainer = ({
                 }`}
                 style={{ borderRadius: '2px' }}
               >
-                {finalGetSearchButtonText()}
+                {renderSearchButtonContent()}
               </button>
             </div>
           ))}

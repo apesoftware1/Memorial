@@ -3,6 +3,8 @@ import { PremiumListingCard } from "@/components/premium-listing-card";
 import { StandardListingCard } from "@/components/standard-listing-card";
 import BannerAd from "@/components/BannerAd";
 import FeaturedListings from "@/components/FeaturedListings";
+import { useState, useRef, useEffect } from "react";
+import { PageLoader, CardSkeleton } from "@/components/ui/loader";
 
 const IndexRender = ({
    
@@ -14,6 +16,41 @@ const IndexRender = ({
   currentPage = 1,
   setCurrentPage = () => {},
 }) => {
+  // State for featured listings pagination
+  const [featuredActiveIndex, setFeaturedActiveIndex] = useState(0);
+  const featuredScrollRef = useRef(null);
+
+  // Function to handle featured listings scroll
+  const handleFeaturedScroll = () => {
+    if (featuredScrollRef.current) {
+      const scrollLeft = featuredScrollRef.current.scrollLeft;
+      const cardWidth = 320; // Card width + gap
+      const newIndex = Math.round(scrollLeft / cardWidth);
+      setFeaturedActiveIndex(Math.min(newIndex, 2)); // Max 3 cards (0, 1, 2)
+    }
+  };
+
+  // Function to scroll to specific featured card
+  const scrollToFeaturedCard = (index) => {
+    if (featuredScrollRef.current) {
+      const cardWidth = 320;
+      featuredScrollRef.current.scrollTo({
+        left: index * cardWidth,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  useEffect(() => {
+    const container = featuredScrollRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleFeaturedScroll);
+      return () => {
+        container.removeEventListener('scroll', handleFeaturedScroll);
+      };
+    }
+  }, []);
+
   // PAGINATION LOGIC (all from strapiListings)
   const premiumPerPage = 10;
   const standardPerPage = 5;
@@ -41,18 +78,28 @@ const IndexRender = ({
 
   // Fallback card generator
   const fallbackCard = (type = "listing") => (
-    <div className="border border-gray-300 rounded bg-white p-6 text-center text-gray-500">
-      <div className="mb-2 font-bold">No {type} available</div>
-      <div className="text-xs">Please check back later or adjust your filters.</div>
-    </div>
+    <CardSkeleton className="h-full" />
   );
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <PageLoader text="Loading listings..." />;
   if (error) {
     console.log("GraphQL Errors:", error.graphQLErrors);  // Errors returned by the server
     console.log("Network Error:", error.networkError);     // E.g. CORS or connection failure
     console.log("Extra Info:", error.extraInfo);           // Sometimes available
-  }if (error) return <p>Error loading listings, refresh page</p>;
+  }
+  if (error) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <p className="text-red-600 font-medium mb-4">Error loading listings</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Refresh Page
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -68,7 +115,39 @@ const IndexRender = ({
             <div className="w-full flex justify-center">
               <span className="text-xs text-gray-500 mt-0 font-bold mb-2" style={{marginTop: '-2px'}}>*Sponsored</span>
             </div>
-            <div className="flex overflow-x-auto gap-4 sm:grid sm:grid-cols-2 md:grid-cols-3 snap-x snap-mandatory">
+            
+            {/* Mobile: Horizontal scrolling cards */}
+            <div className="md:hidden">
+              <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide" ref={featuredScrollRef}>
+                {[0, 1, 2].map(idx =>
+                  featuredListings && featuredListings[idx] ? (
+                    <div key={featuredListings[idx].id || idx} className="flex-shrink-0 w-80 snap-start">
+                      <FeaturedListings listing={featuredListings[idx]} />
+                    </div>
+                  ) : (
+                    <div key={"fallback-" + idx} className="flex-shrink-0 w-80 snap-start flex justify-center">
+                      {fallbackCard("featured listings")}
+                    </div>
+                  )
+                )}
+              </div>
+              {/* Pagination Dots - Mobile only */}
+              <div className="flex justify-center mt-4 space-x-2">
+                {[0, 1, 2].map((index) => (
+                  <button
+                    key={index}
+                    onClick={() => scrollToFeaturedCard(index)}
+                    className={`w-3 h-3 rounded-full transition-colors duration-200 ${
+                      featuredActiveIndex === index ? 'bg-blue-500' : 'bg-gray-300 hover:bg-gray-400'
+                    }`}
+                    aria-label={`Go to card ${index + 1}`}
+                  ></button>
+                ))}
+              </div>
+            </div>
+
+            {/* Desktop: Grid layout */}
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[0, 1, 2].map(idx =>
                 featuredListings && featuredListings[idx] ? (
                   <FeaturedListings key={featuredListings[idx].id || idx} listing={featuredListings[idx]} />
@@ -153,7 +232,35 @@ const IndexRender = ({
                 <div className="text-blue-600 text-sm mb-4">{featuredManufacturer.location}</div>
               </>
             ) : fallbackCard("manufacturer")}
-            <div className="gap-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+            
+            {/* Mobile: Horizontal scrolling cards */}
+            <div className="md:hidden">
+              <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide">
+                {[0, 1, 2].map(idx =>
+                  manufacturerListings && manufacturerListings[idx] ? (
+                    <div key={manufacturerListings[idx].id || idx} className="flex-shrink-0 w-80 snap-start">
+                      <FeaturedListings listing={manufacturerListings[idx]} />
+                    </div>
+                  ) : (
+                    <div key={"fallback-manufacturer-" + idx} className="flex-shrink-0 w-80 snap-start flex justify-center">
+                      {fallbackCard("manufacturer listings")}
+                    </div>
+                  )
+                )}
+              </div>
+              {/* Pagination Dots - Mobile only */}
+              <div className="flex justify-center mt-4 space-x-2">
+                {[0, 1, 2].map((index) => (
+                  <div 
+                    key={index} 
+                    className="w-3 h-3 rounded-full bg-gray-300"
+                  ></div>
+                ))}
+              </div>
+            </div>
+
+            {/* Desktop: Grid layout */}
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[0, 1, 2].map(idx =>
                 manufacturerListings && manufacturerListings[idx] ? (
                   <FeaturedListings key={manufacturerListings[idx].id || idx} listing={manufacturerListings[idx]} />

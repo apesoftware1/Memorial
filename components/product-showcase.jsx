@@ -3,21 +3,21 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Facebook, Twitter, Mail, MapPin, X, Whatsapp, FacebookMessenger, Heart, User2, Cross, Gem, Camera, Flower, Truck, Info, CircleX } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { FavoriteButton } from "./favorite-button"
 import Header from "@/components/Header";
 import ProductContactForm from "./product-contact-form";
+import { calculateDistanceFrom } from "@/lib/locationUtil";
 
 
 export default function ProductShowcase({ listing,id }) {
   if (!listing) {
     return null;
   }
-
+  const [distance, setDistance] = useState(null);
   // Prepare images: main image + thumbnails (all as URLs, no duplicates)
   const mainImageUrl = listing.mainImage?.url || listing.image || "/placeholder.svg";
   const thumbnailUrls = Array.isArray(listing.thumbnails)
@@ -36,7 +36,32 @@ export default function ProductShowcase({ listing,id }) {
 
   // Manufacturer info fallback
   const info = { logo: listing.company?.logo?.url || "/placeholder-logo.svg", rating: listing.company?.googleRating || 4.7, hours: [] };
+  useEffect(() => {
+    const fetchDistance = async () => {
+      // Check if we're in the browser before accessing localStorage
+      if (typeof window === 'undefined') {
+        return;
+      }
+      
+      const storedLocation = localStorage.getItem("guestLocation");
+      if (!storedLocation) return;
 
+      try {
+        const { lat: userLat, lng: userLng } = JSON.parse(storedLocation);
+
+        if (listing?.company?.latitude && listing?.company?.longitude) {
+          const lat = parseFloat(listing.company.latitude);
+          const lng = parseFloat(listing.company.longitude);
+          const dist = calculateDistanceFrom({ lat, lng });
+          setDistance(dist);
+        }
+      } catch (error) {
+        console.error("Error calculating distance:", error);
+      }
+    };
+
+    fetchDistance();
+  }, [listing]);
   return (
     <>
       <Header />
@@ -46,7 +71,7 @@ export default function ProductShowcase({ listing,id }) {
         <span className="mx-1">&gt;</span>
         <Link href="/tombstones-for-sale" className="hover:underline">Tombstones For Sale</Link>
         <span className="mx-1">&gt;</span>
-        <span>{listing.company.location}</span>
+        <span>{listing.company?.location || 'N/A'}</span>
         <span className="mx-1">&gt;</span>
         <span className="text-gray-900 font-semibold">{listing.title}</span>
       </nav>
@@ -68,10 +93,10 @@ export default function ProductShowcase({ listing,id }) {
               {/* Location and navigation links on the same horizontal line */}
               <div className="flex flex-row items-center justify-between w-full mb-1">
                 <p className="text-sm text-gray-700 mt-2">
-                  {listing.company.location} |
-                  {listing.distance ? (
+                  {listing.company?.location || 'N/A'} |
+                  {distance ? (
                     <>
-                      <span>{listing.distance} </span><span className="text-blue-600">from you</span>
+                      <span>{distance} </span><span className="text-blue-600">km from you</span>
                     </>
                   ) : (
                     <span className="text-blue-600">from you</span>
@@ -266,19 +291,19 @@ export default function ProductShowcase({ listing,id }) {
             <hr className="my-4 border-gray-200" />
             <h3 className="text-sm font-medium mb-2">Share with Friends</h3>
             <div className="flex space-x-2">
-                  <Link href={listing.company.socialLinks.facebook}>
+                  <Link href={listing.company?.socialLinks?.facebook || "#"}>
                 <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-03.svg" alt="Facebook" width={40} height={40} />
               </Link>
-                  <Link href={listing.company.socialLinks.whatsapp}>
+                  <Link href={listing.company?.socialLinks?.whatsapp || "#"}>
                 <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-04.svg" alt="WhatsApp" width={40} height={40} />
               </Link>
-                  <Link href={listing.company.socialLinks.x}>
+                  <Link href={listing.company?.socialLinks?.x || "#"}>
                     <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-05.svg" alt="Twitter/X" width={40} height={40} />
               </Link>
-                  <Link href={listing.company.socialLinks.messenger}>
+                  <Link href={listing.company?.socialLinks?.messenger || "#"}>
                 <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-06.svg" alt="Messenger" width={40} height={40} />
               </Link>
-                  <Link href={listing.company.socialLinks.instagram}>
+                  <Link href={listing.company?.socialLinks?.instagram || "#"}>
                     <Image src="/new files/newIcons/Social Media Icons/Advert Set-Up-07.svg" alt="Instagram" width={40} height={40} />
               </Link>
             </div>
@@ -311,13 +336,13 @@ export default function ProductShowcase({ listing,id }) {
             {/* More Tombstones from this Manufacturer */}
             <div>
               <h3 className="text-sm font-medium mb-3">More Tombstones from this Manufacturer</h3>
-                {listing.company.listings && listing.company.listings.length > 0 ? (
-                  listing.company.listings.map((product) => (
+                {listing.company?.listings && listing.company.listings.length > 0 ? (
+                  listing.company?.listings?.map((product) => (
                     <Link key={product.documentId} href={`/tombstones-for-sale/${product.documentId}`} className="block">
                       <div className="flex border-b border-gray-200 py-3 hover:bg-gray-50 transition">
                     <div className="relative h-20 w-20 flex-shrink-0">
                       <Image
-                            src={product.mainImage.url || "/placeholder.svg"}
+                            src={product.mainImage?.url || "/placeholder.svg"}
                             alt={product.title}
                         fill
                         className="object-contain"
@@ -326,7 +351,7 @@ export default function ProductShowcase({ listing,id }) {
                     <div className="ml-3 flex-grow">
                           <div className="text-blue-600 font-medium">R{product.price}</div>
                           <div className="text-sm">{product.title}</div>
-                          <div className="text-xs text-gray-600">{listing.productDetails.stoneType[0].value}</div>
+                          <div className="text-xs text-gray-600">{listing.productDetails?.stoneType?.[0]?.value || 'N/A'}</div>
                     </div>
                   </div>
                     </Link>

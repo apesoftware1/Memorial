@@ -1,8 +1,8 @@
 import { gql } from '@apollo/client';
 
-export const GET_LISTING_BY_ID = gql`
-  query Listing($documentID: ID!) {
-    listing(documentId: $documentID) {
+export const GET_LISTING_BY_SLUG = gql`
+  query Listings($slug: String!) {
+    listings(filters: { slug: { eq: $slug } }) {
       documentId
       title
       mainImage {
@@ -28,7 +28,6 @@ export const GET_LISTING_BY_ID = gql`
           id
           value
         }
-        
         customization {
           id
           value
@@ -55,8 +54,6 @@ export const GET_LISTING_BY_ID = gql`
         documentId
         name
         location
-        latitude
-        longitude
         googleRating
         address
         logo {
@@ -82,8 +79,8 @@ export const GET_LISTING_BY_ID = gql`
         }
         listings {
           mainImage {
-      url
-    }
+            url
+          }
           title
           price
           documentId
@@ -100,4 +97,4 @@ export const GET_LISTING_BY_ID = gql`
       }
     }
   }
-`;
+`; 

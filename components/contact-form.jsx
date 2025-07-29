@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -86,9 +85,9 @@ export default function ContactForm() {
           </form>
         </CardContent>
         <CardFooter>
-          <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" onClick={handleSubmit}>
+          <button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md font-medium transition-colors" onClick={handleSubmit}>
             Send Message
-          </Button>
+          </button>
         </CardFooter>
       </Card>
 
