@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Star, MapPin, Edit2 } from "lucide-react";
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { PremiumListingCard } from "@/components/premium-listing-card";
 import Header from "@/components/Header";
@@ -77,7 +77,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
   // Calculate notification count from unread/new inquiries
   useEffect(() => {
     const allInquiries = (Array.isArray(companyListings) ? companyListings : []).flatMap(listing =>
-      (listing.inquiries_c || []).map(inq => ({ 
+      (listing.inquiries || listing.inquiries_c || []).map(inq => ({ 
         ...inq, 
         isRead: inq.isRead || false,
         isNew: inq.isNew || false
@@ -90,16 +90,18 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
   }, [companyListings]);
   
   // Location check hook with company update callback
+  const locationUpdateCallback = useCallback((updatedCompany) => {
+    // Update the company state with the new location data
+    setCompany(updatedCompany);
+  }, []);
+
   const {
     showLocationModal,
     openLocationModal,
     closeLocationModal,
     handleLocationUpdate,
     isLocationSet
-  } = useManufacturerLocation(company, (updatedCompany) => {
-    // Update the company state with the new location data
-    setCompany(updatedCompany);
-  });
+  } = useManufacturerLocation(company, locationUpdateCallback);
 
   useEffect(() => {
     setMobile(isMobile());
@@ -211,19 +213,26 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
     }
   };
 
-  const handleInquiriesRead = (updatedInquiries) => {
+  const handleInquiriesRead = useCallback((updatedInquiries) => {
     // Update the listings with read status
-    const updatedListings = companyListings.map(listing => {
-      const listingInquiries = updatedInquiries.filter(inq => 
-        inq.listingTitle === listing.title
-      );
-      return {
-        ...listing,
-        inquiries_c: listingInquiries
-      };
-    });
-    setCompanyListings(updatedListings);
-  };
+    setCompanyListings(prevListings => 
+      prevListings.map(listing => {
+        // Update inquiries in this listing
+        const updatedListingInquiries = (listing.inquiries || listing.inquiries_c || []).map(inq => {
+          const updatedInq = updatedInquiries.find(updated => 
+            (updated.id === inq.id) || (updated.documentId === inq.documentId)
+          );
+          return updatedInq || inq;
+        });
+        
+        return {
+          ...listing,
+          inquiries: listing.inquiries ? updatedListingInquiries : undefined,
+          inquiries_c: listing.inquiries_c ? updatedListingInquiries : undefined
+        };
+      })
+    );
+  }, []);
 
   // Function to navigate to advert creator with company data
   const handleCreateListing = () => {
@@ -347,7 +356,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
       <div style={{ fontFamily: "Arial, sans-serif", background: "#f9f9f9", minHeight: "100vh", color: "#333" }}>
         {/* Settings and Notification Buttons (only for owner) */}
         {isOwner && (
-          <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 0 0 0", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+          <div style={{ maxWidth: 1200, margin: "0 auto", padding: "16px 0 0 0", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
             {/* Notification Button */}
             <button
               onClick={() => setViewInquiriesModalOpen(true)}
@@ -362,7 +371,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                 cursor: "pointer",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
                 transition: "background 0.2s",
-                marginBottom: 16,
+                marginBottom: 8,
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
@@ -407,7 +416,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                     cursor: "pointer",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
                     transition: "background 0.2s",
-                    marginBottom: 16,
+                    marginBottom: 8,
                     display: "flex",
                     alignItems: "center",
                     gap: "8px"

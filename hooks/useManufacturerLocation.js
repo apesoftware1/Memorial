@@ -37,7 +37,7 @@ export function useManufacturerLocation(company, onCompanyUpdate) {
     }
     
     setHasCheckedLocation(true)
-  }, [session, company, hasCheckedLocation])
+  }, [session, company?.documentId, hasCheckedLocation]) // Use company.documentId instead of whole company object
 
   const handleLocationUpdate = (updatedCompany) => {
     setShowLocationModal(false)

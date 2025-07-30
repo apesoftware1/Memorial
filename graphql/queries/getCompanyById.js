@@ -73,8 +73,11 @@ export const GET_COMPANY_BY_ID = gql`
           documentId
           name
           email
+          phone
           message
           createdAt
+          isRead
+          isNew
         }
       }
       isFeatured
