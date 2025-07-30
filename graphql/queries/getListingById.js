@@ -51,8 +51,10 @@ export const GET_LISTING_BY_ID = gql`
         }
       }
       manufacturingTimeframe
+      inquiries_c { documentId }
       company {
         documentId
+        phone
         name
         location
         latitude

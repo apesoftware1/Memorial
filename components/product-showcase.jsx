@@ -11,6 +11,8 @@ import { FavoriteButton } from "./favorite-button"
 import Header from "@/components/Header";
 import ProductContactForm from "./product-contact-form";
 import { calculateDistanceFrom } from "@/lib/locationUtil";
+import { trackAnalyticsEvent } from "@/lib/analytics";
+
 
 
 export default function ProductShowcase({ listing,id }) {
@@ -18,6 +20,7 @@ export default function ProductShowcase({ listing,id }) {
     return null;
   }
   const [distance, setDistance] = useState(null);
+  const [showContact, setShowContact] = useState(false);
   // Prepare images: main image + thumbnails (all as URLs, no duplicates)
   const mainImageUrl = listing.mainImage?.url || listing.image || "/placeholder.svg";
   const thumbnailUrls = Array.isArray(listing.thumbnails)
@@ -62,6 +65,16 @@ export default function ProductShowcase({ listing,id }) {
 
     fetchDistance();
   }, [listing]);
+
+  const handleShowContact = () => {
+    setShowContact(!showContact);
+    // Debug: Log the company data to see what's available
+    console.log('Company data:', listing.company);
+    console.log('Phone:', listing.company?.phone);
+    console.log('Mobile:', listing.company?.mobile);
+    console.log('Email:', listing.company?.email);
+  };
+
   return (
     <>
       <Header />
@@ -246,9 +259,53 @@ export default function ProductShowcase({ listing,id }) {
                     <Image src={info.logo} alt={listing.company?.name || "Manufacturer Logo"} fill className="object-contain" />
                 </div>
                 <div className="text-xs text-blue-500 mb-4">Current Google Rating: {info.rating} out of 5</div>
-                <button className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded max-w-xs">
-                  Show Contact Number
+                <button 
+                  onClick={() => {handleShowContact(); trackAnalyticsEvent('contact_view', listing.documentId)}}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded max-w-xs transition-colors"
+                >
+                  {showContact ? 'Hide Contact Number' : 'Show Contact Number'}
                 </button>
+                {showContact && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg border max-w-xs w-full">
+                    <div className="text-center space-y-2">
+                      {listing.company?.phone && (
+                        <div>
+                          <span className="text-sm font-semibold text-gray-700">Phone:</span>
+                          <div className="text-lg font-bold text-blue-600">
+                            <a href={`tel:${listing.company.phone}`} className="hover:underline">
+                              {listing.company.phone}
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                      {listing.company?.mobile && (
+                        <div>
+                          <span className="text-sm font-semibold text-gray-700">Mobile:</span>
+                          <div className="text-lg font-bold text-blue-600">
+                            <a href={`tel:${listing.company.mobile}`} className="hover:underline">
+                              {listing.company.mobile}
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                      {listing.company?.email && (
+                        <div>
+                          <span className="text-sm font-semibold text-gray-700">Email:</span>
+                          <div className="text-sm text-blue-600">
+                            <a href={`mailto:${listing.company.email}`} className="hover:underline">
+                              {listing.company.email}
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                      {!listing.company?.phone && !listing.company?.mobile && !listing.company?.email && (
+                        <div className="text-sm text-gray-500">
+                          Contact information not available
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -260,9 +317,53 @@ export default function ProductShowcase({ listing,id }) {
             {/* Dark blue header */}
             <div className="bg-[#1F2B45] text-white py-6 text-center px-4 rounded-t-lg">
               CONTACT THE MANUFACTURER
-              <button className="w-full max-w-sm bg-red-600 hover:bg-red-700 text-white py-2 rounded mx-auto block mt-6">
-                Show Contact Number
+              <button 
+                onClick={() => {handleShowContact(); trackAnalyticsEvent('contact_view', listing.documentId)}} 
+                className="w-full max-w-sm bg-red-600 hover:bg-red-700 text-white py-2 rounded mx-auto block mt-6 transition-colors"
+              >
+                {showContact ? 'Hide Contact Number' : 'Show Contact Number'}
               </button>
+              {showContact && (
+                <div className="mt-4 p-4 bg-white text-gray-800 rounded-lg mx-auto max-w-sm">
+                  <div className="text-center space-y-2">
+                    {listing.company?.phone && (
+                      <div>
+                        <span className="text-sm font-semibold text-gray-700">Phone:</span>
+                        <div className="text-lg font-bold text-blue-600">
+                          <a href={`tel:${listing.company.phone}`} className="hover:underline">
+                            {listing.company.phone}
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    {listing.company?.mobile && (
+                      <div>
+                        <span className="text-sm font-semibold text-gray-700">Mobile:</span>
+                        <div className="text-lg font-bold text-blue-600">
+                          <a href={`tel:${listing.company.mobile}`} className="hover:underline">
+                            {listing.company.mobile}
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    {listing.company?.email && (
+                      <div>
+                        <span className="text-sm font-semibold text-gray-700">Email:</span>
+                        <div className="text-sm text-blue-600">
+                          <a href={`mailto:${listing.company.email}`} className="hover:underline">
+                            {listing.company.email}
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    {!listing.company?.phone && !listing.company?.mobile && !listing.company?.email && (
+                      <div className="text-sm text-gray-500">
+                        Contact information not available
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             {/* White content area */}
             <div className="bg-white rounded-b-lg">

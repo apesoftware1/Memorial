@@ -35,8 +35,10 @@ query GetListings {
       warrantyOrGuarantee { id value }
     }
     manufacturingTimeframe
+    inquiries_c { documentId }
     inquiries { documentId }
     company {
+      phone
       name
       isFeatured
       location

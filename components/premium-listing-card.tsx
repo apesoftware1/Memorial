@@ -305,13 +305,13 @@ export function PremiumListingCard({
                     <div className="font-bold text-lg text-gray-900">{listing.company.name}</div>
                     <div className="flex items-center text-green-600">
                       <Check className="w-3.5 h-3.5 mr-1" />
-                      <span className="text-xs">{(listing.enquiries ?? 0)} enquiries to this Manufacturer</span>
+                      <span className="text-xs">{(listing.inquiries_c?.length ?? 0)} enquiries to this Manufacturer</span>
                     </div>
-                    <div className="text-xs text-gray-800 mt-1" style={{minHeight: 18}}>{listing.location && listing.location.trim() !== '' ? listing.location : 'location not set'}</div>
+                    <div className="text-xs text-gray-800 mt-1" style={{minHeight: 18}}>{listing.company.location && listing.company.location.trim() !== '' ? listing.company.location : 'location not set'}</div>
                     <Link href={profileUrl} prefetch={false} className="font-medium text-gray-900 text-base mb-2" aria-label={`View ${listing.manufacturer} profile`}>
                       {listing.manufacturer}
                     </Link>
-                    <div className="text-xs text-gray-600">{listing.location}</div>
+                    
                     <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
                       <Image
                         src="/new files/newIcons/Google_Pin_Icon/GooglePin_Icon.svg"

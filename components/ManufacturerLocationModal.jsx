@@ -22,6 +22,61 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
     }
   }, [company])
 
+  // Function to convert coordinates to readable address
+  const reverseGeocode = async (lat, lng) => {
+    try {
+      // Use OpenStreetMap's free Nominatim service for reverse geocoding
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'TombstonesFinder-App' // Required by Nominatim
+          }
+        }
+      )
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data && data.display_name) {
+          // Extract more readable parts of the address
+          const address = data.address
+          let readableLocation = data.display_name
+          
+          // Try to create a shorter, more readable version
+          if (address) {
+            const parts = []
+            if (address.house_number && address.road) {
+              parts.push(`${address.house_number} ${address.road}`)
+            } else if (address.road) {
+              parts.push(address.road)
+            }
+            if (address.suburb || address.neighbourhood) {
+              parts.push(address.suburb || address.neighbourhood)
+            }
+            if (address.city || address.town || address.village) {
+              parts.push(address.city || address.town || address.village)
+            }
+            if (address.state) {
+              parts.push(address.state)
+            }
+            
+            if (parts.length > 0) {
+              readableLocation = parts.join(', ')
+            }
+          }
+          
+          setLocation(readableLocation)
+          return
+        }
+      }
+    } catch (error) {
+      console.error('Reverse geocoding failed:', error)
+    }
+    
+    // Fallback: Use coordinates with a more user-friendly format
+    setLocation(`Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`)
+  }
+
   const handleDetectLocation = () => {
     if (!isGeolocationSupported) {
       setError('Geolocation is not supported by this browser')
@@ -32,15 +87,14 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
     setError('')
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude } = position.coords
         setLatitude(latitude.toString())
         setLongitude(longitude.toString())
-        setIsLoading(false)
         
-        // Reverse geocode to get address (simplified - in real app you'd use a geocoding service)
-        // For now, we'll use the coordinates as location
-        setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`)
+        // Reverse geocode to get readable address
+        await reverseGeocode(latitude, longitude)
+        setIsLoading(false)
       },
       (error) => {
         setIsLoading(false)

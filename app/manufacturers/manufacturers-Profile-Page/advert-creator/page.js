@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/navigation'
 import Image from "next/image"
 import categories from '../../../../category.json'
+import adFlasherOptions from '../../../../adFlasher.json'
 
 const colorOptions = [
   'Black',
@@ -51,19 +52,9 @@ const transportOptions = ['Free transport within 20km', 'Paid delivery']
 const foundationOptions = ['Brick foundation', 'Cement base']
 const warrantyOptions = ['5-year warranty', '10-year manufacturer warranty']
 
-// Add adFlasher options
-const adFlasherOptions = [
-  'New',
-  'Popular',
-  'Limited Offer',
-  'Best Seller',
-  'Exclusive',
-];
-
 export default function CreateListingForm() {
-  const searchParams = useSearchParams();
-  const companyDocumentIdFromQuery = searchParams.get('companyDocumentId') || '';
   const router = useRouter();
+  const [company, setCompany] = useState(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -88,16 +79,22 @@ export default function CreateListingForm() {
       warrantyOrGuarantee: []
     },
     // Remove companyDocumentId from the form, but keep in state for payload
-    companyDocumentId: companyDocumentIdFromQuery,
+    companyDocumentId: '',
     categoryRefDocumentId: ''
   })
 
-  // If the query param changes, update formData.companyDocumentId
+  // Load company data from sessionStorage
   useEffect(() => {
-    if (companyDocumentIdFromQuery) {
-      setFormData((prev) => ({ ...prev, companyDocumentId: companyDocumentIdFromQuery }));
+    const storedCompany = sessionStorage.getItem('advertCreatorCompany');
+    if (storedCompany) {
+      const companyData = JSON.parse(storedCompany);
+      setCompany(companyData);
+      setFormData((prev) => ({ ...prev, companyDocumentId: companyData.documentId }));
+    } else {
+      // Fallback: redirect back to profile if no company data
+      router.push('/manufacturers/manufacturers-Profile-Page');
     }
-  }, [companyDocumentIdFromQuery]);
+  }, [router]);
 
   const [mainImage, setMainImage] = useState(null)
   const [thumbnails, setThumbnails] = useState([])
@@ -277,8 +274,83 @@ export default function CreateListingForm() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* Category Selection Section Header */}
+        {/* Advert Contact Details & Store Location Section Header */}
         <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
+          ADVERT CONTACT DETAILS & STORE LOCATION
+        </div>
+        
+                {/* Contact Details Grid */}
+        {company ? (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 32 }}>
+            {/* Left Column */}
+            <div>
+              <label style={{ fontSize: 12, marginBottom: 4, display: "block", color: "#555" }}>Sales Person Name</label>
+              <input 
+                type="text"
+                value={company.user.name || ''}
+                style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, opacity: 0.5, padding: "8px 12px", outline: "none", marginBottom: 16, background: "#f9f9f9" }}
+                placeholder="Enter name"
+                disabled
+              />
+              
+              <label style={{ fontSize: 12, marginBottom: 4, display: "block", color: "##f9f9f9" }}>Sales Person WhatsApp Number</label>
+              <input 
+                type="text"
+                value={company.user.whatsappNumber || ''}
+                style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, opacity: 0.5, padding: "8px 12px", outline: "none", marginBottom: 16, background: "#f9f9f9" }}
+                placeholder="Enter WhatsApp number"
+                disabled
+              />
+              
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label style={{ fontSize: 12, color: "##f9f9f9", flex: 1 }}>Store Google Location Pin</label>
+                <div style={{ 
+                  width: 24, 
+                  height: 24, 
+                  backgroundColor: "#e0e0e0", 
+                  borderRadius: "50%", 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "center",
+                  cursor: "not-allowed"
+                }}>
+                  <span style={{ fontSize: 12, color: "#888" }}>📍</span>
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
+                {company.location || 'Location not set'}
+              </div>
+            </div>
+            
+            {/* Right Column */}
+            <div>
+              <label style={{ fontSize: 12, marginBottom: 4, display: "block", color: "##f9f9f9" }}>Sales Person Phone Number</label>
+              <input 
+                type="text"
+                value={company.user.phoneNumber || ''}
+                style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, opacity: 0.5, padding: "8px 12px", outline: "none", marginBottom: 16, background: "#f9f9f9" }}
+                placeholder="Enter phone number"
+                disabled
+              />
+              
+              <label style={{ fontSize: 12, marginBottom: 4, display: "block", color: "##f9f9f9" }}>Sales Person E-mail Address</label>
+              <input 
+                type="email"
+                value={company.user.email || ''}
+                style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, opacity: 0.5, padding: "8px 12px", outline: "none", marginBottom: 16, background: "#f9f9f9" }}
+                placeholder="Enter email address"
+                disabled
+              />
+            </div>
+          </div>
+        ) : (
+          <div style={{ padding: "32px", textAlign: "center", color: "#666" }}>
+            Loading company information...
+          </div>
+        )}
+
+        {/* Category Selection Section Header */}
+        <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13,  padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
           CATEGORY SELECTION
         </div>
         <div style={{ height: 12 }} />

@@ -16,19 +16,7 @@ const cardStyle = {
   position: "relative",
   animation: "fadeScaleIn 0.5s cubic-bezier(.4,0,.2,1)"
 };
-const overlayStyle = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  width: '100vw',
-  height: '100vh',
-  background: 'rgba(0,0,0,0.25)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 1000,
-  animation: 'fadeIn 0.4s cubic-bezier(.4,0,.2,1)'
-};
+
 const inputStyle = {
   width: "100%",
   padding: 10,
@@ -41,11 +29,7 @@ const inputStyle = {
   transition: 'border-color 0.2s, box-shadow 0.2s',
   background: '#f8fafc',
 };
-const inputFocusStyle = {
-  borderColor: '#1565c0',
-  boxShadow: '0 0 0 2px #90caf9',
-  background: '#fff',
-};
+
 const buttonStyle = (loading) => ({
   width: 110,
   background: loading ? '#90caf9' : "#1565c0",
@@ -62,6 +46,22 @@ const buttonStyle = (loading) => ({
   outline: 'none',
 });
 
+const adminButtonStyle = {
+  width: "100%",
+  background: "#dc2626",
+  color: "#fff",
+  fontWeight: 700,
+  fontSize: 16,
+  padding: "12px 0",
+  border: "none",
+  borderRadius: 4,
+  cursor: "pointer",
+  marginTop: 12,
+  boxShadow: '0 2px 8px rgba(220,38,38,0.08)',
+  transition: 'background 0.2s, box-shadow 0.2s',
+  outline: 'none',
+};
+
 // Add keyframes for fade/scale in
 if (typeof window !== 'undefined' && !document.getElementById('login-anim-style')) {
   const style = document.createElement('style');
@@ -72,20 +72,23 @@ if (typeof window !== 'undefined' && !document.getElementById('login-anim-style'
     .input-focus:focus { border-color: #1565c0 !important; box-shadow: 0 0 0 2px #90caf9 !important; background: #fff !important; }
     .login-link:hover { color: #003c5a !important; text-decoration: underline; }
     .login-btn:hover:not(:disabled) { background: #003c5a !important; }
+    .admin-btn:hover { background: #b91c1c !important; }
   `;
   document.head.appendChild(style);
 }
+
+// Admin email addresses that should have access to the dashboard
+const ADMIN_EMAILS = [
+  'regan@tombstonesfinder.com',
+  'admin@tombstonesfinder.com',
+  // Add any other admin emails here
+];
 
 export default function ManufacturerLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showRegister, setShowRegister] = useState(false);
-  const [registerLoading, setRegisterLoading] = useState(false);
-  const [registerError, setRegisterError] = useState("");
-  const [registerSuccess, setRegisterSuccess] = useState("");
-  const [registerForm, setRegisterForm] = useState({ username: "", email: "", password: "" });
   const router = useRouter();
 
   async function handleSubmit(e) {
@@ -99,7 +102,12 @@ export default function ManufacturerLogin() {
         password,
       });
       if (result.ok) {
-        router.push("/manufacturers/manufacturers-Profile-Page");
+        // Check if user is admin and redirect accordingly
+        if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+          router.push("/regan-dashboard");
+        } else {
+          router.push("/manufacturers/manufacturers-Profile-Page");
+        }
       } else {
         setError("Login failed. Please check your credentials.");
       }
@@ -110,34 +118,28 @@ export default function ManufacturerLogin() {
     }
   }
 
-  async function handleRegister(e) {
-    e.preventDefault();
-    setRegisterLoading(true);
-    setRegisterError("");
-    setRegisterSuccess("");
+  async function handleAdminLogin() {
+    setLoading(true);
+    setError("");
     try {
-      const res = await fetch("https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/auth/local/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(registerForm),
+      const result = await signIn("credentials", {
+        redirect: false,
+        email: "regan@tombstonesfinder.com",
+        password: "admin123", // This should match the password in NextAuth config
       });
-      const data = await res.json();
-      if (res.ok && data.jwt) {
-        setRegisterSuccess("Registration successful! You can now log in.");
-        setShowRegister(false);
-        setRegisterForm({ username: "", email: "", password: "" });
+      if (result.ok) {
+        router.push("/regan-dashboard");
       } else {
-        setRegisterError(data.error?.message || "Registration failed. Please try again.");
+        setError("Admin login failed. Please check credentials.");
       }
     } catch (err) {
-      setRegisterError("Network error. Please try again.");
+      setError("Network error. Please try again.");
     } finally {
-      setRegisterLoading(false);
+      setLoading(false);
     }
   }
 
   return (
-    
     <div
       style={{
         minHeight: "100vh",
@@ -149,7 +151,6 @@ export default function ManufacturerLogin() {
         justifyContent: "center",
       }}
     >
-  
       {/* Centered Card */}
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={cardStyle}>
@@ -206,77 +207,24 @@ export default function ManufacturerLogin() {
             >
               {loading ? "Signing in..." : "Continue"}
             </button>
-            <div style={{ marginTop: 18, textAlign: 'center' }}>
-              <span style={{ fontSize: 14, color: '#444' }}>Don't have an account? </span>
-              <button type="button" onClick={() => setShowRegister(true)} style={{ color: '#1565c0', fontWeight: 600, textDecoration: 'underline', fontSize: 14, cursor: 'pointer', background: 'none', border: 'none', padding: 0 }} className="login-link">
-                Register
+            
+            {/* Admin Login Button */}
+            <div style={{ marginTop: 24, textAlign: 'center' }}>
+              <div style={{ borderTop: "1px solid #e0e0e0", margin: "0 0 16px 0" }} />
+              <p style={{ fontSize: 14, color: '#666', marginBottom: 12 }}>Website Administrator</p>
+              <button
+                type="button"
+                onClick={handleAdminLogin}
+                style={adminButtonStyle}
+                className="admin-btn"
+                disabled={loading}
+              >
+                {loading ? "Signing in..." : "Login as Admin"}
               </button>
             </div>
           </form>
         </div>
       </div>
-      {/* Registration Modal */}
-      {showRegister && (
-        <div style={overlayStyle}>
-          <div style={cardStyle}>
-            <button onClick={() => setShowRegister(false)} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#888' }}>&times;</button>
-            <div style={{ fontWeight: 700, fontSize: 22, textAlign: 'center', marginBottom: 8, fontFamily: 'Arial, sans-serif', letterSpacing: 0.5 }}>Register</div>
-            <div style={{ borderBottom: '1px solid #e0e0e0', margin: '0 0 18px 0' }} />
-            <form onSubmit={handleRegister} autoComplete="on">
-              {registerError && <div style={{ color: '#e54d26', marginBottom: 12, fontSize: 14, textAlign: 'center' }}>{registerError}</div>}
-              {registerSuccess && <div style={{ color: '#388e3c', marginBottom: 12, fontSize: 14, textAlign: 'center' }}>{registerSuccess}</div>}
-              <div style={{ marginBottom: 16 }}>
-                <label htmlFor="register-username" style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 4, color: '#222' }}>Username<span style={{ color: '#e54d26' }}>*</span></label>
-                <input
-                  id="register-username"
-                  type="text"
-                  value={registerForm.username}
-                  onChange={e => setRegisterForm(f => ({ ...f, username: e.target.value }))}
-                  style={inputStyle}
-                  className="input-focus"
-                  required
-                />
-              </div>
-              <div style={{ marginBottom: 16 }}>
-                <label htmlFor="register-email" style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 4, color: '#222' }}>Email<span style={{ color: '#e54d26' }}>*</span></label>
-                <input
-                  id="register-email"
-                  type="email"
-                  value={registerForm.email}
-                  onChange={e => setRegisterForm(f => ({ ...f, email: e.target.value }))}
-                  style={inputStyle}
-                  className="input-focus"
-                  required
-                />
-              </div>
-              <div style={{ marginBottom: 18 }}>
-                <label htmlFor="register-password" style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 4, color: '#222' }}>Password<span style={{ color: '#e54d26' }}>*</span></label>
-                <input
-                  id="register-password"
-                  type="password"
-                  value={registerForm.password}
-                  onChange={e => setRegisterForm(f => ({ ...f, password: e.target.value }))}
-                  style={inputStyle}
-                  className="input-focus"
-                  minLength={8}
-                  required
-                />
-                {registerForm.password.length > 0 && registerForm.password.length < 8 && (
-                  <div style={{ color: '#e54d26', fontSize: 12, marginTop: 2 }}>Password must be at least 8 characters.</div>
-                )}
-              </div>
-              <button
-                type="submit"
-                style={buttonStyle(registerLoading)}
-                className="login-btn"
-                disabled={registerLoading}
-              >
-                {registerLoading ? 'Registering...' : 'Register'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
-} 
+}

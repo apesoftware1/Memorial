@@ -4,6 +4,7 @@ export const GET_COMPANY_BY_USER = gql`
   query GetCompanyByUser($documentId: ID!) {
     companies(filters: { user: { documentId: { eq: $documentId } } }) {
       documentId
+      phone
       name
       googleRating
       location
@@ -36,6 +37,9 @@ export const GET_COMPANY_BY_USER = gql`
       user {
         documentId
         email
+        name
+        whatsappNumber
+        phoneNumber
       }
       listings {
         createdAt

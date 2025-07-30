@@ -4,6 +4,7 @@ export const GET_COMPANY_BY_ID = gql`
   query Company($documentId: ID!) {
     company(documentId: $documentId) {
       documentId
+      phone
       name
       googleRating
       location
@@ -67,6 +68,7 @@ export const GET_COMPANY_BY_ID = gql`
           foundationOptions { id value }
           warrantyOrGuarantee { id value }
         }
+      
         inquiries {
           documentId
           name

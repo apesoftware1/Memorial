@@ -52,6 +52,7 @@ export const GET_LISTING_BY_SLUG = gql`
       manufacturingTimeframe
       company {
         documentId
+        phone
         name
         location
         googleRating

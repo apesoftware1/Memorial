@@ -2,18 +2,28 @@ import Image from "next/image";
 import Link from "next/link";
 import { Star, MapPin, Edit2 } from "lucide-react";
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { PremiumListingCard } from "@/components/premium-listing-card";
 import Header from "@/components/Header";
 import ViewInquiriesModal from '@/components/ViewInquiriesModal';
 import CreateSpecialModal from '@/components/CreateSpecialModal';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
-// import { useManufacturerLocation } from '@/hooks/useManufacturerLocation'
-// import ManufacturerLocationModal from '@/components/ManufacturerLocationModal';
+import { useManufacturerLocation } from '@/hooks/useManufacturerLocation'
+import ManufacturerLocationModal from '@/components/ManufacturerLocationModal';
+import { updateCompanyField } from '@/graphql/mutations/updateCompany';
 
 // SVG Settings (gear) icon component
 const SettingsIcon = (props) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
     <path fillRule="evenodd" clipRule="evenodd" d="M14.2788 2.15224C13.9085 2 13.439 2 12.5 2C11.561 2 11.0915 2 10.7212 2.15224C10.2274 2.35523 9.83509 2.74458 9.63056 3.23463C9.53719 3.45834 9.50065 3.7185 9.48635 4.09799C9.46534 4.65568 9.17716 5.17189 8.69017 5.45093C8.20318 5.72996 7.60864 5.71954 7.11149 5.45876C6.77318 5.2813 6.52789 5.18262 6.28599 5.15102C5.75609 5.08178 5.22018 5.22429 4.79616 5.5472C4.47814 5.78938 4.24339 6.1929 3.7739 6.99993C3.30441 7.80697 3.06967 8.21048 3.01735 8.60491C2.94758 9.1308 3.09118 9.66266 3.41655 10.0835C3.56506 10.2756 3.77377 10.437 4.0977 10.639C4.57391 10.936 4.88032 11.4419 4.88029 12C4.88026 12.5581 4.57386 13.0639 4.0977 13.3608C3.77372 13.5629 3.56497 13.7244 3.41645 13.9165C3.09108 14.3373 2.94749 14.8691 3.01725 15.395C3.06957 15.7894 3.30432 16.193 3.7738 17C4.24329 17.807 4.47804 18.2106 4.79606 18.4527C5.22008 18.7756 5.75599 18.9181 6.28589 18.8489C6.52778 18.8173 6.77305 18.7186 7.11133 18.5412C7.60852 18.2804 8.2031 18.27 8.69012 18.549C9.17714 18.8281 9.46533 19.3443 9.48635 19.9021C9.50065 20.2815 9.53719 20.5417 9.63056 20.7654C9.83509 21.2554 10.2274 21.6448 10.7212 21.8478C11.0915 22 11.561 22 12.5 22C13.439 22 13.9085 22 14.2788 21.8478C14.7726 21.6448 15.1649 21.2554 15.3694 20.7654C15.4628 20.5417 15.4994 20.2815 15.5137 19.902C15.5347 19.3443 15.8228 18.8281 16.3098 18.549C16.7968 18.2699 17.3914 18.2804 17.8886 18.5412C18.2269 18.7186 18.4721 18.8172 18.714 18.8488C19.2439 18.9181 19.7798 18.7756 20.2038 18.4527C20.5219 18.2105 20.7566 17.807 21.2261 16.9999C21.6956 16.1929 21.9303 15.7894 21.9827 15.395C22.0524 14.8691 21.9088 14.3372 21.5835 13.9164C21.4349 13.7243 21.2262 13.5628 20.9022 13.3608C20.4261 13.0639 20.1197 12.558 20.1197 11.9999C20.1197 11.4418 20.4261 10.9361 20.9022 10.6392C21.2263 10.4371 21.435 10.2757 21.5836 10.0835C21.9089 9.66273 22.0525 9.13087 21.9828 8.60497C21.9304 8.21055 21.6957 7.80703 21.2262 7C20.7567 6.19297 20.522 5.78945 20.2039 5.54727C19.7799 5.22436 19.244 5.08185 18.7141 5.15109C18.4722 5.18269 18.2269 5.28136 17.8887 5.4588C17.3915 5.71959 16.7969 5.73002 16.3099 5.45096C15.8229 5.17191 15.5347 4.65566 15.5136 4.09794C15.4993 3.71848 15.4628 3.45833 15.3694 3.23463C15.1649 2.74458 14.7726 2.35523 14.2788 2.15224ZM12.5 15C14.1695 15 15.5228 13.6569 15.5228 12C15.5228 10.3431 14.1695 9 12.5 9C10.8305 9 9.47716 10.3431 9.47716 12C9.47716 13.6569 10.8305 15 12.5 15Z" fill="#fff"/>
+  </svg>
+);
+
+// SVG Notification (bell) icon component
+const NotificationIcon = (props) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -33,6 +43,7 @@ function parsePrice(val) {
 }
 
 export default function ManufacturerProfileEditor({ isOwner, company: initialCompany, listings }) {
+  const router = useRouter();
   const [mobile, setMobile] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const sortModalRef = useRef();
@@ -40,6 +51,8 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
   const [modalOpen, setModalOpen] = useState(false);
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState('');
+  const [editingOperatingHours, setEditingOperatingHours] = useState({});
+  const [editingSocialLinks, setEditingSocialLinks] = useState({});
   const [createSpecialModalOpen, setCreateSpecialModalOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState(null);
   const [viewInquiriesModalOpen, setViewInquiriesModalOpen] = useState(false);
@@ -47,31 +60,46 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
   // Company state management
   const [company, setCompany] = useState(initialCompany);
   
+  // Notification state management
+  const [companyListings, setCompanyListings] = useState(listings || []);
+  const [notificationCount, setNotificationCount] = useState(0);
+  
   // Update company state when initialCompany changes
   useEffect(() => {
     setCompany(initialCompany);
   }, [initialCompany]);
   
-  // Default value for isLocationSet since the hook is commented out
-  const isLocationSet = company?.latitude && company?.longitude;
+  // Update listings when props change
+  useEffect(() => {
+    setCompanyListings(listings || []);
+  }, [listings]);
   
-  // Default values for location modal functions since the hook is commented out
-  const showLocationModal = false;
-  const openLocationModal = () => {};
-  const closeLocationModal = () => {};
-  const handleLocationUpdate = () => {};
+  // Calculate notification count from unread/new inquiries
+  useEffect(() => {
+    const allInquiries = (Array.isArray(companyListings) ? companyListings : []).flatMap(listing =>
+      (listing.inquiries_c || []).map(inq => ({ 
+        ...inq, 
+        isRead: inq.isRead || false,
+        isNew: inq.isNew || false
+      }))
+    );
+    
+    const unreadCount = allInquiries.filter(inq => !inq.isRead).length;
+    const newCount = allInquiries.filter(inq => inq.isNew).length;
+    setNotificationCount(unreadCount + newCount);
+  }, [companyListings]);
   
   // Location check hook with company update callback
-  // const {
-  //   showLocationModal,
-  //   openLocationModal,
-  //   closeLocationModal,
-  //   handleLocationUpdate,
-  //   isLocationSet
-  // } = useManufacturerLocation(company, (updatedCompany) => {
-  //   // Update the company state with the new location data
-  //   setCompany(updatedCompany);
-  // });
+  const {
+    showLocationModal,
+    openLocationModal,
+    closeLocationModal,
+    handleLocationUpdate,
+    isLocationSet
+  } = useManufacturerLocation(company, (updatedCompany) => {
+    // Update the company state with the new location data
+    setCompany(updatedCompany);
+  });
 
   useEffect(() => {
     setMobile(isMobile());
@@ -93,37 +121,37 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
 
   if (!company) return <div>No company data found.</div>;
 
-  // Convert operating hours from GraphQL structure to display format
+  // Convert operating hours from GraphQL structure to display format with field mapping
   const operatingHours = company.operatingHours ? [
-    { day: "Monday to Friday", time: company.operatingHours.monToFri || "09:00 - 16:00" },
-    { day: "Saturdays", time: company.operatingHours.saturday || "08:30 - 14:00" },
-    { day: "Sundays", time: company.operatingHours.sunday || "Closed" },
-    { day: "Public Holidays", time: company.operatingHours.publicHoliday || "08:30 - 14:00" },
+    { day: "Monday to Friday", time: company.operatingHours.monToFri || "09:00 - 16:00", field: "monToFri" },
+    { day: "Saturdays", time: company.operatingHours.saturday || "08:30 - 14:00", field: "saturday" },
+    { day: "Sundays", time: company.operatingHours.sunday || "Closed", field: "sunday" },
+    { day: "Public Holidays", time: company.operatingHours.publicHoliday || "08:30 - 14:00", field: "publicHoliday" },
   ] : [];
 
-  // Convert social links from GraphQL structure to display format
-  const socialLinks = company.socialLinks ? [
-    { name: "facebook", url: company.socialLinks.facebook || "#" },
-    { name: "instagram", url: company.socialLinks.instagram || "#" },
-    { name: "youtube", url: company.socialLinks.youtube || "#" },
-    { name: "telegram", url: "#" },
-    { name: "x", url: company.socialLinks.x || "#" },
-    { name: "whatsapp", url: company.socialLinks.whatsapp || "#" },
-    { name: "messenger", url: company.socialLinks.messenger || "#" },
-  ].filter(social => social.url !== "#") : [];
+  // Convert social links from GraphQL structure to display format - always show all platforms
+  const socialLinks = [
+    { name: "website", url: company.socialLinks?.website || "", displayName: "Website" },
+    { name: "facebook", url: company.socialLinks?.facebook || "", displayName: "Facebook" },
+    { name: "instagram", url: company.socialLinks?.instagram || "", displayName: "Instagram" },
+    { name: "tiktok", url: company.socialLinks?.tiktok || "", displayName: "TikTok" },
+    { name: "youtube", url: company.socialLinks?.youtube || "", displayName: "YouTube" },
+    { name: "x", url: company.socialLinks?.x || "", displayName: "X (Twitter)" },
+    { name: "whatsapp", url: company.socialLinks?.whatsapp || "", displayName: "WhatsApp" },
+    { name: "messenger", url: company.socialLinks?.messenger || "", displayName: "Messenger" },
+  ];
 
-  // Social icon map
+  // Social icon map - using proper named icons
   const socialIconMap = {
-    facebook: '/new files/newIcons/Social Media Icons/Advert Set-Up-03.svg',
-    instagram: '/new files/newIcons/Social Media Icons/Advert Set-Up-04.svg',
-    youtube: '/new files/newIcons/Social Media Icons/Advert Set-Up-05.svg',
-    telegram: '/new files/newIcons/Social Media Icons/Advert Set-Up-06.svg',
-    whatsapp: '/new files/newIcons/Social Media Icons/Advert Set-Up-07.svg',
-    messenger: '/new files/newIcons/Social Media Icons/Advert Set-Up-07.svg',
-    x: '/new files/newIcons/Social Media Icons/Advert Set-Up-06.svg',
+    website: '/new files/newIcons/Social Media Icons/Advert Set-Up-03.svg', // Website icon (using generic)
+    facebook: '/new files/Social Media Icons/Social Media Icons/facebook.svg',
+    instagram: '/new files/newIcons/Social Media Icons/Advert Set-Up-04.svg', // Instagram icon
+    tiktok: '/new files/newIcons/Social Media Icons/Advert Set-Up-07.svg', // TikTok icon (using generic for now)
+    youtube: '/new files/newIcons/Social Media Icons/Advert Set-Up-05.svg', // YouTube icon
+    x: '/new files/Social Media Icons/Social Media Icons/twitter.svg', // Using twitter.svg for X
+    whatsapp: '/new files/Social Media Icons/Social Media Icons/whatsapp.svg',
+    messenger: '/new files/Social Media Icons/Social Media Icons/Advert Set-Up-06.svg', // Messenger icon (confirmed)
   };
-
-  const companyListings = listings || [];
 
   if (mobile && isOwner) {
     return (
@@ -183,31 +211,220 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
     }
   };
 
+  const handleInquiriesRead = (updatedInquiries) => {
+    // Update the listings with read status
+    const updatedListings = companyListings.map(listing => {
+      const listingInquiries = updatedInquiries.filter(inq => 
+        inq.listingTitle === listing.title
+      );
+      return {
+        ...listing,
+        inquiries_c: listingInquiries
+      };
+    });
+    setCompanyListings(updatedListings);
+  };
+
+  // Function to navigate to advert creator with company data
+  const handleCreateListing = () => {
+    // Store company data in sessionStorage to pass to advert creator
+    sessionStorage.setItem('advertCreatorCompany', JSON.stringify(company));
+    router.push('/manufacturers/manufacturers-Profile-Page/advert-creator');
+  };
+
+  // Function to handle saving field changes and updating local state
+  const handleSaveField = async (field, value) => {
+    try {
+      // Update the field in the API
+      const updatedData = await updateCompanyField(company.documentId, { [field]: value });
+      
+      if (updatedData) {
+        // Update local state with the new value
+        setCompany(prevCompany => ({
+          ...prevCompany,
+          [field]: value
+        }));
+        
+        // Close edit mode
+        setEditingField(null);
+        
+        // Optional: Show success message
+        console.log(`${field} updated successfully`);
+      } else {
+        // Handle error
+        console.error(`Failed to update ${field}`);
+        alert(`Failed to update ${field}. Please try again.`);
+      }
+    } catch (error) {
+      console.error(`Error updating ${field}:`, error);
+      alert(`Error updating ${field}. Please try again.`);
+    }
+  };
+
+  // Function to handle saving all operating hours changes
+  const handleSaveAllOperatingHours = async () => {
+    try {
+      // Create the nested operatingHours object for the API
+      const operatingHoursUpdate = {
+        operatingHours: editingOperatingHours
+      };
+      
+      // Update the field in the API
+      const updatedData = await updateCompanyField(company.documentId, operatingHoursUpdate);
+      
+      if (updatedData) {
+        // Update local state with the new values
+        setCompany(prevCompany => ({
+          ...prevCompany,
+          operatingHours: editingOperatingHours
+        }));
+        
+        // Close edit mode
+        setEditingField(null);
+        setEditingOperatingHours({});
+        
+        // Optional: Show success message
+        console.log('Operating hours updated successfully');
+      } else {
+        // Handle error
+        console.error('Failed to update operating hours');
+        alert('Failed to update operating hours. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error updating operating hours:', error);
+      alert('Error updating operating hours. Please try again.');
+    }
+  };
+
+  // Function to handle saving social links changes
+  const handleSaveSocialLinks = async (socialLinksData) => {
+    try {
+      // Create the nested socialLinks object for the API with proper payload structure
+      const socialLinksPayload = {
+        facebook: socialLinksData.facebook || "#",
+        website: socialLinksData.website || "#",
+        instagram: socialLinksData.instagram || "#",
+        tiktok: socialLinksData.tiktok || "#",
+        youtube: socialLinksData.youtube || "#",
+        x: socialLinksData.x || "#",
+        whatsapp: socialLinksData.whatsapp || "#",
+        messenger: socialLinksData.messenger || "#"
+      };
+
+      const socialLinksUpdate = {
+        socialLinks: socialLinksPayload
+      };
+      
+      // Update the field in the API
+      const updatedData = await updateCompanyField(company.documentId, socialLinksUpdate);
+      
+      if (updatedData) {
+        // Update local state with the new values
+        setCompany(prevCompany => ({
+          ...prevCompany,
+          socialLinks: socialLinksPayload
+        }));
+        
+        // Close edit mode
+        setEditingField(null);
+        
+        // Optional: Show success message
+        console.log('Social links updated successfully');
+      } else {
+        // Handle error
+        console.error('Failed to update social links');
+        alert('Failed to update social links. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error updating social links:', error);
+      alert('Error updating social links. Please try again.');
+    }
+  };
+
   return (
     <>
       <Header showLogout={isOwner} />
       <div style={{ fontFamily: "Arial, sans-serif", background: "#f9f9f9", minHeight: "100vh", color: "#333" }}>
-        {/* Create Listing Button (only for owner) */}
+        {/* Settings and Notification Buttons (only for owner) */}
         {isOwner && (
-          <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 0 0 0", display: "flex", justifyContent: "flex-end" }}>
-            <a
-              href={`/manufacturers/manufacturers-Profile-Page/advert-creator?companyDocumentId=${company.documentId}`}
+          <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 0 0 0", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+            {/* Notification Button */}
+            <button
+              onClick={() => setViewInquiriesModalOpen(true)}
               style={{
-                background: "#005bac",
+                background: "#808080",
                 color: "#fff",
                 borderRadius: 8,
-                padding: "12px 28px",
+                padding: "12px 16px",
                 fontWeight: 700,
                 fontSize: 15,
-                textDecoration: "none",
+                border: "none",
+                cursor: "pointer",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
                 transition: "background 0.2s",
                 marginBottom: 16,
-                display: "inline-block"
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                position: "relative"
               }}
             >
-              + Create Listing
-            </a>
+              <NotificationIcon />
+              {notificationCount > 0 && (
+                <span style={{
+                  position: "absolute",
+                  top: "-8px",
+                  right: "-8px",
+                  background: "#ff4444",
+                  color: "#fff",
+                  borderRadius: "50%",
+                  width: "20px",
+                  height: "20px",
+                  fontSize: "12px",
+                  fontWeight: "700",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "2px solid #fff"
+                }}>
+                  {notificationCount > 99 ? "99+" : notificationCount}
+                </span>
+              )}
+            </button>
+            
+            {/* Settings Button */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  style={{
+                    background: "#808080",
+                    color: "#fff",
+                    borderRadius: 8,
+                    padding: "12px 16px",
+                    fontWeight: 700,
+                    fontSize: 15,
+                    border: "none",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
+                    transition: "background 0.2s",
+                    marginBottom: 16,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}
+                >
+                  <SettingsIcon />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => window.location.href = `/manufacturers/manufacturers-Profile-Page`}>
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCreateListing}>
+                  + Create Listing
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
         {/* Combined Profile Card - all info in one card */}
@@ -224,7 +441,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                     onChange={e => setEditValue(e.target.value)}
                     style={{ fontWeight: 700, fontSize: 18, padding: 2, borderRadius: 4, border: '1px solid #ccc' }}
                   />
-                  <button onClick={() => { /* save logic here */ setEditingField(null); }} style={{ marginLeft: 4, color: '#28a745', fontWeight: 700, border: 'none', background: 'none', cursor: 'pointer' }}>Save</button>
+                  <button onClick={() => handleSaveField('name', editValue)} style={{ marginLeft: 4, color: '#28a745', fontWeight: 700, border: 'none', background: 'none', cursor: 'pointer' }}>Save</button>
                   <button onClick={() => setEditingField(null)} style={{ marginLeft: 2, color: '#888', fontWeight: 700, border: 'none', background: 'none', cursor: 'pointer' }}>Cancel</button>
                 </>
               ) : (
@@ -279,36 +496,216 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
             )}
             {/* Operating Hours Label */}
             <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 2 }}>Operating Hours</div>
-            <div style={{ fontSize: 15, margin: '0 0 8px 0', display: 'grid', gridTemplateColumns: 'auto auto', rowGap: 2, columnGap: 16 }}>
-              {operatingHours.map((h, i) => (
-                <React.Fragment key={i}>
-                  <div style={{ fontWeight: 700 }}>{h.day}</div>
-                  <div>{h.time}</div>
-                </React.Fragment>
-              ))}
-            </div>
-            {isOwner && (
-              <button style={{ background: 'none', border: 'none', marginLeft: 2, cursor: 'pointer' }}>
-                <Edit2 style={{ width: 16, height: 16, color: '#888' }} />
-              </button>
+            {editingField === 'operatingHours' ? (
+              <div style={{ marginBottom: 8 }}>
+                {operatingHours.map((h, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', marginBottom: 4, gap: 16 }}>
+                    <div style={{ fontWeight: 700, minWidth: 140, fontSize: 15 }}>{h.day}</div>
+                    <input
+                      value={editingOperatingHours[h.field] || h.time}
+                      onChange={e => setEditingOperatingHours(prev => ({
+                        ...prev,
+                        [h.field]: e.target.value
+                      }))}
+                      style={{ 
+                        padding: '4px 8px', 
+                        borderRadius: 4, 
+                        border: '1px solid #ccc', 
+                        flex: 1,
+                        fontSize: 15
+                      }}
+                      placeholder="e.g., 09:00 - 17:00 or Closed"
+                    />
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <button 
+                    onClick={handleSaveAllOperatingHours}
+                    style={{ 
+                      color: '#28a745', 
+                      fontWeight: 700, 
+                      border: 'none', 
+                      background: 'none', 
+                      cursor: 'pointer',
+                      fontSize: 14
+                    }}
+                  >
+                    Save
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setEditingField(null);
+                      setEditingOperatingHours({});
+                    }}
+                    style={{ 
+                      color: '#888', 
+                      fontWeight: 700, 
+                      border: 'none', 
+                      background: 'none', 
+                      cursor: 'pointer',
+                      fontSize: 14
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: 15, margin: '0 0 8px 0', display: 'grid', gridTemplateColumns: 'auto auto', rowGap: 2, columnGap: 16 }}>
+                  {operatingHours.map((h, i) => (
+                    <React.Fragment key={i}>
+                      <div style={{ fontWeight: 700 }}>{h.day}</div>
+                      <div>{h.time}</div>
+                    </React.Fragment>
+                  ))}
+                </div>
+                {isOwner && (
+                  <button 
+                    style={{ background: 'none', border: 'none', marginLeft: 2, cursor: 'pointer' }}
+                    onClick={() => {
+                      setEditingField('operatingHours');
+                      // Initialize editing state with current values
+                      setEditingOperatingHours({
+                        monToFri: company.operatingHours?.monToFri || "09:00 - 16:00",
+                        saturday: company.operatingHours?.saturday || "08:30 - 14:00", 
+                        sunday: company.operatingHours?.sunday || "Closed",
+                        publicHoliday: company.operatingHours?.publicHoliday || "08:30 - 14:00"
+                      });
+                    }}
+                  >
+                    <Edit2 style={{ width: 16, height: 16, color: '#888' }} />
+                  </button>
+                )}
+              </>
             )}
             {/* Company Profile Label */}
             <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 2 }}>Company Profile</div>
-            <div style={{ border: '1px solid #e0e0e0', borderRadius: 8, background: '#fafbfc', padding: 14, fontSize: 15, marginBottom: 8 }}>
-              <span>{company.description}</span>
-            </div>
-            {isOwner && (
-              <button style={{ background: 'none', border: 'none', marginLeft: 2, cursor: 'pointer' }}>
-                <Edit2 style={{ width: 16, height: 16, color: '#888' }} />
-              </button>
+            {editingField === 'description' ? (
+              <div style={{ marginBottom: 8 }}>
+                <textarea
+                  value={editValue}
+                  onChange={e => setEditValue(e.target.value)}
+                  style={{ 
+                    width: '100%',
+                    minHeight: '120px',
+                    padding: '12px', 
+                    borderRadius: 8, 
+                    border: '1px solid #ccc', 
+                    fontSize: 15,
+                    fontFamily: 'Arial, sans-serif',
+                    resize: 'vertical'
+                  }}
+                  placeholder="Enter company description..."
+                />
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <button 
+                    onClick={() => handleSaveField('description', editValue)}
+                    style={{ 
+                      color: '#28a745', 
+                      fontWeight: 700, 
+                      border: 'none', 
+                      background: 'none', 
+                      cursor: 'pointer',
+                      fontSize: 14
+                    }}
+                  >
+                    Save
+                  </button>
+                  <button 
+                    onClick={() => setEditingField(null)}
+                    style={{ 
+                      color: '#888', 
+                      fontWeight: 700, 
+                      border: 'none', 
+                      background: 'none', 
+                      cursor: 'pointer',
+                      fontSize: 14
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{ border: '1px solid #e0e0e0', borderRadius: 8, background: '#fafbfc', padding: 14, fontSize: 15, marginBottom: 8 }}>
+                  <span>{company.description || 'No company description provided.'}</span>
+                </div>
+                {isOwner && (
+                  <button 
+                    style={{ background: 'none', border: 'none', marginLeft: 2, cursor: 'pointer' }}
+                    onClick={() => {
+                      setEditingField('description');
+                      setEditValue(company.description || '');
+                    }}
+                  >
+                    <Edit2 style={{ width: 16, height: 16, color: '#888' }} />
+                  </button>
+                )}
+              </>
             )}
             {/* Promo Label */}
             <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 2 }}>Company Promo 30 Second Video - Only valid for Premium Customers</div>
-            <div style={{ background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 20, padding: '4px 16px', fontSize: 15, color: '#333', display: 'inline-block' }}>{company.promo || 'Company Promo 30 Sec.'}</div>
-            {isOwner && (
-              <button style={{ background: 'none', border: 'none', marginLeft: 2, cursor: 'pointer' }}>
-                <Edit2 style={{ width: 16, height: 16, color: '#888' }} />
-              </button>
+            {editingField === 'promo' ? (
+              <div style={{ marginBottom: 8 }}>
+                <input
+                  value={editValue}
+                  onChange={e => setEditValue(e.target.value)}
+                  style={{ 
+                    width: '100%',
+                    padding: '8px 12px', 
+                    borderRadius: 20, 
+                    border: '1px solid #ccc', 
+                    fontSize: 15,
+                    fontFamily: 'Arial, sans-serif'
+                  }}
+                  placeholder="Enter promo video URL or description..."
+                />
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <button 
+                    onClick={() => handleSaveField('promo', editValue)}
+                    style={{ 
+                      color: '#28a745', 
+                      fontWeight: 700, 
+                      border: 'none', 
+                      background: 'none', 
+                      cursor: 'pointer',
+                      fontSize: 14
+                    }}
+                  >
+                    Save
+                  </button>
+                  <button 
+                    onClick={() => setEditingField(null)}
+                    style={{ 
+                      color: '#888', 
+                      fontWeight: 700, 
+                      border: 'none', 
+                      background: 'none', 
+                      cursor: 'pointer',
+                      fontSize: 14
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{ background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 20, padding: '4px 16px', fontSize: 15, color: '#333', display: 'inline-block', marginBottom: 8 }}>{company.promo || 'Company Promo 30 Sec.'}</div>
+                {isOwner && (
+                  <button 
+                    style={{ background: 'none', border: 'none', marginLeft: 8, cursor: 'pointer' }}
+                    onClick={() => {
+                      setEditingField('promo');
+                      setEditValue(company.promo || '');
+                    }}
+                  >
+                    <Edit2 style={{ width: 16, height: 16, color: '#888' }} />
+                  </button>
+                )}
+              </>
             )}
           </div>
           {/* Right Column */}
@@ -322,42 +719,127 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                 <Edit2 style={{ width: 16, height: 16, color: '#888' }} />
               </button>
             )}
-            {/* Website */}
-            <div id="website-row" style={{ fontSize: 13, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-              <Link href={company.socialLinks?.website || "#"} style={{ color: '#00baff', textDecoration: 'underline', fontWeight: 700, fontSize: 15 }}>{company.socialLinks?.website || 'www.company.com'}</Link>
-            </div>
-            {isOwner && (
-              <button style={{ background: 'none', border: 'none', marginLeft: 2, cursor: 'pointer' }}>
-                <Edit2 style={{ width: 16, height: 16, color: '#888' }} />
-              </button>
-            )}
+
             {/* Socials label */}
-            <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 2, marginLeft: 80, textAlign: 'left' }}>Company Social Media Links</div>
-            {/* Socials vertical list with icons */}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                gap: 4,
-                width: '100%',
-                marginLeft: 80,
-                paddingLeft: 0,
-              }}
-            >
-              {socialLinks.map((s, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
-                  <span style={{ width: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Image src={socialIconMap[s.name] || ''} alt={s.name} width={18} height={18} />
-                  </span>
-                  <Link href={s.url} style={{ color: '#00baff', fontSize: 15, fontWeight: 700, textDecoration: 'underline', display: 'inline-block', minWidth: 70 }}>{s.name.replace('_', ' ')}</Link>
+            <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 2, marginLeft: 80, textAlign: 'left' }}>Website & Social Media Links</div>
+            {editingField === 'socialLinks' ? (
+              <div style={{ marginLeft: 80, marginBottom: 8 }}>
+                {socialLinks.map((social) => (
+                  <div key={social.name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ width: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Image src={socialIconMap[social.name] || ''} alt={social.name} width={18} height={18} />
+                    </span>
+                    <div style={{ minWidth: 80, fontSize: 14, fontWeight: 700 }}>
+                      {social.displayName}:
+                    </div>
+                    <input
+                      value={editingSocialLinks[social.name] || ''}
+                      onChange={e => setEditingSocialLinks(prev => ({
+                        ...prev,
+                        [social.name]: e.target.value
+                      }))}
+                      style={{ 
+                        flex: 1,
+                        padding: '4px 8px', 
+                        borderRadius: 4, 
+                        border: '1px solid #ccc', 
+                        fontSize: 14,
+                        fontFamily: 'Arial, sans-serif'
+                      }}
+                      placeholder={`Enter ${social.displayName} URL`}
+                    />
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <button 
+                    onClick={() => handleSaveSocialLinks(editingSocialLinks)}
+                    style={{ 
+                      color: '#28a745', 
+                      fontWeight: 700, 
+                      border: 'none', 
+                      background: 'none', 
+                      cursor: 'pointer',
+                      fontSize: 14
+                    }}
+                  >
+                    Save All
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setEditingField(null);
+                      setEditingSocialLinks({});
+                    }}
+                    style={{ 
+                      color: '#888', 
+                      fontWeight: 700, 
+                      border: 'none', 
+                      background: 'none', 
+                      cursor: 'pointer',
+                      fontSize: 14
+                    }}
+                  >
+                    Cancel
+                  </button>
                 </div>
-              ))}
-            </div>
-            {isOwner && (
-              <button style={{ background: 'none', border: 'none', marginLeft: 2, cursor: 'pointer' }}>
-                <Edit2 style={{ width: 16, height: 16, color: '#888' }} />
-              </button>
+              </div>
+            ) : (
+              <>
+                {/* Socials vertical list with icons - always show all platforms */}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: 4,
+                    width: '100%',
+                    marginLeft: 80,
+                    paddingLeft: 0,
+                  }}
+                >
+                  {socialLinks.map((social, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+                      <span style={{ width: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Image src={socialIconMap[social.name] || ''} alt={social.name} width={18} height={18} />
+                      </span>
+                      {social.url && social.url !== "#" ? (
+                        <Link 
+                          href={social.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          style={{ color: '#00baff', fontSize: 15, fontWeight: 700, textDecoration: 'underline', display: 'inline-block', minWidth: 70 }}
+                        >
+                          {social.displayName}
+                        </Link>
+                      ) : (
+                        <span style={{ color: '#888', fontSize: 15, fontWeight: 700, display: 'inline-block', minWidth: 70, fontStyle: 'italic' }}>
+                          {social.displayName} (not set)
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {isOwner && (
+                  <button 
+                    style={{ background: 'none', border: 'none', marginLeft: 82, marginTop: 4, cursor: 'pointer' }}
+                    onClick={() => {
+                      setEditingField('socialLinks');
+                      // Initialize editing state with current values
+                      setEditingSocialLinks({
+                        website: company.socialLinks?.website || '',
+                        facebook: company.socialLinks?.facebook || '',
+                        instagram: company.socialLinks?.instagram || '',
+                        tiktok: company.socialLinks?.tiktok || '',
+                        youtube: company.socialLinks?.youtube || '',
+                        x: company.socialLinks?.x || '',
+                        whatsapp: company.socialLinks?.whatsapp || '',
+                        messenger: company.socialLinks?.messenger || '',
+                      });
+                    }}
+                  >
+                    <Edit2 style={{ width: 16, height: 16, color: '#888' }} />
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -444,13 +926,12 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                   <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button style={{ background: '#005bac', border: 'none', borderRadius: 6, padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        <button style={{ background: '#808080', border: 'none', borderRadius: 6, padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                           <SettingsIcon />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => window.location.href = `/manufacturers/manufacturers-Profile-Page/update-listing/${listing.documentId || listing.id}`}>Edit Listing</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setViewInquiriesModalOpen(true)}>View Inquiries</DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
                             if (
@@ -492,48 +973,18 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
           open={viewInquiriesModalOpen}
           onClose={() => setViewInquiriesModalOpen(false)}
           listings={companyListings}
+          onInquiriesRead={handleInquiriesRead}
         />
 
         {/* Manufacturer Location Modal */}
-        {/* <ManufacturerLocationModal
+        <ManufacturerLocationModal
           isOpen={showLocationModal}
           onClose={closeLocationModal}
           company={company}
           onLocationUpdate={handleLocationUpdate}
-        /> */}
+        />
 
-        {/* Floating View All Inquiries Button */}
-        {isOwner && (
-          <button
-            onClick={() => setViewInquiriesModalOpen(true)}
-            style={{
-              position: 'fixed',
-              bottom: '30px',
-              right: '30px',
-              background: "#005bac",
-              color: "#fff",
-              borderRadius: "25px",
-              padding: "15px 25px",
-              fontWeight: 700,
-              fontSize: 14,
-              border: "none",
-              cursor: "pointer",
-              boxShadow: "0 4px 12px rgba(0,91,172,0.3)",
-              transition: "all 0.2s ease",
-              zIndex: 1000
-            }}
-            onMouseOver={(e) => {
-              e.target.style.background = "#004a8c";
-              e.target.style.transform = "scale(1.05)";
-            }}
-            onMouseOut={(e) => {
-              e.target.style.background = "#005bac";
-              e.target.style.transform = "scale(1)";
-            }}
-          >
-            View All Inquiries
-          </button>
-        )}
+
       </div>
     </>
   );

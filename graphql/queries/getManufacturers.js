@@ -3,6 +3,7 @@ import { gql } from '@apollo/client';
 export const GET_MANUFACTURERS = gql`
   query Companies {
     companies {
+      phone
       documentId
       name
       googleRating
