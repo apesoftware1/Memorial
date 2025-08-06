@@ -6,6 +6,8 @@ const CreateSpecialModal = ({ isOpen, onClose, listing }) => {
   const [selectedDiscount, setSelectedDiscount] = useState('5');
   const [startDate, setStartDate] = useState('15/05/2025');
   const [endDate, setEndDate] = useState('16/05/2025');
+  const [showMessage, setShowMessage] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState('');
 
   const discountOptions = [
     { value: '5', label: '5%' },
@@ -117,11 +119,27 @@ const CreateSpecialModal = ({ isOpen, onClose, listing }) => {
   
       console.log('Special created:', specialResult);
       console.log('Listing updated:', listingResult);
-      alert('Special offer created successfully! The listing will now appear on the specials page.');
-      onClose(); // Close modal after success
+      
+      // Show styled success message
+      setSubmitMessage('Special offer created successfully! The listing will now appear on the specials page.');
+      setShowMessage(true);
+      
+      // Auto-hide message after 3 seconds
+      setTimeout(() => {
+        setShowMessage(false);
+        setSubmitMessage('');
+        onClose(); // Close modal after success
+      }, 3000);
     } catch (err) {
       console.error('Failed to create special:', err.message);
-      alert(`Error: ${err.message}`);
+      setSubmitMessage(`Error: ${err.message}`);
+      setShowMessage(true);
+      
+      // Auto-hide error message after 5 seconds
+      setTimeout(() => {
+        setShowMessage(false);
+        setSubmitMessage('');
+      }, 5000);
     }
   };
   
@@ -662,6 +680,25 @@ const CreateSpecialModal = ({ isOpen, onClose, listing }) => {
           </button>
         </div>
       </div>
+
+      {/* Success/Error Message */}
+      {showMessage && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          padding: '16px 24px',
+          borderRadius: '8px',
+          color: '#fff',
+          fontWeight: 'bold',
+          zIndex: 1001,
+          background: submitMessage.includes('Error') ? '#dc3545' : '#28a745',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          animation: 'slideIn 0.3s ease'
+        }}>
+          {submitMessage}
+        </div>
+      )}
     </div>
   );
 };

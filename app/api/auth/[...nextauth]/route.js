@@ -51,6 +51,7 @@ const handler = NextAuth({
           });
           
           if (!res.ok) {
+            console.error("Strapi auth failed:", res.status, res.statusText);
             return null;
           }
           
@@ -76,6 +77,7 @@ const handler = NextAuth({
   ],
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
     async jwt({ token, user }) {
@@ -102,6 +104,7 @@ const handler = NextAuth({
     signOut: '/manufacturers/login-page',
     error: '/manufacturers/login-page',
   },
+  debug: process.env.NODE_ENV === 'development',
 });
 
 export { handler as GET, handler as POST };

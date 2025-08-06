@@ -7,12 +7,10 @@ query GetListings {
     listing_category {
       name
     }
-    mainImage {
-      url
-    }
-    thumbnails {
-      url
-    }
+    mainImageUrl
+    mainImagePublicId
+    thumbnailUrls
+    thumbnailPublicIds
     description
     price
     adFlasher

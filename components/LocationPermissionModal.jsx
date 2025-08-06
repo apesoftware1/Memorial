@@ -51,6 +51,18 @@ export default function LocationPermissionModal({ isOpen, onClose }) {
   const handleClose = (e) => {
     e.preventDefault()
     e.stopPropagation()
+    // Remember that user dismissed the modal
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('locationModalDismissed', 'true')
+    }
+    onClose()
+  }
+
+  const handleSkip = () => {
+    // Remember that user skipped the location setup
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('locationModalDismissed', 'true')
+    }
     onClose()
   }
 
@@ -149,6 +161,13 @@ export default function LocationPermissionModal({ isOpen, onClose }) {
               className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Set My Location
+            </button>
+
+            <button
+              onClick={handleSkip}
+              className="w-full text-gray-500 hover:text-gray-700 text-sm font-medium py-2 transition-colors"
+            >
+              Skip for now
             </button>
           </div>
 

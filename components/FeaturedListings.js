@@ -8,7 +8,7 @@ const FeaturedListings = ({ listing }) => (
       {/* Image Container */}
       <div className="relative h-56 bg-gray-100">
         <Image
-          src={listing.mainImage?.url || '/placeholder.svg'}
+          src={listing.mainImageUrl || '/placeholder.svg'}
           alt={listing.title}
           fill
           className="object-cover"
@@ -21,7 +21,7 @@ const FeaturedListings = ({ listing }) => (
         <div className="flex justify-between items-center mb-3">
           <p className="font-bold text-blue-600 text-lg">R{listing.price}</p>
           <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded">
-            Great Price
+            {listing.adFlasher || "Great Price"}
           </span>
         </div>
         

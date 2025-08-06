@@ -6,9 +6,8 @@ const GET_LISTINGS_BY_COMPANY_NAME = gql`
       title
       price
       isFeatured
-      mainImage {
-        url
-      }
+      mainImageUrl
+      mainImagePublicId
       productDetails {
         id
         color { id value }

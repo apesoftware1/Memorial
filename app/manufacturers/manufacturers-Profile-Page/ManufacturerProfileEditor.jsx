@@ -57,8 +57,36 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
   const [selectedListing, setSelectedListing] = useState(null);
   const [viewInquiriesModalOpen, setViewInquiriesModalOpen] = useState(false);
   
+  // Delete success message state
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteMessage, setDeleteMessage] = useState("");
+  const [showDeleteMessage, setShowDeleteMessage] = useState(false);
+  
+  // Custom confirmation dialog state
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [listingToDelete, setListingToDelete] = useState(null);
+  
   // Company state management
   const [company, setCompany] = useState(initialCompany);
+  
+  // Add CSS animation for slideIn effect
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
   
   // Notification state management
   const [companyListings, setCompanyListings] = useState(listings || []);
@@ -79,14 +107,25 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
     const allInquiries = (Array.isArray(companyListings) ? companyListings : []).flatMap(listing =>
       (listing.inquiries || listing.inquiries_c || []).map(inq => ({ 
         ...inq, 
-        isRead: inq.isRead || false,
-        isNew: inq.isNew || false
+        isRead: inq.isRead !== undefined ? inq.isRead : false,
+        isNew: inq.isNew !== undefined ? inq.isNew : false
       }))
     );
     
-    const unreadCount = allInquiries.filter(inq => !inq.isRead).length;
-    const newCount = allInquiries.filter(inq => inq.isNew).length;
-    setNotificationCount(unreadCount + newCount);
+    // Count only NEW inquiries for the badge (not unread)
+    const newCount = allInquiries.filter(inq => inq.isNew === true).length;
+    setNotificationCount(newCount);
+    
+    console.log('Notification count calculation:', {
+      totalInquiries: allInquiries.length,
+      newInquiries: newCount,
+      inquiries: allInquiries.map(inq => ({
+        id: inq.id || inq.documentId,
+        name: inq.name,
+        isRead: inq.isRead,
+        isNew: inq.isNew
+      }))
+    });
   }, [companyListings]);
   
   // Location check hook with company update callback
@@ -185,6 +224,9 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
   }
 
   const handleDelete = async (documentId) => {
+    setIsDeleting(true);
+    setShowDeleteMessage(false);
+    
     try {
       const res = await fetch(`https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/listings/${documentId}`, {
         method: "DELETE",
@@ -204,12 +246,22 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
       const data = text ? JSON.parse(text) : null;
   
       console.log("Deleted:", data);
-      alert("Listing deleted successfully.");
+      
+      // Show styled success message
+      setDeleteMessage("Listing deleted successfully!");
+      setShowDeleteMessage(true);
+      setIsDeleting(false);
+      
+      // Auto-refresh the page after 2 seconds
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
   
-      // Optional: refresh listings, update state, navigate, etc.
     } catch (error) {
       console.error("Error deleting listing:", error);
-      alert("Failed to delete listing.");
+      setDeleteMessage("Failed to delete listing.");
+      setShowDeleteMessage(true);
+      setIsDeleting(false);
     }
   };
 
@@ -233,6 +285,54 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
       })
     );
   }, []);
+
+  // Handle notification button click - mark all inquiries as "not new"
+  const handleNotificationClick = useCallback(async () => {
+    const allInquiries = (Array.isArray(companyListings) ? companyListings : []).flatMap(listing =>
+      (listing.inquiries || listing.inquiries_c || []).map(inq => ({ 
+        ...inq, 
+        listingId: listing.documentId
+      }))
+    );
+    
+    // Find all "new" inquiries
+    const newInquiries = allInquiries.filter(inq => inq.isNew === true);
+    
+    if (newInquiries.length > 0) {
+      console.log('Marking all new inquiries as not new:', newInquiries.length);
+      
+      // Update backend for each new inquiry
+      for (const inquiry of newInquiries) {
+        try {
+          const inquiryId = inquiry.documentId || inquiry.id;
+          await fetch(`https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/inquiries/${inquiryId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              data: {
+                isNew: false // Only update isNew, keep isRead as is
+              }
+            })
+          });
+        } catch (error) {
+          console.error('Error updating inquiry isNew status:', error);
+        }
+      }
+      
+      // Update local state - mark all inquiries as not new
+      const updatedInquiries = allInquiries.map(inq => ({
+        ...inq,
+        isNew: false // Set all to not new
+      }));
+      
+      handleInquiriesRead(updatedInquiries);
+    }
+    
+    // Open the modal
+    setViewInquiriesModalOpen(true);
+  }, [companyListings, handleInquiriesRead]);
 
   // Function to navigate to advert creator with company data
   const handleCreateListing = () => {
@@ -359,7 +459,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
           <div style={{ maxWidth: 1200, margin: "0 auto", padding: "16px 0 0 0", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
             {/* Notification Button */}
             <button
-              onClick={() => setViewInquiriesModalOpen(true)}
+              onClick={handleNotificationClick}
               style={{
                 background: "#808080",
                 color: "#fff",
@@ -943,16 +1043,16 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                         <DropdownMenuItem onClick={() => window.location.href = `/manufacturers/manufacturers-Profile-Page/update-listing/${listing.documentId || listing.id}`}>Edit Listing</DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
-                            if (
-                              window.confirm(
-                                "Are you sure you want to delete this listing? This action cannot be undone."
-                              )
-                            ) {
-                              handleDelete(listing.documentId);
-                            }
+                            setListingToDelete(listing);
+                            setShowConfirmDialog(true);
+                          }}
+                          disabled={isDeleting}
+                          style={{
+                            opacity: isDeleting ? 0.6 : 1,
+                            cursor: isDeleting ? 'not-allowed' : 'pointer'
                           }}
                         >
-                          Delete Listing
+                          {isDeleting ? "Deleting..." : "Delete Listing"}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => {
                           setSelectedListing(listing);
@@ -993,6 +1093,159 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
           onLocationUpdate={handleLocationUpdate}
         />
 
+        {/* Custom Confirmation Dialog */}
+        {showConfirmDialog && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999
+          }}>
+            <div style={{
+              background: '#fff',
+              borderRadius: '12px',
+              padding: '24px',
+              maxWidth: '400px',
+              width: '90%',
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
+              animation: 'slideIn 0.3s ease'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: '16px'
+              }}>
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  backgroundColor: '#fef3c7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: '16px'
+                }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 style={{
+                    margin: 0,
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#1f2937'
+                  }}>
+                    Delete Listing
+                  </h3>
+                  <p style={{
+                    margin: '4px 0 0 0',
+                    fontSize: '14px',
+                    color: '#6b7280'
+                  }}>
+                    This action cannot be undone
+                  </p>
+                </div>
+              </div>
+              
+              <p style={{
+                margin: '0 0 24px 0',
+                fontSize: '16px',
+                color: '#374151',
+                lineHeight: '1.5'
+              }}>
+                Are you sure you want to delete <strong>"{listingToDelete?.title || 'this listing'}"</strong>? This action cannot be undone.
+              </p>
+              
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'flex-end'
+              }}>
+                <button
+                  onClick={() => {
+                    setShowConfirmDialog(false);
+                    setListingToDelete(null);
+                  }}
+                  style={{
+                    padding: '10px 20px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    backgroundColor: '#fff',
+                    color: '#374151',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.backgroundColor = '#f9fafb';
+                    e.target.style.borderColor = '#9ca3af';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.backgroundColor = '#fff';
+                    e.target.style.borderColor = '#d1d5db';
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowConfirmDialog(false);
+                    if (listingToDelete) {
+                      handleDelete(listingToDelete.documentId);
+                    }
+                    setListingToDelete(null);
+                  }}
+                  style={{
+                    padding: '10px 20px',
+                    border: 'none',
+                    borderRadius: '8px',
+                    backgroundColor: '#dc2626',
+                    color: '#fff',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.backgroundColor = '#b91c1c';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.backgroundColor = '#dc2626';
+                  }}
+                >
+                  Delete Listing
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Success/Error Message */}
+        {showDeleteMessage && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            padding: '16px 24px',
+            borderRadius: '8px',
+            color: '#fff',
+            fontWeight: 'bold',
+            zIndex: 1000,
+            background: deleteMessage.includes('Error') || deleteMessage.includes('Failed') ? '#dc3545' : '#28a745',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            animation: 'slideIn 0.3s ease'
+          }}>
+            {deleteMessage}
+          </div>
+        )}
 
       </div>
     </>

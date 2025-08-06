@@ -287,11 +287,15 @@ const IndexRender = ({
             <span className="text-xs text-gray-500 mt-0 font-bold mb-2" style={{marginTop: '-2px'}}>*Sponsored</span>
           </div>
         </div>
-        {standardToShow.length > 0
-          ? standardToShow.map((item, idx) => (
+        {standardToShow.length > 0 ? (
+          <div className="space-y-6">
+            {standardToShow.map((item, idx) => (
               <StandardListingCard key={item.id || idx} listing={item} />
-            ))
-          : fallbackCard("standard listings")}
+            ))}
+          </div>
+        ) : (
+          fallbackCard("standard listings")
+        )}
       </section>
 
       {/* 10. Pagination Controls */}

@@ -5,12 +5,10 @@ export const GET_LISTING_BY_ID = gql`
     listing(documentId: $documentID) {
       documentId
       title
-      mainImage {
-        url
-      }
-      thumbnails {
-        url
-      }
+      mainImageUrl
+      mainImagePublicId
+      thumbnailUrls
+      thumbnailPublicIds
       description
       price
       isOnSpecial

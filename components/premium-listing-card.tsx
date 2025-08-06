@@ -12,33 +12,40 @@ import { FavoriteButton } from "./favorite-button"
 import LocationTrigger from "./LocationTrigger"
 import { calculateDistanceFrom } from "@/lib/locationUtil";
 
-
 interface PremiumListingCardProps {
   listing: any;
   href: string;
   isFirstCard?: boolean;
+  isOwner?: boolean;
 }
 
 export function PremiumListingCard({
   listing,
   href,
   isFirstCard = false,
+  isOwner = false,
 }: PremiumListingCardProps): React.ReactElement {
   const router = useRouter()
   const [distance, setDistance] = useState<number | null>(null);
 
+  // Calculate total image count using new Cloudinary fields
+  const getImageCount = () => {
+    let count = 0;
+    if (listing.mainImageUrl) count += 1;
+    if (listing.thumbnailUrls && Array.isArray(listing.thumbnailUrls)) {
+      count += listing.thumbnailUrls.length;
+    }
+    return count;
+  };
+
   const defaultThumbnail = "/placeholder.svg?height=80&width=120"
-  // Prepare thumbnails array using .url for both mobile and desktop
-  const thumbnails = Array.isArray(listing.thumbnails) ? listing.thumbnails.map((t: any) => t.url) : [];
+  // Prepare thumbnails array using new Cloudinary fields
+  const thumbnails = Array.isArray(listing.thumbnailUrls) ? listing.thumbnailUrls : [];
   const paddedThumbnails = [
     ...thumbnails.slice(0, 6),
     ...Array(Math.max(0, 6 - thumbnails.length)).fill('/placeholder.svg')
   ];
-  // For mobile, skip the first image if it's the same as mainImage.url
-  const mobileThumbnails = thumbnails.filter((url: string) => url !== listing.mainImage?.url).slice(0, 3);
-
-  // Create array of all images for mobile thumbnails (main image + thumbnails)
-  const allImages = [listing.mainImage, ...(listing.thumbnails || [])]
+  const mobileThumbnails = thumbnails.slice(0, 3);
 
   const productUrl = href || `/tombstones-for-sale/${listing.documentId}`
 
@@ -76,10 +83,9 @@ export function PremiumListingCard({
       <div className="relative flex flex-col md:hidden">
         {/* Manufacturer Logo in its own box, bottom right corner (Mobile only) */}
         <div className="absolute bottom-3 right-3 z-20 bg-gray-50 p-2 rounded-lg md:hidden">
-
           <a href={listing.company.name} className="manufacturer-link" onClick={e => e.stopPropagation()} aria-label={`View ${listing.manufacturer} profile`}>
             <Image
-              src={listing.company.logo.url}
+              src={listing.company.logo?.url || "/placeholder-logo.svg"}
               alt={`${listing.manufacturer} Logo`}
               width={96}
               height={96}
@@ -91,7 +97,7 @@ export function PremiumListingCard({
         <div className="bg-white px-3 py-3">
             <div className="relative h-[350px] w-full rounded-lg overflow-hidden border border-gray-200">
               <Image
-                src={listing.mainImage?.url || '/placeholder.svg'}
+                src={listing.mainImageUrl || '/placeholder.svg'}
                 alt={listing.title}
                 fill
                 className="object-cover"
@@ -100,7 +106,7 @@ export function PremiumListingCard({
               {/* Camera icon and counter overlay for main image */}
               <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/80 text-white px-2 py-0.5 rounded text-xs font-medium z-10">
                 <Camera className="w-4 h-4" />
-                <span>{allImages.length}</span>
+                <span>{getImageCount()}</span>
               </div>
             </div>
         </div>
@@ -108,7 +114,7 @@ export function PremiumListingCard({
         <div className="bg-white px-3 pb-3">
           <div className="relative">
             <div className="flex flex-row gap-1">
-              {mobileThumbnails.map((src: string, index: number) => (
+              {Array.isArray(listing.thumbnailUrls) ? listing.thumbnailUrls.slice(0, 3).map((src: string, index: number) => (
                 <button
                   key={index}
                   className="relative flex-1 aspect-[4/3] rounded overflow-hidden border border-gray-200 hover:border-gray-400 transition-colors"
@@ -123,7 +129,7 @@ export function PremiumListingCard({
                     className="object-cover"
                   />
                 </button>
-              ))}
+              )) : null}
             </div>
           </div>
         </div>
@@ -182,7 +188,7 @@ export function PremiumListingCard({
                 )}
               </div>
               {/* Fourth line: Manufacturing time */}
-              <div className="text-xs text-gray-600">3 weeks manufacturing time</div>
+              <div className="text-xs text-gray-600">{listing.manufacturingTimeframe || "3 weeks manufacturing time"}</div>
             </div>
           {/* Manufacturer Information (Mobile) */}
           <div className="flex flex-col mt-0">
@@ -196,8 +202,8 @@ export function PremiumListingCard({
                   <span className="text-xs">{listing.enquiries} enquiries to this Manufacturer</span>
                 </div>
               )}
-              {/* TODO: to be added to the backend-location */}
-              <div className="text-xs text-gray-600">{listing.location ? listing.location : 'location not set'}</div>
+              {/* Location display */}
+              <div className="text-xs text-gray-600">{listing.company.location && listing.company.location.trim() !== '' ? listing.company.location : 'location not set'}</div>
               <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
                 <Image
                   src="/new files/newIcons/Google_Pin_Icon/GooglePin_Icon.svg"
@@ -206,20 +212,19 @@ export function PremiumListingCard({
                   height={14}
                   className="object-contain"
                 />
-                {/* TODO: algo to be added to the backend-distance */}
                 <span>{distance ? `${distance} km from you` : 'from you'}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
-      {/* Desktop Layout (768px and up) */}
+      {/* Desktop Layout (768px and up) - Equal 50/50 split */}
       <div className="hidden md:flex min-h-[300px]">
-        {/* Left - Main Image */}
+        {/* Left - Main Image (50% width) */}
         <div className="w-1/2 flex-shrink-0 flex flex-col">
           <div className="relative flex-1 min-h-[300px]">
                 <Image
-                  src={listing.mainImage?.url || '/placeholder.svg'}
+                  src={listing.mainImageUrl || '/placeholder.svg'}
                   alt={listing.title}
                   fill
                   className="object-cover"
@@ -227,11 +232,11 @@ export function PremiumListingCard({
                 />
                 <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-black/70 text-white px-2 py-1 rounded text-sm">
                   <Camera className="w-4 h-4" />
-                  <span>{listing.thumbnailImages?.length ?? 0}</span>
+                  <span>{getImageCount()}</span>
                 </div>
           </div>
         </div>
-        {/* Right - Content */}
+        {/* Right - Content (50% width) */}
         <div className="w-1/2 flex-shrink-0 flex flex-col">
           <div className="flex-1 p-4 flex flex-col">
               {/* Price and Heart */}
@@ -291,7 +296,7 @@ export function PremiumListingCard({
                   )}
                 </div>
                 {/* Fourth line: Manufacturing time */}
-                <div className="text-xs text-gray-600">3 weeks manufacturing time</div>
+                <div className="text-xs text-gray-600">{listing.manufacturingTimeframe || "3 weeks manufacturing time"}</div>
               </div>
             {/* Manufacturer Information (Desktop) */}
             {/** UI pattern as per user code and screenshot **/}
@@ -345,7 +350,7 @@ export function PremiumListingCard({
       {/* Bottom Thumbnails - Desktop only */}
       <div className="hidden md:block p-4 bg-white border-t border-gray-100">
         <div className="grid grid-cols-6 gap-3">
-          {paddedThumbnails.map((src: string, index: number) => (
+          {Array.isArray(listing.thumbnailUrls) ? listing.thumbnailUrls.slice(0, 6).map((src: string, index: number) => (
             <button
               key={index}
               className="relative aspect-[4/3] rounded overflow-hidden border-2 border-gray-200 hover:border-gray-300 transition-colors"
@@ -360,10 +365,9 @@ export function PremiumListingCard({
                 sizes="(max-width: 768px) 50vw, 200px"
               />
             </button>
-          ))}
+          )) : null}
         </div>
       </div>
     </div>
-  )
+  );
 }
- 

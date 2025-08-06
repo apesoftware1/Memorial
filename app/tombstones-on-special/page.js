@@ -91,21 +91,32 @@ export default function TombstonesOnSpecial() {
     // Build features string from customization options
     const features = listing.productDetails?.customization?.map(c => c.value).join(" | ") || "";
 
+    // Calculate image count
+    const getImageCount = () => {
+      let count = 0;
+      if (listing.mainImageUrl) count += 1;
+      if (listing.thumbnailUrls && Array.isArray(listing.thumbnailUrls)) {
+        count += listing.thumbnailUrls.length;
+      }
+      return count;
+    };
+
     return {
       id: listing.documentId,
-      image: listing.mainImage?.url || "/placeholder.svg",
+      image: listing.mainImageUrl || "/placeholder.svg",
       originalPrice: formattedPrice, // For now, same as sale price since we don't have original price in schema
       salePrice: formattedPrice,
       discount: "", // Will be empty until we have discount data in the schema
       title: listing.title || "Untitled",
       details: details,
-      tag: "SPECIAL OFFER",
+      tag: listing.adFlasher || "SPECIAL OFFER",
       tagColor: "bg-red-600",
       endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now as placeholder
       manufacturer: listing.company?.name || "",
       location: listing.company?.location || "",
       features: features,
       logo: listing.company?.logo?.url || "/placeholder-logo.svg",
+      imageCount: getImageCount(),
     };
   }, []);
 
@@ -302,11 +313,11 @@ export default function TombstonesOnSpecial() {
                 className="object-cover"
                 sizes="(max-width: 768px) 100vw"
               />
-              {/* Camera icon and counter overlay for main image */}
-              <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/80 text-white px-2 py-0.5 rounded text-xs font-medium z-10">
-                <Camera className="w-4 h-4" />
-                <span>1</span>
-              </div>
+                             {/* Camera icon and counter overlay for main image */}
+               <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/80 text-white px-2 py-0.5 rounded text-xs font-medium z-10">
+                 <Camera className="w-4 h-4" />
+                 <span>{product.imageCount || 0}</span>
+               </div>
             </div>
           </div>
           {/* Content (Mobile) */}

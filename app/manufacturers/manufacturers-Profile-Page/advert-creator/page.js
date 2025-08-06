@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import Image from "next/image"
 import categories from '../../../../category.json'
 import adFlasherOptions from '../../../../adFlasher.json'
+import { useApolloClient } from '@apollo/client'
+import { GET_LISTINGS } from '@/graphql/queries/getListings'
 
 const colorOptions = [
   'Black',
@@ -54,7 +56,32 @@ const warrantyOptions = ['5-year warranty', '10-year manufacturer warranty']
 
 export default function CreateListingForm() {
   const router = useRouter();
+  const client = useApolloClient();
   const [company, setCompany] = useState(null);
+  
+  // Loading and success states
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState("");
+  const [showMessage, setShowMessage] = useState(false);
+
+  // Add CSS animation for slideIn effect
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -97,7 +124,7 @@ export default function CreateListingForm() {
   }, [router]);
 
   const [mainImage, setMainImage] = useState(null)
-  const [thumbnails, setThumbnails] = useState([])
+  const [thumbnails, setThumbnails] = useState(new Array(10).fill(null))
   const [selectedCategory, setSelectedCategory] = useState(null)
 
   const handleChange = (e) => {
@@ -123,6 +150,16 @@ export default function CreateListingForm() {
     })
   }
 
+  const handleAdditionalProductDetailsChange = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      additionalProductDetails: {
+        ...prev.additionalProductDetails,
+        [field]: value ? [value] : []
+      }
+    }))
+  }
+
   const handleCategorySelect = (category) => {
     setSelectedCategory(category)
     setFormData((prev) => ({
@@ -133,29 +170,80 @@ export default function CreateListingForm() {
 
   const handleFileChange = (e) => {
     const { name, files } = e.target
+    console.log('File change triggered:', name, files);
     if (name === 'mainImage') {
       setMainImage(files[0])
+      console.log('Main image set:', files[0]);
     } else if (name === 'thumbnails') {
       setThumbnails(Array.from(files).slice(0, 5))
+      console.log('Thumbnails set:', Array.from(files).slice(0, 5));
     }
   }
 
-  const uploadToStrapi = async (file) => {
+  const handleThumbnailChange = (e, index) => {
+    const file = e.target.files[0]
+    console.log('Thumbnail change triggered:', index, file);
+    if (file) {
+      const newThumbnails = [...thumbnails]
+      newThumbnails[index] = file
+      setThumbnails(newThumbnails)
+      console.log('Thumbnail updated at index:', index, file);
+    }
+  }
+
+  const uploadToCloudinary = async (file) => {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+    
     const uploadData = new FormData()
-    uploadData.append('files', file)
-    const res = await fetch('http://localhost:1337/api/upload', {
+    uploadData.append('file', file)
+    uploadData.append('upload_preset', 'listings')
+    // uploadData.append('folder', 'myImages')
+    // uploadData.append('transformation', 'w_800,h_600,c_limit,q_auto,f_auto')
+    
+    const res = await fetch(`https://api.cloudinary.com/v1_1/dtymvjhjq/image/upload`, {
       method: 'POST',
       body: uploadData
     })
+    
+    if (!res.ok) {
+      const errorText = await res.text()
+      console.error('Cloudinary upload failed:', res.status, errorText)
+      throw new Error('Upload failed')
+    }
+    
     const data = await res.json()
-    return data[0]?.id
+    console.log('Cloudinary upload success:', data)
+    return data // Return the full Cloudinary response (url, public_id, etc.)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    // Validate required fields
+    if (!formData.title || !formData.description || !formData.price || !formData.categoryRefDocumentId) {
+      setSubmitMessage("Please fill in all required fields: Title, Description, Price, and Category");
+      setShowMessage(true);
+      return;
+    }
+    
+    if (!mainImage) {
+      setSubmitMessage("Please upload a main image");
+      setShowMessage(true);
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setShowMessage(false);
 
-    const uploadedMainImageId = mainImage ? await uploadToStrapi(mainImage) : null
-    const uploadedThumbnailIds = await Promise.all(thumbnails.map(uploadToStrapi))
+    try {
+      // Upload main image to Cloudinary
+      const uploadedMainImage = mainImage ? await uploadToCloudinary(mainImage) : null
+      
+      // Upload all thumbnails to Cloudinary (filter out empty slots)
+      const validThumbnails = thumbnails.filter(thumb => thumb !== null && thumb !== undefined)
+      const uploadedThumbnails = await Promise.all(
+        validThumbnails.map(thumbnail => uploadToCloudinary(thumbnail))
+      )
 
     const payload = {
       data: {
@@ -168,10 +256,14 @@ export default function CreateListingForm() {
         isPremium: false,
         isFeatured: false,
         isOnSpecial: false,
+        isStandard: true,
         manufacturingTimeframe: formData.manufacturingTimeframe,
 
-        mainImage: uploadedMainImageId,
-        thumbnails: uploadedThumbnailIds,
+        // Store Cloudinary data in your new Strapi fields
+        mainImageUrl: uploadedMainImage?.url || null,
+        mainImagePublicId: uploadedMainImage?.public_id || null,
+        thumbnailUrls: uploadedThumbnails.map(thumb => thumb.url),
+        thumbnailPublicIds: uploadedThumbnails.map(thumb => thumb.public_id),
 
         company: {
           connect: [{ documentId: formData.companyDocumentId }]
@@ -196,20 +288,92 @@ export default function CreateListingForm() {
           warrantyOrGuarantee: formData.additionalProductDetails.warrantyOrGuarantee.map((value) => ({ value }))
         }
       }
+          }
+
+      console.log('Sending payload to Strapi:', JSON.stringify(payload, null, 2))
+
+      const res = await fetch('https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/listings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (res.ok) {
+        const responseData = await res.json()
+        console.log('Success response:', responseData)
+        
+        // Update Apollo cache to include the new listing
+        try {
+          const existingData = client.readQuery({ query: GET_LISTINGS });
+          if (existingData) {
+            const newListing = {
+              __typename: 'Listing',
+              documentId: responseData.data.documentId,
+              title: formData.title,
+              slug: formData.title.toLowerCase().replace(/\s+/g, '-'),
+              description: formData.description,
+              price: parseFloat(formData.price),
+              adFlasher: formData.adFlasher,
+              isPremium: false,
+              isFeatured: false,
+              isOnSpecial: false,
+              isStandard: true,
+              manufacturingTimeframe: formData.manufacturingTimeframe,
+              mainImageUrl: uploadedMainImage?.url || null,
+              mainImagePublicId: uploadedMainImage?.public_id || null,
+              thumbnailUrls: uploadedThumbnails.map(thumb => thumb.url),
+              thumbnailPublicIds: uploadedThumbnails.map(thumb => thumb.public_id),
+              productDetails: {
+                color: formData.productDetails.color.map((value) => ({ value })),
+                style: formData.productDetails.style.map((value) => ({ value })),
+                stoneType: formData.productDetails.stoneType.map((value) => ({ value })),
+                customization: formData.productDetails.customization.map((value) => ({ value }))
+              },
+              additionalProductDetails: {
+                transportAndInstallation: formData.additionalProductDetails.transportAndInstallation.map((value) => ({ value })),
+                foundationOptions: formData.additionalProductDetails.foundationOptions.map((value) => ({ value })),
+                warrantyOrGuarantee: formData.additionalProductDetails.warrantyOrGuarantee.map((value) => ({ value }))
+              },
+              company: company,
+              listing_category: { name: selectedCategory?.name || 'Unknown' }
+            };
+            
+            client.writeQuery({
+              query: GET_LISTINGS,
+              data: {
+                listings: [newListing, ...existingData.listings]
+              }
+            });
+            
+            console.log('Apollo cache updated with new listing');
+          }
+        } catch (cacheError) {
+          console.log('Cache update failed, but listing was created successfully:', cacheError);
+        }
+        
+        setSubmitMessage("Listing created successfully!");
+        setShowMessage(true);
+        setIsSubmitting(false);
+        
+        // Redirect to profile page after successful creation
+        setTimeout(() => {
+          router.push('/manufacturers/manufacturers-Profile-Page')
+        }, 2000);
+      } else {
+        const errorData = await res.text()
+        console.error('Strapi API Error:', res.status, errorData)
+        setSubmitMessage(`Error creating listing: ${res.status} - ${errorData}`);
+        setShowMessage(true);
+        setIsSubmitting(false);
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      setSubmitMessage(`Error uploading images or creating listing: ${error.message}`);
+      setShowMessage(true);
+      setIsSubmitting(false);
     }
-
-    const res = await fetch('https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/listings', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    })
-
-    const responseData = await res.json()
-    console.log(responseData)
-    alert('Listing created successfully!')
-    router.push('/manufacturers/manufacturers-Profile-Page')
   }
 
   // Helper to render a checkbox group for a field, with subtitle
@@ -434,7 +598,15 @@ export default function CreateListingForm() {
                     position: "relative",
                     marginBottom: 4,
                   }}
-                  onClick={() => document.getElementById(`img-upload-main`).click()}
+                  onClick={() => {
+                    console.log('Main image click triggered');
+                    const input = document.getElementById(`img-upload-main`);
+                    if (input) {
+                      input.click();
+                    } else {
+                      console.error('Main image input not found');
+                    }
+                  }}
                 >
                   {mainImage ? (
                     <img src={URL.createObjectURL(mainImage)} alt="Main" style={{ width: 88, height: 88, borderRadius: 8 }} />
@@ -469,7 +641,15 @@ export default function CreateListingForm() {
                         cursor: "pointer",
                         position: "relative",
                       }}
-                      onClick={() => document.getElementById(`img-upload-${idx}`).click()}
+                      onClick={() => {
+                        console.log(`Thumbnail ${idx} click triggered`);
+                        const input = document.getElementById(`img-upload-${idx}`);
+                        if (input) {
+                          input.click();
+                        } else {
+                          console.error(`Thumbnail ${idx} input not found`);
+                        }
+                      }}
                     >
                       {thumbnails[idx-1] ? (
                         <img src={URL.createObjectURL(thumbnails[idx-1])} alt="" style={{ width: 40, height: 40, borderRadius: 8 }} />
@@ -482,7 +662,7 @@ export default function CreateListingForm() {
                         type="file"
                         accept="image/*"
                         style={{ display: "none" }}
-                        onChange={handleFileChange}
+                        onChange={(e) => handleThumbnailChange(e, idx-1)}
                       />
                     </div>
                   ))}
@@ -567,6 +747,9 @@ export default function CreateListingForm() {
           <div style={{ display: "flex", alignItems: "center" }}>
             <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Transport:</span>
             <select
+              name="transportAndInstallation"
+              value={formData.additionalProductDetails.transportAndInstallation[0] || ""}
+              onChange={(e) => handleAdditionalProductDetailsChange('transportAndInstallation', e.target.value)}
               style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", background: "white" }}
             >
               <option value="">Select Transport Option</option>
@@ -578,6 +761,9 @@ export default function CreateListingForm() {
           <div style={{ display: "flex", alignItems: "center" }}>
             <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Foundation:</span>
             <select
+              name="foundationOptions"
+              value={formData.additionalProductDetails.foundationOptions[0] || ""}
+              onChange={(e) => handleAdditionalProductDetailsChange('foundationOptions', e.target.value)}
               style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", background: "white" }}
             >
               <option value="">Select Foundation Option</option>
@@ -589,6 +775,9 @@ export default function CreateListingForm() {
           <div style={{ display: "flex", alignItems: "center" }}>
             <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Warranty:</span>
             <select
+              name="warrantyOrGuarantee"
+              value={formData.additionalProductDetails.warrantyOrGuarantee[0] || ""}
+              onChange={(e) => handleAdditionalProductDetailsChange('warrantyOrGuarantee', e.target.value)}
               style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", background: "white" }}
             >
               <option value="">Select Warranty Option</option>
@@ -596,47 +785,74 @@ export default function CreateListingForm() {
                 <option key={option} value={option}>{option}</option>
               ))}
             </select>
+          </div>
         </div>
-      </div>
 
         {/* Action Buttons */}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
           <button 
             type="submit"
+            disabled={isSubmitting}
             style={{
-              background: "#005bac",
+              background: isSubmitting ? "#ccc" : "#005bac",
               color: "#fff",
               padding: "10px 20px",
               borderRadius: 8,
               border: "none",
-              cursor: "pointer",
+              cursor: isSubmitting ? "not-allowed" : "pointer",
               fontSize: 14,
               fontWeight: "bold",
               textTransform: "uppercase",
               letterSpacing: 0.5,
+              transition: "background-color 0.2s ease"
             }}
+            onMouseOver={(e) => !isSubmitting && (e.target.style.background = "#004a8c")}
+            onMouseOut={(e) => !isSubmitting && (e.target.style.background = "#005bac")}
           >
-            Create Listing
+            {isSubmitting ? "Creating..." : "Create Listing"}
           </button>
           <button 
             type="button"
             onClick={() => router.push('/manufacturers/manufacturers-Profile-Page')}
+            disabled={isSubmitting}
             style={{
-              background: "#ccc",
+              background: isSubmitting ? "#eee" : "#ccc",
               color: "#333",
               padding: "10px 20px",
               borderRadius: 8,
               border: "none",
-              cursor: "pointer",
+              cursor: isSubmitting ? "not-allowed" : "pointer",
               fontSize: 14,
               fontWeight: "bold",
               textTransform: "uppercase",
               letterSpacing: 0.5,
+              transition: "background-color 0.2s ease"
             }}
+            onMouseOver={(e) => !isSubmitting && (e.target.style.background = "#bbb")}
+            onMouseOut={(e) => !isSubmitting && (e.target.style.background = "#ccc")}
           >
             Cancel
           </button>
         </div>
+
+        {/* Success/Error Message */}
+        {showMessage && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            padding: '16px 24px',
+            borderRadius: '8px',
+            color: '#fff',
+            fontWeight: 'bold',
+            zIndex: 1000,
+            background: submitMessage.includes('Error') ? '#dc3545' : '#28a745',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            animation: 'slideIn 0.3s ease'
+          }}>
+            {submitMessage}
+          </div>
+        )}
     </form>
     </div>
   )

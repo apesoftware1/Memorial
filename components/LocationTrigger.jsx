@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useGuestLocation } from '@/hooks/useGuestLocation'
 import LocationPermissionModal from './LocationPermissionModal'
@@ -8,6 +8,39 @@ import LocationPermissionModal from './LocationPermissionModal'
 export default function LocationTrigger({ listing, className = "" }) {
   const { location, error, loading, calculateDistanceFrom } = useGuestLocation()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [hasCheckedFirstVisit, setHasCheckedFirstVisit] = useState(false)
+
+  // Auto-show modal on first visit if no location is set
+  useEffect(() => {
+    if (hasCheckedFirstVisit) return
+    
+    // Check if we're in the browser
+    if (typeof window === 'undefined') return
+    
+    // Don't show if still loading
+    if (loading) return
+    
+    // Don't show if location is already set
+    if (location) {
+      setHasCheckedFirstVisit(true)
+      return
+    }
+    
+    // Check if user has dismissed the modal before
+    const hasDismissed = localStorage.getItem('locationModalDismissed')
+    if (hasDismissed) {
+      setHasCheckedFirstVisit(true)
+      return
+    }
+    
+    // Show modal after a short delay to ensure page is loaded
+    const timer = setTimeout(() => {
+      setIsModalOpen(true)
+      setHasCheckedFirstVisit(true)
+    }, 1500) // 1.5 second delay
+    
+    return () => clearTimeout(timer)
+  }, [location, loading, hasCheckedFirstVisit])
 
   // Get coordinates from the listing or its company
   const listingLat = listing?.latitude || listing?.company?.latitude

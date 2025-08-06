@@ -22,50 +22,8 @@ export default function ViewInquiriesModal({ open, onClose, listings, onInquirie
   const [selectedInquiry, setSelectedInquiry] = useState(null);
   const [showInquiryDetail, setShowInquiryDetail] = useState(false);
 
-  // Mark all inquiries as read when modal opens
-  useEffect(() => {
-    if (open && allInquiries.length > 0) {
-      // Only mark unread inquiries as read
-      const unreadInquiries = allInquiries.filter(inq => !inq.isRead || inq.isNew);
-      
-      if (unreadInquiries.length > 0) {
-        // Mark inquiries as read in the backend
-        markInquiriesAsRead(unreadInquiries);
-        
-        // Mark all inquiries as read locally
-        const updatedInquiries = allInquiries.map(inq => ({
-          ...inq,
-          isRead: true,
-          isNew: false
-        }));
-        
-        // Call the callback to update parent state
-        if (onInquiriesRead) {
-          onInquiriesRead(updatedInquiries);
-        }
-      }
-    }
-  }, [open, allInquiries.length]); // Removed onInquiriesRead from dependencies
-
-  // Function to mark inquiries as read in the backend
-  const markInquiriesAsRead = async (inquiries) => {
-    try {
-      for (const inquiry of inquiries) {
-        await fetch(`/api/inquiries/${inquiry.id}/mark-read`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            isRead: true,
-            isNew: false
-          })
-        });
-      }
-    } catch (error) {
-      console.error('Error marking inquiries as read:', error);
-    }
-  };
+  // No longer automatically mark all inquiries as read when modal opens
+  // Individual inquiries will be marked as read only when clicked
 
   // Filtering logic
   const filteredInquiries = allInquiries.filter(inq => {
@@ -81,7 +39,7 @@ export default function ViewInquiriesModal({ open, onClose, listings, onInquirie
       match = match && timeStr === filterTime;
     }
     if (showUnreadOnly) {
-      match = match && (!inq.isRead || inq.isNew);
+      match = match && !inq.isRead;
     }
     
     return match;
@@ -90,28 +48,39 @@ export default function ViewInquiriesModal({ open, onClose, listings, onInquirie
   // Count unread and new inquiries
   const unreadCount = allInquiries.filter(inq => !inq.isRead).length;
   const newCount = allInquiries.filter(inq => inq.isNew).length;
-  const totalUnread = unreadCount + newCount;
+  
+  console.log('ViewInquiriesModal - Inquiry counts:', {
+    total: allInquiries.length,
+    unread: unreadCount,
+    new: newCount,
+    inquiries: allInquiries.map(inq => ({
+      id: inq.id,
+      documentId: inq.documentId,
+      isRead: inq.isRead,
+      isNew: inq.isNew,
+      name: inq.name
+    }))
+  });
 
   // Handle opening inquiry detail
   const handleOpenInquiry = async (inquiry) => {
     console.log('Opening inquiry:', inquiry);
     
     // Set the selected inquiry with updated read status immediately for UI
-    const updatedInquiry = { ...inquiry, isRead: true, isNew: false };
+    const updatedInquiry = { ...inquiry, isRead: true };
     setSelectedInquiry(updatedInquiry);
     setShowInquiryDetail(true);
     
-    // Mark this specific inquiry as read if it's not already
-    if (!inquiry.isRead || inquiry.isNew) {
+    // Mark this specific inquiry as read if it's not already read
+    if (inquiry.isRead !== true) {
       try {
         console.log('Marking inquiry as read:', inquiry.id || inquiry.documentId);
         
-        const inquiryId = inquiry.documentId;
+        const inquiryId = inquiry.documentId || inquiry.id;
         const response = await fetch(`https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/inquiries/${inquiryId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            // 'Authorization': 'Bearer 4eb9b8bc7b0a21d6b5e2d2f6e2b2c6e8b5f5d5c5b5e5f5b5e5f5b5e5f5b5e5f5b5e5f5b5e5f5b5e5f5b5e5f5b5e5f5b5e5f5b5e5f5b5e5f5b5e5f5b5e5f5b5e5f5b5e5f5',
           },
           body: JSON.stringify({
             data: {
@@ -128,14 +97,24 @@ export default function ViewInquiriesModal({ open, onClose, listings, onInquirie
         const result = await response.json();
         console.log('Backend response:', result);
         
-        // Update local state with all inquiries
-        const updatedInquiries = allInquiries.map(inq => 
-          (inq.id === inquiry.id || inq.documentId === inquiry.documentId)
-            ? { ...inq, isRead: true, isNew: false }
-            : inq
-        );
+        // Update local state with all inquiries - only update the specific inquiry that was clicked
+        const updatedInquiries = allInquiries.map(inq => {
+          const matchesId = (inq.id === inquiry.id) || (inq.documentId === inquiry.documentId) || 
+                           (inq.documentId === inquiry.id) || (inq.id === inquiry.documentId);
+          
+          if (matchesId) {
+            console.log('Updating inquiry in local state:', inq.id || inq.documentId);
+            return { ...inq, isRead: true }; // Only update isRead, keep isNew unchanged
+          }
+          return inq;
+        });
         
         console.log('Updated inquiries:', updatedInquiries);
+        console.log('Inquiry counts after update:', {
+          total: updatedInquiries.length,
+          unread: updatedInquiries.filter(inq => !inq.isRead).length,
+          new: updatedInquiries.filter(inq => inq.isNew).length
+        });
         
         if (onInquiriesRead) {
           onInquiriesRead(updatedInquiries);
@@ -174,10 +153,10 @@ export default function ViewInquiriesModal({ open, onClose, listings, onInquirie
         {/* Sticky Header */}
         <div className="sticky top-0 z-10 flex justify-between items-center p-5 border-b bg-white/90 backdrop-blur-md shadow-sm">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold tracking-tight text-gray-800">Inquiries</h2>
-            {totalUnread > 0 && (
+          <h2 className="text-xl font-bold tracking-tight text-gray-800">Inquiries</h2>
+            {newCount > 0 && (
               <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                {totalUnread} new
+                {newCount} new
               </span>
             )}
           </div>
@@ -241,7 +220,7 @@ export default function ViewInquiriesModal({ open, onClose, listings, onInquirie
                   {filteredInquiries.map((inq, idx) => (
                     <tr key={`${inq.id || idx}-${inq.createdAt || Date.now()}`} 
                         className={`cursor-pointer transition-all duration-200 ${idx % 2 === 0 ? 'bg-gray-50 hover:bg-blue-50' : 'bg-white hover:bg-blue-50'} ${
-                          (!inq.isRead || inq.isNew) ? 'border-l-4 border-l-red-500' : ''
+                          !inq.isRead ? 'border-l-4 border-l-red-500' : ''
                         } hover:shadow-md`}
                         onClick={() => handleOpenInquiry(inq)}>
                       <td className="py-2 px-4">

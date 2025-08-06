@@ -13,6 +13,7 @@ import CategoryTabs from "@/components/CategoryTabs.jsx"
 import FaqSection from "@/components/FaqSection"
 import LocationModal from "@/components/LocationModal"
 import LocationPermissionModal from "@/components/LocationPermissionModal"
+import LocationTrigger from "@/components/LocationTrigger"
 import FilterDropdown from "@/components/FilterDropdown"
 import SearchForm from "@/components/SearchForm"
 import SearchContainer from "@/components/SearchContainer.jsx";
@@ -152,6 +153,9 @@ const strapiListings = useMemo(() => data?.listings || [], [data]);
 useEffect(() => {
   if (!Array.isArray(strapiListings) || loading || error) return;
 
+  console.log('All listings from Strapi:', strapiListings);
+  console.log('Total listings count:', strapiListings.length);
+
   const premium = strapiListings.filter(l => l.isPremium);
   const featured = strapiListings.filter(l => l.isFeatured);
   const standard = strapiListings.filter(l =>
@@ -159,6 +163,11 @@ useEffect(() => {
       ? l.isStandard
       : !l.isPremium && !l.isFeatured
   );
+
+  console.log('Premium listings:', premium.length);
+  console.log('Featured listings:', featured.length);
+  console.log('Standard listings:', standard.length);
+  console.log('Standard listings details:', standard.map(l => ({ id: l.documentId, title: l.title, isStandard: l.isStandard, isPremium: l.isPremium, isFeatured: l.isFeatured })));
 
   setPremListings(premium);
   setFeaturedListings(featured);
@@ -181,6 +190,11 @@ if (_loading) return <PageLoader text="Loading categories..." />
         mobileDropdown={mobileDropdown}
         handleMobileDropdownToggle={handleMobileDropdownToggle}
       />
+
+      {/* Hidden LocationTrigger to auto-show modal on first visit */}
+      <div className="hidden">
+        <LocationTrigger listing={{}} />
+      </div>
 
       {/* 2. Hero Section with Search */}
       <section className="relative flex items-center bg-[#333]">
@@ -215,9 +229,11 @@ if (_loading) return <PageLoader text="Loading categories..." />
           <FaqSection />
         </div>
       </div>
-      <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto">
-          <BannerAd />
+      <div className="bg-gray-100 py-8">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <BannerAd />
+          </div>
         </div>
       </div>
 

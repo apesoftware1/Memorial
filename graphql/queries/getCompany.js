@@ -53,12 +53,10 @@ export const GET_COMPANY_BY_USER = gql`
         isPremium
         isStandard
         manufacturingTimeframe
-        mainImage {
-          url
-        }
-        thumbnails {
-          url
-        }
+        mainImageUrl
+        mainImagePublicId
+        thumbnailUrls
+        thumbnailPublicIds
         productDetails {
           id
           color { id value }

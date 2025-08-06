@@ -5,12 +5,10 @@ export const GET_LISTING_BY_SLUG = gql`
     listings(filters: { slug: { eq: $slug } }) {
       documentId
       title
-      mainImage {
-        url
-      }
-      thumbnails {
-        url
-      }
+      mainImageUrl
+      mainImagePublicId
+      thumbnailUrls
+      thumbnailPublicIds
       description
       price
       isOnSpecial

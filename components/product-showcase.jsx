@@ -22,9 +22,9 @@ export default function ProductShowcase({ listing,id }) {
   const [distance, setDistance] = useState(null);
   const [showContact, setShowContact] = useState(false);
   // Prepare images: main image + thumbnails (all as URLs, no duplicates)
-  const mainImageUrl = listing.mainImage?.url || listing.image || "/placeholder.svg";
-  const thumbnailUrls = Array.isArray(listing.thumbnails)
-    ? listing.thumbnails.map(t => t.url).filter(url => url && url !== mainImageUrl)
+  const mainImageUrl = listing.mainImageUrl || listing.image || "/placeholder.svg";
+  const thumbnailUrls = Array.isArray(listing.thumbnailUrls)
+    ? listing.thumbnailUrls.filter(url => url && url !== mainImageUrl)
     : [];
   const allImages = [mainImageUrl, ...thumbnailUrls];
   const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
@@ -438,12 +438,12 @@ export default function ProductShowcase({ listing,id }) {
             <div>
               <h3 className="text-sm font-medium mb-3">More Tombstones from this Manufacturer</h3>
                 {listing.company?.listings && listing.company.listings.length > 0 ? (
-                  listing.company?.listings?.map((product) => (
+                  listing.company?.listings?.slice(0, 3).map((product) => (
                     <Link key={product.documentId} href={`/tombstones-for-sale/${product.documentId}`} className="block">
                       <div className="flex border-b border-gray-200 py-3 hover:bg-gray-50 transition">
                     <div className="relative h-20 w-20 flex-shrink-0">
                       <Image
-                            src={product.mainImage?.url || "/placeholder.svg"}
+                            src={product.mainImageUrl || "/placeholder.svg"}
                             alt={product.title}
                         fill
                         className="object-contain"

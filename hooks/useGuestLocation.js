@@ -66,8 +66,30 @@ export const useGuestLocation = () => {
         },
         (error) => {
           console.error('Geolocation error:', error)
-          setError('Failed to get location')
+          let errorMessage = 'Failed to get location'
+          
+          // Provide more specific error messages
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = 'Location access was denied. Please enable location access in your browser settings.'
+              break
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Location information is unavailable'
+              break
+            case error.TIMEOUT:
+              errorMessage = 'Location request timed out'
+              break
+            default:
+              errorMessage = 'Failed to get location'
+          }
+          
+          setError(errorMessage)
           setLoading(false)
+        },
+        {
+          enableHighAccuracy: false, // Changed to false for better compatibility
+          timeout: 15000, // Increased timeout
+          maximumAge: 300000 // 5 minutes cache
         }
       )
     } catch (error) {

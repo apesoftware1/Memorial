@@ -55,8 +55,8 @@ export default function UpdateListingPage() {
       setTitle(listing.title || "");
       setDescription(listing.description || "");
       setImages([
-        listing.mainImage?.url ? listing.mainImage.url : null,
-        ...(listing.thumbnails?.map(t => t.url) || [])
+        listing.mainImageUrl ? listing.mainImageUrl : null,
+        ...(listing.thumbnailUrls || [])
       ]);
       setSelectedStyle((listing.productDetails?.style || []).map(s => s.value));
       setSelectedColour((listing.productDetails?.color || []).map(c => c.value));
