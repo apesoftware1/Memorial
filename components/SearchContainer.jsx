@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useCallback, useRef, useEffect } from "react"
+import { useState, useCallback, useRef, useEffect, useMemo } from "react"
+import { useSearchParams } from 'next/navigation'
 import { ChevronDown, X } from "lucide-react"
 import SearchForm from "@/components/SearchForm"
 import FilterDropdown from "@/components/FilterDropdown"
@@ -41,7 +42,8 @@ const SearchContainer = ({
   activeTab,
   setActiveTab,
   totalListings = 0, // Add total listings count
-  onNavigateToResults = null // Add navigation callback
+  onNavigateToResults = null, // Add navigation callback
+  allListings = [] // Add all listings for filtering
 }) => {
   // State for UI controls
   const [uiState, setUiState] = useState({
@@ -62,28 +64,316 @@ const SearchContainer = ({
   // Internal state for search functionality if not provided
   const [internalIsSearching, setInternalIsSearching] = useState(false);
 
+  // Read URL query params and keep a filtered listings array in state
+  const searchParams = useSearchParams();
+  const [filteredListings, setFilteredListings] = useState([]);
+
+  // Helper: safely get array of values from productDetails field
+  const getDetailValues = (listing, key) => {
+    const arr = listing?.productDetails?.[key];
+    if (Array.isArray(arr)) {
+      return arr.map((item) => (item?.value || "").toString().toLowerCase()).filter(Boolean);
+    }
+    return [];
+  };
+
+  // Effect: filter allListings based on URL params on load and whenever params change
+  useEffect(() => {
+    // If there are no listings yet, skip
+    if (!Array.isArray(allListings) || allListings.length === 0) {
+      setFilteredListings([]);
+      return;
+    }
+
+    // Read params (supporting both US and UK spellings where applicable)
+    const paramCategory = searchParams.get('category') || searchParams.get('category_listing.name');
+    const paramColor = searchParams.get('color') || searchParams.get('colour');
+    const paramStyle = searchParams.get('style');
+    const paramMaterial = searchParams.get('material') || searchParams.get('stoneType');
+    const paramCustomization = searchParams.get('customization') || searchParams.get('custom');
+    const paramLocation = searchParams.get('location');
+    const paramMinPrice = searchParams.get('minPrice');
+    const paramMaxPrice = searchParams.get('maxPrice');
+
+    // Build filtered array using case-insensitive partial matches and numeric ranges
+    let next = [...allListings];
+
+    // Category (exact or partial, case-insensitive)
+    if (paramCategory) {
+      const q = paramCategory.toLowerCase();
+      next = next.filter((listing) => {
+        const cat = (listing?.listing_category?.name || "").toString().toLowerCase();
+        return cat.includes(q);
+      });
+    }
+
+    // Color (array in productDetails.color)
+    if (paramColor) {
+      const q = paramColor.toLowerCase();
+      next = next.filter((listing) => {
+        const colors = getDetailValues(listing, 'color');
+        // Also allow fallback to title text search
+        const title = (listing?.title || "").toLowerCase();
+        return colors.some((c) => c.includes(q)) || title.includes(q);
+      });
+    }
+
+    // Style (array in productDetails.style)
+    if (paramStyle) {
+      const q = paramStyle.toLowerCase();
+      next = next.filter((listing) => {
+        const styles = getDetailValues(listing, 'style');
+        const title = (listing?.title || "").toLowerCase();
+        return styles.some((s) => s.includes(q)) || title.includes(q);
+      });
+    }
+
+    // Material (stoneType array)
+    if (paramMaterial) {
+      const q = paramMaterial.toLowerCase();
+      next = next.filter((listing) => {
+        const materials = getDetailValues(listing, 'stoneType');
+        const title = (listing?.title || "").toLowerCase();
+        return materials.some((m) => m.includes(q)) || title.includes(q);
+      });
+    }
+
+    // Customization (customization array)
+    if (paramCustomization) {
+      const q = paramCustomization.toLowerCase();
+      next = next.filter((listing) => {
+        const customs = getDetailValues(listing, 'customization');
+        const title = (listing?.title || "").toLowerCase();
+        return customs.some((c) => c.includes(q)) || title.includes(q);
+      });
+    }
+
+    // Location (company.location, partial)
+    if (paramLocation) {
+      const q = paramLocation.toLowerCase();
+      next = next.filter((listing) => ((listing?.company?.location || "").toLowerCase().includes(q)));
+    }
+
+    // Price min
+    if (paramMinPrice && paramMinPrice !== 'Min Price') {
+      const minNum = parseInt(paramMinPrice.replace(/[^\d]/g, ''), 10);
+      if (!Number.isNaN(minNum)) {
+        next = next.filter((listing) => Number(listing?.price) >= minNum);
+      }
+    }
+
+    // Price max
+    if (paramMaxPrice && paramMaxPrice !== 'Max Price') {
+      const maxNum = parseInt(paramMaxPrice.replace(/[^\d]/g, ''), 10);
+      if (!Number.isNaN(maxNum)) {
+        next = next.filter((listing) => Number(listing?.price) <= maxNum);
+      }
+    }
+
+    setFilteredListings(next);
+
+    // Optionally sync UI filters state with params so the dropdowns reflect the URL
+    if (setFilters) {
+      setFilters((prev) => ({
+        ...prev,
+        // Keep existing keys but update if present in URL
+        colour: paramColor || prev?.colour || null,
+        style: paramStyle || prev?.style || null,
+        stoneType: paramMaterial || prev?.stoneType || null,
+        custom: paramCustomization || prev?.custom || null,
+        location: paramLocation || prev?.location || null,
+        minPrice: paramMinPrice || prev?.minPrice || null,
+        maxPrice: paramMaxPrice || prev?.maxPrice || null,
+      }));
+    }
+  }, [allListings, searchParams, setFilters]);
+
+  // Shared filtering logic (same as TombstonesForSale): derive category and apply filters
+  const filterListingsFrom = useCallback((sourceListings, currentFilters) => {
+    if (!Array.isArray(sourceListings) || sourceListings.length === 0) return [];
+    const f = currentFilters || filters || {};
+
+    // Determine selected category from tabs
+    let selectedCategoryName = '';
+    if (Array.isArray(categories) && categories.length > 0) {
+      const desiredOrder = ["SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"];
+      const sortedCategories = desiredOrder
+        .map(name => categories.find(cat => cat?.name && cat.name.toUpperCase() === name))
+        .filter(Boolean);
+      const selectedCategoryObj = sortedCategories[activeTab];
+      selectedCategoryName = selectedCategoryObj?.name || '';
+    }
+
+    return sourceListings
+      // Category
+      .filter(listing => selectedCategoryName ? (listing?.listing_category?.name || '').toLowerCase() === selectedCategoryName.toLowerCase() : true)
+      // Location (partial)
+      .filter(listing => f.location && f.location !== 'All' && f.location !== ''
+        ? (listing?.company?.location || '').toLowerCase().includes(f.location.toLowerCase())
+        : true)
+      // Stone Type (partial)
+      .filter(listing => f.stoneType && f.stoneType !== 'All' && f.stoneType !== ''
+        ? ((listing?.productDetails?.stoneType?.[0]?.value || '').toLowerCase().includes(f.stoneType.toLowerCase()))
+        : true)
+      // Colour/Color (partial)
+      .filter(listing => {
+        const query = f.color || f.colour;
+        if (!query || query === 'All' || query === '') return true;
+        const colour = (listing?.productDetails?.color?.[0]?.value || '').toLowerCase();
+        return colour.includes(query.toLowerCase());
+      })
+      // Style (partial)
+      .filter(listing => f.style && f.style !== 'All' && f.style !== ''
+        ? ((listing?.productDetails?.style?.[0]?.value || '').toLowerCase().includes(f.style.toLowerCase()))
+        : true)
+      // Customization (partial)
+      .filter(listing => f.custom && f.custom !== 'All' && f.custom !== ''
+        ? ((listing?.productDetails?.customization?.[0]?.value || '').toLowerCase().includes(f.custom.toLowerCase()))
+        : true)
+      // Min Price
+      .filter(listing => f.minPrice && f.minPrice !== 'Min Price' && f.minPrice !== ''
+        ? (Number((listing?.price ?? 0)) >= Number(String(f.minPrice).replace(/[^\d]/g, '')))
+        : true)
+      // Max Price
+      .filter(listing => f.maxPrice && f.maxPrice !== 'Max Price' && f.maxPrice !== ''
+        ? (Number((listing?.price ?? 0)) <= Number(String(f.maxPrice).replace(/[^\d]/g, '')))
+        : true);
+  }, [categories, activeTab, filters]);
+
+  // Calculate filtered count for search button using the shared filter logic
+  const searchButtonCount = useMemo(() => {
+    return filterListingsFrom(allListings, filters).length;
+  }, [allListings, filters, filterListingsFrom]);
+
+  // Calculate filtered count based on current filters and category (for actual filtering)
+  const filteredCount = useMemo(() => {
+    if (!allListings.length) return 0;
+
+    let filtered = [...allListings];
+
+    // Filter by category - activeTab corresponds directly to category index
+    if (categories && categories.length > 0) {
+      // Use the same sorting logic as CategoryTabs
+      const desiredOrder = ["SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"];
+      const sortedCategories = desiredOrder
+        .map(name => categories.find(cat => cat.name && cat.name.toUpperCase() === name))
+        .filter(Boolean);
+      
+      const selectedCategory = sortedCategories[activeTab];
+      
+      if (selectedCategory) {
+        const categoryName = selectedCategory.name;
+        filtered = filtered.filter(listing => {
+          // Use the actual listing_category.name from the backend
+          const listingCategory = listing.listing_category?.name;
+          
+          // Exact match for category names
+          return listingCategory === categoryName;
+        });
+      }
+    }
+
+    // Filter by color
+    if (filters?.colour) {
+      filtered = filtered.filter(listing => {
+        const listingColor = listing.productDetails?.color?.[0]?.value ||
+                            listing.title?.toLowerCase();
+        
+        return listingColor?.toLowerCase().includes(filters.colour.toLowerCase());
+      });
+    }
+
+    // Filter by material (stoneType)
+    if (filters?.stoneType) {
+      filtered = filtered.filter(listing => {
+        const listingMaterial = listing.productDetails?.stoneType?.[0]?.value ||
+                               listing.title?.toLowerCase();
+        
+        return listingMaterial?.toLowerCase().includes(filters.stoneType.toLowerCase());
+      });
+    }
+
+    // Filter by style
+    if (filters?.style) {
+      filtered = filtered.filter(listing => {
+        const listingStyle = listing.productDetails?.style?.[0]?.value ||
+                            listing.title?.toLowerCase();
+        
+        return listingStyle?.toLowerCase().includes(filters.style.toLowerCase());
+      });
+    }
+
+    // Filter by customization
+    if (filters?.custom) {
+      filtered = filtered.filter(listing => {
+        const listingCustom = listing.productDetails?.customization?.[0]?.value ||
+                             listing.title?.toLowerCase();
+        
+        return listingCustom?.toLowerCase().includes(filters.custom.toLowerCase());
+      });
+    }
+
+    // Filter by location
+    if (filters?.location) {
+      filtered = filtered.filter(listing => {
+        const listingLocation = listing.company?.location ||
+                               listing.title?.toLowerCase();
+        
+        return listingLocation?.toLowerCase().includes(filters.location.toLowerCase());
+      });
+    }
+
+    // Filter by price range
+    if (filters?.minPrice && filters.minPrice !== 'Min Price') {
+      const minPriceNum = parseInt(filters.minPrice.replace(/[^\d]/g, ''));
+      filtered = filtered.filter(listing => listing.price >= minPriceNum);
+    }
+    
+    if (filters?.maxPrice && filters.maxPrice !== 'Max Price') {
+      const maxPriceNum = parseInt(filters.maxPrice.replace(/[^\d]/g, ''));
+      filtered = filtered.filter(listing => listing.price <= maxPriceNum);
+    }
+
+    return filtered.length;
+  }, [allListings, activeTab, categories, filters]);
+
   // Default functions if not provided
   const defaultHandleSearch = useCallback(() => {
     setInternalIsSearching(true);
-    setTimeout(() => setInternalIsSearching(false), 500);
+    // Recompute filtered list locally to ensure parity with TombstonesForSale
+    const next = filterListingsFrom(allListings, filters);
+    setFilteredListings(next);
+    setTimeout(() => setInternalIsSearching(false), 300);
     // Navigate to results page if callback provided
     if (onNavigateToResults) {
       onNavigateToResults();
     }
-  }, [onNavigateToResults]);
+  }, [onNavigateToResults, filterListingsFrom, allListings, filters]);
 
   const defaultGetSearchButtonText = useCallback(() => {
     const searching = isSearching !== undefined ? isSearching : internalIsSearching;
     if (searching) return 'Searching...';
-    return totalListings > 0 ? `Search (${totalListings})` : 'Search';
-  }, [isSearching, internalIsSearching, totalListings]);
+    return searchButtonCount > 0 ? `Search (${searchButtonCount})` : 'Search';
+  }, [isSearching, internalIsSearching, searchButtonCount]);
 
   const renderSearchButtonContent = () => {
     const searching = isSearching !== undefined ? isSearching : internalIsSearching;
     if (searching) {
       return <SearchLoader />;
     }
-    return totalListings > 0 ? `Search (${totalListings})` : 'Search';
+    // Always show count and category, even if 0
+    let categoryLabel = '';
+    if (categories && categories.length > 0) {
+      const desiredOrder = ["SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"];
+      const sortedCategories = desiredOrder
+        .map(name => categories.find(cat => cat.name && cat.name.toUpperCase() === name))
+        .filter(Boolean);
+      const selectedCategoryObj = sortedCategories[activeTab];
+      if (selectedCategoryObj) {
+        categoryLabel = selectedCategoryObj.name + ' Tombstones';
+      }
+    }
+    return `Search (${searchButtonCount})${categoryLabel ? ' ' + categoryLabel : ''}`;
   };
 
   // Use provided functions or defaults
@@ -135,16 +425,23 @@ const SearchContainer = ({
 
   // Select option from dropdown
   const selectOption = useCallback((name, value) => {
+    console.log(`=== FILTER SELECTION DEBUG ===`);
+    console.log(`Setting filter: ${name} = ${value}`);
     if (setFilters) {
-      setFilters(prev => ({
-        ...prev,
-        [name]: value
-      }));
+      setFilters(prev => {
+        const newFilters = {
+          ...prev,
+          [name]: value
+        };
+        console.log('Updated filters state:', newFilters);
+        return newFilters;
+      });
     }
     setUiState(prev => ({
       ...prev,
       openDropdown: null
     }));
+    console.log(`=== END FILTER SELECTION DEBUG ===`);
   }, [setFilters]);
 
   return (

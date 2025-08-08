@@ -22,6 +22,7 @@ import { useListingCategories } from "@/hooks/use-ListingCategories"
 
 export default function Home() {
   const{categories ,_laoding } = useListingCategories()
+  // URL query params
   const searchParams = useSearchParams();
   
   // GraphQL data
@@ -76,56 +77,119 @@ export default function Home() {
   }
   const topFeaturedManufacturers = featuredManufacturers.slice(0, 3);
 
-  // Filter listings based on URL parameters
-  const filteredListings = useMemo(() => {
-    if (!allListings.length) return allListings;
+  // State for filter visibility on mobile
+  const [showFilters, setShowFilters] = useState(false)
 
+  // State for active filters
+  const [activeFilters, setActiveFilters] = useState({
+    minPrice: "Min Price",
+    maxPrice: "Max Price",
+    location: null,
+    stoneType: null,
+    color: null,
+    style: null,
+    custom: null,
+    colour: null,
+    // removed: culture, bodyType, designTheme
+    category: null,
+  })
+
+  // State for filtered listings
+  const [filteredListings, setFilteredListings] = useState([]);
+
+  // Helper to get active category name
+  const getActiveCategory = () => {
+    if (!categories || !categories.length) return '';
+    if (activeFilters.category) return activeFilters.category;
+    return categories[0]?.name || '';
+  };
+
+  // Generic filter function that accepts a filters object
+  const filterListingsFrom = (filtersObj) => {
     let filtered = [...allListings];
-
-    // Filter by category
-    const category = searchParams.get('category');
-    if (category) {
-      filtered = filtered.filter(listing => {
-        // Check if listing matches the category
-        const listingCategory = listing.productDetails?.bodyType?.[0]?.value || 
-                               listing.productDetails?.style?.[0]?.value ||
-                               listing.title?.toLowerCase();
-        
-        return listingCategory?.toLowerCase().includes(category.toLowerCase());
-      });
+    const f = filtersObj || activeFilters;
+    // Category (exact)
+    if (f.category) {
+      filtered = filtered.filter(listing => (listing.listing_category?.name || '').toLowerCase() === f.category.toLowerCase());
     }
-
-    // Filter by other parameters
-    const filters = ['location', 'stoneType', 'colour', 'culture', 'custom'];
-    filters.forEach(filter => {
-      const value = searchParams.get(filter);
-      if (value) {
-        filtered = filtered.filter(listing => {
-          const listingValue = listing.productDetails?.[filter]?.[0]?.value ||
-                              listing[filter] ||
-                              listing.title?.toLowerCase();
-          
-          return listingValue?.toLowerCase().includes(value.toLowerCase());
-        });
-      }
-    });
-
-    // Filter by price range
-    const minPrice = searchParams.get('minPrice');
-    const maxPrice = searchParams.get('maxPrice');
-    
-    if (minPrice && minPrice !== 'Min Price') {
-      const minPriceNum = parseInt(minPrice.replace(/[^\d]/g, ''));
-      filtered = filtered.filter(listing => listing.price >= minPriceNum);
+    // Location (partial)
+    if (f.location && f.location !== 'All' && f.location !== '') {
+      filtered = filtered.filter(listing => (listing.company?.location || '').toLowerCase().includes(f.location.toLowerCase()));
     }
-    
-    if (maxPrice && maxPrice !== 'Max Price') {
-      const maxPriceNum = parseInt(maxPrice.replace(/[^\d]/g, ''));
-      filtered = filtered.filter(listing => listing.price <= maxPriceNum);
+    // Stone Type (partial from productDetails)
+    if (f.stoneType && f.stoneType !== 'All' && f.stoneType !== '') {
+      filtered = filtered.filter(listing => ((listing.productDetails?.stoneType?.[0]?.value || '').toLowerCase().includes(f.stoneType.toLowerCase())));
     }
-
+    // Color (partial from productDetails) - support both color and colour externally
+    const colorQuery = f.color || f.colour;
+    if (colorQuery && colorQuery !== 'All' && colorQuery !== '') {
+      filtered = filtered.filter(listing => ((listing.productDetails?.color?.[0]?.value || '').toLowerCase().includes(colorQuery.toLowerCase())));
+    }
+    // Style (partial)
+    if (f.style && f.style !== 'All' && f.style !== '') {
+      filtered = filtered.filter(listing => ((listing.productDetails?.style?.[0]?.value || '').toLowerCase().includes(f.style.toLowerCase())));
+    }
+    // Custom (partial)
+    if (f.custom && f.custom !== 'All' && f.custom !== '') {
+      filtered = filtered.filter(listing => ((listing.productDetails?.customization?.[0]?.value || '').toLowerCase().includes(f.custom.toLowerCase())));
+    }
+    // Min Price
+    if (f.minPrice && f.minPrice !== 'Min Price' && f.minPrice !== '') {
+      const min = parsePrice(f.minPrice);
+      filtered = filtered.filter(listing => parsePrice(listing.price) >= min);
+    }
+    // Max Price
+    if (f.maxPrice && f.maxPrice !== 'Max Price' && f.maxPrice !== '') {
+      const max = parsePrice(f.maxPrice);
+      filtered = filtered.filter(listing => parsePrice(listing.price) <= max);
+    }
     return filtered;
-  }, [allListings, searchParams]);
+  };
+
+  // Convenience wrapper using current state
+  const filterListings = () => filterListingsFrom(activeFilters);
+
+  // Search button handler
+  const handleSearch = () => {
+    setFilteredListings(filterListings());
+    setCurrentPage(1);
+  };
+
+  // Update filtered listings on mount and when allListings changes
+  useEffect(() => {
+    setFilteredListings(allListings);
+  }, [allListings]);
+
+  // Read URL params and apply filters on page load and when params change
+  useEffect(() => {
+    if (!searchParams) return;
+    const nextFilters = { ...activeFilters };
+    // Map URL params to our filter keys (support multiple synonyms)
+    const cat = searchParams.get('category');
+    const colour = searchParams.get('colour') || searchParams.get('color');
+    const mat = searchParams.get('material') || searchParams.get('stoneType');
+    const sty = searchParams.get('style');
+    const cus = searchParams.get('customization') || searchParams.get('custom');
+    const loc = searchParams.get('location');
+    const minP = searchParams.get('minPrice');
+    const maxP = searchParams.get('maxPrice');
+
+    if (cat) nextFilters.category = cat;
+    if (colour) { nextFilters.colour = colour; nextFilters.color = colour; }
+    if (mat) nextFilters.stoneType = mat;
+    if (sty) nextFilters.style = sty;
+    if (cus) nextFilters.custom = cus;
+    if (loc) nextFilters.location = loc;
+    if (minP) nextFilters.minPrice = minP;
+    if (maxP) nextFilters.maxPrice = maxP;
+
+    // Apply filters
+    const filtered = filterListingsFrom(nextFilters);
+    setActiveFilters(nextFilters);
+    setFilteredListings(filtered);
+    setCurrentPage(1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, allListings]);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -201,7 +265,7 @@ export default function Home() {
     flow.push(
       <div key="listings-1" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {listings.slice(idx, idx + 5).length > 0
-          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/memorial/${listing.id}`} />)
+          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} />)
           : fallbackCard("listings")}
       </div>
     );
@@ -212,7 +276,7 @@ export default function Home() {
     flow.push(
       <div key="listings-2" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {listings.slice(idx, idx + 5).length > 0
-          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/memorial/${listing.id}`} />)
+          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} />)
           : fallbackCard("listings")}
       </div>
     );
@@ -238,7 +302,7 @@ export default function Home() {
     flow.push(
       <div key="listings-3" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {listings.slice(idx, idx + 5).length > 0
-          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/memorial/${listing.id}`} />)
+          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} />)
           : fallbackCard("listings")}
       </div>
     );
@@ -249,7 +313,7 @@ export default function Home() {
     flow.push(
       <div key="listings-4" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {listings.slice(idx, idx + 5).length > 0
-          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/memorial/${listing.id}`} />)
+          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} />)
           : fallbackCard("listings")}
       </div>
     );
@@ -261,20 +325,7 @@ export default function Home() {
   // Pagination controls
   const totalPages = Math.ceil(filteredListings.length / listingsPerPage);
   
-  // State for filter visibility on mobile
-  const [showFilters, setShowFilters] = useState(false)
-
-  // State for active filters
-  const [activeFilters, setActiveFilters] = useState({
-    minPrice: "Min Price",
-    maxPrice: "Max Price",
-    location: null,
-    stoneType: null,
-    color: null,
-    culture: null,
-    designTheme: null,
-    custom: null,
-  })
+  // Remove useEffect that sets activeFilters on mount (was causing update depth error)
 
   // State for sort order
   const [sortOrder, setSortOrder] = useState("Default")
@@ -404,9 +455,10 @@ export default function Home() {
       location: null,
       stoneType: null,
       color: null,
-      culture: null,
-      designTheme: null,
+      style: null,
       custom: null,
+      colour: null,
+      category: null,
     });
   }
 
@@ -459,14 +511,19 @@ export default function Home() {
                 type="text"
                 placeholder="Search Location, Colour, Manufacturer..."
                 className="w-full p-2 pr-10 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                value={activeFilters.search || ''}
+                onChange={e => setActiveFilters({ ...activeFilters, search: e.target.value })}
               />
               <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                 <ChevronDown className="h-5 w-5 text-gray-400" />
               </div>
             </div>
-            <button className="bg-amber-500 hover:bg-amber-600 text-white p-2 px-4 rounded transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400">
+            <button 
+              className="bg-amber-500 hover:bg-amber-600 text-white p-2 px-4 rounded transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              onClick={handleSearch}
+            >
               <Search className="h-4 w-4" />
-              <span>Search</span>
+              <span>{`Search (${filteredListings.length}) ${getActiveCategory()} Tombstones`}</span>
             </button>
           </div>
           <div className="max-w-4xl mx-auto mt-2">
@@ -511,9 +568,11 @@ export default function Home() {
               {/* Results Header */}
               <div className="flex justify-between items-center mb-4 bg-gray-100 rounded px-4 py-2 shadow-sm">
                 <p className="text-gray-600">
-                  {filteredPremiumListings.length === totalListingsCount
-                    ? `${totalListingsCount} Listings For Sale`
-                    : `${filteredPremiumListings.length} Results (of ${totalListingsCount})`}
+                  {filteredListings.length === 0
+                    ? `No results found for your filters.`
+                    : filteredListings.length === allListings.length
+                    ? `${allListings.length} Listings For Sale`
+                    : `${filteredListings.length} Results (of ${allListings.length})`}
                 </p>
                 <div className="flex items-center">
                   {/* Mobile Sort Button */}
@@ -603,9 +662,13 @@ export default function Home() {
                     <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
 
                     <div className="space-y-6">
-                      {sortedPremiumListings.map((listing) => (
-                        <PremiumListingCard key={listing.documentId} listing={listing} href={`/memorial/${listing.id}`} />
-                      ))}
+                      {paginatedListings.length === 0 ? (
+                        <div className="text-center text-gray-500 py-8">No tombstones found for your selected filters.</div>
+                      ) : (
+                        paginatedListings.map((listing) => (
+                          <PremiumListingCard key={listing.documentId} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} />
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>

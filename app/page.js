@@ -39,7 +39,7 @@ import { useListingCategories } from "@/hooks/use-ListingCategories"
 
 export default function Home() {
   const { categories, loading: _loading } = useListingCategories()
-  const [activeTab, setActiveTab] = useState(0)
+  const [activeTab, setActiveTab] = useState(0) // Default to SINGLE tab (first tab)
   const router = useRouter();
 
   // Location modal state
@@ -97,21 +97,32 @@ export default function Home() {
     // Build query parameters from current filters and category
     const params = new URLSearchParams();
     
-    // Add category if selected
-    if (activeTab !== 0) {
-      const category = categories[activeTab]?.name;
-      if (category) {
-        params.append('category', category);
+    // Add category - activeTab corresponds directly to category index
+    if (categories && categories.length > 0) {
+      // Use the same sorting logic as CategoryTabs
+      const desiredOrder = ["SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"];
+      const sortedCategories = desiredOrder
+        .map(name => categories.find(cat => cat.name && cat.name.toUpperCase() === name))
+        .filter(Boolean);
+      
+      const selectedCategory = sortedCategories[activeTab];
+      if (selectedCategory) {
+        params.append('category', selectedCategory.name);
       }
     }
     
     // Add filters if any are set
     if (filters) {
+      console.log('=== NAVIGATION DEBUG ===');
+      console.log('Filters being added to URL:', filters);
       Object.entries(filters).forEach(([key, value]) => {
         if (value && value !== 'Min Price' && value !== 'Max Price') {
+          console.log(`Adding URL param: ${key} = ${value}`);
           params.append(key, value);
         }
       });
+      console.log('Final URL params:', params.toString());
+      console.log('=== END NAVIGATION DEBUG ===');
     }
     
     // Navigate to tombstones-for-sale with parameters
@@ -220,6 +231,9 @@ if (_loading) return <PageLoader text="Loading categories..." />
           setActiveTab={setActiveTab}
           totalListings={strapiListings.length}
           onNavigateToResults={handleNavigateToResults}
+          allListings={strapiListings}
+          filters={filters}
+          setFilters={setFilters}
         />
       </section>
       

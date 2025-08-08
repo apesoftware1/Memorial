@@ -41,33 +41,44 @@ const handler = NextAuth({
           }
 
           // Regular user authentication via Strapi
-          const res = await fetch("https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/auth/local", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              identifier: credentials.email,
-              password: credentials.password
-            }),
-          });
-          
-          if (!res.ok) {
-            console.error("Strapi auth failed:", res.status, res.statusText);
+          try {
+            const res = await fetch("https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/auth/local", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                identifier: credentials.email,
+                password: credentials.password
+              }),
+            });
+            
+            if (!res.ok) {
+              console.error("Strapi auth failed:", res.status, res.statusText);
+              return null;
+            }
+            
+            const contentType = res.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+              console.error("Strapi auth returned non-JSON response");
+              return null;
+            }
+            
+            const user = await res.json();
+            if (user.jwt) {
+              return {
+                id: user.user.id,
+                documentId: user.user.documentId || user.user.id,
+                name: user.user.username,
+                email: user.user.email,
+                role: "manufacturer",
+                isAdmin: ADMIN_EMAILS.includes(user.user.email.toLowerCase()),
+                jwt: user.jwt
+              };
+            }
+            return null;
+          } catch (error) {
+            console.error("Strapi auth error:", error);
             return null;
           }
-          
-          const user = await res.json();
-          if (user.jwt) {
-            return {
-              id: user.user.id,
-              documentId: user.user.documentId || user.user.id,
-              name: user.user.username,
-              email: user.user.email,
-              role: "manufacturer",
-              isAdmin: ADMIN_EMAILS.includes(user.user.email.toLowerCase()),
-              jwt: user.jwt
-            };
-          }
-          return null;
         } catch (error) {
           console.error("Auth error:", error);
           return null;
@@ -104,7 +115,7 @@ const handler = NextAuth({
     signOut: '/manufacturers/login-page',
     error: '/manufacturers/login-page',
   },
-  debug: process.env.NODE_ENV === 'development',
+  debug: false,
 });
 
 export { handler as GET, handler as POST };

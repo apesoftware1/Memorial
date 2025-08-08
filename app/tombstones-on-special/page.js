@@ -120,9 +120,32 @@ export default function TombstonesOnSpecial() {
     };
   }, []);
 
-  // Process the fetched data
+  // Process the fetched data - Filter by special.active
   const allListings = data?.listings || [];
-  const specialListings = allListings.filter(listing => listing.isOnSpecial);
+  
+  // Debug logging for special filtering
+  console.log('=== TOMBSTONES-ON-SPECIAL FILTERING DEBUG ===');
+  console.log('Total listings from backend:', allListings.length);
+  console.log('First few listings special status:', 
+    allListings.slice(0, 5).map(listing => ({
+      id: listing.documentId,
+      title: listing.title,
+      specialActive: listing.special?.active,
+      isOnSpecial: listing.isOnSpecial // for comparison
+    }))
+  );
+  
+  const specialListings = allListings.filter(listing => listing.special?.active === true);
+  console.log('Filtered special listings count:', specialListings.length);
+  console.log('Special listings:', 
+    specialListings.map(listing => ({
+      id: listing.documentId,
+      title: listing.title,
+      specialActive: listing.special?.active
+    }))
+  );
+  console.log('=== END SPECIAL FILTERING DEBUG ===');
+  
   const standardSpecials = specialListings.filter(listing => listing.isStandard);
   const premiumSpecials = specialListings.filter(listing => listing.isPremium);
   

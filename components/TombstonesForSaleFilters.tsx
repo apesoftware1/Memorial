@@ -9,18 +9,17 @@ interface TombstonesForSaleFiltersProps {
   filterOptions: any;
 }
 
+// Use the same filter options as SearchContainer
 const defaultFilterOptions = {
   minPrice: ["Min Price", ...Array.from({length: 100}, (_, i) => `R ${(1000 + i * 2000).toLocaleString()}`)],
   maxPrice: ["Max Price", ...Array.from({length: 100}, (_, i) => `R ${(3000 + i * 2000).toLocaleString()}`), "R 200,000+"],
   location: ["Gauteng", "Western Cape", "KwaZulu-Natal", "Eastern Cape", "Free State"],
-  bodyType: ["Full Tombstone", "Headstone", "Double Headstone", "Cremation Memorial", "Family Monument", "Child Memorial", "Custom Design"],
+  style: [
+    "Christian Cross", "Heart", "Bible", "Pillars", "Traditional African", "Abstract", "Praying Hands", "Scroll", "Angel", "Mausoleum", "Obelisk", "Plain", "Teddy Bear", "Butterfly", "Car", "Bike", "Sports"
+  ],
   stoneType: ["Granite", "Marble", "Sandstone", "Limestone", "Bronze"],
-  style: ["Classic", "Modern", "Traditional", "Custom"],
-  colour: ["Black", "White", "Grey", "Brown", "Blue Pearl", "Red"],
-  color: ["Black", "White", "Grey", "Brown", "Blue Pearl", "Red"],
-  culture: ["Christian", "Jewish", "Muslim", "Hindu", "Traditional African"],
-  designTheme: ["Cross", "Angel", "Heart", "Book", "Traditional", "Modern", "Custom"],
   custom: ["Engraving", "Photo", "Gold Leaf", "Special Shape", "Lighting"],
+  colour: ["Black", "White", "Grey", "Brown", "Blue Pearl", "Red"],
 };
 
 export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions }: TombstonesForSaleFiltersProps) {
@@ -109,61 +108,15 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
         </div>
       </div>
       <div className="border-t border-gray-200 my-2"></div>
-      <FilterDropdown name="location" label="LOCATION" options={mergedOptions.location} />
+      <FilterDropdown name="location" label="Location" options={mergedOptions.location} />
       <div className="border-t border-gray-200 my-2"></div>
-      <FilterDropdown name="bodyType" label="BODY TYPE" options={mergedOptions.bodyType} />
+      <FilterDropdown name="style" label="Style" options={mergedOptions.style} />
       <div className="border-t border-gray-200 my-2"></div>
-      <FilterDropdown name="stoneType" label="STONE TYPE" options={mergedOptions.stoneType} />
+      <FilterDropdown name="stoneType" label="Material" options={mergedOptions.stoneType} />
       <div className="border-t border-gray-200 my-2"></div>
-      <FilterDropdown name="designTheme" label="DESIGN THEME" options={mergedOptions.designTheme} />
+      <FilterDropdown name="custom" label="Customisation" options={mergedOptions.custom} />
       <div className="border-t border-gray-200 my-2"></div>
-      <FilterDropdown name="culture" label="CULTURE" options={mergedOptions.culture} />
-      <div className="border-t border-gray-200 my-2"></div>
-      {/* More Options Toggle - always visible on mobile, unchanged on desktop */}
-      <button
-        className="w-full text-left py-2 px-2 text-amber-700 font-semibold text-sm bg-white border border-gray-200 rounded mb-2 block sm:hidden"
-        onClick={() => setShowMore((prev) => !prev)}
-        type="button"
-      >
-        {showMore ? "- Less Options" : "+ More Options"}
-      </button>
-      {/* Desktop: showMore toggle as before; Mobile: showMore toggle always visible */}
-      {/* Expanded More Options - only show on mobile if showMore is true, desktop unchanged */}
-      {showMore && (
-        <div className="block sm:hidden">
-          <div className="border-t border-gray-200 my-2"></div>
-          <FilterDropdown name="style" label="STYLE" options={mergedOptions.style} />
-          <div className="border-t border-gray-200 my-2"></div>
-          <FilterDropdown name="colour" label="COLOUR" options={mergedOptions.colour} />
-          <div className="border-t border-gray-200 my-2"></div>
-          <FilterDropdown name="color" label="COLOR" options={mergedOptions.color} />
-          <div className="border-t border-gray-200 my-2"></div>
-          <FilterDropdown name="custom" label="CUSTOM" options={mergedOptions.custom} />
-        </div>
-      )}
-      {/* On desktop, keep original behavior: showMore toggle and expanded filters as before */}
-      {/** Desktop expanded filters (unchanged) */}
-      <div className="hidden sm:block">
-        <button
-          className="w-full text-left py-2 px-2 text-amber-700 font-semibold text-sm bg-white border border-gray-200 rounded mb-2"
-          onClick={() => setShowMore((prev) => !prev)}
-          type="button"
-        >
-          {showMore ? "- Less Options" : "+ More Options"}
-        </button>
-        {showMore && (
-          <>
-            <div className="border-t border-gray-200 my-2"></div>
-            <FilterDropdown name="style" label="STYLE" options={mergedOptions.style} />
-            <div className="border-t border-gray-200 my-2"></div>
-            <FilterDropdown name="colour" label="COLOUR" options={mergedOptions.colour} />
-            <div className="border-t border-gray-200 my-2"></div>
-            <FilterDropdown name="color" label="COLOR" options={mergedOptions.color} />
-            <div className="border-t border-gray-200 my-2"></div>
-            <FilterDropdown name="custom" label="CUSTOM" options={mergedOptions.custom} />
-          </>
-        )}
-      </div>
+      <FilterDropdown name="colour" label="Colour" options={mergedOptions.colour} />
     </div>
   )
 } 
