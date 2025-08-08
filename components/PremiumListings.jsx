@@ -7,9 +7,9 @@ export default function PremiumListings({ listings }) {
     <div className="space-y-6">
       {listings.map((listing, index) => (
         <PremiumListingCard 
-          key={listing.id} 
+          key={listing.documentId} 
           listing={listing} 
-          href={`/memorial/${listing.id}`}
+          href={`/tombstones-for-sale/${listing.documentId}`}
           isFirstCard={index === 0}
         />
       ))}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Info, X } from "lucide-react"
+import { Plus, Minus } from "lucide-react"
 
 const faqData = [
   {
@@ -41,73 +41,55 @@ const faqData = [
   },
 ];
 
-// FAQ tooltip component
-const FaqTooltip = ({ faq, index, activeTooltip, setActiveTooltip }) => {
-  return (
-    <div className="relative">
-      <button
-        className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1 text-sm flex items-center transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 group w-full justify-between text-left"
-        onClick={() => setActiveTooltip(activeTooltip === index ? null : index)}
-        aria-expanded={activeTooltip === index}
-        style={{
-          clipPath: 'polygon(0% 0%, 97% 0%, 100% 50%, 97% 100%, 0% 100%)',
-        }}
-      >
-        <span className="flex items-center">
-          {index === 0 && <span className="mr-1">→</span>}
-          {faq.question}
-        </span>
-        <Info className="h-3 w-3 opacity-70 flex-shrink-0" />
-      </button>
-
-      {activeTooltip === index && (
-        <div className="absolute z-50 mt-2 w-72 bg-white rounded-md shadow-lg border border-gray-200 p-3 text-sm text-gray-700 animate-slide-in">
-          <div className="flex justify-between items-start mb-1">
-            <h4 className="font-bold text-gray-900">{faq.question}</h4>
-            <button onClick={() => setActiveTooltip(null)} className="text-gray-400 hover:text-gray-600">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <p>{faq.answer}</p>
-        </div>
-      )}
-    </div>
-  );
-};
-
 export default function FaqSection() {
-  const [activeTooltip, setActiveTooltip] = useState(null);
+  const [openIndex, setOpenIndex] = useState(null);
 
   return (
-    <section className="bg-white py-8 sm:py-12">
-      <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto bg-gray-50 rounded-lg p-4 sm:p-8 shadow-sm">
-          <div className="space-y-4 sm:space-y-6">
-            <div className="space-y-3 sm:space-y-4">
-              <p className="text-gray-700 text-base sm:text-lg leading-relaxed">
-                Finding a fitting Tribute for your Loved One can be a daunting, difficult and potentially very expensive. With so many variables to consider we will make this job easier!
-              </p>
-              <p className="text-gray-700 text-base sm:text-lg leading-relaxed">
-                Simply use our Easy-to-Use search bar to find a Tombstone Supplier who fits all the criteria you need
-              </p>
-              <p className="text-gray-700 text-base sm:text-lg font-medium">
-                Do you have questions like:
-              </p>
+    <section className="w-full min-h-0 flex items-start justify-center bg-white pt-12 mb-0 pb-0">
+      <div className="w-full mx-auto pb-0 mb-0">
+        {/* Heading */}
+        <div className="mb-6">
+          <h2 className="text-[#D4AF37] font-bold uppercase text-base md:text-lg whitespace-normal md:whitespace-nowrap" style={{letterSpacing: "0.5px"}}>
+            Do you have any questions about buying a tombstone for your loved one?
+          </h2>
+        </div>
+        {/* FAQ List */}
+        <div className="relative">
+          {/* Top border */}
+          <div className="h-px bg-[#e0e0e0] w-full"></div>
+          {faqData.map((faq, idx) => (
+            <div key={idx} className="group relative">
+              <button
+                className={`w-full flex justify-between items-center py-3 px-0 text-left focus:outline-none transition-colors relative ${openIndex === idx ? "bg-[#f9f9f9]" : ""}`}
+                onClick={() => setOpenIndex(openIndex === idx ? null : idx)}
+                aria-expanded={openIndex === idx}
+              >
+                <span className="font-bold text-[#0b4c5f] text-base uppercase tracking-tight">
+                  {faq.question}
+                </span>
+                <span className="ml-4 flex-shrink-0 flex items-center">
+                  {openIndex === idx ? (
+                    <Minus className="w-5 h-5 text-[#0b4c5f]" />
+                  ) : (
+                    <Plus className="w-5 h-5 text-[#0b4c5f]" />
+                  )}
+                </span>
+              </button>
+              {openIndex === idx && (
+                <div className="py-2 px-0">
+                  <div className="bg-[#f9f9f9] rounded p-4 text-[#0b4c5f] text-base font-normal leading-relaxed">
+                    {faq.answer}
+                  </div>
+                </div>
+              )}
+              {/* Divider under each question, except last */}
+              {idx < faqData.length - 1 && (
+                <div className="h-px bg-[#e0e0e0] w-full"></div>
+              )}
             </div>
-
-            {/* FAQ Buttons */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-              {faqData.map((faq, index) => (
-                <FaqTooltip
-                  key={index}
-                  faq={faq}
-                  index={index}
-                  activeTooltip={activeTooltip}
-                  setActiveTooltip={setActiveTooltip}
-                />
-              ))}
-            </div>
-          </div>
+          ))}
+          {/* Bottom border */}
+          <div className="h-px bg-[#e0e0e0] w-full"></div>
         </div>
       </div>
     </section>

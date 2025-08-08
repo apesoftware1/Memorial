@@ -1,21 +1,49 @@
 import Image from 'next/image'
 import Link from 'next/link'
+
 // Removed the old import for ProductCard
 // import { ProductCard } from '@/components/product-card'
 import { useState, useRef, useEffect } from 'react'
+import { useQuery } from '@apollo/client';
+import { GET_LISTINGS_BY_COMPANY_NAME } from '@/graphql/queries/getListingsByManufacturer';
+import FeaturedListings from './FeaturedListings';
+import { PageLoader } from '@/components/ui/loader';
 
-const FeaturedManufacturer = ({ manufacturer, products }) => {
+const FeaturedManufacturer = ({ manufacturer }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollContainerRef = useRef(null);
+
+  const { data, loading, error } = useQuery(GET_LISTINGS_BY_COMPANY_NAME, {
+    variables: { name: manufacturer?.name },
+    skip: !manufacturer?.name,
+  });
+
+  if (loading) return <PageLoader text="Loading manufacturer listings..." />;
+  if (error) return (
+    <div className="text-center py-8">
+      <p className="text-red-600 font-medium mb-4">Error loading listings</p>
+      <button 
+        onClick={() => window.location.reload()} 
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+      >
+        Refresh Page
+      </button>
+    </div>
+  );
+{console.log(data)}
+  const products = data?.listings || [];
+
+  // Create an array of featured listings (where isFeatured is true)
+  const featuredProducts = products.filter(product => product.isFeatured);
+  const topFeaturedProducts = featuredProducts.slice(0, 3);
 
   // Function to handle scroll and update active index
   const handleScroll = () => {
     if (scrollContainerRef.current) {
       const scrollLeft = scrollContainerRef.current.scrollLeft;
-      const cardWidth = 264; // w-64 (256px) + gap-4 (16px) = 272px, but some padding etc may reduce the effective width.
-      // Adjust this value if cards are not aligning correctly
+      const cardWidth = 320; // Adjusted for mobile card width
       const newIndex = Math.round(scrollLeft / cardWidth);
-      setActiveIndex(newIndex);
+      setActiveIndex(Math.min(newIndex, topFeaturedProducts.length - 1));
     }
   };
 
@@ -29,6 +57,16 @@ const FeaturedManufacturer = ({ manufacturer, products }) => {
     }
   }, [handleScroll]);
 
+  // Function to scroll to specific card
+  const scrollToCard = (index) => {
+    if (scrollContainerRef.current) {
+      const cardWidth = 320;
+      scrollContainerRef.current.scrollTo({
+        left: index * cardWidth,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   return (
     <section className="py-4">
@@ -60,21 +98,38 @@ const FeaturedManufacturer = ({ manufacturer, products }) => {
             </Link>
           </div>
 
-          <div 
-            ref={scrollContainerRef}
-            className="flex overflow-x-auto gap-4 sm:grid sm:grid-cols-2 md:grid-cols-3 snap-x snap-mandatory"
-          >
-            {products.map((product, index) => (
-              <ProductCard key={index} product={product} />
-            ))}
+          {/* Mobile: Horizontal scrolling cards */}
+          <div className="md:hidden">
+            <div 
+              ref={scrollContainerRef}
+              className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {topFeaturedProducts.map((product, index) => (
+                <div key={product.documentId || index} className="flex-shrink-0 w-80 snap-start">
+                  <FeaturedListings listing={product} />
+                </div>
+              ))}
+            </div>
+            {/* Pagination Dots - Mobile only */}
+            <div className="flex justify-center mt-4 space-x-2">
+              {topFeaturedProducts.map((_, index) => (
+                <button
+                  key={index} 
+                  onClick={() => scrollToCard(index)}
+                  className={`w-3 h-3 rounded-full transition-colors duration-200 ${
+                    index === activeIndex ? 'bg-blue-500' : 'bg-gray-300 hover:bg-gray-400'
+                  }`}
+                  aria-label={`Go to card ${index + 1}`}
+                ></button>
+              ))}
+            </div>
           </div>
-          {/* Pagination Dots */}
-          <div className="flex justify-center mt-4 space-x-2 md:hidden">
-            {products.map((_, index) => (
-              <div 
-                key={index} 
-                className={`w-5 h-5 rounded-full transition-colors duration-200 ${index === activeIndex ? 'bg-blue-500' : 'border border-gray-400'}`}
-              ></div>
+
+          {/* Desktop: Grid layout */}
+          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {topFeaturedProducts.map((product, index) => (
+              <FeaturedListings key={product.documentId || index} listing={product} />
             ))}
           </div>
         </div>
@@ -84,24 +139,38 @@ const FeaturedManufacturer = ({ manufacturer, products }) => {
 }
 
 const ProductCard = ({ product }) => (
-  <div className="border border-gray-300 rounded bg-white p-2 shadow-md transition-shadow flex-shrink-0 w-64 sm:w-auto snap-start">
-    <Image
-      src={product.image || "/placeholder.svg"}
-      alt={product.title}
-      width={300}
-      height={200}
-      className="mb-2 rounded relative object-cover w-full"
-    />
+  <div className="bg-white border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+    {/* Image Container */}
+    <div className="relative h-56 bg-gray-100">
+      <Image
+        src={product.image || "/placeholder.svg"}
+        alt={product.title}
+        fill
+        className="object-cover"
+      />
+    </div>
 
-    <div className="p-2">
-      <p className="text-blue-600 font-bold text-lg">{product.price}</p>
-      {product.tag && (
-        <span className={`text-xs px-2 py-0.5 rounded ${product.tag === 'Low Price' ? 'bg-amber-400 text-black' : 'bg-green-100 text-green-700'}`}>
-          {product.tag}
-        </span>
-      )}
-      <h4 className="font-semibold text-gray-800 mt-1 text-sm">{product.title}</h4>
-      <p className="text-gray-600 text-xs mt-1">{product.details}</p>
+    {/* Content */}
+    <div className="p-4">
+      {/* Price and Tag Row */}
+      <div className="flex justify-between items-center mb-3">
+        <p className="font-bold text-blue-600 text-lg">{product.price}</p>
+        {product.tag && (
+          <span className={`text-xs px-2 py-1 rounded ${product.tag === 'Low Price' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+            {product.tag}
+          </span>
+        )}
+      </div>
+      
+      {/* Product Title */}
+      <h4 className="font-bold text-gray-800 mb-2 text-sm uppercase">
+        {product.title}
+      </h4>
+      
+      {/* Product Details */}
+      <p className="text-xs text-gray-600">
+        {product.details}
+      </p>
     </div>
   </div>
 )

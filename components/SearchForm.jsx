@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
+import { Search } from "lucide-react"
 import SearchBox from "@/components/SearchBox"
+import { Loader } from "@/components/ui/loader"
 
 const SearchForm = ({ onSearch }) => {
   // State for search input and suggestions
@@ -82,18 +84,24 @@ const SearchForm = ({ onSearch }) => {
       />
       
       {/* Search Suggestions Dropdown */}
-      {showSuggestions && filteredSuggestions.length > 0 && (
+      {showSuggestions && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-          {filteredSuggestions.map((suggestion, index) => (
-            <button
-              key={index}
-              type="button"
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:bg-gray-100"
-              onClick={() => handleSuggestionSelect(suggestion)}
-            >
-              {suggestion}
-            </button>
-          ))}
+          {filteredSuggestions.length > 0 ? (
+            filteredSuggestions.map((suggestion, index) => (
+              <button
+                key={index}
+                type="button"
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:bg-gray-100"
+                onClick={() => handleSuggestionSelect(suggestion)}
+              >
+                {suggestion}
+              </button>
+            ))
+          ) : (
+            <div className="px-4 py-2 text-sm text-gray-500">
+              <Loader size="sm" variant="dots" text="Searching..." />
+            </div>
+          )}
         </div>
       )}
     </div>

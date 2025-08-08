@@ -40,7 +40,7 @@ export default function FilterDropdown({
       </button>
 
       {openDropdown === name && (
-        <div className="absolute z-[100] mt-1 w-full bg-[#2E2E30] shadow-lg border border-gray-700 animate-slide-in" style={{ borderRadius: '2px' }}>
+        <div className="absolute z-[300] mt-1 w-full bg-[#2E2E30] shadow-lg border border-gray-700 animate-slide-in" style={{ borderRadius: '2px' }}>
           <ul className="py-1 max-h-60 overflow-auto" role="menu" aria-orientation="vertical">
             {options.map((option, index) => (
               <li

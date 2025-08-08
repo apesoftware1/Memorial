@@ -1,24 +1,31 @@
-import { manufacturerProfileSlugs, premiumListings } from '@/lib/data';
-import ManufacturerProfileEditor from '../page';
+"use client";
 
-export default function ManufacturerProfilePage({ params }) {
-  const { slug } = params;
-  const manufacturerName = Object.keys(manufacturerProfileSlugs).find(
-    key => manufacturerProfileSlugs[key] === slug
-  );
+import { useParams } from "next/navigation";
+import { useQuery } from "@apollo/client";
+import { GET_COMPANY_BY_ID } from '@/graphql/queries/getCompanyById';
+import ManufacturerProfileEditor from '../ManufacturerProfileEditor';
 
-  if (!manufacturerName) {
+export default function ManufacturerProfilePage() {
+  const { slug: documentId } = useParams();
+  console.log(documentId)
+  const { data, loading, error } = useQuery(GET_COMPANY_BY_ID, {
+    variables: { documentId },
+    skip: !documentId,
+  });
+
+  if (loading) return <div>Loading company data...</div>;
+  if (error) return <div>Error loading company data.</div>;
+  const company = data?.company;
+
+  if (!company) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: '#888' }}>
         404 | This manufacturer profile could not be found.
       </div>
     );
   }
+  const listings = company.listings || [];
 
-  // Filter listings for this manufacturer (strict equality)
-  const listings = premiumListings.filter(l => l.manufacturer === manufacturerName);
-  console.log('Filtered listings for', manufacturerName, listings);
-
-  // Render the profile page as a guest (no edit buttons), passing manufacturerName and listings
-  return <ManufacturerProfileEditor isOwner={false} manufacturerName={manufacturerName} listings={listings} />;
+  // Render the profile page as a guest (no edit or modal buttons)
+  return <ManufacturerProfileEditor isOwner={false} company={company} listings={listings} />;
 } 

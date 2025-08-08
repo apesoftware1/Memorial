@@ -1,0 +1,361 @@
+import React from "react";
+import { useRouter, useSearchParams } from 'next/navigation';
+import { PremiumListingCard } from "@/components/premium-listing-card";
+import { StandardListingCard } from "@/components/standard-listing-card";
+import BannerAd from "@/components/BannerAd";
+import FeaturedListings from "@/components/FeaturedListings";
+import { useState, useRef, useEffect } from "react";
+import { PageLoader, CardSkeleton } from "@/components/ui/loader";
+
+const IndexRender = ({
+   
+    premListings = [],
+    featuredListings = [],
+    stdListings = [],
+  loading = false,
+  error = null,
+  currentPage = 1,
+  setCurrentPage = () => {},
+}) => {
+  // State for featured listings pagination
+  const [featuredActiveIndex, setFeaturedActiveIndex] = useState(0);
+  const featuredScrollRef = useRef(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Function to handle featured listings scroll
+  const handleFeaturedScroll = () => {
+    if (featuredScrollRef.current) {
+      const scrollLeft = featuredScrollRef.current.scrollLeft;
+      const cardWidth = 320; // Card width + gap
+      const newIndex = Math.round(scrollLeft / cardWidth);
+      setFeaturedActiveIndex(Math.min(newIndex, 2)); // Max 3 cards (0, 1, 2)
+    }
+  };
+
+  // Function to scroll to specific featured card
+  const scrollToFeaturedCard = (index) => {
+    if (featuredScrollRef.current) {
+      const cardWidth = 320;
+      featuredScrollRef.current.scrollTo({
+        left: index * cardWidth,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  useEffect(() => {
+    const container = featuredScrollRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleFeaturedScroll);
+      return () => {
+        container.removeEventListener('scroll', handleFeaturedScroll);
+      };
+    }
+  }, []);
+
+  // Sync page from URL on mount/URL change
+  useEffect(() => {
+    if (!searchParams) return;
+    const pageFromUrl = parseInt(searchParams.get('page') || '1', 10);
+    if (pageFromUrl !== currentPage) {
+      setCurrentPage(pageFromUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Helper to change page and update URL
+  const goToPage = (nextPage) => {
+    const clamped = Math.max(1, nextPage); // allow moving beyond local dataset; parent can fetch
+    setCurrentPage(clamped);
+    const params = new URLSearchParams(searchParams ? Array.from(searchParams.entries()) : []);
+    params.set('page', String(clamped));
+    router.push(`?${params.toString()}`);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // PAGINATION LOGIC (all from strapiListings)
+  const premiumPerPage = 10;
+  const standardPerPage = 5;
+  const featuredPerPage = 3;
+
+  
+  // Premium Listings (paginated)
+  const premiumStart = (currentPage - 1) * premiumPerPage;
+  const premiumEnd = premiumStart + premiumPerPage;
+  const premiumToShow = premListings.slice(premiumStart, premiumEnd);
+  const premiumFirstHalf = premiumToShow.slice(0, 5);
+  const premiumSecondHalf = premiumToShow.slice(5, 10);
+  const totalPremiumPages = Math.max(1, Math.ceil(premListings.length / premiumPerPage));
+
+  // Standard Listings (paginated)
+  const standardStart = (currentPage - 1) * standardPerPage;
+  const standardEnd = standardStart + standardPerPage;
+  const standardToShow = stdListings.slice(standardStart, standardEnd);
+  
+  console.log(stdListings.length)
+  // Featured Manufacturer (pick first from premium listings)
+  const featuredManufacturer = premiumToShow[0]?.company || null;
+  const manufacturerListings = premListings
+    .filter((l) => l.company?.name === featuredManufacturer?.name)
+    .slice(0, 3);
+
+  // Fallback card generator
+  const fallbackCard = (type = "listing") => (
+    <CardSkeleton className="h-full" />
+  );
+
+  if (loading) return <PageLoader text="Loading listings..." />;
+  if (error) {
+    console.log("GraphQL Errors:", error.graphQLErrors);  // Errors returned by the server
+    console.log("Network Error:", error.networkError);     // E.g. CORS or connection failure
+    console.log("Extra Info:", error.extraInfo);           // Sometimes available
+  }
+  if (error) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <p className="text-red-600 font-medium mb-4">Error loading listings</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Refresh Page
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {/* 4. Featured Listings Section */}
+      <section className="bg-gray-50 mb-8">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center mb-0">
+              <div className="flex-grow border-t border-gray-300"></div>
+              <h3 className="flex-shrink-0 mx-4 text-center text-gray-600 text-xs font-bold uppercase">FEATURED LISTINGS</h3>
+              <div className="flex-grow border-t border-gray-300"></div>
+            </div>
+            <div className="w-full flex justify-center">
+              <span className="text-xs text-gray-500 mt-0 font-bold mb-2" style={{marginTop: '-2px'}}>*Sponsored</span>
+            </div>
+            
+            {/* Mobile: Horizontal scrolling cards */}
+            <div className="md:hidden">
+              <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide" ref={featuredScrollRef}>
+                {[0, 1, 2].map(idx =>
+                  featuredListings && featuredListings[idx] ? (
+                    <div key={featuredListings[idx].id || idx} className="flex-shrink-0 w-80 snap-start">
+                      <FeaturedListings listing={featuredListings[idx]} />
+                    </div>
+                  ) : (
+                    <div key={"fallback-" + idx} className="flex-shrink-0 w-80 snap-start flex justify-center">
+                      {fallbackCard("featured listings")}
+                    </div>
+                  )
+                )}
+              </div>
+              {/* Pagination Dots - Mobile only */}
+              <div className="flex justify-center mt-4 space-x-2">
+                {[0, 1, 2].map((index) => (
+                  <button
+                    key={index}
+                    onClick={() => scrollToFeaturedCard(index)}
+                    className={`w-3 h-3 rounded-full transition-colors duration-200 ${
+                      featuredActiveIndex === index ? 'bg-blue-500' : 'bg-gray-300 hover:bg-gray-400'
+                    }`}
+                    aria-label={`Go to card ${index + 1}`}
+                  ></button>
+                ))}
+              </div>
+            </div>
+
+            {/* Desktop: Grid layout */}
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[0, 1, 2].map(idx =>
+                featuredListings && featuredListings[idx] ? (
+                  <FeaturedListings key={featuredListings[idx].id || idx} listing={featuredListings[idx]} />
+                ) : (
+                  <div key={"fallback-" + idx} className="flex-1 flex justify-center">
+                    {fallbackCard("featured listings")}
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. Premium Listings Section (Part 1) */}
+      <section className="mb-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center mb-0">
+            <div className="flex-grow border-t border-gray-300"></div>
+            <h3 className="flex-shrink-0 mx-4 text-center text-gray-600 text-xs font-bold uppercase">PREMIUM LISTINGS</h3>
+            <div className="flex-grow border-t border-gray-300"></div>
+          </div>
+          <div className="w-full flex justify-center">
+            <span className="text-xs text-gray-500 mt-0 font-bold mb-2" style={{marginTop: '-2px'}}>*Sponsored</span>
+          </div>
+        </div>
+        {premiumFirstHalf.length > 0
+          ? premiumFirstHalf.map((item, idx) => (
+              <div key={item.id || idx} className="mb-6">
+                <PremiumListingCard listing={item} />
+              </div>
+            ))
+          : fallbackCard("premium listings")}
+      </section>
+
+      {/* 6. Banner Advertisement */}
+      <div className="container mx-auto px-4 mb-8">
+        <div className="max-w-4xl mx-auto">
+          <BannerAd />
+        </div>
+      </div>
+
+      {/* 7. Premium Listings Section (Part 2) */}
+      <section className="mb-8">
+        {premiumSecondHalf.length > 0
+          ? premiumSecondHalf.map((item, idx) => (
+              <div key={item.id || idx} className="mb-6">
+                <PremiumListingCard listing={item} />
+              </div>
+            ))
+          : fallbackCard("premium listings")}
+      </section>
+
+      {/* 8. Featured Manufacturer Section */}
+      <section className="mb-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center mb-0">
+            <div className="flex-grow border-t border-gray-300"></div>
+            <h3 className="flex-shrink-0 mx-4 text-center text-gray-600 text-xs font-bold uppercase">FEATURED MANUFACTURER</h3>
+            <div className="flex-grow border-t border-gray-300"></div>
+          </div>
+          <div className="w-full flex justify-center">
+            <span className="text-xs text-gray-500 mt-0 font-bold mb-2" style={{marginTop: '-2px'}}>*Sponsored</span>
+          </div>
+          <div className="border border-gray-300 rounded bg-white p-4">
+            {featuredManufacturer ? (
+              <>
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0 mb-4">
+                  <div>
+                    <h4 className="font-bold text-gray-800 text-xl mb-1">{featuredManufacturer.name}</h4>
+                  </div>
+                  <div>
+                    <img
+                      src={featuredManufacturer.logo?.url || "/placeholder-logo.svg"}
+                      alt={`${featuredManufacturer.name} Logo`}
+                      width={80}
+                      height={80}
+                      className="rounded-full"
+                    />
+                  </div>
+                </div>
+                <div className="text-blue-600 text-sm mb-4">{featuredManufacturer.location}</div>
+              </>
+            ) : fallbackCard("manufacturer")}
+            
+            {/* Mobile: Horizontal scrolling cards */}
+            <div className="md:hidden">
+              <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide">
+                {[0, 1, 2].map(idx =>
+                  manufacturerListings && manufacturerListings[idx] ? (
+                    <div key={manufacturerListings[idx].id || idx} className="flex-shrink-0 w-80 snap-start">
+                      <FeaturedListings listing={manufacturerListings[idx]} />
+                    </div>
+                  ) : (
+                    <div key={"fallback-manufacturer-" + idx} className="flex-shrink-0 w-80 snap-start flex justify-center">
+                      {fallbackCard("manufacturer listings")}
+                    </div>
+                  )
+                )}
+              </div>
+              {/* Pagination Dots - Mobile only */}
+              <div className="flex justify-center mt-4 space-x-2">
+                {[0, 1, 2].map((index) => (
+                  <div 
+                    key={index} 
+                    className="w-3 h-3 rounded-full bg-gray-300"
+                  ></div>
+                ))}
+              </div>
+            </div>
+
+            {/* Desktop: Grid layout */}
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[0, 1, 2].map(idx =>
+                manufacturerListings && manufacturerListings[idx] ? (
+                  <FeaturedListings key={manufacturerListings[idx].id || idx} listing={manufacturerListings[idx]} />
+                ) : (
+                  <div key={"fallback-manufacturer-" + idx} className="flex-1 flex justify-center">
+                    {fallbackCard("manufacturer listings")}
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 9. Standard Listings Section */}
+      <section className="mb-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center mb-0">
+            <div className="flex-grow border-t border-gray-300"></div>
+            <h3 className="flex-shrink-0 mx-4 text-center text-gray-600 text-xs font-bold uppercase">STANDARD LISTINGS</h3>
+            <div className="flex-grow border-t border-gray-300"></div>
+          </div>
+          <div className="w-full flex justify-center">
+            <span className="text-xs text-gray-500 mt-0 font-bold mb-2" style={{marginTop: '-2px'}}>*Sponsored</span>
+          </div>
+        </div>
+        {standardToShow.length > 0 ? (
+          <div className="space-y-6">
+            {standardToShow.map((item, idx) => (
+              <StandardListingCard key={item.id || idx} listing={item} />
+            ))}
+          </div>
+        ) : (
+          fallbackCard("standard listings")
+        )}
+      </section>
+
+      {/* 10. Pagination Controls */}
+      <div className="flex justify-center my-8">
+        <nav className="inline-flex rounded-md shadow">
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          {[...Array(totalPremiumPages)].map((_, idx) => (
+            <button
+              key={idx + 1}
+              onClick={() => goToPage(idx + 1)}
+              className={`py-2 px-4 border border-gray-300 bg-white text-sm font-medium ${
+                currentPage === idx + 1 ? "text-blue-600 font-bold" : "text-gray-500 hover:text-blue-600"
+              }`}
+            >
+              {idx + 1}
+            </button>
+          ))}
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={false}
+            className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </nav>
+      </div>
+    </>
+  );
+};
+
+export default IndexRender; 

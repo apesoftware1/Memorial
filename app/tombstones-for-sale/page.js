@@ -1,24 +1,82 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { ChevronDown, Search, ChevronRight, Menu, X } from "lucide-react"
 import Header from "@/components/Header"
 import Image from "next/image"
-
 // Import the useFavorites hook and our new components
 import { useFavorites } from "@/context/favorites-context"
-import { ProductCard } from "@/components/product-card"
+import FeaturedListings from "@/components/FeaturedListings"
 import { PremiumListingCard } from "@/components/premium-listing-card"
 import TombstonesForSaleFilters from "@/components/TombstonesForSaleFilters"
+import FeaturedManufacturer from '@/components/FeaturedManufacturer';
+import BannerAd from '@/components/BannerAd';
+import { useSearchParams } from 'next/navigation';
+import { PageLoader, CardSkeleton } from "@/components/ui/loader";
 
-// Import premium listings from lib/data.js
-import { premiumListings } from '@/lib/data';
+// Import GraphQL queries
+import { useQuery } from '@apollo/client';
+import { GET_LISTINGS } from '@/graphql/queries/getListings';
+import { useListingCategories } from "@/hooks/use-ListingCategories"
 
-// Remove the local featuredListings array and import it from the homepage
-import { featuredListings } from '../page';
+export default function Home() {
+  const{categories ,_laoding } = useListingCategories()
+  // URL query params
+  const searchParams = useSearchParams();
+  
+  // GraphQL data
+  const { data, loading, error } = useQuery(GET_LISTINGS);
+  
+  // State for featured listings pagination
+  const [featuredActiveIndex, setFeaturedActiveIndex] = useState(0);
+  const featuredScrollRef = useRef(null);
 
-export default function TombstonesForSale() {
+  // Function to handle featured listings scroll
+  const handleFeaturedScroll = () => {
+    if (featuredScrollRef.current) {
+      const scrollLeft = featuredScrollRef.current.scrollLeft;
+      const cardWidth = 320; // Card width + gap
+      const newIndex = Math.round(scrollLeft / cardWidth);
+      setFeaturedActiveIndex(Math.min(newIndex, 2)); // Max 3 cards (0, 1, 2)
+    }
+  };
+
+  // Function to scroll to specific featured card
+  const scrollToFeaturedCard = (index) => {
+    if (featuredScrollRef.current) {
+      const cardWidth = 320;
+      featuredScrollRef.current.scrollTo({
+        left: index * cardWidth,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  useEffect(() => {
+    const container = featuredScrollRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleFeaturedScroll);
+      return () => {
+        container.removeEventListener('scroll', handleFeaturedScroll);
+      };
+    }
+  }, []);
+  
+  // Use only backend data
+  const allListings = data?.listings || [];
+  const featuredManufacturers = [];
+  const seenManufacturers = new Set();
+  if (data?.listings) {
+    data.listings.forEach(l => {
+      if (l.company?.isFeatured && !seenManufacturers.has(l.company.name)) {
+        featuredManufacturers.push(l.company);
+        seenManufacturers.add(l.company.name);
+      }
+    });
+  }
+  const topFeaturedManufacturers = featuredManufacturers.slice(0, 3);
+
   // State for filter visibility on mobile
   const [showFilters, setShowFilters] = useState(false)
 
@@ -29,10 +87,245 @@ export default function TombstonesForSale() {
     location: null,
     stoneType: null,
     color: null,
-    culture: null,
-    designTheme: null,
+    style: null,
     custom: null,
+    colour: null,
+    // removed: culture, bodyType, designTheme
+    category: null,
   })
+
+  // State for filtered listings
+  const [filteredListings, setFilteredListings] = useState([]);
+
+  // Helper to get active category name
+  const getActiveCategory = () => {
+    if (!categories || !categories.length) return '';
+    if (activeFilters.category) return activeFilters.category;
+    return categories[0]?.name || '';
+  };
+
+  // Generic filter function that accepts a filters object
+  const filterListingsFrom = (filtersObj) => {
+    let filtered = [...allListings];
+    const f = filtersObj || activeFilters;
+    // Category (exact)
+    if (f.category) {
+      filtered = filtered.filter(listing => (listing.listing_category?.name || '').toLowerCase() === f.category.toLowerCase());
+    }
+    // Location (partial)
+    if (f.location && f.location !== 'All' && f.location !== '') {
+      filtered = filtered.filter(listing => (listing.company?.location || '').toLowerCase().includes(f.location.toLowerCase()));
+    }
+    // Stone Type (partial from productDetails)
+    if (f.stoneType && f.stoneType !== 'All' && f.stoneType !== '') {
+      filtered = filtered.filter(listing => ((listing.productDetails?.stoneType?.[0]?.value || '').toLowerCase().includes(f.stoneType.toLowerCase())));
+    }
+    // Color (partial from productDetails) - support both color and colour externally
+    const colorQuery = f.color || f.colour;
+    if (colorQuery && colorQuery !== 'All' && colorQuery !== '') {
+      filtered = filtered.filter(listing => ((listing.productDetails?.color?.[0]?.value || '').toLowerCase().includes(colorQuery.toLowerCase())));
+    }
+    // Style (partial)
+    if (f.style && f.style !== 'All' && f.style !== '') {
+      filtered = filtered.filter(listing => ((listing.productDetails?.style?.[0]?.value || '').toLowerCase().includes(f.style.toLowerCase())));
+    }
+    // Custom (partial)
+    if (f.custom && f.custom !== 'All' && f.custom !== '') {
+      filtered = filtered.filter(listing => ((listing.productDetails?.customization?.[0]?.value || '').toLowerCase().includes(f.custom.toLowerCase())));
+    }
+    // Min Price
+    if (f.minPrice && f.minPrice !== 'Min Price' && f.minPrice !== '') {
+      const min = parsePrice(f.minPrice);
+      filtered = filtered.filter(listing => parsePrice(listing.price) >= min);
+    }
+    // Max Price
+    if (f.maxPrice && f.maxPrice !== 'Max Price' && f.maxPrice !== '') {
+      const max = parsePrice(f.maxPrice);
+      filtered = filtered.filter(listing => parsePrice(listing.price) <= max);
+    }
+    return filtered;
+  };
+
+  // Convenience wrapper using current state
+  const filterListings = () => filterListingsFrom(activeFilters);
+
+  // Search button handler
+  const handleSearch = () => {
+    setFilteredListings(filterListings());
+    setCurrentPage(1);
+  };
+
+  // Update filtered listings on mount and when allListings changes
+  useEffect(() => {
+    setFilteredListings(allListings);
+  }, [allListings]);
+
+  // Read URL params and apply filters on page load and when params change
+  useEffect(() => {
+    if (!searchParams) return;
+    const nextFilters = { ...activeFilters };
+    // Map URL params to our filter keys (support multiple synonyms)
+    const cat = searchParams.get('category');
+    const colour = searchParams.get('colour') || searchParams.get('color');
+    const mat = searchParams.get('material') || searchParams.get('stoneType');
+    const sty = searchParams.get('style');
+    const cus = searchParams.get('customization') || searchParams.get('custom');
+    const loc = searchParams.get('location');
+    const minP = searchParams.get('minPrice');
+    const maxP = searchParams.get('maxPrice');
+
+    if (cat) nextFilters.category = cat;
+    if (colour) { nextFilters.colour = colour; nextFilters.color = colour; }
+    if (mat) nextFilters.stoneType = mat;
+    if (sty) nextFilters.style = sty;
+    if (cus) nextFilters.custom = cus;
+    if (loc) nextFilters.location = loc;
+    if (minP) nextFilters.minPrice = minP;
+    if (maxP) nextFilters.maxPrice = maxP;
+
+    // Apply filters
+    const filtered = filterListingsFrom(nextFilters);
+    setActiveFilters(nextFilters);
+    setFilteredListings(filtered);
+    setCurrentPage(1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, allListings]);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const listingsPerPage = 20;
+
+  // Helper to get the correct slice for the current page
+  function getPageListings(listings, page) {
+    const start = (page - 1) * listingsPerPage;
+    const end = start + listingsPerPage;
+    return listings.slice(start, end);
+  }
+
+  const paginatedListings = getPageListings(filteredListings, currentPage);
+
+  // Fallback card generator
+  const fallbackCard = (type = "listing") => (
+    <CardSkeleton className="h-full" />
+  );
+
+  // Helper to chunk listings for the custom flow
+  function getCustomFlow(listings) {
+    let idx = 0;
+    const flow = [];
+    // 3 featured listings
+    flow.push(
+      <div key="featured-listings" className="mb-8">
+        <h2 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">FEATURED LISTINGS</h2>
+        <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
+        
+        {/* Mobile: Horizontal scrolling cards */}
+        <div className="md:hidden">
+          <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide" ref={featuredScrollRef}>
+            {data?.listings?.filter(l => l.isFeatured).length > 0
+              ? data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, i) => (
+                  <div key={product.id || i} className="flex-shrink-0 w-80 snap-start">
+                    <FeaturedListings listing={product} />
+                  </div>
+                ))
+              : (
+                <div className="flex-shrink-0 w-80 snap-start flex justify-center">
+                  {fallbackCard("featured listings")}
+                </div>
+              )}
+          </div>
+          {/* Pagination Dots - Mobile only */}
+          <div className="flex justify-center mt-4 space-x-2">
+            {[0, 1, 2].map((index) => (
+              <button
+                key={index}
+                onClick={() => scrollToFeaturedCard(index)}
+                className={`w-3 h-3 rounded-full transition-colors duration-200 ${
+                  index === featuredActiveIndex ? 'bg-blue-500' : 'bg-gray-300 hover:bg-gray-400'
+                }`}
+                aria-label={`Go to card ${index + 1}`}
+              ></button>
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop: Grid layout */}
+        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {data?.listings?.filter(l => l.isFeatured).length > 0
+            ? data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, i) => (
+                <FeaturedListings key={product.id || i} listing={product} />
+              ))
+            : fallbackCard("featured listings")}
+        </div>
+      </div>
+    );
+    // 1 banner
+    flow.push(<div key="banner-1" className="my-6"><BannerAd /></div>);
+    // 5 listings
+    flow.push(
+      <div key="listings-1" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {listings.slice(idx, idx + 5).length > 0
+          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} />)
+          : fallbackCard("listings")}
+      </div>
+    );
+    idx += 5;
+    // 1 banner
+    flow.push(<div key="banner-2" className="my-6"><BannerAd /></div>);
+    // 5 listings
+    flow.push(
+      <div key="listings-2" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {listings.slice(idx, idx + 5).length > 0
+          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} />)
+          : fallbackCard("listings")}
+      </div>
+    );
+    idx += 5;
+    // featured manufacturercon  
+    let randomFeaturedManufacturer = null;
+    if (topFeaturedManufacturers.length > 0) {
+      const randomIndex = Math.floor(Math.random() * topFeaturedManufacturers.length);
+      randomFeaturedManufacturer = topFeaturedManufacturers[randomIndex];
+    }
+    if (randomFeaturedManufacturer) {
+      flow.push(
+        <FeaturedManufacturer key={`featured-manufacturer`} manufacturer={randomFeaturedManufacturer} />
+      );
+    } else {
+      flow.push(
+        <div key="fallback-featured-manufacturer" className="flex-1 flex justify-center">
+          {fallbackCard("featured manufacturer")}
+        </div>
+      );
+    }
+    // 5 listings
+    flow.push(
+      <div key="listings-3" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {listings.slice(idx, idx + 5).length > 0
+          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} />)
+          : fallbackCard("listings")}
+      </div>
+    );
+    idx += 5;
+    // 1 banner
+    flow.push(<div key="banner-3" className="my-6"><BannerAd /></div>);
+    // 5 listings
+    flow.push(
+      <div key="listings-4" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {listings.slice(idx, idx + 5).length > 0
+          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} />)
+          : fallbackCard("listings")}
+      </div>
+    );
+    return flow;
+  }
+
+  const customFlow = getCustomFlow(paginatedListings);
+
+  // Pagination controls
+  const totalPages = Math.ceil(filteredListings.length / listingsPerPage);
+  
+  // Remove useEffect that sets activeFilters on mount (was causing update depth error)
 
   // State for sort order
   const [sortOrder, setSortOrder] = useState("Default")
@@ -70,6 +363,12 @@ export default function TombstonesForSale() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showSortDropdown]);
 
+  // Hamburger menu state and handlers for mobile
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileDropdown, setMobileDropdown] = useState(null);
+  const handleMobileMenuToggle = () => setMobileMenuOpen((open) => !open);
+  const handleMobileDropdownToggle = (section) => setMobileDropdown((prev) => prev === section ? null : section);
+
   // --- FILTERING LOGIC ---
   function parsePrice(priceStr) {
     if (!priceStr) return 0;
@@ -77,10 +376,26 @@ export default function TombstonesForSale() {
   }
 
   // Store the initial total count for display
-  const totalListingsCount = premiumListings.length;
+  const totalListingsCount = filteredListings.length;
+  
+  // Loading and error states
+  if (loading) return <PageLoader text="Loading listings..." />;
+  if (error) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <p className="text-red-600 font-medium mb-4">Error loading listings</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Refresh Page
+        </button>
+      </div>
+    </div>
+  );
 
   // Filtering
-  const filteredPremiumListings = premiumListings.filter(listing => {
+  const filteredPremiumListings = filteredListings.filter(listing => {
     // Location
     if (activeFilters.location && activeFilters.location !== "All" && activeFilters.location !== "") {
       if (!listing.location?.toLowerCase().includes(activeFilters.location.toLowerCase())) return false;
@@ -140,15 +455,29 @@ export default function TombstonesForSale() {
       location: null,
       stoneType: null,
       color: null,
-      culture: null,
-      designTheme: null,
+      style: null,
       custom: null,
+      colour: null,
+      category: null,
     });
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header onMobileFilterClick={() => setMobileFilterOpen(true)} />
+      <Header
+        mobileMenuOpen={mobileMenuOpen}
+        handleMobileMenuToggle={handleMobileMenuToggle}
+        mobileDropdown={mobileDropdown}
+        handleMobileDropdownToggle={handleMobileDropdownToggle}
+        onMobileFilterClick={() => setMobileFilterOpen(true)}
+      />
+      {/* Overlay when mobile menu is open */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={handleMobileMenuToggle}
+        ></div>
+      )}
       {/* Mobile Filter Drawer Overlay */}
       {mobileFilterOpen && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col sm:hidden">
@@ -182,14 +511,19 @@ export default function TombstonesForSale() {
                 type="text"
                 placeholder="Search Location, Colour, Manufacturer..."
                 className="w-full p-2 pr-10 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                value={activeFilters.search || ''}
+                onChange={e => setActiveFilters({ ...activeFilters, search: e.target.value })}
               />
               <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                 <ChevronDown className="h-5 w-5 text-gray-400" />
               </div>
             </div>
-            <button className="bg-amber-500 hover:bg-amber-600 text-white p-2 px-4 rounded transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400">
+            <button 
+              className="bg-amber-500 hover:bg-amber-600 text-white p-2 px-4 rounded transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              onClick={handleSearch}
+            >
               <Search className="h-4 w-4" />
-              <span>Search</span>
+              <span>{`Search (${filteredListings.length}) ${getActiveCategory()} Tombstones`}</span>
             </button>
           </div>
           <div className="max-w-4xl mx-auto mt-2">
@@ -204,7 +538,7 @@ export default function TombstonesForSale() {
           <nav className="text-sm text-gray-500 mb-4" aria-label="Breadcrumb">
             <ol className="flex items-center space-x-1">
               <li>
-                <Link href="/" className="hover:text-gray-700 transition-colors">
+                <Link href="/" className="text-blue-600 hover:text-blue-800 transition-colors">
                   Home
                 </Link>
               </li>
@@ -232,11 +566,13 @@ export default function TombstonesForSale() {
             {/* Product Listings - Right Side */}
             <div className="w-full md:w-3/4">
               {/* Results Header */}
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-4 bg-gray-100 rounded px-4 py-2 shadow-sm">
                 <p className="text-gray-600">
-                  {filteredPremiumListings.length === totalListingsCount
-                    ? `${totalListingsCount} Listings For Sale`
-                    : `${filteredPremiumListings.length} Results (of ${totalListingsCount})`}
+                  {filteredListings.length === 0
+                    ? `No results found for your filters.`
+                    : filteredListings.length === allListings.length
+                    ? `${allListings.length} Listings For Sale`
+                    : `${filteredListings.length} Results (of ${allListings.length})`}
                 </p>
                 <div className="flex items-center">
                   {/* Mobile Sort Button */}
@@ -286,9 +622,34 @@ export default function TombstonesForSale() {
                 <h2 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">FEATURED LISTINGS</h2>
                 <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {featuredListings.map((product, index) => (
-                    <ProductCard key={index} product={product} />
+                {/* Mobile: Horizontal scrolling cards */}
+                <div className="md:hidden">
+                  <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide" ref={featuredScrollRef}>
+                    {data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
+                      <div key={index} className="flex-shrink-0 w-80 snap-start">
+                        <FeaturedListings listing={product} />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Pagination Dots - Mobile only */}
+                  <div className="flex justify-center mt-4 space-x-2">
+                    {[0, 1, 2].map((index) => (
+                      <button
+                        key={index}
+                        onClick={() => scrollToFeaturedCard(index)}
+                        className={`w-3 h-3 rounded-full transition-colors duration-200 ${
+                          index === featuredActiveIndex ? 'bg-blue-500' : 'bg-gray-300 hover:bg-gray-400'
+                        }`}
+                        aria-label={`Go to card ${index + 1}`}
+                      ></button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Desktop: Grid layout */}
+                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {data?.listings?.filter(l => l.isFeatured).map((product, index) => (
+                    <FeaturedListings key={index} listing={product} />
                   ))}
                 </div>
               </div>
@@ -297,75 +658,49 @@ export default function TombstonesForSale() {
               <section className="py-4">
                 <div className="container mx-auto px-4">
                   <div className="max-w-4xl mx-auto">
-                    <h3 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">PREMIUM LISTINGS</h3>
+                    <h3 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4 text-base font-bold">PREMIUM LISTINGS SPONSORED</h3>
                     <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
 
                     <div className="space-y-6">
-                      {sortedPremiumListings.map((listing) => (
-                        <PremiumListingCard key={listing.id} listing={listing} href={`/memorial/${listing.id}`} />
-                      ))}
+                      {paginatedListings.length === 0 ? (
+                        <div className="text-center text-gray-500 py-8">No tombstones found for your selected filters.</div>
+                      ) : (
+                        paginatedListings.map((listing) => (
+                          <PremiumListingCard key={listing.documentId} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} />
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
               </section>
 
-              {/* Regular Listings */}
-              <div>
-                <h2 className="text-gray-600 border-b border-gray-300 pb-2 mb-4">ALL TOMBSTONES</h2>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[...featuredListings, ...featuredListings].map((product, index) => (
-                    <ProductCard
-                      key={`regular-${index}`}
-                      product={{ ...product, id: `regular-${product.id}-${index}` }}
-                    />
-                  ))}
-                </div>
-
                 {/* Pagination */}
                 <div className="mt-8 flex justify-center">
                   <nav className="inline-flex rounded-md shadow">
-                    <a
-                      href="#"
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                    disabled={currentPage === 1}
                     >
                       Previous
-                    </a>
-                    <a
-                      href="#"
-                      className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-blue-600 hover:bg-blue-50"
+                  </button>
+                  {[...Array(totalPages)].map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentPage(i + 1)}
+                      className={`py-2 px-4 border border-gray-300 bg-white text-sm font-medium ${currentPage === i + 1 ? 'text-blue-600' : 'text-gray-500'} hover:bg-blue-50`}
                     >
-                      1
-                    </a>
-                    <a
-                      href="#"
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                    >
-                      2
-                    </a>
-                    <a
-                      href="#"
-                      className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                    >
-                      3
-                    </a>
-                    <span className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                      ...
-                    </span>
-                    <a
-                      href="#"
-                      className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                    >
-                      10
-                    </a>
-                    <a
-                      href="#"
-                      className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                    disabled={currentPage === totalPages}
                     >
                       Next
-                    </a>
+                  </button>
                   </nav>
-                </div>
               </div>
             </div>
           </div>

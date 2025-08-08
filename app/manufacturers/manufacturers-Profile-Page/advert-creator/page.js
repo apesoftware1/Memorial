@@ -1,138 +1,401 @@
-"use client";
-import { useState, useEffect } from "react";
-import Image from "next/image";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-} from "@/components/ui/dropdown-menu";
+'use client'
 
-function isMobile() {
-  if (typeof window === 'undefined') return false;
-  return window.innerWidth <= 768;
-}
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
+import Image from "next/image"
+import categories from '../../../../category.json'
+import adFlasherOptions from '../../../../adFlasher.json'
+import { useApolloClient } from '@apollo/client'
+import { GET_LISTINGS } from '@/graphql/queries/getListings'
 
-export default function AdvertCreator() {
-  // Demo state for form fields
-  const [category, setCategory] = useState("Full Tombstone");
-  const [images, setImages] = useState(Array(11).fill(null));
-  const [style, setStyle] = useState("");
-  const [colour, setColour] = useState("");
-  const [stoneType, setStoneType] = useState("");
-  const [culture, setCulture] = useState("");
-  const [custom, setCustom] = useState("");
-  const [price, setPrice] = useState("");
-  const [flasher, setFlasher] = useState([]);
-  const [discount, setDiscount] = useState(0);
-  const [finalPrice, setFinalPrice] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalMsg, setModalMsg] = useState("");
-  const [mobile, setMobile] = useState(false);
+const colorOptions = [
+  'Black',
+  'White',
+  'Grey',
+  'Brown',
+  'Blue Pearl',
+  'Red',
+];
+const styleOptions = [
+  'Christian Cross',
+  'Heart',
+  'Bible',
+  'Pillars',
+  'Traditional African',
+  'Abstract',
+  'Praying Hands',
+  'Scroll',
+  'Angel',
+  'Mausoleum',
+  'Obelisk',
+  'Plain',
+  'Teddy Bear',
+  'Butterfly',
+  'Car',
+  'Bike',
+  'Sports',
+];
+const stoneTypeOptions = [
+  'Granite',
+  'Marble',
+  'Sandstone',
+  'Limestone',
+  'Bronze',
+];
 
-  // Demo options
-  const categories = [
-    "Full Tombstone", "Premium", "Double/Family", "Child", "Head & Base", "Cremation & Urns"
-  ];
-  const styles = ["Classic", "Modern", "Traditional", "Custom"];
-  const colours = ["Black", "Grey", "White", "Red", "Blue"];
-  const stoneTypes = ["Granite", "Marble", "Sandstone"];
-  const cultures = ["Christian", "Jewish", "Muslim", "Hindu", "African"];
-  const customs = ["Engraving", "Photo", "Gold Leaf", "Special Shape", "Lighting"];
-  const flasherOptions = [
-    {
-      label: "CHRISTIAN CROSS",
-      sub: [
-        "Forever Loved",
-        "Heartfelt Memory",
-        "Loving Tribute",
-        "Endless Love",
-        "Cherished Always",
-        "Devoted Blessing",
-        "Soulful Elegance",
-        "Love Remembered",
-        "Emotional Tribute",
-        "True Devotion",
-      ],
-    },
-    { label: "HEART", sub: [] },
-    { label: "BIBLE", sub: [] },
-    { label: "PILLARS", sub: [] },
-    { label: "TRADITIONAL AFRICAN", sub: [] },
-    { label: "ABSTRACT", sub: [] },
-    { label: "PRAYING HANDS", sub: [] },
-    { label: "SCROLL", sub: [] },
-    { label: "ANGEL", sub: [] },
-    { label: "MAUSOLEUM", sub: [] },
-    { label: "OBELISK", sub: [] },
-    { label: "PLAIN", sub: [] },
-    { label: "TEDDY BEAR", sub: [] },
-    { label: "BUTTERFLY", sub: [] },
-    { label: "CAR", sub: [] },
-    { label: "BIKE", sub: [] },
-    { label: "SPORTS", sub: [] },
-  ];
-  const discountOptions = [5, 10, 15, 17.5, 20, 25, 30, 40, 45];
+const customizationOptions = [
+  'Engraving Photo',
+  'Gold Leaf',
+  'Special Shape',
+  'Lighting'];
 
-  // Flasher options with sub-options
-  const [selectedFlasher, setSelectedFlasher] = useState({ main: "", sub: "" });
+const transportOptions = ['Free transport within 20km', 'Paid delivery']
+const foundationOptions = ['Brick foundation', 'Cement base']
+const warrantyOptions = ['5-year warranty', '10-year manufacturer warranty']
 
-  // Image upload handler (demo only)
-  function handleImageChange(idx, file) {
-    const newImages = [...images];
-    newImages[idx] = file;
-    setImages(newImages);
-  }
+export default function CreateListingForm() {
+  const router = useRouter();
+  const client = useApolloClient();
+  const [company, setCompany] = useState(null);
+  
+  // Loading and success states
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState("");
+  const [showMessage, setShowMessage] = useState(false);
 
-  // Add effect to calculate final price
+  // Add CSS animation for slideIn effect
   useEffect(() => {
-    if (!price || isNaN(Number(price)) || !discount) {
-      setFinalPrice("");
-      return;
-    }
-    const priceNum = parseFloat(price);
-    const discountNum = discount / 100;
-    const discounted = priceNum - priceNum * discountNum;
-    setFinalPrice(discounted.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-  }, [price, discount]);
-
-  useEffect(() => {
-    setMobile(isMobile());
-    const handleResize = () => setMobile(isMobile());
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
   }, []);
 
-  if (mobile) return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#fffbe6',
-      animation: 'fadeIn 1.2s',
-    }}>
-      <div style={{
-        background: '#ffe066',
-        color: '#b26a00',
-        fontWeight: 700,
-        fontSize: 22,
-        padding: '32px 40px',
-        borderRadius: 16,
-        boxShadow: '0 2px 16px rgba(255, 224, 102, 0.18)',
-        textAlign: 'center',
-        letterSpacing: 1,
-        animation: 'fadeIn 1.2s',
-      }}>
-        Page not available for mobile use!
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    price: '',
+    adFlasher: '',
+    // Remove these from the form, but keep in state as false
+    isPremium: false,
+    isFeatured: false,
+    isOnSpecial: false,
+    manufacturingTimeframe: '1',
+    productDetails: {
+      color: [],
+      style: [],
+      stoneType: [],
+     
+      customization: []
+    },
+    additionalProductDetails: {
+      transportAndInstallation: [],
+      foundationOptions: [],
+      warrantyOrGuarantee: []
+    },
+    // Remove companyDocumentId from the form, but keep in state for payload
+    companyDocumentId: '',
+    categoryRefDocumentId: ''
+  })
+
+  // Load company data from sessionStorage
+  useEffect(() => {
+    const storedCompany = sessionStorage.getItem('advertCreatorCompany');
+    if (storedCompany) {
+      const companyData = JSON.parse(storedCompany);
+      setCompany(companyData);
+      setFormData((prev) => ({ ...prev, companyDocumentId: companyData.documentId }));
+    } else {
+      // Fallback: redirect back to profile if no company data
+      router.push('/manufacturers/manufacturers-Profile-Page');
+    }
+  }, [router]);
+
+  const [mainImage, setMainImage] = useState(null)
+  const [thumbnails, setThumbnails] = useState(new Array(10).fill(null))
+  const [selectedCategory, setSelectedCategory] = useState(null)
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }))
+  }
+
+  const handleDropdownChange = (section, field, value) => {
+    setFormData((prev) => {
+      const current = prev[section][field]
+      const exists = current.includes(value)
+      const updated = exists ? current.filter((v) => v !== value) : [...current, value]
+      return {
+        ...prev,
+        [section]: {
+          ...prev[section],
+          [field]: updated
+        }
+      }
+    })
+  }
+
+  const handleAdditionalProductDetailsChange = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      additionalProductDetails: {
+        ...prev.additionalProductDetails,
+        [field]: value ? [value] : []
+      }
+    }))
+  }
+
+  const handleCategorySelect = (category) => {
+    setSelectedCategory(category)
+    setFormData((prev) => ({
+      ...prev,
+      categoryRefDocumentId: category.documentId
+    }))
+  }
+
+  const handleFileChange = (e) => {
+    const { name, files } = e.target
+    console.log('File change triggered:', name, files);
+    if (name === 'mainImage') {
+      setMainImage(files[0])
+      console.log('Main image set:', files[0]);
+    } else if (name === 'thumbnails') {
+      setThumbnails(Array.from(files).slice(0, 5))
+      console.log('Thumbnails set:', Array.from(files).slice(0, 5));
+    }
+  }
+
+  const handleThumbnailChange = (e, index) => {
+    const file = e.target.files[0]
+    console.log('Thumbnail change triggered:', index, file);
+    if (file) {
+      const newThumbnails = [...thumbnails]
+      newThumbnails[index] = file
+      setThumbnails(newThumbnails)
+      console.log('Thumbnail updated at index:', index, file);
+    }
+  }
+
+  const uploadToCloudinary = async (file) => {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+    
+    const uploadData = new FormData()
+    uploadData.append('file', file)
+    uploadData.append('upload_preset', 'listings')
+    // uploadData.append('folder', 'myImages')
+    // uploadData.append('transformation', 'w_800,h_600,c_limit,q_auto,f_auto')
+    
+    const res = await fetch(`https://api.cloudinary.com/v1_1/dtymvjhjq/image/upload`, {
+      method: 'POST',
+      body: uploadData
+    })
+    
+    if (!res.ok) {
+      const errorText = await res.text()
+      console.error('Cloudinary upload failed:', res.status, errorText)
+      throw new Error('Upload failed')
+    }
+    
+    const data = await res.json()
+    console.log('Cloudinary upload success:', data)
+    return data // Return the full Cloudinary response (url, public_id, etc.)
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    
+    // Validate required fields
+    if (!formData.title || !formData.description || !formData.price || !formData.categoryRefDocumentId) {
+      setSubmitMessage("Please fill in all required fields: Title, Description, Price, and Category");
+      setShowMessage(true);
+      return;
+    }
+    
+    if (!mainImage) {
+      setSubmitMessage("Please upload a main image");
+      setShowMessage(true);
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setShowMessage(false);
+
+    try {
+      // Upload main image to Cloudinary
+      const uploadedMainImage = mainImage ? await uploadToCloudinary(mainImage) : null
+      
+      // Upload all thumbnails to Cloudinary (filter out empty slots)
+      const validThumbnails = thumbnails.filter(thumb => thumb !== null && thumb !== undefined)
+      const uploadedThumbnails = await Promise.all(
+        validThumbnails.map(thumbnail => uploadToCloudinary(thumbnail))
+      )
+
+    const payload = {
+      data: {
+        title: formData.title,
+        slug: formData.title.toLowerCase().replace(/\s+/g, '-'),
+        description: formData.description,
+        price: parseFloat(formData.price),
+        adFlasher: formData.adFlasher,
+        // Always send these as false
+        isPremium: false,
+        isFeatured: false,
+        isOnSpecial: false,
+        isStandard: true,
+        manufacturingTimeframe: formData.manufacturingTimeframe,
+
+        // Store Cloudinary data in your new Strapi fields
+        mainImageUrl: uploadedMainImage?.url || null,
+        mainImagePublicId: uploadedMainImage?.public_id || null,
+        thumbnailUrls: uploadedThumbnails.map(thumb => thumb.url),
+        thumbnailPublicIds: uploadedThumbnails.map(thumb => thumb.public_id),
+
+        company: {
+          connect: [{ documentId: formData.companyDocumentId }]
+        },
+        categoryRef: {
+          connect: [{ documentId: formData.categoryRefDocumentId }]
+        },
+        listing_category: {
+          connect: [{ documentId: formData.categoryRefDocumentId }]
+        },
+
+        productDetails: {
+          color: formData.productDetails.color.map((value) => ({ value })),
+          style: formData.productDetails.style.map((value) => ({ value })),
+          stoneType: formData.productDetails.stoneType.map((value) => ({ value })),
+          customization: formData.productDetails.customization.map((value) => ({ value }))
+        },
+
+        additionalProductDetails: {
+          transportAndInstallation: formData.additionalProductDetails.transportAndInstallation.map((value) => ({ value })),
+          foundationOptions: formData.additionalProductDetails.foundationOptions.map((value) => ({ value })),
+          warrantyOrGuarantee: formData.additionalProductDetails.warrantyOrGuarantee.map((value) => ({ value }))
+        }
+      }
+          }
+
+      console.log('Sending payload to Strapi:', JSON.stringify(payload, null, 2))
+
+      const res = await fetch('https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/listings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (res.ok) {
+        const responseData = await res.json()
+        console.log('Success response:', responseData)
+        
+        // Update Apollo cache to include the new listing
+        try {
+          const existingData = client.readQuery({ query: GET_LISTINGS });
+          if (existingData) {
+            const newListing = {
+              __typename: 'Listing',
+              documentId: responseData.data.documentId,
+              title: formData.title,
+              slug: formData.title.toLowerCase().replace(/\s+/g, '-'),
+              description: formData.description,
+              price: parseFloat(formData.price),
+              adFlasher: formData.adFlasher,
+              isPremium: false,
+              isFeatured: false,
+              isOnSpecial: false,
+              isStandard: true,
+              manufacturingTimeframe: formData.manufacturingTimeframe,
+              mainImageUrl: uploadedMainImage?.url || null,
+              mainImagePublicId: uploadedMainImage?.public_id || null,
+              thumbnailUrls: uploadedThumbnails.map(thumb => thumb.url),
+              thumbnailPublicIds: uploadedThumbnails.map(thumb => thumb.public_id),
+              productDetails: {
+                color: formData.productDetails.color.map((value) => ({ value })),
+                style: formData.productDetails.style.map((value) => ({ value })),
+                stoneType: formData.productDetails.stoneType.map((value) => ({ value })),
+                customization: formData.productDetails.customization.map((value) => ({ value }))
+              },
+              additionalProductDetails: {
+                transportAndInstallation: formData.additionalProductDetails.transportAndInstallation.map((value) => ({ value })),
+                foundationOptions: formData.additionalProductDetails.foundationOptions.map((value) => ({ value })),
+                warrantyOrGuarantee: formData.additionalProductDetails.warrantyOrGuarantee.map((value) => ({ value }))
+              },
+              company: company,
+              listing_category: { name: selectedCategory?.name || 'Unknown' }
+            };
+            
+            client.writeQuery({
+              query: GET_LISTINGS,
+              data: {
+                listings: [newListing, ...existingData.listings]
+              }
+            });
+            
+            console.log('Apollo cache updated with new listing');
+          }
+        } catch (cacheError) {
+          console.log('Cache update failed, but listing was created successfully:', cacheError);
+        }
+        
+        setSubmitMessage("Listing created successfully!");
+        setShowMessage(true);
+        setIsSubmitting(false);
+        
+        // Redirect to profile page after successful creation
+        setTimeout(() => {
+          router.push('/manufacturers/manufacturers-Profile-Page')
+        }, 2000);
+      } else {
+        const errorData = await res.text()
+        console.error('Strapi API Error:', res.status, errorData)
+        setSubmitMessage(`Error creating listing: ${res.status} - ${errorData}`);
+        setShowMessage(true);
+        setIsSubmitting(false);
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      setSubmitMessage(`Error uploading images or creating listing: ${error.message}`);
+      setShowMessage(true);
+      setIsSubmitting(false);
+    }
+  }
+
+  // Helper to render a checkbox group for a field, with subtitle
+  const renderCheckboxGroup = (options, field, section, label, subtitle, iconSrc) => (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+        {iconSrc && <Image src={iconSrc} alt={label} width={18} height={18} style={{ marginRight: 6 }} />}
+        {label}
       </div>
-      <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {options.map((option) => (
+          <label key={option} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
+            <input
+              type="checkbox"
+              checked={formData[section][field].includes(option)}
+              onChange={() => handleDropdownChange(section, field, option)}
+              style={{ marginRight: 6 }}
+            />
+            {option}
+          </label>
+        ))}
+      </div>
     </div>
   );
 
@@ -152,6 +415,7 @@ export default function AdvertCreator() {
           <span style={{ fontSize: 18, marginRight: 4 }}>&lt;</span> Return to Profile Page & Listings.
         </a>
       </div>
+      
       {/* Header */}
       <div style={{
         background: "#005bac",
@@ -165,685 +429,431 @@ export default function AdvertCreator() {
         textTransform: "uppercase",
         letterSpacing: 1,
       }}>
-        TOMBSTONE ADVERT Creator
+        CREATE NEW LISTING
       </div>
+      
       {/* Note */}
       <div style={{ maxWidth: 1000, margin: "0 auto 8px auto", display: "flex", justifyContent: "flex-end" }}>
-        <span style={{ fontSize: 12, color: "#888" }}>All fields are required for new listings.</span>
-      </div>
-      {/* Contact and Store Info */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: 16,
-        marginBottom: 32,
-      }}>
-        <div>
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Sales Person Phone Number</label>
-          <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} />
-        </div>
-        <div>
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Sales Person WhatsApp Number</label>
-          <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} />
-        </div>
-        <div>
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Sales Person Email Address</label>
-          <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} />
-        </div>
-        <div>
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Sales Person WhatsApp Address</label>
-          <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} />
-        </div>
-        <div>
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Store Physical Address</label>
-          <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} />
-        </div>
-        <div>
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Store Google Location Pin</label>
-          <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} />
-        </div>
+        <span style={{ fontSize: 12, color: "#888" }}>All fields are required for creating a listing.</span>
       </div>
 
-      {/* Product Category Section Header */}
-      <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px ", marginBottom: 0, letterSpacing: 0.5 }}>
-        PRODUCT CATEGORY
-      </div>
-      <div style={{ height: 12 }} />
-      {/* Product Category Buttons */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 32 }}>
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => setCategory(cat)}
-            style={{
-              background: category === cat ? "#005bac" : "#e0e0e0",
-              color: category === cat ? "#fff" : "#333",
-              border: "none",
-              borderRadius: 20,
-              padding: "8px 18px",
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: "pointer",
-              transition: "background 0.2s",
-            }}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      {/* Product Name, Description & Images Section Header */}
-      <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
-        PRODUCT NAME, DESCRIPTION & IMAGES
-      </div>
-      <div style={{ height: 12 }} />
-      {/* Product Name, Description & Images Content */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 32, marginBottom: 32 }}>
-        {/* Left: Name & Description */}
-        <div>
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Product Name</label>
-          <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", marginBottom: 16 }} />
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Product Description</label>
-          <textarea style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", minHeight: 80 }} />
+      <form onSubmit={handleSubmit}>
+        {/* Advert Contact Details & Store Location Section Header */}
+        <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
+          ADVERT CONTACT DETAILS & STORE LOCATION
         </div>
-        {/* Right: Images */}
-        <div>
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Product Images</label>
-          <div style={{ display: "flex", gap: 12 }}>
+        
+                {/* Contact Details Grid */}
+        {company ? (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 32 }}>
+            {/* Left Column */}
             <div>
-              <div style={{ fontSize: 11, color: "#888", marginBottom: 2 }}>Main Image</div>
-              <div
-                style={{
-                  width: 96,
-                  height: 96,
-                  border: "2px solid #ccc",
-                  borderRadius: 8,
-                  display: "flex",
-                  alignItems: "center",
+              <label style={{ fontSize: 12, marginBottom: 4, display: "block", color: "#555" }}>Sales Person Name</label>
+              <input 
+                type="text"
+                value={company.user.name || ''}
+                style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, opacity: 0.5, padding: "8px 12px", outline: "none", marginBottom: 16, background: "#f9f9f9" }}
+                placeholder="Enter name"
+                disabled
+              />
+              
+              <label style={{ fontSize: 12, marginBottom: 4, display: "block", color: "##f9f9f9" }}>Sales Person WhatsApp Number</label>
+              <input 
+                type="text"
+                value={company.user.whatsappNumber || ''}
+                style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, opacity: 0.5, padding: "8px 12px", outline: "none", marginBottom: 16, background: "#f9f9f9" }}
+                placeholder="Enter WhatsApp number"
+                disabled
+              />
+              
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label style={{ fontSize: 12, color: "##f9f9f9", flex: 1 }}>Store Google Location Pin</label>
+                <div style={{ 
+                  width: 24, 
+                  height: 24, 
+                  backgroundColor: "#e0e0e0", 
+                  borderRadius: "50%", 
+                  display: "flex", 
+                  alignItems: "center", 
                   justifyContent: "center",
-                  background: "#fafbfc",
-                  cursor: "pointer",
-                  position: "relative",
-                  marginBottom: 4,
-                }}
-                onClick={() => document.getElementById(`img-upload-main`).click()}
-              >
-                {images[0] ? (
-                  <img src={URL.createObjectURL(images[0])} alt="" style={{ width: 88, height: 88, borderRadius: 8 }} />
-                ) : (
-                  <span style={{ color: "#bbb", fontSize: 36, fontWeight: 700 }}>+</span>
-                )}
-                <input
-                  id={`img-upload-main`}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={e => handleImageChange(0, e.target.files[0])}
-                />
+                  cursor: "not-allowed"
+                }}>
+                  <span style={{ fontSize: 12, color: "#888" }}>📍</span>
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
+                {company.location || 'Location not set'}
               </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, color: "#888", marginBottom: 2 }}>Additional Images only for PREMIUM Packages</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
-                {[1,2,3,4,5,6,7,8,9,10].map((idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      width: 48,
-                      height: 48,
-                      border: "2px solid #ccc",
-                      borderRadius: 8,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "#fafbfc",
-                      cursor: "pointer",
-                      position: "relative",
-                    }}
-                    onClick={() => document.getElementById(`img-upload-${idx}`).click()}
-                  >
-                    {images[idx] ? (
-                      <img src={URL.createObjectURL(images[idx])} alt="" style={{ width: 40, height: 40, borderRadius: 8 }} />
-                    ) : (
-                      <span style={{ color: "#bbb", fontSize: 22, fontWeight: 700 }}>+</span>
-                )}
-                <input
-                  id={`img-upload-${idx}`}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={e => handleImageChange(idx, e.target.files[0])}
-                />
-              </div>
-            ))}
-              </div>
+            
+            {/* Right Column */}
+            <div>
+              <label style={{ fontSize: 12, marginBottom: 4, display: "block", color: "##f9f9f9" }}>Sales Person Phone Number</label>
+              <input 
+                type="text"
+                value={company.user.phoneNumber || ''}
+                style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, opacity: 0.5, padding: "8px 12px", outline: "none", marginBottom: 16, background: "#f9f9f9" }}
+                placeholder="Enter phone number"
+                disabled
+              />
+              
+              <label style={{ fontSize: 12, marginBottom: 4, display: "block", color: "##f9f9f9" }}>Sales Person E-mail Address</label>
+              <input 
+                type="email"
+                value={company.user.email || ''}
+                style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, opacity: 0.5, padding: "8px 12px", outline: "none", marginBottom: 16, background: "#f9f9f9" }}
+                placeholder="Enter email address"
+                disabled
+              />
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Product Details Section Header */}
-      <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px ", marginBottom: 0, letterSpacing: 0.5, display: 'flex', alignItems: 'center' }}>
-        <span style={{ marginRight: 8 }}>PRODUCT DETAILS</span>
-      </div>
-      <div style={{ height: 12 }} />
-      {/* Product Details Grid with Icons */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 24, marginBottom: 32 }}>
-        {/* STYLE */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-            <Image src="/new files/newIcons/Styles_Icons/Styles_Icons-11.svg" alt="Style" width={18} height={18} style={{ marginRight: 6 }} />
-            Style
-          </div>
-          {(() => {
-            const options = ["Christian Cross", "Heart", "Bible", "Pillars", "Traditional African", "Abstract", "Praying Hands", "Scroll", "Angel", "Mausoleum", "Obelisk", "Plain", "Teddy Bear", "Butterfly", "Car", "Bike", "Sports"];
-            const [selected, setSelected] = useState([]);
-            return options.map((s) => (
-            <label key={s} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
-                <input
-                  type="checkbox"
-                  checked={selected.includes(s)}
-                  onChange={() => {
-                    if (selected.includes(s)) {
-                      setSelected(selected.filter(x => x !== s));
-                    } else if (selected.length < 2) {
-                      setSelected([...selected, s]);
-                    } else {
-                      setModalMsg("you can only add 2 charactaristcs ");
-                      setModalOpen(true);
-                    }
-                  }}
-                  style={{ marginRight: 6 }}
-                />
-              {s}
-            </label>
-            ));
-          })()}
-        </div>
-        {/* COLOUR */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-            <Image src="/new files/newIcons/Colour_Icons/Colour_Icons-28.svg" alt="Colour" width={18} height={18} style={{ marginRight: 6 }} />
-            Colour
-          </div>
-          {(() => {
-            const options = ["Black", "Grey", "White", "Red", "Blue", "Mixed"];
-            const [selected, setSelected] = useState([]);
-            return options.map((c) => (
-            <label key={c} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
-                <input
-                  type="checkbox"
-                  checked={selected.includes(c)}
-                  onChange={() => {
-                    if (selected.includes(c)) {
-                      setSelected(selected.filter(x => x !== c));
-                    } else if (selected.length < 2) {
-                      setSelected([...selected, c]);
-                    } else {
-                      setModalMsg("you can only add 2 charactaristcs ");
-                      setModalOpen(true);
-                    }
-                  }}
-                  style={{ marginRight: 6 }}
-                />
-              {c}
-            </label>
-            ));
-          })()}
-        </div>
-        {/* STONE TYPE */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-            <Image src="/new files/newIcons/Material_Icons/Material_Icons-39.svg" alt="Stone Type" width={18} height={18} style={{ marginRight: 6 }} />
-            Stone Type
-          </div>
-          {(() => {
-            const options = ["Granite", "Marble", "Concrete", "Sandstone", "Limestone", "Bronze", "Quartz", "Glass", "Mixed"];
-            const [selected, setSelected] = useState([]);
-            return options.map((st) => (
-            <label key={st} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
-                <input
-                  type="checkbox"
-                  checked={selected.includes(st)}
-                  onChange={() => {
-                    if (selected.includes(st)) {
-                      setSelected(selected.filter(x => x !== st));
-                    } else if (selected.length < 2) {
-                      setSelected([...selected, st]);
-                    } else {
-                      setModalMsg("you can only add 2 charactaristcs ");
-                      setModalOpen(true);
-                    }
-                  }}
-                  style={{ marginRight: 6 }}
-                />
-              {st}
-            </label>
-            ));
-          })()}
-        </div>
-        {/* CULTURE */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-            <Image src="/new files/newIcons/Culture_Icons/Culture_Icons-48.svg" alt="Culture" width={18} height={18} style={{ marginRight: 6 }} />
-            Culture
-          </div>
-          {(() => {
-            const options = ["Christian", "Jewish", "Muslim", "Hindu", "Traditional African", "Any"];
-            const [selected, setSelected] = useState([]);
-            return options.map((cu) => (
-            <label key={cu} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
-                <input
-                  type="checkbox"
-                  checked={selected.includes(cu)}
-                  onChange={() => {
-                    if (selected.includes(cu)) {
-                      setSelected(selected.filter(x => x !== cu));
-                    } else if (selected.length < 2) {
-                      setSelected([...selected, cu]);
-                    } else {
-                      setModalMsg("you can only add 2 charactaristcs ");
-                      setModalOpen(true);
-                    }
-                  }}
-                  style={{ marginRight: 6 }}
-                />
-              {cu}
-            </label>
-            ));
-          })()}
-        </div>
-        {/* CUSTOMISATION */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-            <Image src="/new files/newIcons/Custom_Icons/Custom_Icons-54.svg" alt="Customisation" width={18} height={18} style={{ marginRight: 6 }} />
-            Customisation
-          </div>
-          {(() => {
-            const options = ["Photo Engraving", "Photo Etching", "Gold Leaf", "Leather Finish", "Engraving", "Special Shape", "Lighting"];
-            const [selected, setSelected] = useState([]);
-            return options.map((cu) => (
-            <label key={cu} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
-                <input
-                  type="checkbox"
-                  checked={selected.includes(cu)}
-                  onChange={() => {
-                    if (selected.includes(cu)) {
-                      setSelected(selected.filter(x => x !== cu));
-                    } else if (selected.length < 2) {
-                      setSelected([...selected, cu]);
-                    } else {
-                      setModalMsg("you can only add 2 charactaristcs ");
-                      setModalOpen(true);
-                    }
-                  }}
-                  style={{ marginRight: 6 }}
-                />
-              {cu}
-            </label>
-            ));
-          })()}
-        </div>
-      </div>
-
-      {/* Additional Product Details Section Header */}
-      <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px ", marginBottom: 0, letterSpacing: 0.5, display: 'flex', alignItems: 'center' }}>
-        <span style={{ marginRight: 8 }}>ADDITIONAL PRODUCT DETAILS</span>
-      </div>
-      <div style={{ height: 12 }} />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, marginBottom: 32, fontSize: 12 }}>
-        {/* TRANSPORT AND INSTALLATION */}
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, display: 'flex', alignItems: 'center' }}>
-            TRANSPORT AND INSTALLATION
-          </div>
-          <div style={{ fontSize: 11, color: '#555', marginBottom: 6 }}>(Can choose up to 3 Transport and Installation Options)</div>
-          {(() => {
-            const options = [
-              "FREE TRANSPORT AND INSTALLATION WITHIN 5KM OF FACTORY",
-              "FREE TRANSPORT AND INSTALLATION WITHIN 20KM OF FACTORY",
-              "FREE TRANSPORT AND INSTALLATION WITHIN 50KM OF FACTORY",
-              "FREE TRANSPORT AND INSTALLATION WITHIN 100KM OF FACTORY",
-              "FINAL TRANSPORT AND INSTALLATION COST TO BE CONFIRMED BY MANUFACTURER"
-            ];
-            const [selected, setSelected] = useState([]);
-            return options.map((o) => (
-              <label key={o} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
-                <input
-                  type="checkbox"
-                  checked={selected.includes(o)}
-                  onChange={() => {
-                    if (selected.includes(o)) {
-                      setSelected(selected.filter(x => x !== o));
-                    } else if (selected.length < 3) {
-                      setSelected([...selected, o]);
-                    } else {
-                      setModalMsg("you can only add 3 characteristics");
-                      setModalOpen(true);
-                    }
-                  }}
-                  style={{ marginRight: 6 }}
-                />
-                {o}
-              </label>
-            ));
-          })()}
-        </div>
-        {/* FOUNDATION OPTIONS */}
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, display: 'flex', alignItems: 'center' }}>
-            FOUNDATION OPTIONS
-          </div>
-          <div style={{ fontSize: 11, color: '#555', marginBottom: 6 }}>(Can choose up to 3 Foundation Options)</div>
-          {(() => {
-            const options = [
-              "NO FOUNDATION COSTS INCLUDED IN PRICE",
-              "GRAVESITE CLEARING COST NOT INCLUDED IN PRICE",
-              "GRAVESITE CLEARING COST INCLUDED IN PRICE",
-              "CEMENT FOUNDATION COST NOT INCLUDED IN PRICE",
-              "CEMENT FOUNDATION COST INCLUDED IN PRICE",
-              "BRICK FOUNDATION COST INCLUDED IN PRICE",
-              "X1 LAYER BRICK FOUNDATION COST INCLUDED IN PRICE",
-              "X2 LAYER BRICK FOUNDATION COST INCLUDED IN PRICE",
-              "X3 LAYER BRICK FOUNDATION COST INCLUDED IN PRICE"
-            ];
-            const [selected, setSelected] = useState([]);
-            return options.map((o) => (
-              <label key={o} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
-                <input
-                  type="checkbox"
-                  checked={selected.includes(o)}
-                  onChange={() => {
-                    if (selected.includes(o)) {
-                      setSelected(selected.filter(x => x !== o));
-                    } else if (selected.length < 3) {
-                      setSelected([...selected, o]);
-                    } else {
-                      setModalMsg("you can only add 3 characteristics");
-                      setModalOpen(true);
-                    }
-                  }}
-                  style={{ marginRight: 6 }}
-                />
-                {o}
-              </label>
-            ));
-          })()}
-        </div>
-        {/* WARRANTY / GUARANTEE */}
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, display: 'flex', alignItems: 'center' }}>
-            WARRANTY / GUARANTEE
-          </div>
-          <div style={{ fontSize: 11, color: '#555', marginBottom: 6 }}>(Can choose up to 1 Style Option)</div>
-          {(() => {
-            const options = [
-              "5 YEAR MANUFACTURERS WARRANTY",
-              "10 YEAR MANUFACTURERS WARRANTY",
-              "15 YEAR MANUFACTURERS WARRANTY",
-              "20 YEAR MANUFACTURERS WARRANTY",
-              "25 YEAR MANUFACTURERS WARRANTY",
-              "LIFETIME MANUFACTURERS WARRANTY"
-            ];
-            const [selected, setSelected] = useState([]);
-            return options.map((o) => (
-              <label key={o} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
-                <input
-                  type="checkbox"
-                  checked={selected.includes(o)}
-                  onChange={() => {
-                    if (selected.includes(o)) {
-                      setSelected(selected.filter(x => x !== o));
-                    } else if (selected.length < 1) {
-                      setSelected([...selected, o]);
-                    } else {
-                      setModalMsg("you can only add 1 characteristic");
-                      setModalOpen(true);
-                    }
-                  }}
-                  style={{ marginRight: 6 }}
-                />
-                {o}
-              </label>
-            ));
-          })()}
-        </div>
-      </div>
-
-      {/* ADVERTISED PRICE & ADVERT FLASHER Section */}
-      <div style={{ background: "#ff2d2d", color: "#fff", fontWeight: 700, fontSize: 13, padding: "8px 12px", marginBottom: 0, letterSpacing: 0.5, display: 'flex', alignItems: 'center', textTransform: 'uppercase' }}>
-        ADVERTISED PRICE & ADVERT FLASHER
-      </div>
-      <div style={{ padding: '18px 0 0 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {/* Price Row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontWeight: 700, fontSize: 15, color: '#222', marginRight: 4 }}>ADVERTISED PRICE</span>
-          <span style={{ fontWeight: 700, fontSize: 18, color: '#ff2d2d', marginRight: 2 }}>R</span>
-          <input
-            type="number"
-            value={price}
-            onChange={e => setPrice(e.target.value)}
-            style={{
-              width: 120,
-              fontSize: 18,
-              fontWeight: 700,
-              color: "#222",
-              border: "none",
-              background: "transparent",
-              borderBottom: "2px solid #ff2d2d",
-              textAlign: "center",
-              outline: "none",
-              marginRight: 8,
-            }}
-            placeholder="000 000 . 00"
-          />
-        </div>
-        {/* Flasher Dropdown Row */}
-        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <span style={{ fontWeight: 700, fontSize: 13, color: '#222', marginRight: 8 }}>ADVERT FLASHER</span>
-          <span style={{ fontSize: 11, color: '#888' }}>(Can only choose 1 Advert Flasher per Ad)</span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button style={{ marginTop: 8, padding: '6px 16px', borderRadius: 4, background: '#fff', border: '1px solid #ff2d2d', color: '#ff2d2d', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'block', marginLeft: 'auto', marginRight: 'auto' }}>
-                {selectedFlasher.sub || selectedFlasher.main || 'Select Flasher'}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              {flasherOptions.map(opt =>
-                opt.sub.length > 0 ? (
-                  <DropdownMenuSub key={opt.label}>
-                    <DropdownMenuSubTrigger>{opt.label}</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                      {opt.sub.map(sub => (
-                        <DropdownMenuItem key={sub} onClick={() => setSelectedFlasher({ main: opt.label, sub })}>
-                          {sub}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                ) : (
-                  <DropdownMenuItem key={opt.label} onClick={() => setSelectedFlasher({ main: opt.label, sub: opt.label })}>
-                    {opt.label}
-                  </DropdownMenuItem>
-                )
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        {/* Badge Row */}
-        {selectedFlasher.sub && (
-          <div style={{ marginTop: 12 }}>
-            <Badge variant="default">{selectedFlasher.sub}</Badge>
+        ) : (
+          <div style={{ padding: "32px", textAlign: "center", color: "#666" }}>
+            Loading company information...
           </div>
         )}
-      </div>
 
-      {/* Pricing Details Section Header */}
-      <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px ", marginBottom: 0, letterSpacing: 0.5, display: 'flex', alignItems: 'center' }}>
-        <span style={{ marginRight: 8 }}>PRICING DETAILS</span>
-      </div>
-      <div style={{ height: 12 }} />
-      {/* Pricing Details Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1.2fr", gap: 24, marginBottom: 16, alignItems: 'end' }}>
-        {/* Advertised Price */}
-        <div style={{ textAlign: "center" }}>
-          <label style={{ fontSize: 14, fontWeight: 700, color: "#ff0000", marginBottom: 4, display: "block" }}>Advertised Price</label>
-          <input
-            type="number"
-            value={price}
-            onChange={e => setPrice(e.target.value)}
-            style={{
-              width: "90%",
-              fontSize: 28,
-              fontWeight: 700,
-              color: "#ff0000",
-              border: "none",
-              background: "transparent",
-              borderBottom: "2px solid #ff0000",
-              textAlign: "center",
-              outline: "none",
-              marginBottom: 0,
-            }}
-          />
+        {/* Category Selection Section Header */}
+        <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13,  padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
+          CATEGORY SELECTION
         </div>
-        {/* Discount */}
-        <div>
-          <label style={{ fontSize: 13, fontWeight: 700, color: "#333", marginBottom: 4, display: "block" }}>Discount</label>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-            {[5, 10, 15, 17.5, 20, 25, 30, 40, 45].map((d) => (
-              <label key={d} style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name="discount"
-                  value={d}
-                  checked={discount === d}
-                  onChange={() => setDiscount(d)}
-                  style={{ marginRight: 4 }}
-                />
-                {d}%
-              </label>
+        <div style={{ height: 12 }} />
+        
+        {/* Category Selection Content */}
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ fontSize: 12, marginBottom: 8, color: "#555" }}>Select a category for your listing:</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+            {categories.map((category) => (
+              <button
+                key={category.documentId}
+                type="button"
+                onClick={() => handleCategorySelect(category)}
+                style={{
+                  padding: "12px 16px",
+                  border: selectedCategory?.documentId === category.documentId ? "2px solid #005bac" : "1px solid #ccc",
+                  borderRadius: 8,
+                  background: selectedCategory?.documentId === category.documentId ? "#e6f3ff" : "#fff",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: selectedCategory?.documentId === category.documentId ? "600" : "400",
+                  color: selectedCategory?.documentId === category.documentId ? "#005bac" : "#333",
+                  transition: "all 0.2s ease",
+                  textAlign: "center"
+                }}
+              >
+                {category.name}
+              </button>
             ))}
           </div>
+          {selectedCategory && (
+            <div style={{ marginTop: 8, fontSize: 12, color: "#666" }}>
+              Selected: <strong>{selectedCategory.name}</strong>
+            </div>
+          )}
         </div>
-        {/* Final Price */}
-        <div style={{ textAlign: "center" }}>
-          <label style={{ fontSize: 14, fontWeight: 700, color: "#00b0f0", marginBottom: 4, display: "block" }}>Final Price</label>
-          <input
-            type="text"
-            value={finalPrice || ""}
-            readOnly
-            style={{
-              width: "90%",
-              fontSize: 28,
-              fontWeight: 700,
-              color: "#00b0f0",
-              border: "none",
-              background: "transparent",
-              borderBottom: "2px solid #00b0f0",
-              textAlign: "center",
-              outline: "none",
-              marginBottom: 0,
-            }}
-          />
-        </div>
-      </div>
-      {/* Dates Row */}
-      <div style={{ display: "flex", gap: 32, marginBottom: 24 }}>
-        <div style={{ flex: 1 }} />
-        <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: "#333", marginBottom: 4, display: "block" }}>Start Date</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={e => setStartDate(e.target.value)}
-            style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "6px 10px", fontSize: 12 }}
-          />
-          <label style={{ fontSize: 12, fontWeight: 700, color: "#333", margin: "8px 0 4px 0", display: "block" }}>End Date</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={e => setEndDate(e.target.value)}
-            style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "6px 10px", fontSize: 12 }}
-          />
-        </div>
-        <div style={{ flex: 1 }} />
-      </div>
 
-      {/* Save/Upload Buttons */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 32 }}>
-        <button
-          type="button"
-          style={{
-            background: "#e0e0e0",
-            color: "#333",
-            borderRadius: 4,
-            padding: "10px 20px",
-            fontWeight: 700,
-            fontSize: 15,
-            border: "none",
-            cursor: "pointer",
-          }}
-        >
-          SAVE TEMPLATE
-        </button>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            type="button"
-            style={{
-              background: "#28a745",
-              color: "#fff",
-              borderRadius: 4,
-              padding: "10px 20px",
-              fontWeight: 700,
-              fontSize: 15,
-              border: "none",
-              cursor: "pointer",
-            }}
-            onClick={e => {
-              if (!images.some(img => img)) {
-                setModalMsg("upload images to create a new listing.");
-                setModalOpen(true);
-                e.preventDefault();
-                return;
-              }
-              // Use the selected category for the new listing upload
-              // Example: uploadNewListing({ category, ...otherFields })
-              // (Replace this comment with actual upload logic as needed)
-            }}
-          >
-            UPLOAD
-          </button>
-          <button
-            type="button"
-            style={{
-              background: "#005bac",
-              color: "#fff",
-              borderRadius: 4,
-              padding: "10px 20px",
-              fontWeight: 700,
-              fontSize: 15,
-              border: "none",
-              cursor: "pointer",
-            }}
-            onClick={() => {
-              // create special logic here
-            }}
-          >
-            CREATE SPECIAL
-          </button>
+        {/* Product Name, Description & Images Section Header */}
+        <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
+          PRODUCT NAME, DESCRIPTION & IMAGES
         </div>
-      </div>
-
-      {/* Custom Modal Popup */}
-      {modalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.3)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: 12, padding: 32, minWidth: 260, boxShadow: '0 2px 16px rgba(0,0,0,0.18)', textAlign: 'center' }}>
-            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>{modalMsg}</div>
-            <button onClick={() => setModalOpen(false)} style={{ background: '#005bac', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 24px', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>OK</button>
+        <div style={{ height: 12 }} />
+        
+        {/* Product Name, Description & Images Content */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 32, marginBottom: 32 }}>
+          {/* Left: Name & Description */}
+          <div>
+            <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Product Name</label>
+            <input 
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", marginBottom: 16 }} 
+            />
+            <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Product Description</label>
+            <textarea 
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", minHeight: 80 }} 
+            />
+          </div>
+          
+          {/* Right: Images */}
+          <div>
+            <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Product Images</label>
+            <div style={{ display: "flex", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 11, color: "#888", marginBottom: 2 }}>Main Image</div>
+                <div
+                  style={{
+                    width: 96,
+                    height: 96,
+                    border: "2px solid #ccc",
+                    borderRadius: 8,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "#fafbfc",
+                    cursor: "pointer",
+                    position: "relative",
+                    marginBottom: 4,
+                  }}
+                  onClick={() => {
+                    console.log('Main image click triggered');
+                    const input = document.getElementById(`img-upload-main`);
+                    if (input) {
+                      input.click();
+                    } else {
+                      console.error('Main image input not found');
+                    }
+                  }}
+                >
+                  {mainImage ? (
+                    <img src={URL.createObjectURL(mainImage)} alt="Main" style={{ width: 88, height: 88, borderRadius: 8 }} />
+                  ) : (
+                    <span style={{ color: "#bbb", fontSize: 36, fontWeight: 700 }}>+</span>
+                  )}
+                  <input
+                    id={`img-upload-main`}
+                    name="mainImage"
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={handleFileChange}
+                  />
+                </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: "#888", marginBottom: 2 }}>Additional Images only for PREMIUM Packages</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+                  {[1,2,3,4,5,6,7,8,9,10].map((idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        width: 48,
+                        height: 48,
+                        border: "2px solid #ccc",
+                        borderRadius: 8,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "#fafbfc",
+                        cursor: "pointer",
+                        position: "relative",
+                      }}
+                      onClick={() => {
+                        console.log(`Thumbnail ${idx} click triggered`);
+                        const input = document.getElementById(`img-upload-${idx}`);
+                        if (input) {
+                          input.click();
+                        } else {
+                          console.error(`Thumbnail ${idx} input not found`);
+                        }
+                      }}
+                    >
+                      {thumbnails[idx-1] ? (
+                        <img src={URL.createObjectURL(thumbnails[idx-1])} alt="" style={{ width: 40, height: 40, borderRadius: 8 }} />
+                      ) : (
+                        <span style={{ color: "#bbb", fontSize: 22, fontWeight: 700 }}>+</span>
+                      )}
+                      <input
+                        id={`img-upload-${idx}`}
+                        name="thumbnails"
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={(e) => handleThumbnailChange(e, idx-1)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+
+        {/* Pricing & AdFlasher Section Header */}
+        <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
+          PRICING & ADFLASHER
+        </div>
+        <div style={{ height: 12 }} />
+        
+        {/* Pricing & AdFlasher Content */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 32 }}>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Price:</span>
+            <input 
+              name="price"
+              type="number"
+              value={formData.price}
+              onChange={handleChange}
+              style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} 
+            />
+          </div>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>AdFlasher:</span>
+      <select
+        name="adFlasher"
+              value={formData.adFlasher}
+        onChange={handleChange}
+              style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", background: "white" }}
+      >
+              <option value="">Select AdFlasher</option>
+        {adFlasherOptions.map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+          </div>
+        </div>
+
+        {/* Manufacturing Timeframe Section */}
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 32 }}>
+          <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Manufacturing Timeframe:</span>
+      <select
+        name="manufacturingTimeframe"
+            value={formData.manufacturingTimeframe}
+        onChange={handleChange}
+            style={{ width: "200px", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", background: "white" }}
+      >
+        {[1,2,3,4,5,6].map((week) => (
+          <option key={week} value={week}>{week} week{week > 1 ? 's' : ''}</option>
+        ))}
+      </select>
+        </div>
+
+        {/* Product Details Section Header */}
+        <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5, display: 'flex', alignItems: 'center' }}>
+          <span style={{ marginRight: 8 }}>PRODUCT DETAILS</span>
+        </div>
+        <div style={{ height: 12 }} />
+        
+        {/* Product Details Grid with Icons */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 24, marginBottom: 32 }}>
+          {renderCheckboxGroup(styleOptions, 'style', 'productDetails', 'Style', 'Can choose up to X2 Style Options', '/new files/newIcons/Styles_Icons/Styles_Icons-11.svg')}
+          {renderCheckboxGroup(colorOptions, 'color', 'productDetails', 'Colour', 'Can choose up to X2 Colour Options', '/new files/newIcons/Colour_Icons/Colour_Icons-28.svg')}
+          {renderCheckboxGroup(stoneTypeOptions, 'stoneType', 'productDetails', 'Stone Type', 'Can choose up to X2 Material Options', '/new files/newIcons/Material_Icons/Material_Icons-39.svg')}
+ 
+          {renderCheckboxGroup(customizationOptions, 'customization', 'productDetails', 'Customisation', 'Can choose up to X3 Custom Options', '/new files/newIcons/Custom_Icons/Custom_Icons-54.svg')}
+        </div>
+
+        {/* Additional Product Details Section Header */}
+        <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5, display: 'flex', alignItems: 'center' }}>
+          <span style={{ marginRight: 8 }}>ADDITIONAL PRODUCT DETAILS</span>
+        </div>
+        <div style={{ height: 12 }} />
+        
+        {/* Additional Product Details Content */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 32 }}>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Transport:</span>
+            <select
+              name="transportAndInstallation"
+              value={formData.additionalProductDetails.transportAndInstallation[0] || ""}
+              onChange={(e) => handleAdditionalProductDetailsChange('transportAndInstallation', e.target.value)}
+              style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", background: "white" }}
+            >
+              <option value="">Select Transport Option</option>
+              {transportOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Foundation:</span>
+            <select
+              name="foundationOptions"
+              value={formData.additionalProductDetails.foundationOptions[0] || ""}
+              onChange={(e) => handleAdditionalProductDetailsChange('foundationOptions', e.target.value)}
+              style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", background: "white" }}
+            >
+              <option value="">Select Foundation Option</option>
+              {foundationOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Warranty:</span>
+            <select
+              name="warrantyOrGuarantee"
+              value={formData.additionalProductDetails.warrantyOrGuarantee[0] || ""}
+              onChange={(e) => handleAdditionalProductDetailsChange('warrantyOrGuarantee', e.target.value)}
+              style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", background: "white" }}
+            >
+              <option value="">Select Warranty Option</option>
+              {warrantyOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
+          <button 
+            type="submit"
+            disabled={isSubmitting}
+            style={{
+              background: isSubmitting ? "#ccc" : "#005bac",
+              color: "#fff",
+              padding: "10px 20px",
+              borderRadius: 8,
+              border: "none",
+              cursor: isSubmitting ? "not-allowed" : "pointer",
+              fontSize: 14,
+              fontWeight: "bold",
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+              transition: "background-color 0.2s ease"
+            }}
+            onMouseOver={(e) => !isSubmitting && (e.target.style.background = "#004a8c")}
+            onMouseOut={(e) => !isSubmitting && (e.target.style.background = "#005bac")}
+          >
+            {isSubmitting ? "Creating..." : "Create Listing"}
+          </button>
+          <button 
+            type="button"
+            onClick={() => router.push('/manufacturers/manufacturers-Profile-Page')}
+            disabled={isSubmitting}
+            style={{
+              background: isSubmitting ? "#eee" : "#ccc",
+              color: "#333",
+              padding: "10px 20px",
+              borderRadius: 8,
+              border: "none",
+              cursor: isSubmitting ? "not-allowed" : "pointer",
+              fontSize: 14,
+              fontWeight: "bold",
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+              transition: "background-color 0.2s ease"
+            }}
+            onMouseOver={(e) => !isSubmitting && (e.target.style.background = "#bbb")}
+            onMouseOut={(e) => !isSubmitting && (e.target.style.background = "#ccc")}
+          >
+            Cancel
+          </button>
+        </div>
+
+        {/* Success/Error Message */}
+        {showMessage && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            padding: '16px 24px',
+            borderRadius: '8px',
+            color: '#fff',
+            fontWeight: 'bold',
+            zIndex: 1000,
+            background: submitMessage.includes('Error') ? '#dc3545' : '#28a745',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            animation: 'slideIn 0.3s ease'
+          }}>
+            {submitMessage}
+          </div>
+        )}
+    </form>
     </div>
-  );
-} 
+  )
+}

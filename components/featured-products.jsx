@@ -3,7 +3,6 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 
 export default function FeaturedProducts() {
   const products = [
@@ -42,37 +41,53 @@ export default function FeaturedProducts() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((product) => (
-          <Card key={product.id} className="overflow-hidden border border-gray-200">
-            <div className="relative h-48 w-full border-b border-gray-200">
-              <Image src={product.image || "/placeholder.svg"} alt={product.name} fill className="object-contain" />
+          <div key={product.id} className="bg-white border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+            {/* Image Container */}
+            <div className="relative h-56 bg-gray-100">
+              <Image src={product.image || "/placeholder.svg"} alt={product.name} fill className="object-cover" />
             </div>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-bold text-gray-800">{product.name}</CardTitle>
-              <CardDescription className="text-sm text-gray-600">{product.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="pb-2">
-              <div className="flex justify-between items-center">
-                <p className="text-xl font-bold text-blue-600">{product.price}</p>
+            
+            {/* Content */}
+            <div className="p-4">
+              {/* Price and Material Row */}
+              <div className="flex justify-between items-center mb-3">
+                <p className="font-bold text-blue-600 text-lg">{product.price}</p>
                 <span className="text-sm text-gray-600">{product.material}</span>
               </div>
-              <p className="text-sm text-gray-600 mt-1">{product.location}</p>
-            </CardContent>
-            <CardFooter className="flex justify-between pt-2 border-t border-gray-200">
-              <Button variant="outline" className="text-sm hover:text-blue-500">
-                View Details
-              </Button>
-              <Button className="bg-red-600 hover:bg-red-700 text-white text-sm">
-                Contact
-              </Button>
-            </CardFooter>
-          </Card>
+              
+              {/* Product Title */}
+              <h4 className="font-bold text-gray-800 mb-2 text-sm uppercase">
+                {product.name}
+              </h4>
+              
+              {/* Product Description */}
+              <p className="text-xs text-gray-600 mb-2">
+                {product.description}
+              </p>
+              
+              {/* Location */}
+              <p className="text-xs text-gray-600">
+                {product.location}
+              </p>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-between mt-4 pt-3 border-t border-gray-100">
+                <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground text-sm hover:text-blue-500">
+                  View Details
+                </button>
+                <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-red-600 hover:bg-red-700 text-white text-sm">
+                  Contact
+                </button>
+              </div>
+            </div>
+          </div>
         ))}
       </div>
 
       <div className="text-center mt-8">
-        <Button variant="outline" size="lg" className="text-sm hover:text-blue-500">
+        <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 rounded-md px-8 text-sm hover:text-blue-500">
           View All Products
-        </Button>
+        </button>
       </div>
     </section>
   )
