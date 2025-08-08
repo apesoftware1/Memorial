@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, AlertTriangle, Info, Phone, Mail, Clock, MapPin, Tool, Shield, Users } from 'lucide-react'
+import { Check, AlertTriangle, Info, Phone, Mail, Clock, MapPin, Wrench, Shield, Users } from 'lucide-react'
 import Header from '@/components/Header'
 
 export default function InstallationGuidePage() {
@@ -13,7 +13,7 @@ export default function InstallationGuidePage() {
     {
       id: 'preparation',
       title: 'Preparation Phase',
-      icon: <Tool className="w-6 h-6" />,
+      icon: <Wrench className="w-6 h-6" />,
       steps: [
         'Obtain necessary permits from local municipality',
         'Check weather conditions - avoid rainy days',
@@ -94,7 +94,7 @@ export default function InstallationGuidePage() {
             </p>
             <div className="flex flex-wrap justify-center gap-8 text-center">
               <div className="flex items-center gap-2">
-                <Tool className="w-6 h-6" />
+                <Wrench className="w-6 h-6" />
                 <span>Professional Tools</span>
               </div>
               <div className="flex items-center gap-2">

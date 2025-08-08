@@ -145,9 +145,10 @@ export default function TombstonesOnSpecial() {
     }))
   );
   console.log('=== END SPECIAL FILTERING DEBUG ===');
-  
-  const standardSpecials = specialListings.filter(listing => listing.isStandard);
-  const premiumSpecials = specialListings.filter(listing => listing.isPremium);
+  console.log(specialListings.length)
+  // Subsets from specials only
+  const premiumSpecials = specialListings.filter(listing => listing?.isPremium === true);
+  const featuredSpecials = specialListings.filter(listing => listing?.isFeatured === true);
   
   // For "more specials", we can use all specials or create additional logic
   const moreSpecials = specialListings;
@@ -630,7 +631,7 @@ export default function TombstonesOnSpecial() {
                 <p className="text-center text-xs text-gray-500 mb-4">*Limited Time Only</p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {standardSpecials.map((listing) => (
+                  {featuredSpecials.map((listing) => (
                     <SpecialOfferCard key={listing.documentId} product={mapListingToProduct(listing)} />
                   ))}
                 </div>

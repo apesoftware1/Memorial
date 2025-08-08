@@ -1,4 +1,5 @@
 import React from "react";
+import { useRouter, useSearchParams } from 'next/navigation';
 import { PremiumListingCard } from "@/components/premium-listing-card";
 import { StandardListingCard } from "@/components/standard-listing-card";
 import BannerAd from "@/components/BannerAd";
@@ -19,6 +20,8 @@ const IndexRender = ({
   // State for featured listings pagination
   const [featuredActiveIndex, setFeaturedActiveIndex] = useState(0);
   const featuredScrollRef = useRef(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Function to handle featured listings scroll
   const handleFeaturedScroll = () => {
@@ -51,6 +54,28 @@ const IndexRender = ({
     }
   }, []);
 
+  // Sync page from URL on mount/URL change
+  useEffect(() => {
+    if (!searchParams) return;
+    const pageFromUrl = parseInt(searchParams.get('page') || '1', 10);
+    if (pageFromUrl !== currentPage) {
+      setCurrentPage(pageFromUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Helper to change page and update URL
+  const goToPage = (nextPage) => {
+    const clamped = Math.max(1, nextPage); // allow moving beyond local dataset; parent can fetch
+    setCurrentPage(clamped);
+    const params = new URLSearchParams(searchParams ? Array.from(searchParams.entries()) : []);
+    params.set('page', String(clamped));
+    router.push(`?${params.toString()}`);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   // PAGINATION LOGIC (all from strapiListings)
   const premiumPerPage = 10;
   const standardPerPage = 5;
@@ -69,7 +94,8 @@ const IndexRender = ({
   const standardStart = (currentPage - 1) * standardPerPage;
   const standardEnd = standardStart + standardPerPage;
   const standardToShow = stdListings.slice(standardStart, standardEnd);
-
+  
+  console.log(stdListings.length)
   // Featured Manufacturer (pick first from premium listings)
   const featuredManufacturer = premiumToShow[0]?.company || null;
   const manufacturerListings = premListings
@@ -302,7 +328,7 @@ const IndexRender = ({
       <div className="flex justify-center my-8">
         <nav className="inline-flex rounded-md shadow">
           <button
-            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage === 1}
             className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed"
           >
@@ -311,7 +337,7 @@ const IndexRender = ({
           {[...Array(totalPremiumPages)].map((_, idx) => (
             <button
               key={idx + 1}
-              onClick={() => setCurrentPage(idx + 1)}
+              onClick={() => goToPage(idx + 1)}
               className={`py-2 px-4 border border-gray-300 bg-white text-sm font-medium ${
                 currentPage === idx + 1 ? "text-blue-600 font-bold" : "text-gray-500 hover:text-blue-600"
               }`}
@@ -320,8 +346,8 @@ const IndexRender = ({
             </button>
           ))}
           <button
-            onClick={() => setCurrentPage(Math.min(totalPremiumPages, currentPage + 1))}
-            disabled={currentPage === totalPremiumPages}
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={false}
             className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed"
           >
             Next

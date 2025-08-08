@@ -26,6 +26,7 @@ export function StandardListingCard({
   const router = useRouter()
   const [distance, setDistance] = useState<number | null>(null);
   
+  
   // Calculate total image count
   const getImageCount = () => {
     let count = 0;
