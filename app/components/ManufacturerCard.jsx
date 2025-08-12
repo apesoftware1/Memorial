@@ -4,14 +4,16 @@ import { Star, MapPin } from "lucide-react";
 // Removed: import { getManufacturerSlug } from "@/lib/data";
 
 const ManufacturerCard = ({ manufacturer }) => {
+  console.log(manufacturer);
   const profileUrl = `/manufacturers/manufacturers-Profile-Page/${manufacturer.documentId}`;
   return (
     <div className="bg-[#fafbfc] border border-gray-200 shadow-sm hover:shadow-md transition-shadow mb-6 w-full max-w-2xl ml-0 mr-auto p-6 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 min-h-[200px]">
       {/* Logo */}
+      
       <div className="relative flex-shrink-0 flex items-center justify-center w-full h-44 sm:w-56 sm:h-36 bg-white border border-gray-100 mb-2 sm:mb-0">
         <Link href={profileUrl} prefetch={false} aria-label={`View ${manufacturer.name} profile`}>
           <Image
-            src={manufacturer.logo}
+            src={manufacturer.logoUrl}
             alt={manufacturer.name}
             fill
             className="object-contain"

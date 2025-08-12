@@ -65,9 +65,8 @@ export const GET_LISTING_BY_ID = gql`
         longitude
         googleRating
         address
-        logo {
-          url
-        }
+        logoUrl
+        logoUrlPublicId 
         operatingHours {
           id
           monToFri

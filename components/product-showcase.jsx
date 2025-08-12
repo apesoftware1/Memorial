@@ -38,7 +38,7 @@ export default function ProductShowcase({ listing,id }) {
   const additionalDetails = listing.additionalProductDetails || {};
 
   // Manufacturer info fallback
-  const info = { logo: listing.company?.logo?.url || "/placeholder-logo.svg", rating: listing.company?.googleRating || 4.7, hours: [] };
+  const info = { logo: listing.company?.logoUrl || "/placeholder-logo.svg", rating: listing.company?.googleRating || 4.7, hours: [] };
   useEffect(() => {
     const fetchDistance = async () => {
       // Check if we're in the browser before accessing localStorage

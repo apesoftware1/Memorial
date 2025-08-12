@@ -72,7 +72,7 @@ export function StandardListingCard({
         <div className="absolute bottom-3 right-3 z-20 bg-gray-50 p-2 rounded-lg md:hidden">
           <a href={listing.company.name} className="manufacturer-link" onClick={e => e.stopPropagation()} aria-label={`View ${listing.manufacturer} profile`}>
             <Image
-              src={listing.company.logo.url}
+              src={listing.company.logoUrl}
               alt={`${listing.manufacturer} Logo`}
               width={96}
               height={96}
@@ -310,7 +310,7 @@ export function StandardListingCard({
             {/* Right column: logo (desktop only) */}
             <div className="w-1/3 flex-shrink-0 flex flex-col items-end justify-end hidden md:flex">
               <Image
-                src={listing.company.logo?.url || "/placeholder-logo.svg"}
+                src={listing.company.logoUrl || "/placeholder-logo.svg"}
                 alt={listing.company.name + " Logo"}
                 width={150}
                 height={100}

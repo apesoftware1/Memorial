@@ -287,7 +287,7 @@ export default function ManufacturersPage() {
             key={company.documentId}
             manufacturer={{
               ...company,
-              logo: company.logo?.url || '',
+              logo: company.logoUrl || '',
               rating: company.googleRating,
             }}
           />

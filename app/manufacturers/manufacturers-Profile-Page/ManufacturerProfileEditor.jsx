@@ -930,7 +930,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
             >
               <div style={{ position: 'relative', width: '100%', height: '100%' }}>
                 <Image 
-                  src={company.logo?.url || '/placeholder-logo.svg'} 
+                  src={company.logoUrl || '/placeholder-logo.svg'} 
                   alt="Company Logo" 
                   width={220} 
                   height={110} 
@@ -1158,11 +1158,13 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                     ...listing,
                     company: {
                       name: company.name,
-                      logo: company.logo
+                      logoUrl: company.logoUrl || company.logo || '/placeholder-logo.svg',
+                      location: company.location || 'location not set',
+                      latitude: company.latitude,
+                      longitude: company.longitude,
+                      slug: company.slug
                     },
                     manufacturer: company.name,
-                    location: company.location,
-                    distance: '5km away',
                     enquiries: listing.inquiries?.length || 0
                   }} 
                   isFirstCard={idx === 0} 

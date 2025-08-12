@@ -47,7 +47,9 @@ query GetListings {
       name
       isFeatured
       location
-      logo { url }
+      logoUrl
+      logoUrlPublicId
+
       latitude
       longitude
     }
