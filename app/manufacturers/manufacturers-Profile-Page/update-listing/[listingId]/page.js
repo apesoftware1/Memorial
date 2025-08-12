@@ -516,16 +516,34 @@ console.log(payload);
             onChange={e => setFlasher(e.target.value)}
           >
             <option value="">Select ad flasher</option>
-            <option value="Special offer">Special offer</option>
-            <option value="Limited time deal">Limited time deal</option>
-            <option value="New arrival">New arrival</option>
-            <option value="Best seller">Best seller</option>
-            <option value="Premium quality">Premium quality</option>
-            <option value="Handcrafted">Handcrafted</option>
-            <option value="Custom design">Custom design</option>
-            <option value="Exclusive">Exclusive</option>
-            <option value="Trending">Trending</option>
-            <option value="Popular choice">Popular choice</option>
+            <option value="Abstract">Abstract</option>
+                  <option value="Angel">Angel</option>
+                  <option value="Best seller">Best seller</option>
+                  <option value="Bible">Bible</option>
+                  <option value="Bike">Bike</option>
+                  <option value="Butterfly">Butterfly</option>
+                  <option value="Car">Car</option>
+                  <option value="Christian Cross">Christian Cross</option>
+                  <option value="Custom design">Custom design</option>
+                  <option value="Exclusive">Exclusive</option>
+                  <option value="Handcrafted">Handcrafted</option>
+                  <option value="Heart">Heart</option>
+                  <option value="Limited time deal">Limited time deal</option>
+                  <option value="Mausoleum">Mausoleum</option>
+                  <option value="New arrival">New arrival</option>
+                  <option value="Obelisk">Obelisk</option>
+                  <option value="Plain">Plain</option>
+                  <option value="Pillars">Pillars</option>
+                  <option value="Popular choice">Popular choice</option>
+                  <option value="Praying Hands">Praying Hands</option>
+                  <option value="Premium quality">Premium quality</option>
+                  <option value="Scroll">Scroll</option>
+                  <option value="Special offer">Special offer</option>
+                  <option value="Sports">Sports</option>
+                  <option value="Teddy Bear">Teddy Bear</option>
+                  <option value="Traditional African">Traditional African</option>
+                  <option value="Trending">Trending</option>
+
           </select>
         </div>
       </div>

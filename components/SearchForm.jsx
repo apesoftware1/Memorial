@@ -5,7 +5,7 @@ import { Search } from "lucide-react"
 import SearchBox from "@/components/SearchBox"
 import { Loader } from "@/components/ui/loader"
 
-const SearchForm = ({ onSearch }) => {
+const SearchForm = ({ onSearch, onSearchSubmit }) => {
   // State for search input and suggestions
   const [searchInput, setSearchInput] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -33,6 +33,11 @@ const SearchForm = ({ onSearch }) => {
   const handleSearchInputChange = useCallback((value) => {
     setSearchInput(value);
     
+    // Update search filter in real-time as user types
+    if (onSearch) {
+      onSearch(value);
+    }
+    
     if (value.trim()) {
       const filtered = searchSuggestions.filter(suggestion =>
         suggestion.toLowerCase().includes(value.toLowerCase())
@@ -43,7 +48,7 @@ const SearchForm = ({ onSearch }) => {
       setFilteredSuggestions([]);
       setShowSuggestions(false);
     }
-  }, []);
+  }, [onSearch]);
 
   // Function to handle suggestion selection
   const handleSuggestionSelect = useCallback((suggestion) => {
@@ -53,6 +58,20 @@ const SearchForm = ({ onSearch }) => {
       onSearch(suggestion);
     }
   }, [onSearch]);
+
+  // Function to handle search form submission
+  const handleSearchSubmit = useCallback(() => {
+    if (searchInput.trim() && onSearchSubmit) {
+      onSearchSubmit(searchInput.trim());
+    }
+  }, [searchInput, onSearchSubmit]);
+
+  // Function to handle search button click
+  const handleSearchButtonClick = useCallback(() => {
+    if (searchInput.trim() && onSearchSubmit) {
+      onSearchSubmit(searchInput.trim());
+    }
+  }, [searchInput, onSearchSubmit]);
 
   // Function to clear search
   const handleClearSearch = useCallback(() => {
@@ -75,13 +94,23 @@ const SearchForm = ({ onSearch }) => {
 
   return (
     <div className="relative" ref={searchFormRef}>
-      <SearchBox 
-        value={searchInput}
-        onChange={handleSearchInputChange}
-        onDropdownToggle={setShowSuggestions}
-        isDropdownOpen={showSuggestions}
-        onClear={handleClearSearch}
-      />
+      <div className="flex gap-2">
+        <SearchBox 
+          value={searchInput}
+          onChange={handleSearchInputChange}
+          onDropdownToggle={setShowSuggestions}
+          isDropdownOpen={showSuggestions}
+          onClear={handleClearSearch}
+          onSubmit={handleSearchSubmit}
+        />
+        <button
+          onClick={handleSearchButtonClick}
+          disabled={!searchInput.trim()}
+          className="px-6 py-3 bg-[#D4AF37] text-white font-semibold rounded-md hover:bg-[#C4A027] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+        >
+          Search
+        </button>
+      </div>
       
       {/* Search Suggestions Dropdown */}
       {showSuggestions && (

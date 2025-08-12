@@ -116,7 +116,7 @@ export default function ProductShowcase({ listing,id }) {
                   )}
                 </p>
                 <div className="text-sm text-gray-600 flex items-center gap-2 mt-2">
-                  <Link href="#" className="hover:underline">&lt; Previous</Link>
+                  <Link href="#" className="hover:underline">&lt; Prev</Link>
                   <span className="mx-1">|</span>
                   <Link href="#" className="hover:underline">Next &gt;</Link>
                 </div>

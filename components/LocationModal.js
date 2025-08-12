@@ -1,13 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { X, MapPin, Loader } from "lucide-react"
+import { useGuestLocation } from "@/hooks/useGuestLocation"
 
 export default function LocationModal({ isOpen, onClose, locationsData, onSelectLocation }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [isDesktop, setIsDesktop] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(true);
   const [geolocationStatus, setGeolocationStatus] = useState('idle');
   const [geolocationError, setGeolocationError] = useState(null);
+  
+  // Use real location data from the hook
+  const { location: userLocation, calculateDistanceFrom } = useGuestLocation();
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -18,52 +22,102 @@ export default function LocationModal({ isOpen, onClose, locationsData, onSelect
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  // Filter locations based on search term
-  const filteredLocations = locationsData.filter(location =>
-    location.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Enhanced locations data with real coordinates and distance calculations
+  const enhancedLocationsData = useMemo(() => {
+    if (!Array.isArray(locationsData)) return [];
+    
+    return locationsData.map(location => {
+      let distance = null;
+      let coordinates = null;
+      
+      // If location has coordinates, calculate distance from user
+      if (location.lat && location.lng && userLocation) {
+        coordinates = { lat: location.lat, lng: location.lng };
+        distance = calculateDistanceFrom(coordinates);
+      }
+      
+      // If location has a company with coordinates, use those
+      if (location.company?.latitude && location.company?.longitude && userLocation) {
+        coordinates = { 
+          lat: parseFloat(location.company.latitude), 
+          lng: parseFloat(location.company.longitude) 
+        };
+        distance = calculateDistanceFrom(coordinates);
+      }
+      
+      return {
+        ...location,
+        coordinates,
+        distance,
+        displayDistance: distance ? `${Math.round(distance)}km` : null
+      };
+    });
+  }, [locationsData, userLocation, calculateDistanceFrom]);
 
-  if (!isOpen) return null;
+  // Filter locations based on search term and sort by distance
+  const filteredLocations = useMemo(() => {
+    let filtered = enhancedLocationsData.filter(location =>
+      location.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    // Sort by distance (closest first) if user has location
+    if (userLocation) {
+      filtered.sort((a, b) => {
+        if (a.distance === null && b.distance === null) return 0;
+        if (a.distance === null) return 1;
+        if (b.distance === null) return -1;
+        return a.distance - b.distance;
+      });
+    }
+    
+    return filtered;
+  }, [enhancedLocationsData, searchTerm, userLocation]);
 
-  // Handle "Near me" click
+  if (!isOpen || isDesktop) return null;
+
+  // Handle "Near me" click - use the hook's location if available
   const handleNearMeClick = () => {
-    if (navigator.geolocation) {
-      setGeolocationStatus('loading');
-      setGeolocationError(null); // Clear previous errors
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setGeolocationStatus('success');
-          // Call parent select function with coordinates
-          onSelectLocation({ type: 'coords', lat: latitude, lng: longitude });
-          onClose(); // Close the modal after getting location
-        },
-        (error) => {
-          setGeolocationStatus('error');
-          let message = 'Unable to retrieve your location.';
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              message = 'Location permission denied. Please enable location access in your browser settings.';
-              break;
-            case error.POSITION_UNAVAILABLE:
-              message = 'Location information is unavailable.';
-              break;
-            case error.TIMEOUT:
-              message = 'The request to get user location timed out.';
-              break;
-            default:
-              message = 'An unknown error occurred while fetching your location.';
-              break;
-          }
-          setGeolocationError(message);
-          // Optionally, you might still want to select a default or close the modal
-          // onClose();
-        }
-      );
+    if (userLocation) {
+      // User already has location, use it directly
+      setGeolocationStatus('success');
+      onSelectLocation({ type: 'coords', lat: userLocation.lat, lng: userLocation.lng });
+      onClose();
     } else {
-      // Geolocation not supported
-      setGeolocationStatus('error');
-      setGeolocationError('Geolocation is not supported by your browser.');
+      // Fallback to manual geolocation if hook doesn't have location
+      if (navigator.geolocation) {
+        setGeolocationStatus('loading');
+        setGeolocationError(null);
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            setGeolocationStatus('success');
+            onSelectLocation({ type: 'coords', lat: latitude, lng: longitude });
+            onClose();
+          },
+          (error) => {
+            setGeolocationStatus('error');
+            let message = 'Unable to retrieve your location.';
+            switch (error.code) {
+              case error.PERMISSION_DENIED:
+                message = 'Location permission denied. Please enable location access in your browser settings.';
+                break;
+              case error.POSITION_UNAVAILABLE:
+                message = 'Location information is unavailable.';
+                break;
+              case error.TIMEOUT:
+                message = 'The request to get user location timed out.';
+                break;
+              default:
+                message = 'An unknown error occurred while fetching your location.';
+                break;
+            }
+            setGeolocationError(message);
+          }
+        );
+      } else {
+        setGeolocationStatus('error');
+        setGeolocationError('Geolocation is not supported by your browser.');
+      }
     }
   };
 
@@ -112,7 +166,10 @@ export default function LocationModal({ isOpen, onClose, locationsData, onSelect
           disabled={geolocationStatus === 'loading'}
         >
           <div>
-            <div className="text-gray-800 text-base font-medium">Near me (50km radius)</div>
+            <div className="text-gray-800 text-base font-medium">
+              Near me {userLocation ? '(50km radius)' : ''}
+              {userLocation && <span className="text-blue-500 text-sm font-normal ml-2">• Location detected</span>}
+            </div>
           </div>
           {geolocationStatus === 'loading' ? (
              <Loader className="h-5 w-5 text-blue-500 animate-spin flex-shrink-0" />
@@ -128,9 +185,21 @@ export default function LocationModal({ isOpen, onClose, locationsData, onSelect
           >
             <div className="flex justify-between items-center">
               <div>
-                <div className="text-gray-800 text-base font-medium">{location.name} <span className="text-gray-500 text-sm font-normal">({location.count})</span></div>
+                <div className="text-gray-800 text-base font-medium">
+                  {location.name} 
+                  {location.displayDistance && (
+                    <span className="text-blue-500 text-sm font-normal ml-2">• {location.displayDistance}</span>
+                  )}
+                  {location.count !== undefined && (
+                    <span className="text-gray-500 text-sm font-normal">({location.count})</span>
+                  )}
+                </div>
               </div>
-              {location.id !== 'all' && <div className="text-gray-500 text-sm">Province</div>}
+              <div className="text-gray-500 text-sm">
+                {location.id !== 'all' ? 'Province' : ''}
+                {location.displayDistance && location.id !== 'all' && ' • '}
+                {location.displayDistance && location.id !== 'all' && location.displayDistance}
+              </div>
             </div>
           </button>
         ))}
