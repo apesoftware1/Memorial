@@ -136,12 +136,18 @@ export default function Home() {
     // Min Price
     if (f.minPrice && f.minPrice !== 'Min Price' && f.minPrice !== '') {
       const min = parsePrice(f.minPrice);
-      filtered = filtered.filter(listing => parsePrice(listing.price) >= min);
+      filtered = filtered.filter(listing => {
+        if (!listing.price) return false;
+        return parsePrice(listing.price) >= min;
+      });
     }
     // Max Price
     if (f.maxPrice && f.maxPrice !== 'Max Price' && f.maxPrice !== '') {
       const max = parsePrice(f.maxPrice);
-      filtered = filtered.filter(listing => parsePrice(listing.price) <= max);
+      filtered = filtered.filter(listing => {
+        if (!listing.price) return false;
+        return parsePrice(listing.price) <= max;
+      });
     }
     return filtered;
   };
@@ -372,7 +378,21 @@ export default function Home() {
   // --- FILTERING LOGIC ---
   function parsePrice(priceStr) {
     if (!priceStr) return 0;
-    return Number(priceStr.replace(/[^\d]/g, ""));
+    
+    // Handle different data types
+    if (typeof priceStr === 'number') return priceStr;
+    if (typeof priceStr === 'string') {
+      return Number(priceStr.replace(/[^\d]/g, ""));
+    }
+    
+    // If it's an object or other type, try to convert to string first
+    try {
+      const str = String(priceStr);
+      return Number(str.replace(/[^\d]/g, ""));
+    } catch (error) {
+      console.warn('Failed to parse price:', priceStr, error);
+      return 0;
+    }
   }
 
   // Store the initial total count for display
@@ -426,12 +446,12 @@ export default function Home() {
     // Min Price
     if (activeFilters.minPrice && activeFilters.minPrice !== "Min Price" && activeFilters.minPrice !== "") {
       const min = parsePrice(activeFilters.minPrice);
-      if (parsePrice(listing.price) < min) return false;
+      if (!listing.price || parsePrice(listing.price) < min) return false;
     }
     // Max Price
     if (activeFilters.maxPrice && activeFilters.maxPrice !== "Max Price" && activeFilters.maxPrice !== "") {
       const max = parsePrice(activeFilters.maxPrice);
-      if (parsePrice(listing.price) > max) return false;
+      if (!listing.price || parsePrice(listing.price) > max) return false;
     }
     return true;
   });
@@ -439,9 +459,17 @@ export default function Home() {
   // --- SORTING LOGIC ---
   let sortedPremiumListings = [...filteredPremiumListings];
   if (sortOrder === "Price: Low to High") {
-    sortedPremiumListings.sort((a, b) => parsePrice(a.price) - parsePrice(b.price));
+    sortedPremiumListings.sort((a, b) => {
+      const priceA = a.price ? parsePrice(a.price) : 0;
+      const priceB = b.price ? parsePrice(b.price) : 0;
+      return priceA - priceB;
+    });
   } else if (sortOrder === "Price: High to Low") {
-    sortedPremiumListings.sort((a, b) => parsePrice(b.price) - parsePrice(a.price));
+    sortedPremiumListings.sort((a, b) => {
+      const priceA = a.price ? parsePrice(a.price) : 0;
+      const priceB = b.price ? parsePrice(b.price) : 0;
+      return priceB - priceA;
+    });
   } else if (sortOrder === "Newest First") {
     // If you have a date field, use it. Otherwise, sort by id descending as a fallback.
     sortedPremiumListings.sort((a, b) => (b.id > a.id ? 1 : -1));

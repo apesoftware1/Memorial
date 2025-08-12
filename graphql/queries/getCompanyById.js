@@ -2,7 +2,7 @@ import { gql } from '@apollo/client';
 
 export const GET_COMPANY_BY_ID = gql`
   query Company($documentId: ID!) {
-    company(documentId: $documentId) {
+    companies(filters: { documentId: { eq: $documentId } }) {
       documentId
       phone
       name
@@ -37,8 +37,12 @@ export const GET_COMPANY_BY_ID = gql`
       user {
         documentId
         email
+        name
+        whatsappNumber
+        phoneNumber
       }
       listings {
+        createdAt
         documentId
         title
         slug
@@ -58,6 +62,7 @@ export const GET_COMPANY_BY_ID = gql`
           color { id value }
           style { id value }
           stoneType { id value }
+          
           customization { id value }
         }
         additionalProductDetails {
@@ -66,16 +71,12 @@ export const GET_COMPANY_BY_ID = gql`
           foundationOptions { id value }
           warrantyOrGuarantee { id value }
         }
-      
-        inquiries {
+        inquiries_c {
           documentId
           name
           email
-          phone
           message
           createdAt
-          isRead
-          isNew
         }
       }
       isFeatured

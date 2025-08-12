@@ -77,6 +77,36 @@ const SearchContainer = ({
     return [];
   };
 
+  // Helper function to get coordinates for major South African cities
+  const getCityCoordinates = (cityName) => {
+    const coordinates = {
+      'Gauteng': { lat: -26.2041, lng: 28.0473 },
+      'Western Cape': { lat: -33.9249, lng: 18.4241 },
+      'KwaZulu-Natal': { lat: -29.8587, lng: 31.0218 },
+      'Eastern Cape': { lat: -32.2968, lng: 26.4194 },
+      'Free State': { lat: -28.4545, lng: 26.7968 },
+      'Mpumalanga': { lat: -25.4753, lng: 30.9694 },
+      'Limpopo': { lat: -23.4013, lng: 29.4179 },
+      'North West': { lat: -25.4753, lng: 25.4753 },
+      'Northern Cape': { lat: -30.5595, lng: 22.9375 }
+    };
+    return coordinates[cityName] || null;
+  };
+
+  // Local state to control mobile-only location modal
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const mobileLocationsData = useMemo(() => {
+    const list = (filterOptions?.location || []).filter(Boolean);
+    return list.map((name, index) => ({ 
+      id: String(index), 
+      name, 
+      count: 0,
+      // Add sample coordinates for major South African cities for distance calculations
+      lat: getCityCoordinates(name)?.lat,
+      lng: getCityCoordinates(name)?.lng
+    }));
+  }, [filterOptions]);
+
   // Effect: filter allListings based on URL params on load and whenever params change
   useEffect(() => {
     // If there are no listings yet, skip
@@ -94,9 +124,20 @@ const SearchContainer = ({
     const paramLocation = searchParams.get('location');
     const paramMinPrice = searchParams.get('minPrice');
     const paramMaxPrice = searchParams.get('maxPrice');
+    const paramSearch = searchParams.get('search');
 
     // Build filtered array using case-insensitive partial matches and numeric ranges
     let next = [...allListings];
+
+    // Search content (against title and company name)
+    if (paramSearch) {
+      const q = paramSearch.toLowerCase();
+      next = next.filter((listing) => {
+        const title = (listing?.title || "").toLowerCase();
+        const companyName = (listing?.company?.name || "").toLowerCase();
+        return title.includes(q) || companyName.includes(q);
+      });
+    }
 
     // Category (exact or partial, case-insensitive)
     if (paramCategory) {
@@ -177,6 +218,7 @@ const SearchContainer = ({
       setFilters((prev) => ({
         ...prev,
         // Keep existing keys but update if present in URL
+        search: paramSearch || prev?.search || null,
         colour: paramColor || prev?.colour || null,
         style: paramStyle || prev?.style || null,
         stoneType: paramMaterial || prev?.stoneType || null,
@@ -205,6 +247,11 @@ const SearchContainer = ({
     }
 
     return sourceListings
+      // Search content (against title and company name)
+      .filter(listing => f.search && f.search !== ''
+        ? ((listing?.title || '').toLowerCase().includes(f.search.toLowerCase()) ||
+           (listing?.company?.name || '').toLowerCase().includes(f.search.toLowerCase()))
+        : true)
       // Category
       .filter(listing => selectedCategoryName ? (listing?.listing_category?.name || '').toLowerCase() === selectedCategoryName.toLowerCase() : true)
       // Location (partial)
@@ -411,17 +458,15 @@ const SearchContainer = ({
 
   // Toggle dropdown
   const toggleDropdown = useCallback((name) => {
-    if (name === 'location' && typeof window !== 'undefined' && window.innerWidth < 640) {
-      if (parentToggleDropdown) {
-        parentToggleDropdown('location');
-      }
-    } else {
-      setUiState(prev => ({
-        ...prev,
-        openDropdown: prev.openDropdown === name ? null : name
-      }));
+    if (name === 'location' && typeof window !== 'undefined' && window.innerWidth < 768) {
+      setShowLocationModal(true);
+      return;
     }
-  }, [parentToggleDropdown]);
+    setUiState(prev => ({
+      ...prev,
+      openDropdown: prev.openDropdown === name ? null : name
+    }));
+  }, []);
 
   // Select option from dropdown
   const selectOption = useCallback((name, value) => {
@@ -462,6 +507,11 @@ const SearchContainer = ({
           onSearch={(searchTerm) => {
             const searchTermLower = searchTerm.toLowerCase();
             
+            // Update search filter in real-time as user types
+            if (setFilters) {
+              setFilters(prev => ({ ...prev, search: searchTerm }));
+            }
+            
             if (setSelectedCategory) {
               if (searchTermLower.includes('premium')) {
                 setSelectedCategory("PREMIUM");
@@ -491,6 +541,12 @@ const SearchContainer = ({
               }
 
               setFilters(newFilters);
+            }
+          }}
+          onSearchSubmit={(searchContent) => {
+            // Add search content to filters for URL params and immediate filtering
+            if (setFilters) {
+              setFilters(prev => ({ ...prev, search: searchContent }));
             }
           }}
         />
@@ -585,6 +641,21 @@ const SearchContainer = ({
             </>
           )}
         </div>
+
+        {/* Mobile-only Location Modal (full-screen handled inside modal) */}
+        {showLocationModal && (
+          <LocationModal
+            isOpen={showLocationModal}
+            onClose={() => setShowLocationModal(false)}
+            locationsData={mobileLocationsData}
+            onSelectLocation={(loc) => {
+              if (setFilters) {
+                setFilters(prev => ({ ...prev, location: typeof loc === 'string' ? loc : 'Near me' }));
+              }
+              setShowLocationModal(false);
+            }}
+          />
+        )}
 
         {/* Action Buttons Container */}
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-8 w-full">
