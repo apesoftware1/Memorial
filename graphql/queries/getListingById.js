@@ -12,6 +12,12 @@ export const GET_LISTING_BY_ID = gql`
       description
       price
       isOnSpecial
+      specials {
+        active
+        sale_price
+        start_date
+        end_date
+      }
       productDetails {
         id
         color {

@@ -82,7 +82,7 @@ export default function ProductShowcase({ listing,id }) {
       <nav className="text-sm text-gray-600 mb-4 max-w-6xl mx-auto px-4 md:px-0 pt-6">
         <Link href="/" className="text-blue-600 hover:text-blue-800 transition-colors">Home</Link>
         <span className="mx-1">&gt;</span>
-        <Link href="/tombstones-for-sale" className="hover:underline">Tombstones For Sale</Link>
+        <Link href="/tombstones-on-special" className="hover:underline">Tombstones on Special</Link>
         <span className="mx-1">&gt;</span>
         <span>{listing.company?.location || 'N/A'}</span>
         <span className="mx-1">&gt;</span>
@@ -493,4 +493,4 @@ function Telegram({ size = 24, className = "" }) {
       <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
     </svg>
   )
-} 
+}
