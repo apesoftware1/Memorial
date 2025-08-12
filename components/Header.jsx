@@ -99,23 +99,24 @@ export default function Header({
                 </button>
                 <div className="absolute left-0 mt-1 min-w-max bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50 px-0 origin-top-left">
                   <div className="py-1 px-0">
+                    
                     <Link
-                      href="#"
-                      className="block px-0 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors whitespace-nowrap"
-                    >
-                      LET US HANDLE EVERYTHING
-                    </Link>
-                    <Link
-                      href="#"
+                      href="/services/tombstone-finance"
                       className="block px-0 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors whitespace-nowrap"
                     >
                       TOMBSTONE FINANCE
                     </Link>
                     <Link
-                      href="#"
+                      href="/services/installation-guide"
                       className="block px-0 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors whitespace-nowrap"
                     >
                       TOMBSTONE INSTALLATION GUIDE
+                    </Link>
+                    <Link
+                      href="/services/life-insurance"
+                      className="block px-0 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors whitespace-nowrap"
+                    >
+                      LIFE INSURANCE
                     </Link>
                   </div>
                 </div>
@@ -270,14 +271,20 @@ export default function Header({
               <Link href="#" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
                 LET US HANDLE EVERYTHING
               </Link>
-              <Link href="#" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
+              <Link href="/services/tombstone-finance" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
                 TOMBSTONE FINANCE
               </Link>
               <Link
-                href="#"
+                href="/services/installation-guide"
                 className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
               >
                 TOMBSTONE INSTALLATION GUIDE
+              </Link>
+              <Link
+                href="/services/life-insurance"
+                className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                LIFE INSURANCE
               </Link>
             </div>
           )}
