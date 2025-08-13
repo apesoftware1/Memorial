@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 
 const cardStyle = {
   background: "#fff",
@@ -90,6 +90,38 @@ export default function ManufacturerLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const { data: session, status } = useSession();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (status === "authenticated" && session) {
+      router.push("/manufacturers/manufacturers-Profile-Page");
+    }
+  }, [session, status, router]);
+
+  // Show loading while checking session
+  if (status === "loading") {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          width: "100vw",
+          fontFamily: "Inter, sans-serif",
+          background: "linear-gradient(135deg, #3b82f6 0%, #60a5fa 40%, #f0f6ff 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div style={{ color: "white", fontSize: 18 }}>Checking authentication...</div>
+      </div>
+    );
+  }
+
+  // Don't render login form if already authenticated
+  if (status === "authenticated") {
+    return null;
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -102,12 +134,7 @@ export default function ManufacturerLogin() {
         password,
       });
       if (result.ok) {
-        // Check if user is admin and redirect accordingly
-        if (ADMIN_EMAILS.includes(email.toLowerCase())) {
-          router.push("/regan-dashboard");
-        } else {
-          router.push("/manufacturers/manufacturers-Profile-Page");
-        }
+        router.push("/manufacturers/manufacturers-Profile-Page");
       } else {
         setError("Login failed. Please check your credentials.");
       }
@@ -118,26 +145,7 @@ export default function ManufacturerLogin() {
     }
   }
 
-  async function handleAdminLogin() {
-    setLoading(true);
-    setError("");
-    try {
-      const result = await signIn("credentials", {
-        redirect: false,
-        email: "regan@tombstonesfinder.com",
-        password: "admin123", // This should match the password in NextAuth config
-      });
-      if (result.ok) {
-        router.push("/regan-dashboard");
-      } else {
-        setError("Admin login failed. Please check credentials.");
-      }
-    } catch (err) {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Removed handleAdminLogin function
 
   return (
     <div
