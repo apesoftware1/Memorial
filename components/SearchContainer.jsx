@@ -490,7 +490,9 @@ const SearchContainer = ({
   }, [setFilters]);
 
   return (
-    <div className="w-full md:max-w-lg flex flex-col justify-between relative bg-[#005D77] ml-0 md:ml-[226px] mt-0 md:mt-20">
+    <div className="w-full mt-0 md:mt-20">
+      <div className="container mx-auto px-0 max-w-4xl">
+        <div className="w-full md:max-w-lg flex flex-col justify-between relative bg-[#005D77]">
       {/* CategoryTabs - flush with top and sides */}
       <div className="w-full">
         <CategoryTabs categories={categories} activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -769,6 +771,8 @@ const SearchContainer = ({
             </div>
           </div>
         )}
+      </div>
+        </div>
       </div>
     </div>
   );
