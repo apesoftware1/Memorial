@@ -8,14 +8,11 @@ export const GET_COMPANY_BY_USER = gql`
       name
       googleRating
       location
-      address
       latitude
       longitude
       description
       logoUrl
       logoUrlPublicId
-
-
       operatingHours {
         id
         monToFri

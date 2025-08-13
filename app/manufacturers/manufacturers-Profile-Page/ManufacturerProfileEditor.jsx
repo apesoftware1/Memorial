@@ -1098,7 +1098,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
         {/* Listings Header */}
         <div style={{ background: "#fff", padding: "12px 16px ", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #e0e0e0", maxWidth: 1200, margin: "32px auto 28px auto" }}>
           <div style={{ fontSize: 13, color: "#888" }}>
-            Current Package: <span style={{ color: "#28a745", fontWeight: 700 }}>{company.packageType || 'Premium'}</span> &nbsp; <Link href="#" style={{ color: "#007bff", fontWeight: 700 }}>Click here to UPGRADE</Link>
+            Current Package: <span style={{ color: "#28a745", fontWeight: 700 ,textTransform: 'uppercase' }}>{company.packageType || 'Premium'}</span> &nbsp; <Link href="#" style={{ color: "#007bff", fontWeight: 700 }}>Click here to UPGRADE</Link>
           </div>
           <div style={{ fontSize: 15, fontWeight: 700 }}>{companyListings.length} Active Listings</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

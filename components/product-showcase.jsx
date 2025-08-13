@@ -13,6 +13,8 @@ import Header from "@/components/Header";
 import ProductContactForm from "./product-contact-form";
 import { calculateDistanceFrom } from "@/lib/locationUtil";
 import { trackAnalyticsEvent } from "@/lib/analytics";
+import MapModal from "./MapModal";
+
 
 
 
@@ -20,6 +22,7 @@ export default function ProductShowcase({ listing,id }) {
   if (!listing) {
     return null;
   }
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const [distance, setDistance] = useState(null);
   const [showContact, setShowContact] = useState(false);
   // Prepare images: main image + thumbnails (all as URLs, no duplicates)
@@ -369,7 +372,7 @@ export default function ProductShowcase({ listing,id }) {
             {/* White content area */}
             <div className="bg-white rounded-b-lg">
               <div className="pt-4 px-4 mb-4">
-                <button className="flex items-center text-blue-500 hover:underline text-sm">
+                <button onClick={() => setIsMapOpen(true)} className="flex items-center text-blue-500 hover:underline text-sm">
                   <Image
                     src="/new files/newIcons/GooglePin_Icon.svg"
                     alt="Location Pin Icon"
@@ -470,6 +473,11 @@ export default function ProductShowcase({ listing,id }) {
           </div>
         </div>
       </div>
+      <MapModal
+        isOpen={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+        mapUrl={listing.company?.mapUrl }
+      />
     </div>
     </>
   )

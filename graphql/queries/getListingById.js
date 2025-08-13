@@ -86,9 +86,7 @@ export const GET_LISTING_BY_ID = gql`
           messenger
         }
         listings(pagination: { limit: -1 }) {
-          mainImage {
-      url
-    }
+        
           title
           price
           documentId
