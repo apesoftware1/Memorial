@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/navigation'
 import Image from "next/image"
-import categories from '../../../../category.json'
 import adFlasherOptions from '../../../../adFlasher.json'
 import { useApolloClient } from '@apollo/client'
 import { GET_LISTINGS } from '@/graphql/queries/getListings'
+import { useListingCategories } from '@/hooks/use-ListingCategories'
 
 const colorOptions = [
   'Black',
@@ -58,6 +58,7 @@ export default function CreateListingForm() {
   const router = useRouter();
   const client = useApolloClient();
   const [company, setCompany] = useState(null);
+  const { categories, loading: categoriesLoading, error: categoriesError } = useListingCategories();
   
   // Loading and success states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -126,6 +127,8 @@ export default function CreateListingForm() {
   const [mainImage, setMainImage] = useState(null)
   const [thumbnails, setThumbnails] = useState(new Array(10).fill(null))
   const [selectedCategory, setSelectedCategory] = useState(null)
+  const [modalMsg, setModalMsg] = useState("")
+  const [modalOpen, setModalOpen] = useState(false)
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -215,6 +218,34 @@ export default function CreateListingForm() {
     console.log('Cloudinary upload success:', data)
     return data // Return the full Cloudinary response (url, public_id, etc.)
   }
+
+  const handleCheckboxChange = (section, field, value, max) => {
+    const currentSelected = formData[section][field];
+    if (currentSelected.includes(value)) {
+      // Remove the value
+      const newSelected = currentSelected.filter(x => x !== value);
+      setFormData((prev) => ({
+        ...prev,
+        [section]: {
+          ...prev[section],
+          [field]: newSelected
+        }
+      }));
+    } else if (currentSelected.length < max) {
+      // Add the value
+      const newSelected = [...currentSelected, value];
+      setFormData((prev) => ({
+        ...prev,
+        [section]: {
+          ...prev[section],
+          [field]: newSelected
+        }
+      }));
+    } else {
+      setModalMsg(`You can only add ${max} characteristics.`);
+      setModalOpen(true);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -377,27 +408,66 @@ export default function CreateListingForm() {
   }
 
   // Helper to render a checkbox group for a field, with subtitle
-  const renderCheckboxGroup = (options, field, section, label, subtitle, iconSrc) => (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-        {iconSrc && <Image src={iconSrc} alt={label} width={18} height={18} style={{ marginRight: 6 }} />}
-        {label}
+  const renderCheckboxGroup = (options, field, section, label, subtitle, iconSrc) => {
+    const currentSelected = formData[section][field];
+    
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+          {iconSrc && <Image src={iconSrc} alt={label} width={18} height={18} style={{ marginRight: 6 }} />}
+          {label}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {options.map((option) => (
+            <label key={option} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
+              <input
+                type="checkbox"
+                checked={currentSelected.includes(option)}
+                onChange={() => handleCheckboxChange(section, field, option, 2)}
+                style={{ marginRight: 6 }}
+              />
+              {option}
+            </label>
+          ))}
+        </div>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {options.map((option) => (
-          <label key={option} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
-            <input
-              type="checkbox"
-              checked={formData[section][field].includes(option)}
-              onChange={() => handleDropdownChange(section, field, option)}
-              style={{ marginRight: 6 }}
-            />
-            {option}
-          </label>
-        ))}
+    );
+  };
+
+  // Handle categories loading and error states
+  if (categoriesLoading) {
+    return (
+      <div style={{
+        maxWidth: 1000,
+        margin: "40px auto",
+        background: "#f8f8f8",
+        padding: 24,
+        borderRadius: 16,
+        fontFamily: "Arial, sans-serif",
+        color: "#333",
+        textAlign: "center"
+      }}>
+        Loading categories...
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (categoriesError) {
+    return (
+      <div style={{
+        maxWidth: 1000,
+        margin: "40px auto",
+        background: "#f8f8f8",
+        padding: 24,
+        borderRadius: 16,
+        fontFamily: "Arial, sans-serif",
+        color: "#333",
+        textAlign: "center"
+      }}>
+        Error loading categories: {categoriesError.message}
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -523,27 +593,40 @@ export default function CreateListingForm() {
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 12, marginBottom: 8, color: "#555" }}>Select a category for your listing:</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-            {categories.map((category) => (
-              <button
-                key={category.documentId}
-                type="button"
-                onClick={() => handleCategorySelect(category)}
-                style={{
-                  padding: "12px 16px",
-                  border: selectedCategory?.documentId === category.documentId ? "2px solid #005bac" : "1px solid #ccc",
-                  borderRadius: 8,
-                  background: selectedCategory?.documentId === category.documentId ? "#e6f3ff" : "#fff",
-                  cursor: "pointer",
-                  fontSize: 14,
-                  fontWeight: selectedCategory?.documentId === category.documentId ? "600" : "400",
-                  color: selectedCategory?.documentId === category.documentId ? "#005bac" : "#333",
-                  transition: "all 0.2s ease",
-                  textAlign: "center"
-                }}
-              >
-                {category.name}
-              </button>
-            ))}
+            {categories.map((category) => {
+              return (
+                <button
+                  key={category.documentId}
+                  type="button"
+                  onClick={() => handleCategorySelect(category)}
+                  style={{
+                    padding: "12px 16px",
+                    border: selectedCategory?.documentId === category.documentId ? "2px solid #005bac" : "1px solid #ccc",
+                    borderRadius: 8,
+                    background: selectedCategory?.documentId === category.documentId ? "#e6f3ff" : "#fff",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    fontWeight: selectedCategory?.documentId === category.documentId ? "600" : "400",
+                    color: selectedCategory?.documentId === category.documentId ? "#005bac" : "#333",
+                    transition: "all 0.2s ease",
+                    textAlign: "center",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8
+                  }}
+                >
+                  <Image 
+                    src={category.name === 'SINGLE' ? '/final-icons/single.svg' : category.icon} 
+                    alt={category.name} 
+                    width={20} 
+                    height={20} 
+                    style={{ flexShrink: 0 }}
+                  />
+                  {category.name}
+                </button>
+              );
+            })}
           </div>
           {selectedCategory && (
             <div style={{ marginTop: 8, fontSize: 12, color: "#666" }}>
@@ -851,6 +934,16 @@ export default function CreateListingForm() {
             animation: 'slideIn 0.3s ease'
           }}>
             {submitMessage}
+          </div>
+        )}
+
+        {/* Modal for max selection warning */}
+        {modalOpen && (
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.3)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ background: '#fff', borderRadius: 12, padding: 32, minWidth: 260, boxShadow: '0 2px 16px rgba(0,0,0,0.18)', textAlign: 'center' }}>
+              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>{modalMsg}</div>
+              <button onClick={() => setModalOpen(false)} style={{ background: '#005bac', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 24px', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>OK</button>
+            </div>
           </div>
         )}
     </form>

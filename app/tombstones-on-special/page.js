@@ -396,7 +396,7 @@ console.log(specialListings.length);
               )}
             </div>
             {/* Title, Details, Features */}
-            <h2 className="text-lg font-bold text-gray-900 mb-2">{product.title}</h2>
+            <h2 className="text-lg font-bold text-gray-600 mb-2 uppercase">{product.title}</h2>
             <div className="space-y-0.5 mb-2">
               <div className="text-xs text-gray-700">{product.details}</div>
               <div className="text-xs text-gray-700">{product.features}</div>
@@ -441,7 +441,7 @@ console.log(specialListings.length);
           </div>
           <div className="md:col-span-2">
             <div className="flex justify-between items-start">
-              <h3 className="font-bold text-gray-800 text-xl">{product.title}</h3>
+              <h3 className="font-bold text-gray-800 text-xl uppercase">{product.title}</h3>
               <div>
                 <p className="font-bold text-blue-600 text-xl">{product.salePrice}</p>
                 {product.originalPrice !== product.salePrice && (

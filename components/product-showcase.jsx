@@ -3,6 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Facebook, Twitter, Mail, MapPin, X, Whatsapp, FacebookMessenger, Heart, User2, Cross, Gem, Camera, Flower, Truck, Info, CircleX } from "lucide-react"
+import { formatPrice } from "@/lib/priceUtils"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -100,8 +101,8 @@ export default function ProductShowcase({ listing,id }) {
           )}
               {/* Title and Price on the same horizontal line */}
               <div className="flex flex-row items-center justify-between w-full mb-0">
-                <h1 className="text-2xl font-bold text-gray-900 ">{listing.title}</h1>
-                <span className="text-blue-600 text-3xl font-bold">R{listing.price}</span>
+                <h1 className="text-2xl font-bold text-gray-800 uppercase">{listing.title}</h1>
+                <span className="text-blue-600 text-3xl font-bold">{formatPrice(listing.price)}</span>
               </div>
               {/* Location and navigation links on the same horizontal line */}
               <div className="flex flex-row items-center justify-between w-full mb-1">
@@ -233,7 +234,7 @@ export default function ProductShowcase({ listing,id }) {
           <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
             <h3 className="text-sm text-gray-700 font-semibold mb-1">Price</h3>
             <div className="flex items-center gap-3 mb-4">
-                <span className="text-blue-600 text-2xl font-bold">R{listing.price}</span>
+                <span className="text-blue-600 text-2xl font-bold">{formatPrice(listing.price)}</span>
               {listing.originalPrice && (
                 <span className="text-gray-500 text-lg line-through">{listing.originalPrice}</span>
               )}
@@ -450,7 +451,7 @@ export default function ProductShowcase({ listing,id }) {
                       />
                     </div>
                     <div className="ml-3 flex-grow">
-                          <div className="text-blue-600 font-medium">R{product.price}</div>
+                          <div className="text-blue-600 font-medium">{formatPrice(product.price)}</div>
                           <div className="text-sm">{product.title}</div>
                           <div className="text-xs text-gray-600">{listing.productDetails?.stoneType?.[0]?.value || 'N/A'}</div>
                     </div>

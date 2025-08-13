@@ -7,6 +7,7 @@ import { ChevronDown, X } from "lucide-react"
 import { useFavorites } from "@/context/favorites-context"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function Header({
   mobileMenuOpen,
@@ -19,6 +20,29 @@ export default function Header({
   const { totalFavorites } = useFavorites();
   const pathname = usePathname();
   const { data: session } = useSession();
+  const router = useRouter();
+
+  // Custom logout function to ensure proper cleanup
+  const handleLogout = async () => {
+    try {
+      // Clear any localStorage data
+      localStorage.removeItem("manufacturerSession");
+      localStorage.removeItem("advertCreatorCompany");
+      
+      // Clear sessionStorage data
+      sessionStorage.removeItem("advertCreatorCompany");
+      
+      // Sign out with NextAuth (this will automatically clear the session cookies)
+      await signOut({ 
+        callbackUrl: '/',
+        redirect: true 
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Fallback: force redirect to home page
+      router.push('/');
+    }
+  };
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
@@ -151,7 +175,7 @@ export default function Header({
           {showLogout && session && (
             <button
               className="hidden md:block text-teal-500 text-xs md:text-sm hover:text-teal-600 transition-colors flex items-center"
-              onClick={() => signOut({ callbackUrl: '/' })}
+              onClick={handleLogout}
             >
               Log Out
             </button>
