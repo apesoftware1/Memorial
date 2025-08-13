@@ -36,7 +36,7 @@ const ManufacturerCard = ({ manufacturer }) => {
         <p className="text-xs sm:text-sm text-gray-700 mt-1 truncate">{manufacturer.description}</p>
         <div className="flex flex-col gap-1 mt-3">
           <Link href="#" className="text-blue-600 font-semibold text-xs sm:text-sm hover:underline">
-            {manufacturer.tombstonesListed} Tombstones Listed
+            {manufacturer.listings?.length} Tombstones Listed
           </Link>
           <div className="flex items-center text-gray-500 text-xs mt-1">
             <MapPin className="h-4 w-4 mr-1" />

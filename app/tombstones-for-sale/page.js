@@ -676,7 +676,7 @@ export default function Home() {
 
                 {/* Desktop: Grid layout */}
                 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {data?.listings?.filter(l => l.isFeatured).map((product, index) => (
+                  {data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
                     <FeaturedListings key={index} listing={product} />
                   ))}
                 </div>

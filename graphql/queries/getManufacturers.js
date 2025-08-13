@@ -35,7 +35,7 @@ export const GET_MANUFACTURERS = gql`
       }
       packageType
       isFeatured
-      listings {
+      listings(pagination: { limit: -1 }) {
         documentId
       }
     }
