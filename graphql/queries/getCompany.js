@@ -42,7 +42,7 @@ export const GET_COMPANY_BY_USER = gql`
         whatsappNumber
         phoneNumber
       }
-      listings {
+        listings(pagination: { limit: -1 }) {
         createdAt
         documentId
         title

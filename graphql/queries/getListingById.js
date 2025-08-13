@@ -85,7 +85,7 @@ export const GET_LISTING_BY_ID = gql`
           whatsapp
           messenger
         }
-        listings {
+        listings(pagination: { limit: -1 }) {
           mainImage {
       url
     }

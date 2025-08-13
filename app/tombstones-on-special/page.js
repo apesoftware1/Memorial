@@ -669,7 +669,7 @@ console.log(specialListings.length);
                 <p className="text-center text-xs text-gray-500 mb-4">*Limited Time Only</p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {featuredSpecials.map((listing) => (
+                  {featuredSpecials.slice(0, 3).map((listing) => (
                     <SpecialOfferCard key={listing.documentId} product={mapListingToProduct(listing)} />
                   ))}
                 </div>

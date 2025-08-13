@@ -57,7 +57,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
   const [createSpecialModalOpen, setCreateSpecialModalOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState(null);
   const [viewInquiriesModalOpen, setViewInquiriesModalOpen] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(10);
+  const [visibleCount, setVisibleCount] = useState(Infinity);
   
   // Delete success message state
   const [isDeleting, setIsDeleting] = useState(false);
@@ -110,7 +110,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
 
   // Reset visible count when listings or sort changes
   useEffect(() => {
-    setVisibleCount(10);
+    setVisibleCount(Infinity);
   }, [companyListings, sortBy]);
   
   // Calculate notification count from unread/new inquiries
@@ -1208,32 +1208,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
             ))}
         </div>
 
-        {/* Load More Button - always visible when total > 10; disables when all loaded */}
-        {companyListings.length > 10 && (
-          <div style={{ display: 'flex', justifyContent: 'center', margin: '24px auto 60px auto', maxWidth: 1200 }}>
-            <button
-              onClick={() => {
-                if (visibleCount < companyListings.length) {
-                  setVisibleCount(prev => Math.min(prev + 10, companyListings.length));
-                }
-              }}
-              disabled={visibleCount >= companyListings.length}
-              style={{
-                background: visibleCount >= companyListings.length ? '#A0A0A0' : '#0D7C99',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 8,
-                padding: '10px 18px',
-                fontWeight: 700,
-                fontSize: 15,
-                cursor: visibleCount >= companyListings.length ? 'not-allowed' : 'pointer',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.07)'
-              }}
-            >
-              {visibleCount >= companyListings.length ? 'All listings loaded' : 'Load more listings'}
-            </button>
-          </div>
-        )}
+
         {/* Create Special Modal */}
         <CreateSpecialModal
           isOpen={createSpecialModalOpen}
