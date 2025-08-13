@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react"
 import { useRouter } from "next/navigation"
 
 interface Manufacturer {
@@ -76,7 +76,7 @@ export function ManufacturerAuthProvider({ children }: { children: ReactNode }) 
   const logout = async () => {
     try {
       setLoading(true)
-      // TODO: Replace with actual API call
+      // Clear localStorage session
       localStorage.removeItem("manufacturerSession")
       setManufacturer(null)
       router.push("/login/manufacturer")
@@ -124,4 +124,4 @@ export function useManufacturerAuth() {
     throw new Error("useManufacturerAuth must be used within a ManufacturerAuthProvider")
   }
   return context
-} 
+}

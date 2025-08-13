@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { formatPrice } from '@/lib/priceUtils';
 
 
 const FeaturedListings = ({ listing }) => (
@@ -19,7 +20,7 @@ const FeaturedListings = ({ listing }) => (
       <div className="p-4">
         {/* Price and Tag Row */}
         <div className="flex justify-between items-center mb-3">
-          <p className="font-bold text-blue-600 text-lg">R{listing.price}</p>
+          <p className="font-bold text-blue-600 text-lg">{formatPrice(listing.price)}</p>
           <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded">
             {listing.adFlasher || "Great Price"}
           </span>
@@ -45,4 +46,4 @@ const FeaturedListings = ({ listing }) => (
   </Link>
 );
 
-export default FeaturedListings; 
+export default FeaturedListings;

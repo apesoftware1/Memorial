@@ -523,6 +523,11 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
           description: "Your company logo has been updated.",
           variant: "success"
         });
+        
+        // Auto-refresh the page to display the updated logo
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500); // Wait 1.5 seconds to show the success message before refreshing
       } else {
         // Handle error
         toast({

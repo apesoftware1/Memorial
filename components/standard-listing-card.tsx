@@ -11,6 +11,7 @@ import type { FavoriteProduct } from "@/context/favorites-context"
 import { FavoriteButton } from "./favorite-button"
 import LocationTrigger from "./LocationTrigger"
 import { calculateDistanceFrom } from "@/lib/locationUtil";
+import { formatPrice } from "@/lib/priceUtils"
 
 interface StandardListingCardProps {
   listing: any;
@@ -124,7 +125,7 @@ export function StandardListingCard({
         <div className="w-full px-4 pt-4 pb-2 bg-gray-50 flex flex-col">
             {/* Price, Badge, and Heart (Mobile) */}
             <div className="flex flex-col items-start mb-3">
-              <div className="text-2xl font-bold text-blue-600">R{listing.price}</div>
+              <div className="text-2xl font-bold text-blue-600">{formatPrice(listing.price)}</div>
               <div className="mt-1 mb-0">
                 <Badge className={cn("text-white text-sm px-3 py-1 rounded", "bg-pink-600")}>{listing.adFlasher || "Unique Design"}</Badge>
               </div>
@@ -134,7 +135,7 @@ export function StandardListingCard({
               </div>
             </div>
             {/* Title, Details, Features (Mobile) */}
-            <h2 className="text-lg font-bold text-gray-900 mb-2">{listing.title}</h2>
+            <h2 className="text-lg font-bold text-gray-800 mb-2 uppercase">{listing.title}</h2>
             {/* --- Product Details Section (same as desktop) --- */}
             <div className="space-y-0.5 mb-2">
             {/* First line: Tombstone Type, Full Tombstone (bold if present), stoneType, style/theme, culture */}
@@ -229,7 +230,7 @@ export function StandardListingCard({
           {/* Top section: price, badge, heart */}
           <div className="flex justify-between items-start mb-3">
             <div className="flex flex-col items-start">
-              <div className="text-2xl font-bold text-blue-600">R{listing.price}</div>
+              <div className="text-2xl font-bold text-blue-600">{formatPrice(listing.price)}</div>
               <div className="mt-1 mb-0">
                 <Badge className={cn("text-white text-sm px-3 py-1 rounded", "bg-pink-600")}>{listing.adFlasher || "Unique Design"}</Badge>
               </div>
@@ -241,7 +242,7 @@ export function StandardListingCard({
           </div>
           {/* Middle section: title and details */}
           <div className="flex-1">
-            <h2 className="text-lg font-bold text-gray-900 mb-2">{listing.title}</h2>
+            <h2 className="text-lg font-bold text-gray-800 mb-2 uppercase">{listing.title}</h2>
             {/* Product Details */}
             <div className="space-y-0.5 mb-2">
               {/* First line: Tombstone Type, Full Tombstone (bold if present), stoneType, style/theme, culture */}
@@ -322,4 +323,4 @@ export function StandardListingCard({
       </div>
     </div>
   );
-} 
+}

@@ -11,6 +11,7 @@ import type { FavoriteProduct } from "@/context/favorites-context"
 import { FavoriteButton } from "./favorite-button"
 import LocationTrigger from "./LocationTrigger"
 import { calculateDistanceFrom } from "@/lib/locationUtil";
+import { formatPrice } from "@/lib/priceUtils"
 
 interface PremiumListingCardProps {
   listing: any;
@@ -137,7 +138,7 @@ export function PremiumListingCard({
         <div className="w-full px-4 pt-4 pb-2 bg-gray-50 flex flex-col">
             {/* Price, Badge, and Heart (Mobile) */}
             <div className="flex flex-col items-start mb-3">
-              <div className="text-2xl font-bold text-blue-600">R{listing.price}</div>
+              <div className="text-2xl font-bold text-blue-600">{formatPrice(listing.price)}</div>
               <div className="mt-1 mb-0">
                 <Badge className={cn("text-white text-sm px-3 py-1 rounded", "bg-pink-600")}>{listing.adFlasher}</Badge>
               </div>
@@ -147,7 +148,7 @@ export function PremiumListingCard({
               </div>
             </div>
             {/* Title, Details, Features (Mobile) */}
-            <h2 className="text-lg font-bold text-gray-900 mb-2">{listing.title}</h2>
+            <h2 className="text-lg font-bold text-gray-800 mb-2 uppercase">{listing.title}</h2>
             {/* --- Product Details Section (same as desktop) --- */}
             <div className="space-y-0.5 mb-2">
             {/* First line: Tombstone Type, Full Tombstone (bold if present), stoneType, style/theme, culture */}
@@ -241,7 +242,7 @@ export function PremiumListingCard({
           <div className="flex-1 p-4 flex flex-col">
               {/* Price and Heart */}
               <div className="flex flex-col items-start mb-3">
-                <div className="text-2xl font-bold text-blue-600">R{listing.price}</div>
+                <div className="text-2xl font-bold text-blue-600">{formatPrice(listing.price)}</div>
                 <div className="mt-0">
                   <Badge className={cn("text-white text-xs px-2 py-0.5 rounded", "bg-pink-600")}>{listing.adFlasher}</Badge>
                 </div>
@@ -255,7 +256,7 @@ export function PremiumListingCard({
               </div>
               )}
               {/* Title, Details, Features */}
-              <h2 className="text-lg font-bold text-gray-900 mb-2">{listing.title}</h2>
+              <h2 className="text-lg font-bold text-gray-800 mb-2 uppercase">{listing.title}</h2>
               {/* --- Product Details Section (compact, styled like screenshot) --- */}
               <div className="space-y-0.5 mb-2">
               {/* First line: Tombstone Type, Full Tombstone (bold if present), stoneType, style/theme, culture */}

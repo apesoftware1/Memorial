@@ -17,6 +17,17 @@ const ADMIN_EMAILS = [
 ];
 
 const handler = NextAuth({
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+      }
+    }
+  },
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -89,6 +100,16 @@ const handler = NextAuth({
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  events: {
+    async signIn({ user, account, profile }) {
+      // Session token will be automatically stored in cookies by NextAuth
+      console.log('User signed in:', user.email);
+    },
+    async signOut({ session, token }) {
+      // Session token will be automatically removed from cookies by NextAuth
+      console.log('User signed out');
+    }
   },
   callbacks: {
     async jwt({ token, user }) {
