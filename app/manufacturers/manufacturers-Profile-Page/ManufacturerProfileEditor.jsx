@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Star, MapPin, Edit2 } from "lucide-react";
+import { Star, MapPin, Edit2, Upload } from "lucide-react";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { PremiumListingCard } from "@/components/premium-listing-card";
@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { useManufacturerLocation } from '@/hooks/useManufacturerLocation'
 import ManufacturerLocationModal from '@/components/ManufacturerLocationModal';
 import { updateCompanyField } from '@/graphql/mutations/updateCompany';
+import { toast } from "@/hooks/use-toast";
 
 // SVG Settings (gear) icon component
 const SettingsIcon = (props) => (
@@ -66,6 +67,10 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
   // Custom confirmation dialog state
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [listingToDelete, setListingToDelete] = useState(null);
+  
+  // Logo upload state
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
   
   // Company state management
   const [company, setCompany] = useState(initialCompany);
@@ -456,6 +461,88 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
     }
   };
 
+  // Function to upload image to Cloudinary
+  const uploadToCloudinary = async (file) => {
+    try {
+      const uploadData = new FormData();
+      uploadData.append('file', file);
+      uploadData.append('upload_preset', 'listings');
+      
+      const res = await fetch(`https://api.cloudinary.com/v1_1/dtymvjhjq/image/upload`, {
+        method: 'POST',
+        body: uploadData
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Cloudinary upload failed:', res.status, errorText);
+        throw new Error('Upload failed');
+      }
+      
+      const data = await res.json();
+      console.log('Cloudinary upload success:', data);
+      return data; // Return the full Cloudinary response (url, public_id, etc.)
+    } catch (error) {
+      console.error('Error uploading to Cloudinary:', error);
+      throw error;
+    }
+  };
+
+  // Function to handle logo upload
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    try {
+      setIsUploading(true);
+      
+      // Upload to Cloudinary
+      const uploadedImage = await uploadToCloudinary(file);
+      
+      // Update company with new logo information
+      const logoUpdate = {
+        logoUrl: uploadedImage.secure_url,
+        logoUrlPublicId: uploadedImage.public_id
+      };
+      
+      // Update the field in the API
+      const updatedData = await updateCompanyField(company.documentId, logoUpdate);
+      
+      if (updatedData) {
+        // Update local state with the new logo
+        setCompany(prevCompany => ({
+          ...prevCompany,
+          logo: {
+            url: uploadedImage.secure_url,
+            publicId: uploadedImage.public_id
+          }
+        }));
+        
+        toast({
+          title: "Logo updated successfully",
+          description: "Your company logo has been updated.",
+          variant: "success"
+        });
+      } else {
+        // Handle error
+        toast({
+          title: "Failed to update logo",
+          description: "Please try again later.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error updating logo:', error);
+      toast({
+        title: "Error updating logo",
+        description: "An error occurred while updating your logo.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <>
       <Header showLogout={isOwner} />
@@ -826,13 +913,57 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
           {/* Right Column */}
           <div style={{ flex: 1, minWidth: 220, alignSelf: 'flex-start', textAlign: mobile ? 'left' : 'right', paddingLeft: mobile ? 8 : undefined, boxSizing: 'border-box' }}>
             <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 6, textAlign: 'center', width: '100%' }}>Company Logo</div>
-            <div style={{ border: '2px solid #00baff', borderRadius: 8, background: '#fff', padding: 8, display: 'inline-block', position: 'relative', minWidth: 240, minHeight: 120, marginBottom: 16 }}>
-              <Image src={company.logo?.url || '/placeholder-logo.svg'} alt="Company Logo" width={220} height={110} style={{ objectFit: 'contain', display: 'block', margin: '0 auto' }} />
+            <div 
+              style={{ 
+                border: '2px solid #00baff', 
+                borderRadius: 8, 
+                background: '#fff', 
+                padding: 8, 
+                display: 'inline-block', 
+                position: 'relative', 
+                minWidth: 240, 
+                minHeight: 120, 
+                marginBottom: 16,
+                cursor: isOwner ? 'pointer' : 'default'
+              }}
+              onClick={() => isOwner && fileInputRef.current?.click()}
+            >
+              <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                <Image 
+                  src={company.logoUrl || '/placeholder-logo.svg'} 
+                  alt="Company Logo" 
+                  width={220} 
+                  height={110} 
+                  style={{ objectFit: 'contain', display: 'block', margin: '0 auto' }} 
+                />
+                {isOwner && isUploading && (
+                  <div style={{ 
+                    position: 'absolute', 
+                    top: 0, 
+                    left: 0, 
+                    right: 0, 
+                    bottom: 0, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    backgroundColor: 'rgba(0,0,0,0.3)' 
+                  }}>
+                    <Upload style={{ width: 24, height: 24, color: 'white' }} />
+                  </div>
+                )}
+              </div>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                style={{ display: 'none' }} 
+                accept="image/*"
+                onChange={handleLogoUpload}
+              />
             </div>
             {isOwner && (
-              <button style={{ background: 'none', border: 'none', marginLeft: 2, cursor: 'pointer' }}>
-                <Edit2 style={{ width: 16, height: 16, color: '#888' }} />
-              </button>
+              <div style={{ textAlign: 'center', fontSize: 12, color: '#666', marginBottom: 8 }}>
+                {isUploading ? 'Uploading...' : 'Click to update logo'}
+              </div>
             )}
 
             {/* Socials label */}
@@ -1027,11 +1158,13 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                     ...listing,
                     company: {
                       name: company.name,
-                      logo: company.logo
+                      logoUrl: company.logoUrl || company.logo || '/placeholder-logo.svg',
+                      location: company.location || 'location not set',
+                      latitude: company.latitude,
+                      longitude: company.longitude,
+                      slug: company.slug
                     },
                     manufacturer: company.name,
-                    location: company.location,
-                    distance: '5km away',
                     enquiries: listing.inquiries?.length || 0
                   }} 
                   isFirstCard={idx === 0} 
@@ -1284,4 +1417,4 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
       </div>
     </>
   );
-} 
+}

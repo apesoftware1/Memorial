@@ -16,6 +16,13 @@ query GetListings {
     adFlasher
     isFeatured
     isOnSpecial
+    specials {
+      active
+      sale_price
+      start_date
+      end_date 
+    }
+
     isPremium
     isStandard
     productDetails {
@@ -40,7 +47,9 @@ query GetListings {
       name
       isFeatured
       location
-      logo { url }
+      logoUrl
+      logoUrlPublicId
+
       latitude
       longitude
     }

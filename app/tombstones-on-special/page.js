@@ -71,15 +71,37 @@ export default function TombstonesOnSpecial() {
 
   // Map a raw listing from GraphQL to the format expected by our card components
   const mapListingToProduct = useCallback((listing) => {
-    // Format price with proper South African formatting
-    const priceNum = typeof listing.price === "number"
+    // Get the active special (we already filtered for active specials)
+    const activeSpecial = listing.specials?.[0]; // Take the first active special
+    
+    // Format original price with proper South African formatting
+    const originalPriceNum = typeof listing.price === "number"
       ? listing.price
       : parseFloat(String(listing.price).replace(/[^\d.]/g, "")) || 0;
 
-    const formattedPrice = `R ${priceNum.toLocaleString("en-ZA", { 
+    const formattedOriginalPrice = `R ${originalPriceNum.toLocaleString("en-ZA", { 
       minimumFractionDigits: 0, 
       maximumFractionDigits: 0 
     }).replace(/,/g, " ")}`;
+
+    // Format special sale price
+    const salePriceNum = activeSpecial?.sale_price || originalPriceNum;
+    const formattedSalePrice = `R ${salePriceNum.toLocaleString("en-ZA", { 
+      minimumFractionDigits: 0, 
+      maximumFractionDigits: 0 
+    }).replace(/,/g, " ")}`;
+
+    // Calculate discount percentage if there's a special
+    const discountPercentage = activeSpecial?.sale_price && originalPriceNum > 0 
+      ? Math.round(((originalPriceNum - activeSpecial.sale_price) / originalPriceNum) * 100)
+      : 0;
+    
+    const discount = discountPercentage > 0 ? `${discountPercentage}% OFF` : "";
+
+    // Use special end_date for countdown timer
+    const endDate = activeSpecial?.end_date 
+      ? new Date(activeSpecial.end_date).toISOString()
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // fallback to 30 days
 
     // Build details string from available data
     const details = [
@@ -104,14 +126,14 @@ export default function TombstonesOnSpecial() {
     return {
       id: listing.documentId,
       image: listing.mainImageUrl || "/placeholder.svg",
-      originalPrice: formattedPrice, // For now, same as sale price since we don't have original price in schema
-      salePrice: formattedPrice,
-      discount: "", // Will be empty until we have discount data in the schema
+      originalPrice: formattedOriginalPrice,
+      salePrice: formattedSalePrice,
+      discount: discount,
       title: listing.title || "Untitled",
       details: details,
       tag: listing.adFlasher || "SPECIAL OFFER",
       tagColor: "bg-red-600",
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now as placeholder
+      endDate: endDate,
       manufacturer: listing.company?.name || "",
       location: listing.company?.location || "",
       features: features,
@@ -122,30 +144,42 @@ export default function TombstonesOnSpecial() {
 
   // Process the fetched data - Filter by special.active
   const allListings = data?.listings || [];
-  
-  // Debug logging for special filtering
+
+// Debug logging for special filtering
   console.log('=== TOMBSTONES-ON-SPECIAL FILTERING DEBUG ===');
   console.log('Total listings from backend:', allListings.length);
-  console.log('First few listings special status:', 
+  console.log(
+    'First few listings special status:',
     allListings.slice(0, 5).map(listing => ({
       id: listing.documentId,
       title: listing.title,
-      specialActive: listing.special?.active,
-      isOnSpecial: listing.isOnSpecial // for comparison
+      specialsType: Array.isArray(listing.specials) ? 'array' : typeof listing.specials,
+      specials: listing.specials
     }))
   );
-  
-  const specialListings = allListings.filter(listing => listing.special?.active === true);
-  console.log('Filtered special listings count:', specialListings.length);
-  console.log('Special listings:', 
-    specialListings.map(listing => ({
-      id: listing.documentId,
-      title: listing.title,
-      specialActive: listing.special?.active
-    }))
-  );
-  console.log('=== END SPECIAL FILTERING DEBUG ===');
-  console.log(specialListings.length)
+
+  // Filter where specials is an array AND every special is active
+  const specialListings = allListings.filter(listing => {
+    console.log('Specials type:', Array.isArray(listing.specials) ? 'array' : typeof listing.specials);
+    return (
+      Array.isArray(listing.specials) &&
+      listing.specials.length > 0 &&
+      listing.specials.every(special => special.active === true)
+    );
+  });
+
+console.log('Filtered special listings count:', specialListings.length);
+console.log(
+  'Special listings:',
+  specialListings.map(listing => ({
+    id: listing.documentId,
+    title: listing.title,
+    specials: listing.specials
+  }))
+);
+console.log('=== END SPECIAL FILTERING DEBUG ===');
+console.log(specialListings.length);
+
   // Subsets from specials only
   const premiumSpecials = specialListings.filter(listing => listing?.isPremium === true);
   const featuredSpecials = specialListings.filter(listing => listing?.isFeatured === true);
@@ -256,7 +290,7 @@ export default function TombstonesOnSpecial() {
             <div>
               <p className="font-bold text-blue-600 text-lg">{product.salePrice}</p>
               {product.originalPrice !== product.salePrice && (
-                <p className="text-xs text-gray-500 line-through">{product.originalPrice}</p>
+                <p className="text-sm text-gray-500 line-through">{product.originalPrice}</p>
               )}
             </div>
           </div>
@@ -349,6 +383,9 @@ export default function TombstonesOnSpecial() {
             {/* Price, Badge */}
             <div className="flex flex-col items-start mb-3">
               <div className="text-2xl font-bold text-blue-600">{product.salePrice}</div>
+              {product.originalPrice !== product.salePrice && (
+                <div className="text-sm text-gray-500 line-through">{product.originalPrice}</div>
+              )}
               <div className="mt-1 mb-0">
                 <span className={`text-white text-xs px-2 py-0.5 rounded ${product.tagColor || "bg-red-600"}`}>{product.tag || "Special Offer"}</span>
               </div>
@@ -406,7 +443,7 @@ export default function TombstonesOnSpecial() {
             <div className="flex justify-between items-start">
               <h3 className="font-bold text-gray-800 text-xl">{product.title}</h3>
               <div>
-                <p className="font-bold text-blue-800 text-xl">{product.salePrice}</p>
+                <p className="font-bold text-blue-600 text-xl">{product.salePrice}</p>
                 {product.originalPrice !== product.salePrice && (
                   <p className="text-sm text-gray-500 line-through text-right">{product.originalPrice}</p>
                 )}
@@ -466,7 +503,8 @@ export default function TombstonesOnSpecial() {
     );
   }
 
-  // Handle empty state
+  // Handle empty statec
+  console.log(specialListings);
   if (specialListings.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">

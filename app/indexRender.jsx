@@ -54,26 +54,19 @@ const IndexRender = ({
     }
   }, []);
 
-  // Sync page from URL on mount/URL change
+  // Initialize page from URL on mount only
   useEffect(() => {
     if (!searchParams) return;
     const pageFromUrl = parseInt(searchParams.get('page') || '1', 10);
-    if (pageFromUrl !== currentPage) {
-      setCurrentPage(pageFromUrl);
-    }
+    setCurrentPage(pageFromUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, []); // Only run on mount
 
-  // Helper to change page and update URL
+  // Helper to change page without reloading the page or scrolling
   const goToPage = (nextPage) => {
     const clamped = Math.max(1, nextPage); // allow moving beyond local dataset; parent can fetch
     setCurrentPage(clamped);
-    const params = new URLSearchParams(searchParams ? Array.from(searchParams.entries()) : []);
-    params.set('page', String(clamped));
-    router.push(`?${params.toString()}`);
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    // No scrolling behavior - keep user's current scroll position
   };
 
   // PAGINATION LOGIC (all from strapiListings)
@@ -94,6 +87,10 @@ const IndexRender = ({
   const standardStart = (currentPage - 1) * standardPerPage;
   const standardEnd = standardStart + standardPerPage;
   const standardToShow = stdListings.slice(standardStart, standardEnd);
+  
+  // Calculate total pages based on both premium and standard listings
+  const totalStandardPages = Math.max(1, Math.ceil(stdListings.length / standardPerPage));
+  const totalPages = Math.max(totalPremiumPages, totalStandardPages);
   
   console.log(stdListings.length)
   // Featured Manufacturer (pick first from premium listings)
@@ -247,7 +244,7 @@ const IndexRender = ({
                   </div>
                   <div>
                     <img
-                      src={featuredManufacturer.logo?.url || "/placeholder-logo.svg"}
+                      src={featuredManufacturer.logoUrl || "/placeholder-logo.svg"}
                       alt={`${featuredManufacturer.name} Logo`}
                       width={80}
                       height={80}
@@ -325,7 +322,11 @@ const IndexRender = ({
       </section>
 
       {/* 10. Pagination Controls */}
-      <div className="flex justify-center my-8">
+      <div className="flex flex-col items-center my-8">
+        {/* Page indicator */}
+        <div className="mb-4 text-sm text-gray-600">
+          Page {currentPage} of {totalPages}
+        </div>
         <nav className="inline-flex rounded-md shadow">
           <button
             onClick={() => goToPage(currentPage - 1)}
@@ -334,12 +335,12 @@ const IndexRender = ({
           >
             Previous
           </button>
-          {[...Array(totalPremiumPages)].map((_, idx) => (
+          {[...Array(totalPages)].map((_, idx) => (
             <button
               key={idx + 1}
               onClick={() => goToPage(idx + 1)}
               className={`py-2 px-4 border border-gray-300 bg-white text-sm font-medium ${
-                currentPage === idx + 1 ? "text-blue-600 font-bold" : "text-gray-500 hover:text-blue-600"
+                currentPage === idx + 1 ? "text-blue-600 font-bold bg-blue-50" : "text-gray-500 hover:text-blue-600"
               }`}
             >
               {idx + 1}
@@ -347,7 +348,7 @@ const IndexRender = ({
           ))}
           <button
             onClick={() => goToPage(currentPage + 1)}
-            disabled={false}
+            disabled={currentPage >= totalPages}
             className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed"
           >
             Next
@@ -358,4 +359,4 @@ const IndexRender = ({
   );
 };
 
-export default IndexRender; 
+export default IndexRender;

@@ -83,15 +83,15 @@ export function PremiumListingCard({
       <div className="relative flex flex-col md:hidden">
         {/* Manufacturer Logo in its own box, bottom right corner (Mobile only) */}
         <div className="absolute bottom-3 right-3 z-20 bg-gray-50 p-2 rounded-lg md:hidden">
-          <a href={listing.company.name} className="manufacturer-link" onClick={e => e.stopPropagation()} aria-label={`View ${listing.manufacturer} profile`}>
+          <div className="manufacturer-link" onClick={e => e.stopPropagation()} aria-label={`View ${listing.manufacturer || listing.company?.name} profile`}>
             <Image
-              src={listing.company.logo?.url || "/placeholder-logo.svg"}
-              alt={`${listing.manufacturer} Logo`}
+              src={listing.company?.logoUrl || "/placeholder-logo.svg"}
+              alt={`${listing.manufacturer || listing.company?.name} Logo`}
               width={96}
               height={96}
               className="object-contain"
             />
-          </a>
+          </div>
         </div>
         {/* Main Image Container */}
         <div className="bg-white px-3 py-3">
@@ -192,18 +192,18 @@ export function PremiumListingCard({
             </div>
           {/* Manufacturer Information (Mobile) */}
           <div className="flex flex-col mt-0">
-            <a href={listing.company.name} className="manufacturer-link font-medium text-gray-900 text-base mb-2" onClick={e => e.stopPropagation()} aria-label={`View ${listing.manufacturer} profile`}>
-              {listing.manufacturer}
-            </a>
+            <div className="font-medium text-gray-900 text-base mb-2">
+              {listing.manufacturer || listing.company?.name}
+            </div>
             <div className="space-y-1.5">
-              {listing.enquiries && (
+              {(listing.enquiries !== undefined || (listing.inquiries_c?.length !== undefined)) && (
                 <div className="flex items-center text-green-600">
                   <Check className="w-3.5 h-3.5 mr-1" />
-                  <span className="text-xs">{listing.enquiries} enquiries to this Manufacturer</span>
+                  <span className="text-xs">{listing.enquiries || listing.inquiries_c?.length || 0} enquiries to this Manufacturer</span>
                 </div>
               )}
               {/* Location display */}
-              <div className="text-xs text-gray-600">{listing.company.location && listing.company.location.trim() !== '' ? listing.company.location : 'location not set'}</div>
+              <div className="text-xs text-gray-600">{listing.company?.location && listing.company.location.trim() !== '' ? listing.company.location : 'location not set'}</div>
               <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
                 <Image
                   src="/new files/newIcons/Google_Pin_Icon/GooglePin_Icon.svg"
@@ -302,20 +302,18 @@ export function PremiumListingCard({
             {/** UI pattern as per user code and screenshot **/}
             {(() => {
               const profileUrl = `/manufacturers/${listing.company?.slug || listing.company?.name || ''}`;
-              const logoSrc = listing.company.logo?.url || '/placeholder-logo.svg';
+              const logoSrc = listing.company?.logoUrl || '/placeholder-logo.svg';
+              const manufacturerName = listing.manufacturer || listing.company?.name;
               return (
                 <div className="flex justify-between items-stretch space-x-4 mt-2">
                   {/* Left Column for text details */}
                   <div className="flex-1 space-y-1.5">
-                    <div className="font-bold text-lg text-gray-900">{listing.company.name}</div>
+                    <div className="font-bold text-lg text-gray-900">{manufacturerName}</div>
                     <div className="flex items-center text-green-600">
                       <Check className="w-3.5 h-3.5 mr-1" />
-                      <span className="text-xs">{(listing.inquiries_c?.length ?? 0)} enquiries to this Manufacturer</span>
+                      <span className="text-xs">{listing.enquiries || listing.inquiries_c?.length || 0} enquiries to this Manufacturer</span>
                     </div>
-                    <div className="text-xs text-gray-800 mt-1" style={{minHeight: 18}}>{listing.company.location && listing.company.location.trim() !== '' ? listing.company.location : 'location not set'}</div>
-                    <Link href={profileUrl} prefetch={false} className="font-medium text-gray-900 text-base mb-2" aria-label={`View ${listing.manufacturer} profile`}>
-                      {listing.manufacturer}
-                    </Link>
+                    <div className="text-xs text-gray-800 mt-1" style={{minHeight: 18}}>{listing.company?.location && listing.company.location.trim() !== '' ? listing.company.location : 'location not set'}</div>
                     
                     <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
                       <Image
@@ -330,10 +328,10 @@ export function PremiumListingCard({
                   </div>
                   {/* Right Column for Logo (Desktop only) */}
                   <div className="w-1/3 flex-shrink-0 flex flex-col items-end justify-end hidden md:flex">
-                    <Link href={profileUrl} prefetch={false} aria-label={`View ${listing.manufacturer} profile`}>
+                    <Link href={profileUrl} prefetch={false} aria-label={`View ${manufacturerName} profile`}>
                       <Image
                         src={logoSrc}
-                        alt={`${listing.manufacturer} Logo`}
+                        alt={`${manufacturerName} Logo`}
                         width={150}
                         height={300}
                         className="object-contain mt-auto mb-2"

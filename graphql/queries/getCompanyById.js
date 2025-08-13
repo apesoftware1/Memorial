@@ -12,9 +12,9 @@ export const GET_COMPANY_BY_ID = gql`
       latitude
       longitude
       description
-      logo {
-        url
-      }
+      logoUrl
+      logoUrlPublicId
+
       operatingHours {
         id
         monToFri
