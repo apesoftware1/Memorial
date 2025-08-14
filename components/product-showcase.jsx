@@ -63,7 +63,7 @@ export default function ProductShowcase({ listing,id }) {
           setDistance(dist);
         }
       } catch (error) {
-        console.error("Error calculating distance:", error);
+        
       }
     };
 
@@ -73,10 +73,7 @@ export default function ProductShowcase({ listing,id }) {
   const handleShowContact = () => {
     setShowContact(!showContact);
     // Debug: Log the company data to see what's available
-    console.log('Company data:', listing.company);
-    console.log('Phone:', listing.company?.phone);
-    console.log('Mobile:', listing.company?.mobile);
-    console.log('Email:', listing.company?.email);
+   
   };
 
   return (

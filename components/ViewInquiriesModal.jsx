@@ -64,7 +64,7 @@ export default function ViewInquiriesModal({ open, onClose, listings, onInquirie
 
   // Handle opening inquiry detail
   const handleOpenInquiry = async (inquiry) => {
-    console.log('Opening inquiry:', inquiry);
+   
     
     // Set the selected inquiry with updated read status immediately for UI
     const updatedInquiry = { ...inquiry, isRead: true };
@@ -74,7 +74,7 @@ export default function ViewInquiriesModal({ open, onClose, listings, onInquirie
     // Mark this specific inquiry as read if it's not already read
     if (inquiry.isRead !== true) {
       try {
-        console.log('Marking inquiry as read:', inquiry.id || inquiry.documentId);
+
         
         const inquiryId = inquiry.documentId || inquiry.id;
         const response = await fetch(`https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/inquiries/${inquiryId}`, {
@@ -95,7 +95,7 @@ export default function ViewInquiriesModal({ open, onClose, listings, onInquirie
         }
         
         const result = await response.json();
-        console.log('Backend response:', result);
+     
         
         // Update local state with all inquiries - only update the specific inquiry that was clicked
         const updatedInquiries = allInquiries.map(inq => {

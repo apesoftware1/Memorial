@@ -63,13 +63,13 @@ const handler = NextAuth({
             });
             
             if (!res.ok) {
-              console.error("Strapi auth failed:", res.status, res.statusText);
+             
               return null;
             }
             
             const contentType = res.headers.get("content-type");
             if (!contentType || !contentType.includes("application/json")) {
-              console.error("Strapi auth returned non-JSON response");
+             
               return null;
             }
             
@@ -87,11 +87,11 @@ const handler = NextAuth({
             }
             return null;
           } catch (error) {
-            console.error("Strapi auth error:", error);
+           
             return null;
           }
         } catch (error) {
-          console.error("Auth error:", error);
+         
           return null;
         }
       }
@@ -104,11 +104,11 @@ const handler = NextAuth({
   events: {
     async signIn({ user, account, profile }) {
       // Session token will be automatically stored in cookies by NextAuth
-      console.log('User signed in:', user.email);
+      
     },
     async signOut({ session, token }) {
       // Session token will be automatically removed from cookies by NextAuth
-      console.log('User signed out');
+     
     }
   },
   callbacks: {

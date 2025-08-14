@@ -256,7 +256,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
       const text = await res.text();
       const data = text ? JSON.parse(text) : null;
   
-      console.log("Deleted:", data);
+     
       
       // Show styled success message
       setDeleteMessage("Listing deleted successfully!");
@@ -269,7 +269,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
       }, 2000);
   
     } catch (error) {
-      console.error("Error deleting listing:", error);
+      
       setDeleteMessage("Failed to delete listing.");
       setShowDeleteMessage(true);
       setIsDeleting(false);
@@ -310,7 +310,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
     const newInquiries = allInquiries.filter(inq => inq.isNew === true);
     
     if (newInquiries.length > 0) {
-      console.log('Marking all new inquiries as not new:', newInquiries.length);
+
       
       // Update backend for each new inquiry
       for (const inquiry of newInquiries) {
@@ -328,7 +328,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
             })
           });
         } catch (error) {
-          console.error('Error updating inquiry isNew status:', error);
+         
         }
       }
       
@@ -369,14 +369,14 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
         setEditingField(null);
         
         // Optional: Show success message
-        console.log(`${field} updated successfully`);
+       
       } else {
         // Handle error
-        console.error(`Failed to update ${field}`);
+        
         alert(`Failed to update ${field}. Please try again.`);
       }
     } catch (error) {
-      console.error(`Error updating ${field}:`, error);
+      
       alert(`Error updating ${field}. Please try again.`);
     }
   };
@@ -404,14 +404,14 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
         setEditingOperatingHours({});
         
         // Optional: Show success message
-        console.log('Operating hours updated successfully');
+       
       } else {
         // Handle error
-        console.error('Failed to update operating hours');
+     
         alert('Failed to update operating hours. Please try again.');
       }
     } catch (error) {
-      console.error('Error updating operating hours:', error);
+     
       alert('Error updating operating hours. Please try again.');
     }
   };
@@ -449,14 +449,14 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
         setEditingField(null);
         
         // Optional: Show success message
-        console.log('Social links updated successfully');
+   
       } else {
         // Handle error
-        console.error('Failed to update social links');
+        
         alert('Failed to update social links. Please try again.');
       }
     } catch (error) {
-      console.error('Error updating social links:', error);
+      
       alert('Error updating social links. Please try again.');
     }
   };
@@ -475,15 +475,15 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
       
       if (!res.ok) {
         const errorText = await res.text();
-        console.error('Cloudinary upload failed:', res.status, errorText);
+       
         throw new Error('Upload failed');
       }
       
       const data = await res.json();
-      console.log('Cloudinary upload success:', data);
+     
       return data; // Return the full Cloudinary response (url, public_id, etc.)
     } catch (error) {
-      console.error('Error uploading to Cloudinary:', error);
+      
       throw error;
     }
   };
@@ -537,7 +537,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
         });
       }
     } catch (error) {
-      console.error('Error updating logo:', error);
+     
       toast({
         title: "Error updating logo",
         description: "An error occurred while updating your logo.",

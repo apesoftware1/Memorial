@@ -26,12 +26,12 @@ export async function POST(request) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Cloudinary upload failed:', response.status, errorText);
+
       throw new Error(`Cloudinary upload failed: ${response.statusText}`);
     }
 
     const result = await response.json();
-    console.log('Cloudinary upload success:', result);
+    
 
     return NextResponse.json({
       success: true,
@@ -42,7 +42,7 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error('Upload error:', error);
+    
     return NextResponse.json(
       { error: 'Upload failed' }, 
       { status: 500 }

@@ -173,24 +173,24 @@ export default function CreateListingForm() {
 
   const handleFileChange = (e) => {
     const { name, files } = e.target
-    console.log('File change triggered:', name, files);
+    
     if (name === 'mainImage') {
       setMainImage(files[0])
-      console.log('Main image set:', files[0]);
+      
     } else if (name === 'thumbnails') {
       setThumbnails(Array.from(files).slice(0, 5))
-      console.log('Thumbnails set:', Array.from(files).slice(0, 5));
+     
     }
   }
 
   const handleThumbnailChange = (e, index) => {
     const file = e.target.files[0]
-    console.log('Thumbnail change triggered:', index, file);
+    
     if (file) {
       const newThumbnails = [...thumbnails]
       newThumbnails[index] = file
       setThumbnails(newThumbnails)
-      console.log('Thumbnail updated at index:', index, file);
+      
     }
   }
 
@@ -215,7 +215,7 @@ export default function CreateListingForm() {
     }
     
     const data = await res.json()
-    console.log('Cloudinary upload success:', data)
+
     return data // Return the full Cloudinary response (url, public_id, etc.)
   }
 
@@ -321,7 +321,7 @@ export default function CreateListingForm() {
       }
           }
 
-      console.log('Sending payload to Strapi:', JSON.stringify(payload, null, 2))
+
 
       const res = await fetch('https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/listings', {
         method: 'POST',
@@ -333,7 +333,7 @@ export default function CreateListingForm() {
 
       if (res.ok) {
         const responseData = await res.json()
-        console.log('Success response:', responseData)
+        
         
         // Update Apollo cache to include the new listing
         try {
@@ -378,10 +378,10 @@ export default function CreateListingForm() {
               }
             });
             
-            console.log('Apollo cache updated with new listing');
+        
           }
         } catch (cacheError) {
-          console.log('Cache update failed, but listing was created successfully:', cacheError);
+
         }
         
         setSubmitMessage("Listing created successfully!");
@@ -682,12 +682,12 @@ export default function CreateListingForm() {
                     marginBottom: 4,
                   }}
                   onClick={() => {
-                    console.log('Main image click triggered');
+                 
                     const input = document.getElementById(`img-upload-main`);
                     if (input) {
                       input.click();
                     } else {
-                      console.error('Main image input not found');
+                      
                     }
                   }}
                 >

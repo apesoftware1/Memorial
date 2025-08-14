@@ -4,7 +4,7 @@ import { Star, MapPin } from "lucide-react";
 // Removed: import { getManufacturerSlug } from "@/lib/data";
 
 const ManufacturerCard = ({ manufacturer }) => {
-  console.log(manufacturer);
+
   const profileUrl = `/manufacturers/manufacturers-Profile-Page/${manufacturer.documentId}`;
   return (
     <div className="bg-[#fafbfc] border border-gray-200 shadow-sm hover:shadow-md transition-shadow mb-6 w-full max-w-2xl ml-0 mr-auto p-6 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 min-h-[200px]">

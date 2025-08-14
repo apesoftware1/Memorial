@@ -95,7 +95,12 @@ export default function ManufacturerLogin() {
   // Redirect if already logged in
   useEffect(() => {
     if (status === "authenticated" && session) {
-      router.push("/manufacturers/manufacturers-Profile-Page");
+      // Check if user is admin and redirect accordingly
+      if (ADMIN_EMAILS.includes(session.user.email?.toLowerCase())) {
+        router.push("/regan-dashboard");
+      } else {
+        router.push("/manufacturers/manufacturers-Profile-Page");
+      }
     }
   }, [session, status, router]);
 
@@ -134,7 +139,12 @@ export default function ManufacturerLogin() {
         password,
       });
       if (result.ok) {
-        router.push("/manufacturers/manufacturers-Profile-Page");
+        // Check if user is admin and redirect accordingly
+        if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+          router.push("/regan-dashboard");
+        } else {
+          router.push("/manufacturers/manufacturers-Profile-Page");
+        }
       } else {
         setError("Login failed. Please check your credentials.");
       }
@@ -145,7 +155,26 @@ export default function ManufacturerLogin() {
     }
   }
 
-  // Removed handleAdminLogin function
+  async function handleAdminLogin() {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await signIn("credentials", {
+        redirect: false,
+        email: "regan@tombstonesfinder.com",
+        password: "admin123", // This should match the password in NextAuth config
+      });
+      if (result.ok) {
+        router.push("/regan-dashboard");
+      } else {
+        setError("Admin login failed. Please check credentials.");
+      }
+    } catch (err) {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div

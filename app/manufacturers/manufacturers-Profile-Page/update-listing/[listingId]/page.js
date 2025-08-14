@@ -107,7 +107,7 @@ export default function UpdateListingPage() {
           }
         }
       };
-console.log(payload);
+
       const response = await fetch(`https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/listings/${listing.documentId}`, {
         method: 'PUT',
         headers: {
@@ -130,7 +130,7 @@ console.log(payload);
       }, 2000);
 
     } catch (error) {
-      console.error('Error updating listing:', error);
+    
       setSubmitMessage(`Error updating listing: ${error.message}`);
       setShowMessage(true);
     } finally {

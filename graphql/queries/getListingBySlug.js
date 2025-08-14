@@ -54,7 +54,6 @@ export const GET_LISTING_BY_SLUG = gql`
         name
         location
         googleRating
-        address
         logoUrl
         logoUrlPublicId 
         operatingHours {
