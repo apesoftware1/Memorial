@@ -146,8 +146,7 @@ export default function TombstonesOnSpecial() {
   const allListings = data?.listings || [];
 
 // Debug logging for special filtering
-  console.log('=== TOMBSTONES-ON-SPECIAL FILTERING DEBUG ===');
-  console.log('Total listings from backend:', allListings.length);
+
   console.log(
     'First few listings special status:',
     allListings.slice(0, 5).map(listing => ({
@@ -160,7 +159,7 @@ export default function TombstonesOnSpecial() {
 
   // Filter where specials is an array AND every special is active
   const specialListings = allListings.filter(listing => {
-    console.log('Specials type:', Array.isArray(listing.specials) ? 'array' : typeof listing.specials);
+
     return (
       Array.isArray(listing.specials) &&
       listing.specials.length > 0 &&
@@ -168,7 +167,7 @@ export default function TombstonesOnSpecial() {
     );
   });
 
-console.log('Filtered special listings count:', specialListings.length);
+
 console.log(
   'Special listings:',
   specialListings.map(listing => ({
@@ -177,8 +176,8 @@ console.log(
     specials: listing.specials
   }))
 );
-console.log('=== END SPECIAL FILTERING DEBUG ===');
-console.log(specialListings.length);
+
+
 
   // Subsets from specials only
   const premiumSpecials = specialListings.filter(listing => listing?.isPremium === true);
@@ -504,7 +503,7 @@ console.log(specialListings.length);
   }
 
   // Handle empty statec
-  console.log(specialListings);
+
   if (specialListings.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">

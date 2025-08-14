@@ -298,6 +298,15 @@ const SearchContainer = ({
 
     let filtered = [...allListings];
 
+    // Filter by search (add this before other filters)
+    if (filters?.search && filters.search !== '') {
+      filtered = filtered.filter(listing => {
+        const title = (listing?.title || '').toLowerCase();
+        const companyName = (listing?.company?.name || '').toLowerCase();
+        return title.includes(filters.search.toLowerCase()) || companyName.includes(filters.search.toLowerCase());
+      });
+    }
+
     // Filter by category - activeTab corresponds directly to category index
     if (categories && categories.length > 0) {
       // Use the same sorting logic as CategoryTabs
@@ -470,15 +479,14 @@ const SearchContainer = ({
 
   // Select option from dropdown
   const selectOption = useCallback((name, value) => {
-    console.log(`=== FILTER SELECTION DEBUG ===`);
-    console.log(`Setting filter: ${name} = ${value}`);
+    
     if (setFilters) {
       setFilters(prev => {
         const newFilters = {
           ...prev,
           [name]: value
         };
-        console.log('Updated filters state:', newFilters);
+       
         return newFilters;
       });
     }
@@ -486,7 +494,7 @@ const SearchContainer = ({
       ...prev,
       openDropdown: null
     }));
-    console.log(`=== END FILTER SELECTION DEBUG ===`);
+  
   }, [setFilters]);
 
   return (

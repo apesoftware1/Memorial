@@ -117,8 +117,7 @@ const CreateSpecialModal = ({ isOpen, onClose, listing }) => {
         // Don't throw error here as the special was created successfully
       }
   
-      console.log('Special created:', specialResult);
-      console.log('Listing updated:', listingResult);
+   
       
       // Show styled success message
       setSubmitMessage('Special offer created successfully! The listing will now appear on the specials page.');
@@ -131,7 +130,7 @@ const CreateSpecialModal = ({ isOpen, onClose, listing }) => {
         onClose(); // Close modal after success
       }, 3000);
     } catch (err) {
-      console.error('Failed to create special:', err.message);
+      
       setSubmitMessage(`Error: ${err.message}`);
       setShowMessage(true);
       

@@ -128,7 +128,7 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
 
     setIsLoading(true)
     setError('')
-    console.log(company.documentId, location, latitude, longitude)
+   
     
     try {
       const response = await fetch(
@@ -168,7 +168,7 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
 
       onClose()
     } catch (error) {
-      console.error('Error updating company location:', error)
+      
       setError('Failed to save location. Please try again.')
     } finally {
       setIsLoading(false)

@@ -7,12 +7,12 @@ import ProductShowcase from "@/components/product-showcase";
 
 export default function TombstoneDetail() {
   const { slug: documentId } = useParams();
-  console.log(documentId)
+ 
   const { data, loading, error } = useQuery(GET_LISTING_BY_ID, {
     variables: { documentID: documentId},
     skip: !documentId,
   });
-  console.log(data)
+ 
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error loading listing.</div>;
