@@ -8,7 +8,6 @@ export const GET_MANUFACTURERS = gql`
       name
       googleRating
       location
-      address
       latitude
       longitude
       description

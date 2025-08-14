@@ -73,7 +73,7 @@ export default function ManufacturersPage() {
   }, []);
 
   if (loading) return <div>Loading manufacturers...</div>;
-  if (error) return <div>Error loading manufacturers.</div>;
+  if (error) return <div>Error loading manufacturers{console.error("GraphQL Error:", error)}</div>;
 
   // Prepare sorted manufacturers and results count
   const sortedManufacturers = Array.isArray(data?.companies) ? [...data.companies] : [];

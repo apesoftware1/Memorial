@@ -64,7 +64,6 @@ export const GET_LISTING_BY_ID = gql`
         latitude
         longitude
         googleRating
-        address
         logoUrl
         logoUrlPublicId 
         operatingHours {
