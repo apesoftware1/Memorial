@@ -85,12 +85,14 @@ export const GET_LISTING_BY_ID = gql`
           messenger
         }
         listings(pagination: { limit: -1 }) {
-        
+        mainImageUrl
+        thumbnailUrls
           title
           price
           documentId
           listing_category {
             name
+          
           }
           productDetails {
             stoneType {
