@@ -239,7 +239,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
     setShowDeleteMessage(false);
     
     try {
-      const res = await fetch(`https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/listings/${documentId}`, {
+      const res = await fetch(`https://typical-car-e0b66549b3.strapiapp.com/api/listings/${documentId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -316,7 +316,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
       for (const inquiry of newInquiries) {
         try {
           const inquiryId = inquiry.documentId || inquiry.id;
-          await fetch(`https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/inquiries/${inquiryId}`, {
+          await fetch(`https://typical-car-e0b66549b3.strapiapp.com/api/inquiries/${inquiryId}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -419,16 +419,23 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
   // Function to handle saving social links changes
   const handleSaveSocialLinks = async (socialLinksData) => {
     try {
+      // Format URLs to ensure they have proper protocol
+      const formatUrl = (url) => {
+        if (!url || url === "#") return "#";
+        // If URL doesn't start with http:// or https://, add https://
+        return url.match(/^https?:\/\//i) ? url : `https://${url}`;
+      };
+
       // Create the nested socialLinks object for the API with proper payload structure
       const socialLinksPayload = {
-        facebook: socialLinksData.facebook || "#",
-        website: socialLinksData.website || "#",
-        instagram: socialLinksData.instagram || "#",
-        tiktok: socialLinksData.tiktok || "#",
-        youtube: socialLinksData.youtube || "#",
-        x: socialLinksData.x || "#",
-        whatsapp: socialLinksData.whatsapp || "#",
-        messenger: socialLinksData.messenger || "#"
+        facebook: formatUrl(socialLinksData.facebook) || "#",
+        website: formatUrl(socialLinksData.website) || "#",
+        instagram: formatUrl(socialLinksData.instagram) || "#",
+        tiktok: formatUrl(socialLinksData.tiktok) || "#",
+        youtube: formatUrl(socialLinksData.youtube) || "#",
+        x: formatUrl(socialLinksData.x) || "#",
+        whatsapp: formatUrl(socialLinksData.whatsapp) || "#",
+        messenger: formatUrl(socialLinksData.messenger) || "#"
       };
 
       const socialLinksUpdate = {
@@ -470,14 +477,14 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
       
       const res = await fetch(`https://api.cloudinary.com/v1_1/dtymvjhjq/image/upload`, {
         method: 'POST',
+        mode: 'cors', // Add this line to enable CORS
         body: uploadData
       });
       
-      if (!res.ok) {
-        const errorText = await res.text();
-       
-        throw new Error('Upload failed');
-      }
+     if (!res.ok) {
+  const errorText = await res.text();
+  throw new Error(`Upload failed: ${res.status} - ${errorText}`);
+}
       
       const data = await res.json();
      
@@ -512,10 +519,8 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
         // Update local state with the new logo
         setCompany(prevCompany => ({
           ...prevCompany,
-          logo: {
-            url: uploadedImage.secure_url,
-            publicId: uploadedImage.public_id
-          }
+          logoUrl: uploadedImage.secure_url,
+          logoUrlPublicId: uploadedImage.public_id
         }));
         
         toast({
@@ -935,10 +940,11 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
             >
               <div style={{ position: 'relative', width: '100%', height: '100%' }}>
                 <Image 
-                  src={company.logoUrl || '/placeholder-logo.svg'} 
+                  src={`${company.logoUrl || '/placeholder-logo.svg'}?t=${Date.now()}`} 
                   alt="Company Logo" 
                   width={220} 
                   height={110} 
+                  key={company.logoUrl} // Add a key prop to force re-render when URL changes
                   style={{ objectFit: 'contain', display: 'block', margin: '0 auto' }} 
                 />
                 {isOwner && isUploading && (

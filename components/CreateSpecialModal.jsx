@@ -70,7 +70,7 @@ const CreateSpecialModal = ({ isOpen, onClose, listing }) => {
       };
   
       const specialResponse = await fetch(
-        'https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/specials',
+        'https://typical-car-e0b66549b3.strapiapp.com/api/specials',
         {
           method: 'POST',
           headers: {
@@ -99,7 +99,7 @@ const CreateSpecialModal = ({ isOpen, onClose, listing }) => {
       };
   
       const listingResponse = await fetch(
-        `https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/listings/${listing.documentId}`,
+        `https://typical-car-e0b66549b3.strapiapp.com/api/listings/${listing.documentId}`,
         {
           method: 'PUT',
           headers: {
@@ -702,4 +702,4 @@ const CreateSpecialModal = ({ isOpen, onClose, listing }) => {
   );
 };
 
-export default CreateSpecialModal; 
+export default CreateSpecialModal;

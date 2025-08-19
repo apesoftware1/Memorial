@@ -6,7 +6,7 @@ export async function PATCH(request, { params }) {
     const body = await request.json();
 
     // Make the PATCH request to Strapi using hardcoded URL like auth route
-    const response = await fetch(`https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/listings/${documentId}`, {
+    const response = await fetch(`https://typical-car-e0b66549b3.strapiapp.com/api/listings/${documentId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -35,4 +35,4 @@ export async function PATCH(request, { params }) {
       { status: 500 }
     );
   }
-} 
+}

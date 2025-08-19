@@ -108,7 +108,7 @@ export default function UpdateListingPage() {
         }
       };
 
-      const response = await fetch(`https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/listings/${listing.documentId}`, {
+      const response = await fetch(`https://typical-car-e0b66549b3.strapiapp.com/api/listings/${listing.documentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -628,4 +628,4 @@ export default function UpdateListingPage() {
       )}
     </div>
   );
-} 
+}

@@ -17,7 +17,7 @@ export async function updateCompanyField(documentId, updateObj) {
       // For debugging purposes, log the payload
       console.log('Updating company with payload:', { documentId, data: updateObj });
       
-      const res = await fetch(`https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/companies/${documentId}`, {
+      const res = await fetch(`https://typical-car-e0b66549b3.strapiapp.com/api/companies/${documentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

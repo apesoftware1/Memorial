@@ -53,7 +53,7 @@ const handler = NextAuth({
 
           // Regular user authentication via Strapi
           try {
-            const res = await fetch("https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/auth/local", {
+            const res = await fetch("https://typical-car-e0b66549b3.strapiapp.com/api/auth/local", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({

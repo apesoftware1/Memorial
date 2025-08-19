@@ -1,6 +1,6 @@
 export const sendInquiryRest = async ({ name, email, message, documentId }) => {
     try {
-      const response = await fetch('https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/inquiries', {
+      const response = await fetch('https://typical-car-e0b66549b3.strapiapp.com/api/inquiries', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
