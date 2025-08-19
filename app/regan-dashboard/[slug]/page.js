@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
 import { GET_COMPANY_WITH_ANALYTICS } from "@/graphql/queries/GetCompanyPerformance";
 import CompanyHeader from "../CompanyHeader";
@@ -16,6 +16,7 @@ import {
   monthToRange,
 } from "../useCompanyPerformance";
 
+
 export default function CompanyPerformancePage() {
   const params = useParams();
   const documentId = (params?.slug ?? "") || "";
@@ -26,24 +27,33 @@ export default function CompanyPerformancePage() {
   const [search, setSearch] = useState("");
   const [visible, setVisible] = useState(10);
 
-  // build variables for query
-  const { startISO, endISO } = useMemo(() => {
-    if (period !== "month" || !monthYear) return { startISO: null, endISO: null };
+  // build variables for query (format as YYYY-MM-DD)
+  const { eventsStart, eventsEnd } = useMemo(() => {
+    if (period !== "month" || !monthYear) return { eventsStart: null, eventsEnd: null };
     const { start, end } = monthToRange(monthYear);
-    return { startISO: start, endISO: end };
+    return {
+      eventsStart: start ? start.slice(0, 10) : null,
+      eventsEnd: end ? end.slice(0, 10) : null,
+    };
   }, [period, monthYear]);
+
+  // Log current analytics range to test the values
+  useEffect(() => {
+    console.log("Analytics range -> eventsStart:", eventsStart, "eventsEnd:", eventsEnd);
+  }, [eventsStart, eventsEnd]);
 
   // Always call hook; it internally skips when documentId is empty
   const { data, loading, error } = useCompanyPerformance(
     documentId,
-    startISO || null,
-    endISO || null
+    eventsStart,
+    eventsEnd
   );
 
   // Safe defaults
   const company = data?.companies[0]?? null;
+  
   const listings = company?.listings ?? [];
-
+ 
   // search filter
   const filteredListings = useMemo(() => {
     const q = search.trim().toLowerCase();
