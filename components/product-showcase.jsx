@@ -11,7 +11,8 @@ import React, { useEffect, useState } from "react"
 import { FavoriteButton } from "./favorite-button"
 import Header from "@/components/Header";
 import ProductContactForm from "./product-contact-form";
-import { calculateDistanceFrom } from "@/lib/locationUtil";
+import { useGuestLocation } from "@/hooks/useGuestLocation";
+// Remove this line: import { calculateDistanceFrom } from "@/lib/locationUtil";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import MapModal from "./MapModal";
 
@@ -23,8 +24,12 @@ export default function ProductShowcase({ listing,id }) {
     return null;
   }
   const [isMapOpen, setIsMapOpen] = useState(false);
-  const [distance, setDistance] = useState(null);
   const [showContact, setShowContact] = useState(false);
+  
+  useEffect(() => { 
+   trackAnalyticsEvent("listing_view", listing.documentId); 
+ }, [listing.documentId]);
+  const { location, error, loading, calculateDistanceFrom, refreshLocation } = useGuestLocation()
   // Prepare images: main image + thumbnails (all as URLs, no duplicates)
   const mainImageUrl = listing.mainImageUrl || listing.image || "/placeholder.svg";
   const thumbnailUrls = Array.isArray(listing.thumbnailUrls)
@@ -41,34 +46,22 @@ export default function ProductShowcase({ listing,id }) {
   const productDetails = listing.productDetails || {};
   const additionalDetails = listing.additionalProductDetails || {};
 
-  // Manufacturer info fallback
-  const info = { logo: listing.company?.logoUrl || "/placeholder-logo.svg", rating: listing.company?.googleRating || 4.7, hours: [] };
-  useEffect(() => {
-    const fetchDistance = async () => {
-      // Check if we're in the browser before accessing localStorage
-      if (typeof window === 'undefined') {
-        return;
+  // Manufacturer info
+  const info = { 
+    logo: listing.company?.logoUrl || "/placeholder-logo.svg", 
+    rating: listing.company?.googleRating || 4.7, 
+    hours: [] 
+  };
+  
+  const companyLocation = {
+    coords : { lat : Number(listing?.company?.latitude),
+       lng: Number(listing?.company?.longitude) 
       }
-      
-      const storedLocation = localStorage.getItem("guestLocation");
-      if (!storedLocation) return;
+  }
 
-      try {
-        const { lat: userLat, lng: userLng } = JSON.parse(storedLocation);
-
-        if (listing?.company?.latitude && listing?.company?.longitude) {
-          const lat = parseFloat(listing.company.latitude);
-          const lng = parseFloat(listing.company.longitude);
-          const dist = calculateDistanceFrom({ lat, lng });
-          setDistance(dist);
-        }
-      } catch (error) {
-        
-      }
-    };
-
-    fetchDistance();
-  }, [listing]);
+  if (loading) return <p>Detecting your location…</p>
+  if (error) return <p>{error}</p>;
+  const distance = calculateDistanceFrom(companyLocation.coords);
 
   const handleShowContact = () => {
     setShowContact(!showContact);
@@ -108,13 +101,18 @@ export default function ProductShowcase({ listing,id }) {
               <div className="flex flex-row items-center justify-between w-full mb-1">
                 <p className="text-sm text-gray-700 mt-2">
                   {listing.company?.location || 'N/A'} |
-                  {distance ? (
-                    <>
-                      <span>{distance} </span><span className="text-blue-600">km from you</span>
-                    </>
-                  ) : (
-                    <span className="text-blue-600">from you</span>
-                  )}
+                  
+                  <>
+                    {distance ? (
+                      <>
+                        <span className="text-blue-600"> {distance.toFixed(1)} km from you</span>
+                        <span onClick={refreshLocation} className="text-blue-600 ml-1 cursor-pointer hover:underline">(refresh)</span>
+                      </>
+                    ) : (
+                      <span onClick={refreshLocation} className="text-blue-600 cursor-pointer hover:underline">km from you</span>
+                    )}
+                  </>
+                   
                 </p>
                 <div className="text-sm text-gray-600 flex items-center gap-2 mt-2">
                   <Link href="#" className="hover:underline">&lt; Prev</Link>
@@ -369,7 +367,7 @@ export default function ProductShowcase({ listing,id }) {
             {/* White content area */}
             <div className="bg-white rounded-b-lg">
               <div className="pt-4 px-4 mb-4">
-                <button onClick={() => setIsMapOpen(true)} className="flex items-center text-blue-500 hover:underline text-sm">
+                <button onClick={() => {trackAnalyticsEvent('map_view', listing.documentId); setIsMapOpen(true)} } className="flex items-center text-blue-500 hover:underline text-sm">
                   <Image
                     src="/new files/newIcons/GooglePin_Icon.svg"
                     alt="Location Pin Icon"

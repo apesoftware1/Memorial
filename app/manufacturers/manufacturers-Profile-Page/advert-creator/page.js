@@ -720,24 +720,27 @@ export default function CreateListingForm() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        background: "#fafbfc",
-                        cursor: "pointer",
+                        background: idx > 5 ? "#e0e0e0" : "#fafbfc",
+                        cursor: idx > 5 ? "not-allowed" : "pointer",
                         position: "relative",
+                        opacity: idx > 5 ? 0.6 : 1,
                       }}
                       onClick={() => {
-                        console.log(`Thumbnail ${idx} click triggered`);
-                        const input = document.getElementById(`img-upload-${idx}`);
-                        if (input) {
-                          input.click();
-                        } else {
-                          console.error(`Thumbnail ${idx} input not found`);
+                        if (idx <= 5) {
+                          console.log(`Thumbnail ${idx} click triggered`);
+                          const input = document.getElementById(`img-upload-${idx}`);
+                          if (input) {
+                            input.click();
+                          } else {
+                            console.error(`Thumbnail ${idx} input not found`);
+                          }
                         }
                       }}
                     >
                       {thumbnails[idx-1] ? (
                         <img src={URL.createObjectURL(thumbnails[idx-1])} alt="" style={{ width: 40, height: 40, borderRadius: 8 }} />
                       ) : (
-                        <span style={{ color: "#bbb", fontSize: 22, fontWeight: 700 }}>+</span>
+                        <span style={{ color: idx > 5 ? "#999" : "#bbb", fontSize: 22, fontWeight: 700 }}>{idx > 5 ? "×" : "+"}</span>
                       )}
                       <input
                         id={`img-upload-${idx}`}
@@ -745,7 +748,8 @@ export default function CreateListingForm() {
                         type="file"
                         accept="image/*"
                         style={{ display: "none" }}
-                        onChange={(e) => handleThumbnailChange(e, idx-1)}
+                        onChange={(e) => idx <= 5 && handleThumbnailChange(e, idx-1)}
+                        disabled={idx > 5}
                       />
                     </div>
                   ))}

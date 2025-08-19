@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils"
 import type { FavoriteProduct } from "@/context/favorites-context"
 import { FavoriteButton } from "./favorite-button"
 import LocationTrigger from "./LocationTrigger"
-import { calculateDistanceFrom } from "@/lib/locationUtil";
+import { useGuestLocation } from "@/hooks/useGuestLocation";
+// Remove this line: import { calculateDistanceFrom } from "@/lib/locationUtil";
 import { formatPrice } from "@/lib/priceUtils"
 
 interface PremiumListingCardProps {
@@ -27,7 +28,10 @@ export function PremiumListingCard({
   isOwner = false,
 }: PremiumListingCardProps): React.ReactElement {
   const router = useRouter()
-  const [distance, setDistance] = useState<number | null>(null);
+  // Remove the useEffect and replace with direct calculation
+  // const [distance, setDistance] = useState<number | null>(null);
+  const { location, error, loading, calculateDistanceFrom } = useGuestLocation();
+  
 
   // Calculate total image count using new Cloudinary fields
   const getImageCount = () => {
@@ -59,19 +63,15 @@ export function PremiumListingCard({
   };
 
   // Calculate distance when component mounts or listing changes
-  useEffect(() => {
-    if (listing?.company?.latitude && listing?.company?.longitude) {
-      try {
-        const lat = parseFloat(listing.company.latitude);
-        const lng = parseFloat(listing.company.longitude);
-        const dist = calculateDistanceFrom({ lat, lng });
-        setDistance(dist);
-      } catch (error) {
-        console.error('Error calculating distance:', error);
-        setDistance(null);
+ const companyLocation = {
+    coords : { lat : Number(listing?.company?.latitude),
+       lng: Number(listing?.company?.longitude) 
       }
-    }
-  }, [listing]);
+  }
+
+  if (loading) return <p>Detecting your location…</p>
+  if (error) return <p>{error}</p>;
+  const distance = calculateDistanceFrom(companyLocation.coords);
 
   return (
     <div
@@ -213,7 +213,7 @@ export function PremiumListingCard({
                   height={14}
                   className="object-contain"
                 />
-                <span>{distance ? `${distance} km from you` : 'from you'}</span>
+                <span>{distance ? `${distance.toFixed(1)} km from you` : 'from you'}</span>
               </div>
             </div>
           </div>

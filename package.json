@@ -49,6 +49,8 @@
     "embla-carousel-react": "8.5.1",
     "graphql": "^16.11.0",
     "input-otp": "1.4.1",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.454.0",
     "meilisearch": "^0.51.0",
     "next": "15.2.4",

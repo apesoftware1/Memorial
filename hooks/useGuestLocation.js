@@ -1,46 +1,24 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 export const useGuestLocation = () => {
   const [location, setLocation] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    // Check if we're in the browser
+  const getLocation = useCallback(() => {
+    // Reset before fetching
+    setLoading(true)
+    setError(null)
+
     if (typeof window === 'undefined') {
       setLoading(false)
       return
     }
 
-    // Check if navigator is available
     if (typeof navigator === 'undefined') {
       setError('Navigator not available')
       setLoading(false)
       return
-    }
-
-    // Check if localStorage is available
-    if (typeof localStorage === 'undefined') {
-      setError('LocalStorage not available')
-      setLoading(false)
-      return
-    }
-
-    try {
-      const stored = localStorage.getItem('guestLocation')
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        setLocation(parsed)
-        setLoading(false)
-        return
-      }
-    } catch (error) {
-      console.error('Error reading from localStorage:', error)
-      try {
-        localStorage.removeItem('guestLocation')
-      } catch (e) {
-        console.error('Error clearing localStorage:', e)
-      }
     }
 
     if (!navigator.geolocation) {
@@ -56,22 +34,24 @@ export const useGuestLocation = () => {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           }
+
           try {
             localStorage.setItem('guestLocation', JSON.stringify(coords))
           } catch (e) {
             console.error('Error saving to localStorage:', e)
           }
+
           setLocation(coords)
           setLoading(false)
         },
         (error) => {
           console.error('Geolocation error:', error)
           let errorMessage = 'Failed to get location'
-          
-          // Provide more specific error messages
+
           switch (error.code) {
             case error.PERMISSION_DENIED:
-              errorMessage = 'Location access was denied. Please enable location access in your browser settings.'
+              errorMessage =
+                'Location access was denied. Please enable location access in your browser settings.'
               break
             case error.POSITION_UNAVAILABLE:
               errorMessage = 'Location information is unavailable'
@@ -82,14 +62,14 @@ export const useGuestLocation = () => {
             default:
               errorMessage = 'Failed to get location'
           }
-          
+
           setError(errorMessage)
           setLoading(false)
         },
         {
-          enableHighAccuracy: false, // Changed to false for better compatibility
-          timeout: 15000, // Increased timeout
-          maximumAge: 300000 // 5 minutes cache
+          enableHighAccuracy: false,
+          timeout: 15000,
+          maximumAge: 300000, // cache 5 minutes
         }
       )
     } catch (error) {
@@ -99,37 +79,65 @@ export const useGuestLocation = () => {
     }
   }, [])
 
-  const calculateDistanceFrom = (to) => {
-    if (!location || !to || typeof to.lat !== 'number' || typeof to.lng !== 'number') {
-      return null
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('guestLocation')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          setLocation(parsed)
+          setLoading(false)
+          return
+        }
+      } catch (e) {
+        console.error('Error reading from localStorage:', e)
+        try {
+          localStorage.removeItem('guestLocation')
+        } catch (clearErr) {
+          console.error('Error clearing localStorage:', clearErr)
+        }
+      }
     }
 
-    try {
-      const toRad = (deg) => deg * (Math.PI / 180)
-      const R = 6371 // Earth radius in km
+    // No cached location, fetch fresh
+    getLocation()
+  }, [getLocation])
 
-      const dLat = toRad(to.lat - location.lat)
-      const dLng = toRad(to.lng - location.lng)
+  const calculateDistanceFrom = useCallback(
+    (to) => {
+      if (!location || !to || typeof to.lat !== 'number' || typeof to.lng !== 'number') {
+        return null
+      }
 
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(toRad(location.lat)) *
-          Math.cos(toRad(to.lat)) *
-          Math.sin(dLng / 2) *
-          Math.sin(dLng / 2)
+      try {
+        const toRad = (deg) => deg * (Math.PI / 180)
+        const R = 6371 // Earth radius in km
 
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-      return R * c
-    } catch (error) {
-      console.error('Error calculating distance:', error)
-      return null
-    }
-  }
+        const dLat = toRad(to.lat - location.lat)
+        const dLng = toRad(to.lng - location.lng)
+
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRad(location.lat)) *
+            Math.cos(toRad(to.lat)) *
+            Math.sin(dLng / 2) *
+            Math.sin(dLng / 2)
+
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        return R * c
+      } catch (error) {
+        console.error('Error calculating distance:', error)
+        return null
+      }
+    },
+    [location]
+  )
 
   return {
     location,
     error,
     loading,
     calculateDistanceFrom,
+    refreshLocation: getLocation, // 🔥 Added manual refresh
   }
-} 
+}
