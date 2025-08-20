@@ -2,7 +2,7 @@ import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
 
 const client = new ApolloClient({
   link: createHttpLink({
-    uri: 'https://balanced-sunrise-2fce1c3d37.strapiapp.com/graphql',
+    uri: 'https://typical-car-e0b66549b3.strapiapp.com/graphql',
     // credentials: 'include', // include cookies if needed
     headers: {
       'Content-Type': 'application/json',
@@ -10,4 +10,4 @@ const client = new ApolloClient({
   }),
   cache: new InMemoryCache(),
 });
-export default client; 
+export default client;

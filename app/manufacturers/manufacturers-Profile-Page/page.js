@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery } from '@apollo/client';
 import { GET_COMPANY_BY_USER } from '@/graphql/queries/getCompany';
@@ -9,6 +9,8 @@ import ManufacturerProfileEditor from './ManufacturerProfileEditor';
 export default function OwnerProfilePage() {
   const { data: session } = useSession();
   const documentId = session?.user?.documentId;
+  // Add state to control auto-refresh behavior
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
   
   const { data, loading, error, refetch } = useQuery(GET_COMPANY_BY_USER, {
     variables: { documentId },
@@ -19,6 +21,9 @@ export default function OwnerProfilePage() {
 
   // Auto-refresh data when page becomes visible (e.g., when navigating back)
   useEffect(() => {
+    // Only set up listeners if auto-refresh is enabled
+    if (!autoRefreshEnabled) return;
+    
     const handleVisibilityChange = () => {
       if (!document.hidden && documentId) {
         refetch();
@@ -38,7 +43,7 @@ export default function OwnerProfilePage() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [documentId, refetch]);
+  }, [documentId, refetch, autoRefreshEnabled]);
 
   if (loading) return <div>Loading company data...</div>;
   if (error) return <div>Error loading company data.</div>;
@@ -48,10 +53,10 @@ export default function OwnerProfilePage() {
   const listings = company.listings || [];
 
   return (
-    <ManufacturerProfileEditor
-      isOwner={!!session}
-      company={company}
-      listings={listings}
+    <ManufacturerProfileEditor 
+      isOwner={true} 
+      company={company} 
+      listings={listings} 
     />
   );
 }

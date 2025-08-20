@@ -108,7 +108,7 @@ export default function UpdateListingPage() {
         }
       };
 
-      const response = await fetch(`https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/listings/${listing.documentId}`, {
+      const response = await fetch(`https://typical-car-e0b66549b3.strapiapp.com/api/listings/${listing.documentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -260,16 +260,17 @@ export default function UpdateListingPage() {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      background: "#fafbfc",
-                      cursor: "pointer",
+                      background: idx > 5 ? "#e0e0e0" : "#fafbfc",
+                      cursor: idx > 5 ? "not-allowed" : "pointer",
                       position: "relative",
+                      opacity: idx > 5 ? 0.6 : 1,
                     }}
-                    onClick={() => document.getElementById(`img-upload-${idx}`).click()}
+                    onClick={() => idx <= 5 && document.getElementById(`img-upload-${idx}`).click()}
                   >
                     {images[idx] ? (
                       <img src={images[idx]} alt="" style={{ width: 40, height: 40, borderRadius: 8 }} />
                     ) : (
-                      <span style={{ color: "#bbb", fontSize: 22, fontWeight: 700 }}>+</span>
+                      <span style={{ color: idx > 5 ? "#999" : "#bbb", fontSize: 22, fontWeight: 700 }}>{idx > 5 ? "×" : "+"}</span>
                     )}
                     <input
                       id={`img-upload-${idx}`}
@@ -277,10 +278,13 @@ export default function UpdateListingPage() {
                       accept="image/*"
                       style={{ display: "none" }}
                       onChange={e => {
-                        const newImages = [...images];
-                        newImages[idx] = URL.createObjectURL(e.target.files[0]);
-                        setImages(newImages);
+                        if (idx <= 5) {
+                          const newImages = [...images];
+                          newImages[idx] = URL.createObjectURL(e.target.files[0]);
+                          setImages(newImages);
+                        }
                       }}
+                      disabled={idx > 5}
                     />
                   </div>
                 ))}
@@ -628,4 +632,4 @@ export default function UpdateListingPage() {
       )}
     </div>
   );
-} 
+}

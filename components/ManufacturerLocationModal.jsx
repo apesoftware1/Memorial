@@ -132,7 +132,7 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
     
     try {
       const response = await fetch(
-        `https://balanced-sunrise-2fce1c3d37.strapiapp.com/api/companies/${company.documentId}`,
+        `https://typical-car-e0b66549b3.strapiapp.com/api/companies/${company.documentId}`,
         {
           method: 'PUT',
           headers: {
@@ -316,4 +316,4 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
       </div>
     </div>
   )
-} 
+}
