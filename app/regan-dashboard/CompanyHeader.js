@@ -9,21 +9,22 @@ export default function CompanyHeader({
   totals,
 }) {
   return (
-    <div className="bg-white border rounded-xl p-4 shadow-sm">
+    <div className="bg-card text-card-foreground border border-border rounded-xl p-4 shadow-sm">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-4">
+          
           {logoUrl ? (
             <img
               src={logoUrl}
               alt={name}
-              className="w-16 h-16 object-cover rounded-full border"
+              className="w-16 h-16 object-cover rounded-full border border-border"
             />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-gray-200 border" />
+            <div className="w-16 h-16 rounded-full bg-muted border border-border" />
           )}
           <div>
             <h1 className="text-2xl font-semibold">{name}</h1>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               Performance Analytics
             </p>
           </div>
@@ -31,7 +32,7 @@ export default function CompanyHeader({
 
         <div className="flex items-center gap-3">
           <select
-            className="border rounded px-3 py-2"
+            className="border border-border rounded px-3 py-2 bg-background text-foreground"
             value={period}
             onChange={(e) => onChangePeriod(e.target.value)}
           >
@@ -41,7 +42,7 @@ export default function CompanyHeader({
           {period === "month" && (
             <input
               type="month"
-              className="border rounded px-3 py-2"
+              className="border border-border rounded px-3 py-2 bg-background text-foreground"
               value={monthYear}
               onChange={(e) => onChangeMonthYear(e.target.value)}
             />
@@ -62,8 +63,8 @@ export default function CompanyHeader({
 
 function Stat({ label, value }) {
   return (
-    <div className="rounded-lg border bg-gray-50 p-4">
-      <div className="text-sm text-gray-500">{label}</div>
+    <div className="rounded-lg border border-border bg-muted p-4">
+      <div className="text-sm text-muted-foreground">{label}</div>
       <div className="text-2xl font-semibold">{value}</div>
     </div>
   );

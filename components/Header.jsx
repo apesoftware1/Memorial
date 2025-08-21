@@ -59,7 +59,7 @@ export default function Header({
                 <Image src="/align-left-svgrepo-com.svg" alt="Open Filters" width={16} height={16} />
               </button>
             )}
-            <Link href="/" className="flex items-center -ml-3 px-2 w-full justify-center sm:justify-start">
+            <Link href="/" className="flex items-center px-0 w-full justify-center sm:justify-start">
               <Image
                 src="/new files/company logos/TombstonesFinder_logo.svg"
                 alt="TombstonesFinder Logo"
@@ -70,7 +70,6 @@ export default function Header({
                 unoptimized
               />
             </Link>
-
             {/* Desktop Navigation with Dropdowns */}
             <nav className="ml-1 hidden md:flex whitespace-nowrap">
               {/* Find a Tombstone Dropdown */}
@@ -138,7 +137,7 @@ export default function Header({
                     </Link>
                     <Link
                       href="/services/life-insurance"
-                      className="block px-0 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors whitespace-nowrap"
+                      className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
                     >
                       LIFE INSURANCE
                     </Link>

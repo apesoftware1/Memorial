@@ -90,8 +90,8 @@ export default function ManufacturersPage() {
           handleMobileDropdownToggle={handleMobileDropdownToggle}
         />
       </div>
-    {/* Search Filters */}
-    <div className="bg-[#00647A] py-4">
+      {/* Search Filters */}
+      <div className="bg-[#00647A] py-4">
         <div className="container mx-auto px-4 flex justify-center">
           <div className="flex flex-col md:flex-row gap-2 w-full max-w-4xl justify-center items-center">
             <div className="relative flex-grow">
@@ -190,7 +190,7 @@ export default function ManufacturersPage() {
       </div>
       
       {/* Breadcrumb */}
-      <div className="container mx-auto px-4 md:px-0 py-4 bg-gray-50 md:ml-32">
+      <div className="container mx-auto px-0 md:px-0 py-4 bg-gray-50 md:ml-32">
         <div className="max-w-6xl mx-auto">
           <nav className="text-sm mb-4" aria-label="Breadcrumb">
             <ol className="flex items-center space-x-1">
@@ -229,8 +229,9 @@ export default function ManufacturersPage() {
           <h1 className="text-2xl font-bold text-gray-800 mb-6">Manufacturers in South Africa</h1>
         </div>
       </div>
+
       {/* Results Header and columns in same max-width container */}
-      <div className="ml-0 sm:ml-0 w-full max-w-4xl md:ml-56">
+      <div className="container mx-auto px-0 w-full max-w-4xl">
         <div className="flex justify-between items-center mb-4 w-full bg-gray-100 px-4 py-2 pr-0 rounded">
           <span className="font-bold text-lg text-gray-800">{resultsCount}</span>
           <span className="text-gray-600 ml-2">Results</span>

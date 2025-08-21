@@ -53,6 +53,14 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [editingOperatingHours, setEditingOperatingHours] = useState({});
+  // Single-step Operating Hours editor state
+  const OPERATING_DAY_ORDER = ['monToFri', 'saturday', 'sunday', 'publicHoliday'];
+  const [operatingDayIndex, setOperatingDayIndex] = useState(0);        // 0..3
+  const [operatingPhase, setOperatingPhase] = useState('idle');         // 'idle' | 'open' | 'close' | 'review'
+  const [tempOpenTime, setTempOpenTime] = useState(null);               // holds selected open time before choosing close
+  // Day-type filters; when empty, all are active
+  const [selectedDayFilters, setSelectedDayFilters] = useState([]);     // array of fields
+  const activeDayOrder = selectedDayFilters.length ? selectedDayFilters : OPERATING_DAY_ORDER;
   const [editingSocialLinks, setEditingSocialLinks] = useState({});
   const [createSpecialModalOpen, setCreateSpecialModalOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState(null);
@@ -180,6 +188,43 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
     { day: "Sundays", time: company.operatingHours.sunday || "Closed", field: "sunday" },
     { day: "Public Holidays", time: company.operatingHours.publicHoliday || "08:30 - 14:00", field: "publicHoliday" },
   ] : [];
+
+  // Time slot options for selection (30-minute increments)
+  const TIME_SLOTS = [
+    "06:00","06:30","07:00","07:30","08:00","08:30","09:00","09:30",
+    "10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:30",
+    "14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30",
+    "18:00","18:30","19:00","19:30","20:00"
+  ];
+
+  const DEFAULT_RANGE = "09:00 - 16:00";
+
+  function minutesFromStr(t) {
+    if (!t) return 0;
+    const [hh, mm] = String(t).split(":").map(Number);
+    return (hh || 0) * 60 + (mm || 0);
+  }
+
+  function isAfter(a, b) {
+    if (!a || !b) return false;
+    return minutesFromStr(a) > minutesFromStr(b);
+  }
+
+  // Helpers to parse and format hour ranges
+  function splitRange(val) {
+    if (!val) return { open: "", close: "", closed: false };
+    const lower = String(val).toLowerCase();
+    if (lower === "closed") return { open: "", close: "", closed: true };
+    const m = String(val).match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+    if (m) return { open: m[1], close: m[2], closed: false };
+    return { open: "", close: "", closed: false };
+  }
+
+  function formatRange(open, close, closed) {
+    if (closed) return "Closed";
+    if (open && close) return `${open} - ${close}`;
+    return ""; // empty until both are chosen
+  }
 
   // Convert social links from GraphQL structure to display format - always show all platforms
   const socialLinks = [
@@ -640,9 +685,9 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
           </div>
         )}
         {/* Combined Profile Card - all info in one card */}
-        <div style={{ background: '#fff', borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.07)', padding: 20, maxWidth: 1200, margin: '24px auto 0 auto', display: 'flex', flexDirection: 'row', gap: 32, alignItems: 'flex-start' }}>
+        <div style={{ background: '#fff', borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.07)', padding: 20, maxWidth: 1200, margin: '24px auto 0 auto', display: 'flex', flexDirection: mobile ? 'column' : 'row', gap: mobile ? 16 : 32, alignItems: mobile ? 'stretch' : 'flex-start' }}>
           {/* Left Column */}
-          <div style={{ flex: 2, minWidth: 0 }}>
+          <div style={{ flex: 2, minWidth: 0, order: mobile ? 0 : 0 }}>
             {/* Company Name Label */}
             <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 2 }}>Company Name</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -670,6 +715,47 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                 </>
               )}
             </div>
+            {/* MOBILE-ONLY: Logo directly under Company Name */}
+            {mobile && (
+              <div>
+                <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 6 }}>Company Logo</div>
+                <div
+                  style={{
+                    border: '2px solid #00baff',
+                    borderRadius: 8,
+                    background: '#fff',
+                    padding: 8,
+                    position: 'relative',
+                    width: '100%',
+                    height: 140,
+                    marginBottom: 12,
+                    cursor: isOwner ? 'pointer' : 'default',
+                    overflow: 'hidden',
+                  }}
+                  onClick={() => isOwner && fileInputRef.current?.click()}
+                >
+                  <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                    <Image
+                      src={`${company.logoUrl || '/placeholder-logo.svg'}?t=${Date.now()}`}
+                      alt="Company Logo"
+                      fill
+                      key={company.logoUrl}
+                      style={{ objectFit: 'contain' }}
+                      sizes="100vw"
+                    />
+                    {isOwner && isUploading && (
+                      <div style={{
+                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        backgroundColor: 'rgba(0,0,0,0.3)'
+                      }}>
+                        <Upload style={{ width: 24, height: 24, color: 'white' }} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Google Rating Label */}
             <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 2 }}>Google Rating</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -708,65 +794,213 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
             )}
             {/* Operating Hours Label */}
             <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 2 }}>Operating Hours</div>
-            {editingField === 'operatingHours' ? (
-              <div style={{ marginBottom: 8 }}>
-                {operatingHours.map((h, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', marginBottom: 4, gap: 16 }}>
-                    <div style={{ fontWeight: 700, minWidth: 140, fontSize: 15 }}>{h.day}</div>
-                    <input
-                      value={editingOperatingHours[h.field] || h.time}
-                      onChange={e => setEditingOperatingHours(prev => ({
-                        ...prev,
-                        [h.field]: e.target.value
-                      }))}
-                      style={{ 
-                        padding: '4px 8px', 
-                        borderRadius: 4, 
-                        border: '1px solid #ccc', 
-                        flex: 1,
-                        fontSize: 15
-                      }}
-                      placeholder="e.g., 09:00 - 17:00 or Closed"
-                    />
+
+            {/* Horizontal time slots row (owner-only) */}
+            {isOwner && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'stretch',
+                    gap: 12,
+                    overflowX: 'auto',
+                    padding: '8px 4px',
+                    marginBottom: 8,
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    {operatingHours.map((h) => (
+                      <div
+                        key={h.field}
+                        style={{
+                          padding: '10px 14px',
+                          borderRadius: 9999,
+                          background: '#ffffff',
+                          border: '1px solid #eee',
+                          boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
+                          fontWeight: 700,
+                          fontSize: 14,
+                          color: '#222',
+                          whiteSpace: 'nowrap',
+                          minWidth: 72,
+                          textAlign: 'center',
+                          userSelect: 'none',
+                        }}
+                      >
+                        {h.time}
+                      </div>
+                    ))}
                   </div>
-                ))}
-                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <button 
-                    onClick={handleSaveAllOperatingHours}
-                    style={{ 
-                      color: '#28a745', 
-                      fontWeight: 700, 
-                      border: 'none', 
-                      background: 'none', 
-                      cursor: 'pointer',
-                      fontSize: 14
+                  {/* Right-side vertical accent for visual separation */}
+                  <div
+                    style={{
+                      width: 3,
+                      borderRadius: 3,
+                      background: '#ff6b3d',
                     }}
-                  >
-                    Save
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setEditingField(null);
-                      setEditingOperatingHours({});
-                    }}
-                    style={{ 
-                      color: '#888', 
-                      fontWeight: 700, 
-                      border: 'none', 
-                      background: 'none', 
-                      cursor: 'pointer',
-                      fontSize: 14
-                    }}
-                  >
-                    Cancel
-                  </button>
+                  />
                 </div>
+              )}
+
+            {editingField === 'operatingHours' ? (
+              <div className="mt-3">
+                {(() => {
+                  const currentKey = OPERATING_DAY_ORDER[Math.min(operatingDayIndex, OPERATING_DAY_ORDER.length - 1)];
+                  const currentMeta = operatingHours.find(h => h.field === currentKey) || {};
+                  const currentValue = editingOperatingHours[currentKey] ?? currentMeta.time;
+                  const current = splitRange(currentValue);
+
+                  const chipBase = {
+                    padding: '10px 14px',
+                    borderRadius: 9999,
+                    background: '#ffffff',
+                    border: '1px solid #eee',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
+                    fontWeight: 700,
+                    fontSize: 14,
+                    color: '#222',
+                    whiteSpace: 'nowrap',
+                    userSelect: 'none',
+                    cursor: 'pointer',
+                    marginRight: 8,
+                    marginBottom: 8,
+                  };
+
+                  const renderChip = (id, label, selected, onClick) => (
+                    <div
+                      key={id}
+                      onClick={onClick}
+                      style={{
+                        ...chipBase,
+                        background: selected ? '#2f55d4' : '#ffffff',
+                        color: selected ? '#ffffff' : '#222222',
+                        border: selected ? '1px solid #2f55d4' : '1px solid #eee',
+                      }}
+                      role="button"
+                      aria-pressed={selected}
+                      tabIndex={0}
+                      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick()}
+                    >
+                      {label}
+                    </div>
+                  );
+
+                  const advanceToNextDay = () => {
+                    if (operatingDayIndex < OPERATING_DAY_ORDER.length - 1) {
+                      setOperatingDayIndex(operatingDayIndex + 1);
+                      setTempOpenTime(null);
+                      setOperatingPhase('open');
+                    } else {
+                      setOperatingPhase('review');
+                      setTempOpenTime(null);
+                    }
+                  };
+
+                  const handlePickOpen = (t) => {
+                    setTempOpenTime(t);
+                    setOperatingPhase('close');
+                  };
+
+                  const handlePickClose = (t) => {
+                    const open = tempOpenTime || current.open || TIME_SLOTS[0];
+                    setEditingOperatingHours(prev => ({
+                      ...prev,
+                      [currentKey]: formatRange(open, t, false),
+                    }));
+                    setTempOpenTime(null);
+                    setOperatingPhase('open');
+                    advanceToNextDay();
+                  };
+
+                  const handleMarkClosed = () => {
+                    setEditingOperatingHours(prev => ({
+                      ...prev,
+                      [currentKey]: 'Closed',
+                    }));
+                    advanceToNextDay();
+                  };
+
+                  return (
+                    <div style={{ borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#111827', padding: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>
+                          {operatingPhase === 'review'
+                            ? 'Review & Save Operating Hours'
+                            : `Set ${currentMeta.day || 'Operating Hours'}`}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#6b7280' }}>
+                          {operatingPhase === 'review'
+                            ? 'All days set'
+                            : `Step ${operatingDayIndex + 1} of ${OPERATING_DAY_ORDER.length}`}
+                        </div>
+                      </div>
+
+                      {operatingPhase !== 'review' ? (
+                        <div>
+                          {operatingPhase === 'open' ? (
+                            <>
+                              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>Pick open time or mark Closed</div>
+                              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                                {renderChip('closed-chip', 'Closed', current.closed === true, handleMarkClosed)}
+                                {TIME_SLOTS.map((t) =>
+                                  renderChip(`open-${t}`, t, t === current.open, () => handlePickOpen(t))
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>Pick close time</div>
+                              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                                {(tempOpenTime ? TIME_SLOTS.filter(t => isAfter(t, tempOpenTime)) : TIME_SLOTS).map((t) =>
+                                  renderChip(`close-${t}`, t, t === current.close, () => handlePickClose(t))
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {operatingHours.map((h) => (
+                            <div key={h.field} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 14 }}>
+                              <span style={{ color: '#6b7280' }}>{h.day}</span>
+                              <span style={{ fontWeight: 600 }}>
+                                {editingOperatingHours[h.field] ?? h.time}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingOperatingHours({});
+                            setOperatingPhase('idle');
+                            setTempOpenTime(null);
+                            setOperatingDayIndex(0);
+                            setEditingField(null);
+                          }}
+                          style={{ padding: '6px 12px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f3f4f6', color: '#111827', fontSize: 14, cursor: 'pointer' }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveAllOperatingHours}
+                          style={{ padding: '6px 12px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#2563eb', color: '#fff', fontSize: 14, cursor: 'pointer' }}
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             ) : (
               <>
                 <div style={{ fontSize: 15, margin: '0 0 8px 0', display: 'grid', gridTemplateColumns: 'auto auto', rowGap: 2, columnGap: 16 }}>
-                  {operatingHours.map((h, i) => (
-                    <React.Fragment key={i}>
+                  {operatingHours.map((h) => (
+                    <React.Fragment key={h.field}>
                       <div style={{ fontWeight: 700 }}>{h.day}</div>
                       <div>{h.time}</div>
                     </React.Fragment>
@@ -784,6 +1018,10 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                         sunday: company.operatingHours?.sunday || "Closed",
                         publicHoliday: company.operatingHours?.publicHoliday || "08:30 - 14:00"
                       });
+                      setOperatingDayIndex(0);
+                      setOperatingPhase('open');
+                      setTempOpenTime(null);
+                      setSelectedDayFilters([]); // start with "All"
                     }}
                   >
                     <Edit2 style={{ width: 16, height: 16, color: '#888' }} />
@@ -921,15 +1159,15 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
             )}
           </div>
           {/* Right Column */}
-          <div style={{ flex: 1, minWidth: 220, alignSelf: 'flex-start', textAlign: mobile ? 'left' : 'right', paddingLeft: mobile ? 8 : undefined, boxSizing: 'border-box' }}>
-            <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 6, textAlign: 'center', width: '100%' }}>Company Logo</div>
+          <div style={{ flex: 1, minWidth: 220, alignSelf: 'flex-start', textAlign: mobile ? 'left' : 'right', paddingLeft: mobile ? 8 : undefined, boxSizing: 'border-box', order: mobile ? 1 : 1 }}>
+            <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 6, textAlign: 'center', width: '100%', display: mobile ? 'none' : 'block' }}>Company Logo</div>
             <div 
               style={{ 
                 border: '2px solid #00baff', 
                 borderRadius: 8, 
                 background: '#fff', 
                 padding: 8, 
-                display: 'inline-block', 
+                display: mobile ? 'none' : 'inline-block', 
                 position: 'relative', 
                 minWidth: 240, 
                 minHeight: 120, 
@@ -944,7 +1182,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                   alt="Company Logo" 
                   width={220} 
                   height={110} 
-                  key={company.logoUrl} // Add a key prop to force re-render when URL changes
+                  key={company.logoUrl} 
                   style={{ objectFit: 'contain', display: 'block', margin: '0 auto' }} 
                 />
                 {isOwner && isUploading && (
@@ -971,16 +1209,16 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                 onChange={handleLogoUpload}
               />
             </div>
-            {isOwner && (
+            {isOwner && !mobile && (
               <div style={{ textAlign: 'center', fontSize: 12, color: '#666', marginBottom: 8 }}>
                 {isUploading ? 'Uploading...' : 'Click to update logo'}
               </div>
             )}
 
             {/* Socials label */}
-            <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 2, marginLeft: 80, textAlign: 'left' }}>Website & Social Media Links</div>
+            <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 2, marginLeft: mobile ? 0 : 80, textAlign: 'left' }}>Website & Social Media Links</div>
             {editingField === 'socialLinks' ? (
-              <div style={{ marginLeft: 80, marginBottom: 8 }}>
+              <div style={{ marginLeft: mobile ? 0 : 80, marginBottom: 8 }}>
                 {socialLinks.map((social) => (
                   <div key={social.name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <span style={{ width: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1049,7 +1287,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                     alignItems: 'flex-start',
                     gap: 4,
                     width: '100%',
-                    marginLeft: 80,
+                    marginLeft: mobile ? 0 : 80,
                     paddingLeft: 0,
                   }}
                 >
@@ -1077,7 +1315,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                 </div>
                 {isOwner && (
                   <button 
-                    style={{ background: 'none', border: 'none', marginLeft: 82, marginTop: 4, cursor: 'pointer' }}
+                    style={{ background: 'none', border: 'none', marginLeft: mobile ? 0 : 82, marginTop: 4, cursor: 'pointer' }}
                     onClick={() => {
                       setEditingField('socialLinks');
                       // Initialize editing state with current values
@@ -1103,9 +1341,11 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
 
         {/* Listings Header */}
         <div style={{ background: "#fff", padding: "12px 16px ", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #e0e0e0", maxWidth: 1200, margin: "32px auto 28px auto" }}>
-          <div style={{ fontSize: 13, color: "#888" }}>
-            Current Package: <span style={{ color: "#28a745", fontWeight: 700 ,textTransform: 'uppercase' }}>{company.packageType || 'Premium'}</span> &nbsp; <Link href="#" style={{ color: "#007bff", fontWeight: 700 }}>Click here to UPGRADE</Link>
-          </div>
+          {isOwner && (
+            <div style={{ fontSize: 13, color: "#888" }}>
+              Current Package: <span style={{ color: "#28a745", fontWeight: 700 ,textTransform: 'uppercase' }}>{company.packageType || 'Premium'}</span> &nbsp; <Link href="#" style={{ color: "#007bff", fontWeight: 700 }}>Click here to UPGRADE</Link>
+            </div>
+          )}
           <div style={{ fontSize: 15, fontWeight: 700 }}>{companyListings.length} Active Listings</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* Mobile Sort Button */}
@@ -1149,7 +1389,16 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
         </div>
   
         {/* Product Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, maxWidth: 1200, margin: '0 auto', alignItems: 'stretch' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: mobile ? '1fr' : '1fr 1fr',
+            gap: mobile ? 20 : 40,
+            maxWidth: 1200,
+            margin: '0 auto',
+            alignItems: 'stretch'
+          }}
+        >
           {[...companyListings]
             .sort((a, b) => {
               if (sortBy === 'Price') {

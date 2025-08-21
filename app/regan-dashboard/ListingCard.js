@@ -1,7 +1,7 @@
 // components/ListingCard.jsx
 export default function ListingCard({ listing, counts, performance, children }) {
   return (
-    <div className="bg-white border rounded-xl overflow-hidden shadow-sm flex flex-col">
+    <div className="bg-card text-card-foreground border border-border rounded-xl overflow-hidden shadow-sm flex flex-col">
       <div className="relative">
         <img
           src={listing.mainImageUrl || "/placeholder.svg"}
@@ -18,7 +18,7 @@ export default function ListingCard({ listing, counts, performance, children }) 
       <div className="p-4 flex flex-col gap-3 flex-1">
         <div>
           <h3 className="font-semibold text-lg">{listing.title}</h3>
-          <p className="text-gray-600">Price: {formatPrice(listing.price)}</p>
+          <p className="text-muted-foreground">Price: {formatPrice(listing.price)}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 text-sm">
@@ -38,8 +38,8 @@ export default function ListingCard({ listing, counts, performance, children }) 
 
 function Metric({ label, value }) {
   return (
-    <div className="rounded border bg-gray-50 px-3 py-2 flex items-center justify-between">
-      <span className="text-gray-600">{label}</span>
+    <div className="rounded border border-border bg-muted px-3 py-2 flex items-center justify-between">
+      <span className="text-muted-foreground">{label}</span>
       <span className="font-semibold">{value}</span>
     </div>
   );
