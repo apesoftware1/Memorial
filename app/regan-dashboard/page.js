@@ -3,11 +3,12 @@
 import { useQuery } from '@apollo/client';
 import { GET_MANUFACTURERS } from '@/graphql/queries/getManufacturers';
 import { useState, useEffect } from 'react';
-import { Search, ChevronDown, LogOut } from 'lucide-react';
+import { Search, LogOut, Moon, Sun } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { useTheme } from "next-themes";
 
 // Import shadcn UI components
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,27 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { loading, error, data } = useQuery(GET_MANUFACTURERS);
-  
+  // Local dark-mode state scoped to this page
+  const [isDark, setIsDark] = useState(false);
+
+  // Initialize theme from localStorage so it controls both pages
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('reganDashboardTheme');
+      if (stored) setIsDark(stored === 'dark');
+    } catch {}
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDark((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('reganDashboardTheme', next ? 'dark' : 'light');
+      } catch {}
+      return next;
+    });
+  };
+
   // State for search filters
   const [searchFilters, setSearchFilters] = useState({
     manufacturerName: "",
@@ -86,109 +107,121 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Top-level conditional UI (single return keeps hook order stable) */}
-      {loading ? (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 space-y-4">
-          <Skeleton className="h-12 w-64" />
-          <Skeleton className="h-8 w-full max-w-md" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl">
-            {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-64 w-full rounded-lg" />
-            ))}
-          </div>
-        </div>
-      ) : error ? (
-        <div className="min-h-screen flex items-center justify-center">
-          <Card className="max-w-md">
-            <CardHeader>
-              <h2 className="text-xl font-bold text-destructive">Error</h2>
-            </CardHeader>
-            <CardContent>
-              <p>Failed to load dashboard data. Please try again later.</p>
-            </CardContent>
-            <CardFooter>
-              <Button onClick={() => window.location.reload()}>Retry</Button>
-            </CardFooter>
-          </Card>
-        </div>
-      ) : (
-        <>
-          {/* Header with Manufacturer Name and Logout Button */}
-          <div className="bg-black text-white py-6 shadow-md">
-            <div className="container mx-auto px-4 flex justify-between items-center">
-              <h1 className="text-3xl font-bold">Manufacturer Dashboard</h1>
-              <Button onClick={handleLogout} variant="destructive" className="gap-2">
-                <LogOut className="h-4 w-4" />
-                Logout
-              </Button>
-            </div>
-          </div>
-
-          {/* Search Bar */}
-          <div className="bg-gray-800 py-6 shadow-inner">
-            <div className="container mx-auto px-4">
-              <form onSubmit={handleSearchSubmit} className="max-w-4xl mx-auto">
-                <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="text"
-                      name="manufacturerName"
-                      value={searchFilters.manufacturerName}
-                      onChange={handleSearchChange}
-                      placeholder="Search by manufacturer name"
-                      className="pl-10"
-                    />
-                  </div>
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="text"
-                      name="location"
-                      value={searchFilters.location}
-                      onChange={handleSearchChange}
-                      placeholder="Filter by location"
-                      className="pl-10"
-                    />
-                  </div>
-                  <Button type="submit" className="md:w-auto">
-                    Search
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="container mx-auto px-4 py-8">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">
-                {filteredManufacturers.length} Manufacturers Found
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayedManufacturers.map((manufacturer) => (
-                <ManufacturerCard key={manufacturer.documentId} manufacturer={manufacturer} />
+    <div className={isDark ? "dark" : ""}>
+      <div className="min-h-screen bg-background">
+        {/* Top-level conditional UI (single return keeps hook order stable) */}
+        {loading ? (
+          <div className="min-h-screen flex flex-col items-center justify-center p-4 space-y-4">
+            <Skeleton className="h-12 w-64" />
+            <Skeleton className="h-8 w-full max-w-md" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-64 w-full rounded-lg" />
               ))}
             </div>
-
-            {displayedManufacturers.length < filteredManufacturers.length && (
-              <div className="flex justify-center mt-8">
-                <Button 
-                  onClick={handleLoadMore}
-                  variant="outline"
-                  size="lg"
-                  className="border-primary/20 hover:border-primary"
-                >
-                  Load More
-                </Button>
-              </div>
-            )}
           </div>
-        </>
-      )}
+        ) : error ? (
+          <div className="min-h-screen flex items-center justify-center">
+            <Card className="max-w-md">
+              <CardHeader>
+                <h2 className="text-xl font-bold text-destructive">Error</h2>
+              </CardHeader>
+              <CardContent>
+                <p>Failed to load dashboard data. Please try again later.</p>
+              </CardContent>
+              <CardFooter>
+                <Button onClick={() => window.location.reload()}>Retry</Button>
+              </CardFooter>
+            </Card>
+          </div>
+        ) : (
+          <>
+            {/* Header with Manufacturer Name and Logout Button */}
+            <div className="bg-black text-white py-6 shadow-md">
+              <div className="container mx-auto px-4 flex justify-between items-center">
+                <h1 className="text-3xl font-bold">Manufacturer Dashboard</h1>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={toggleTheme}
+                    aria-label="Toggle theme"
+                    className="inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm bg-background text-foreground hover:bg-accent"
+                    title="Toggle theme"
+                  >
+                    {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  </button>
+                  <Button onClick={handleLogout} variant="destructive" className="gap-2">
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Search Bar */}
+            <div className="bg-gray-800 py-6 shadow-inner">
+              <div className="container mx-auto px-4">
+                <form onSubmit={handleSearchSubmit} className="max-w-4xl mx-auto">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="text"
+                        name="manufacturerName"
+                        value={searchFilters.manufacturerName}
+                        onChange={handleSearchChange}
+                        placeholder="Search by manufacturer name"
+                        className="pl-10"
+                      />
+                    </div>
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="text"
+                        name="location"
+                        value={searchFilters.location}
+                        onChange={handleSearchChange}
+                        placeholder="Filter by location"
+                        className="pl-10"
+                      />
+                    </div>
+                    <Button type="submit" className="md:w-auto">
+                      Search
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="container mx-auto px-4 py-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold">
+                  {filteredManufacturers.length} Manufacturers Found
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayedManufacturers.map((manufacturer) => (
+                  <ManufacturerCard key={manufacturer.documentId} manufacturer={manufacturer} />
+                ))}
+              </div>
+
+              {displayedManufacturers.length < filteredManufacturers.length && (
+                <div className="flex justify-center mt-8">
+                  <Button 
+                    onClick={handleLoadMore}
+                    variant="outline"
+                    size="lg"
+                    className="border-primary/20 hover:border-primary"
+                  >
+                    Load More
+                  </Button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

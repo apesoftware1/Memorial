@@ -14,7 +14,7 @@ export default function PdfExporterButton(props) {
   return (
     <button
       onClick={() => handleExport(props)}
-      className="px-3 py-2 rounded border bg-white hover:bg-gray-50"
+      className="px-3 py-2 rounded border border-border bg-card text-card-foreground hover:bg-muted transition-colors"
     >
       {mode === "company" ? "Download Company PDF" : "Download Listing PDF"}
     </button>

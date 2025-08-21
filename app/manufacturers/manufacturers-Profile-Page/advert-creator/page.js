@@ -284,10 +284,10 @@ export default function CreateListingForm() {
         price: parseFloat(formData.price),
         adFlasher: formData.adFlasher,
         // Always send these as false
-        isPremium: false,
+        isPremium: true,
         isFeatured: false,
         isOnSpecial: false,
-        isStandard: true,
+        isStandard: false,
         manufacturingTimeframe: formData.manufacturingTimeframe,
 
         // Store Cloudinary data in your new Strapi fields

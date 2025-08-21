@@ -63,7 +63,7 @@ export function PremiumListingCard({
   };
 
   // Calculate distance when component mounts or listing changes
- const companyLocation = {
+  const companyLocation = {
     coords : { lat : Number(listing?.company?.latitude),
        lng: Number(listing?.company?.longitude) 
       }
@@ -72,6 +72,7 @@ export function PremiumListingCard({
   if (loading) return <p>Detecting your location…</p>
   if (error) return <p>{error}</p>;
   const distance = calculateDistanceFrom(companyLocation.coords);
+  const roundedDistance = typeof distance === 'number' ? distance.toFixed(1) : null;
 
   return (
     <div
@@ -213,7 +214,7 @@ export function PremiumListingCard({
                   height={14}
                   className="object-contain"
                 />
-                <span>{distance ? `${distance.toFixed(1)} km from you` : 'from you'}</span>
+                <span>{roundedDistance ? `${roundedDistance} km from you..` : 'from you..'}</span>
               </div>
             </div>
           </div>
@@ -324,7 +325,7 @@ export function PremiumListingCard({
                         height={14}
                         className="object-contain"
                       />
-                      <span>{distance ? `${distance} km from you` : 'from you'}</span>
+                      <span>{roundedDistance ? `${roundedDistance} km from you..` : 'from you..'}</span>
                     </div>
                   </div>
                   {/* Right Column for Logo (Desktop only) */}
