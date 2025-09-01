@@ -14,6 +14,7 @@ query GetListings {
     description
     price
     adFlasher
+    adFlasherColor
     isFeatured
     isOnSpecial
     specials {

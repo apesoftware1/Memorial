@@ -23,19 +23,27 @@ export const GET_LISTING_BY_ID = gql`
         color {
           id
           value
+          icon
         }
         style {
           id
           value
+          icon
         }
         stoneType {
           id
           value
+          icon
         }
-        
+        slabStyle {
+          id
+          value
+          icon
+        }
         customization {
           id
           value
+          icon
         }
       }
       slug

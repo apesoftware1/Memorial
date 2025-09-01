@@ -13,7 +13,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',
+        hostname: 'https://typical-car-e0b66549b3.strapiapp.com', // e.g. cdn.example.com
       },
     ],
   },
@@ -28,4 +28,4 @@ const nextConfig = {
   },
 }
 
-module.exports = nextConfig 
+module.exports = nextConfig

@@ -40,13 +40,16 @@ export default function FilterDropdown({
       </button>
 
       {openDropdown === name && (
-        <div className="absolute z-[300] mt-1 w-full bg-[#2E2E30] shadow-lg border border-gray-700 animate-slide-in" style={{ borderRadius: '2px' }}>
+        <div
+          className="absolute left-0 top-full z-[300] mt-1 w-full bg-[#2E2E30] shadow-lg border border-gray-700"
+          style={{ borderRadius: '2px' }}
+        >
           <ul className="py-1 max-h-60 overflow-auto" role="menu" aria-orientation="vertical">
             {options.map((option, index) => (
               <li
                 key={index}
                 onClick={() => selectOption(name, option)}
-                className="px-3 py-2 text-sm text-gray-300 hover:bg-[#3E3E40] flex justify-between items-center cursor-pointer"
+                className="px-3 py-2 text-sm text-gray-300 hover:bg-[#111111] hover:text-[#D4AF37] transition-colors flex justify-between items-center cursor-pointer"
                 role="menuitem"
               >
                 <div className="flex items-center gap-2">
@@ -69,4 +72,4 @@ export default function FilterDropdown({
       )}
     </div>
   );
-} 
+}

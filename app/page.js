@@ -24,11 +24,12 @@ import { useGuestLocation } from "@/hooks/useGuestLocation"
 import Pagination from "@/components/Pagination"
 import { PremiumListingCard } from "@/components/premium-listing-card"
 import Header from "@/components/Header"
-import BannerAd from "@/components/BannerAd"
 import { useQuery } from '@apollo/client';
 import { GET_LISTINGS } from '@/graphql/queries/getListings';
+import { GET_MANUFACTURERS } from "@/graphql/queries/getManufacturers"
 import FeaturedListings from "@/components/FeaturedListings";
 import FeaturedManufacturer from "@/components/FeaturedManufacturer";
+import BannerAd from "@/components/BannerAd"
 
 import IndexRender from "./indexRender";
 import { useListingCategories } from "@/hooks/use-ListingCategories"
@@ -185,7 +186,32 @@ useEffect(() => {
   setStdListings(standard);
 }, [strapiListings, loading, error]);
 
-if (_loading) return <PageLoader text="Loading categories..." />
+  // Fetch companies for FAQ banner (must be above return)
+  const { data: manufacturersData } = useQuery(GET_MANUFACTURERS);
+
+  const bannerPool = useMemo(
+    () =>
+      (manufacturersData?.companies || [])
+        .map((c) => {
+          const u = c?.bannerAd?.url;
+          return typeof u === "string" ? u.trim() : null;
+        })
+        .filter((u) => typeof u === "string" && u.length > 0),
+    [manufacturersData]
+  );
+
+  const [faqBanner, setFaqBanner] = useState(null);
+
+  useEffect(() => {
+    if (bannerPool.length > 0) {
+      const idx = Math.floor(Math.random() * bannerPool.length);
+      setFaqBanner(bannerPool[idx]);
+    } else {
+      setFaqBanner(null);
+    }
+  }, [bannerPool]);
+
+  if (_loading) return <PageLoader text="Loading categories..." />
   return (
     <div>
       {/* Location Permission Modal */}
@@ -243,10 +269,18 @@ if (_loading) return <PageLoader text="Loading categories..." />
           <FaqSection />
         </div>
       </div>
+
+      {/* Banner under FAQ (right before Featured Listings) */}
       <div className="bg-gray-100 py-8">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <BannerAd />
+            {faqBanner && (
+              <BannerAd
+                bannerAd={faqBanner}
+                mobileContainerClasses="w-full h-24"
+                desktopContainerClasses="max-w-4xl h-24"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -268,18 +302,24 @@ if (_loading) return <PageLoader text="Loading categories..." />
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <h4 className="text-lg font-semibold mb-4">About TombstoneFinder.CO.ZA</h4>
+              <h4 className="text-lg font-semibold mb-4">About TombstonesFinder.co.za</h4>
               <p className="text-gray-600">
-                TombstoneFinder.CO.ZA connects you with trusted tombstone manufacturers and suppliers across South Africa.
+                TombstonesFinder.co.za connects you with trusted tombstone manufacturers and suppliers across South Africa.
               </p>
             </div>
             <div>
               <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
               <ul className="space-y-2">
-                {["Home", "Find a Tombstone", "Find a Manufacturer", "Services", "Contact Us"].map((link, index) => (
+                {[
+                  { name: "Home", href: "/" },
+                  { name: "Find a Tombstone", href: "/tombstones-for-sale" },
+                  { name: "Find a Manufacturer", href: "/manufacturers" },
+                  { name: "Services", href: "/services/tombstone-finance" },
+                  { name: "Contact Us", href: "#" }
+                ].map((link, index) => (
                   <li key={index}>
-                    <Link href="#" className="text-gray-300 hover:text-white transition-colors text-sm">
-                      {link}
+                    <Link href={link.href} className="text-gray-300 hover:text-white transition-colors text-sm">
+                      {link.name}
                     </Link>
                   </li>
                 ))}
@@ -295,7 +335,7 @@ if (_loading) return <PageLoader text="Loading categories..." />
             </div>
           </div>
           <div className="border-t border-gray-700 mt-8 pt-4 text-center text-gray-400 text-sm">
-            <p>&copy; {new Date().getFullYear()} TombstoneFinder.CO.ZA. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} TombstonesFinder.co.za. All rights reserved.</p>
           </div>
         </div>
       </footer>

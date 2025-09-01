@@ -4,8 +4,10 @@ import { PremiumListingCard } from "@/components/premium-listing-card";
 import { StandardListingCard } from "@/components/standard-listing-card";
 import BannerAd from "@/components/BannerAd";
 import FeaturedListings from "@/components/FeaturedListings";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { PageLoader, CardSkeleton } from "@/components/ui/loader";
+import { useQuery } from "@apollo/client";
+import { GET_MANUFACTURERS } from "@/graphql/queries/getManufacturers";
 
 const IndexRender = ({
    
@@ -98,6 +100,31 @@ const IndexRender = ({
   const manufacturerListings = premListings
     .filter((l) => l.company?.name === featuredManufacturer?.name)
     .slice(0, 3);
+
+  // Fetch companies to build a banner pool
+  const { data: manufacturersData } = useQuery(GET_MANUFACTURERS);
+  // Build a pool of usable banner URLs from company.bannerAd.url (trim to avoid empty strings)
+  const bannerPool = useMemo(
+    () =>
+      (manufacturersData?.companies || [])
+        .map((c) => {
+          const u = c.bannerAd?.url;
+          return typeof u === "string" ? u.trim() : null;
+        })
+        .filter((u) => typeof u === "string" && u.length > 0),
+    [manufacturersData]
+  );
+
+  // Randomly select a banner when the pool changes
+  const [selectedBanner, setSelectedBanner] = useState(null);
+  useEffect(() => {
+    if (bannerPool.length > 0) {
+      const randomIndex = Math.floor(Math.random() * bannerPool.length);
+      setSelectedBanner(bannerPool[randomIndex]); // selectedBanner is a non-empty string URL
+    } else {
+      setSelectedBanner(null);
+    }
+  }, [bannerPool]);
 
   // Fallback card generator
   const fallbackCard = (type = "listing") => (
@@ -209,7 +236,13 @@ const IndexRender = ({
       {/* 6. Banner Advertisement */}
       <div className="container mx-auto px-4 mb-8">
         <div className="max-w-4xl mx-auto">
-          <BannerAd />
+          {selectedBanner && (
+            <BannerAd
+              bannerAd={selectedBanner}
+              mobileContainerClasses="w-full h-24"
+              desktopContainerClasses="max-w-4xl h-24"
+            />
+          )}
         </div>
       </div>
 

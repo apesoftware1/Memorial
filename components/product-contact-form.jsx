@@ -106,7 +106,7 @@ export default function ProductContactForm({ documentId, className = " " }) {
           Send Message
         </button>
         <div className="text-xs text-gray-500 mt-4">
-          By continuing I understand and agree with Memorial Hub's{" "}
+          By continuing I understand and agree with TombstonesFinder's{" "}
           <Link href="#" className="text-blue-500 hover:underline">
             Terms & Conditions
           </Link>{" "}
@@ -121,4 +121,4 @@ export default function ProductContactForm({ documentId, className = " " }) {
       </form>
     </>
   );
-} 
+}

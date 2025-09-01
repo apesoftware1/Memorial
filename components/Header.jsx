@@ -78,17 +78,17 @@ export default function Header({
                   Find a Tombstone
                   <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
                 </button>
-                <div className="absolute left-0 mt-1 min-w-max bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50 px-0 origin-top-left">
-                  <div className="py-1 px-0">
+                <div className="absolute left-0 top-full min-w-max bg-white rounded-none overflow-hidden shadow-xl border border-gray-200 hidden group-hover:block animate-slide-in z-50 px-0 origin-top-left">
+                  <div className="p-0">
                     <Link
                       href="/tombstones-for-sale"
-                      className="block px-0 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors whitespace-nowrap"
+                      className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
                     >
                       TOMBSTONES FOR SALE
                     </Link>
                     <Link
                       href="/tombstones-on-special"
-                      className="block px-0 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors whitespace-nowrap"
+                      className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
                     >
                       TOMBSTONES ON SPECIAL
                     </Link>
@@ -102,11 +102,11 @@ export default function Header({
                   Find a Manufacturer
                   <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
                 </button>
-                <div className="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50">
-                  <div className="py-1">
+                <div className="absolute left-0 top-full w-48 bg-white rounded-none overflow-hidden shadow-xl border border-gray-200 hidden group-hover:block animate-slide-in z-50">
+                  <div className="p-0">
                     <Link
                       href="/manufacturers"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors"
                     >
                       MANUFACTURERS
                     </Link>
@@ -120,24 +120,23 @@ export default function Header({
                   Services
                   <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
                 </button>
-                <div className="absolute left-0 mt-1 min-w-max bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50 px-0 origin-top-left">
-                  <div className="py-1 px-0">
-                    
+                <div className="absolute left-0 top-full min-w-max bg-white rounded-none overflow-hidden shadow-xl border border-gray-200 hidden group-hover:block animate-slide-in z-50 px-0 origin-top-left">
+                  <div className="p-0">
                     <Link
                       href="/services/tombstone-finance"
-                      className="block px-0 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors whitespace-nowrap"
+                      className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
                     >
                       TOMBSTONE FINANCE
                     </Link>
                     <Link
                       href="/services/installation-guide"
-                      className="block px-0 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors whitespace-nowrap"
+                      className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
                     >
                       TOMBSTONE INSTALLATION GUIDE
                     </Link>
                     <Link
                       href="/services/life-insurance"
-                      className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
+                      className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors"
                     >
                       LIFE INSURANCE
                     </Link>
@@ -151,11 +150,11 @@ export default function Header({
                   Favourites
                   <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
                 </button>
-                <div className="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50">
-                  <div className="py-1">
+                <div className="absolute left-0 top-full w-48 bg-white rounded-none overflow-hidden shadow-xl border border-gray-200 hidden group-hover:block animate-slide-in z-50">
+                  <div className="p-0">
                     <Link
                       href="/favorites"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center justify-between"
+                      className="flex w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors items-center justify-between"
                     >
                       <span>FAVOURITES</span>
                       {totalFavorites > 0 ? (
@@ -187,11 +186,11 @@ export default function Header({
                 Login / Register
                 <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
               </button>
-              <div className="absolute right-0 mt-1 w-64 bg-white rounded-md shadow-lg border border-gray-200 hidden group-hover:block animate-slide-in z-50">
-                <div className="py-1">
+              <div className="absolute right-0 top-full w-64 bg-white rounded-none overflow-hidden shadow-xl border border-gray-200 hidden group-hover:block animate-slide-in z-50">
+                <div className="p-0">
                   <Link
                     href="/manufacturers/login-page"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                    className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors"
                   >
                     MANUFACTURER LOGIN PORTAL
                   </Link>

@@ -74,8 +74,6 @@ export default function ViewInquiriesModal({ open, onClose, listings, onInquirie
     // Mark this specific inquiry as read if it's not already read
     if (inquiry.isRead !== true) {
       try {
-
-        
         const inquiryId = inquiry.documentId || inquiry.id;
         const response = await fetch(`https://typical-car-e0b66549b3.strapiapp.com/api/inquiries/${inquiryId}`, {
           method: 'PUT',
@@ -104,7 +102,8 @@ export default function ViewInquiriesModal({ open, onClose, listings, onInquirie
           
           if (matchesId) {
             console.log('Updating inquiry in local state:', inq.id || inq.documentId);
-            return { ...inq, isRead: true }; // Only update isRead, keep isNew unchanged
+            // Ensure it is marked read AND not new locally so the UI updates immediately
+            return { ...inq, isRead: true, isNew: false };
           }
           return inq;
         });
