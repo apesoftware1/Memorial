@@ -1,143 +1,105 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from "react";
 
 export const useGuestLocation = () => {
-  const [location, setLocation] = useState(null)
-  const [error, setError] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [location, setLocation] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const getLocation = useCallback(() => {
-    // Reset before fetching
-    setLoading(true)
-    setError(null)
-
-    if (typeof window === 'undefined') {
-      setLoading(false)
-      return
-    }
-
-    if (typeof navigator === 'undefined') {
-      setError('Navigator not available')
-      setLoading(false)
-      return
-    }
-
-    if (!navigator.geolocation) {
-      setError('Geolocation not supported')
-      setLoading(false)
-      return
-    }
-
-    try {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const coords = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          }
-
-          try {
-            localStorage.setItem('guestLocation', JSON.stringify(coords))
-          } catch (e) {
-            console.error('Error saving to localStorage:', e)
-          }
-
-          setLocation(coords)
-          setLoading(false)
-        },
-        (error) => {
-          console.error('Geolocation error:', error)
-          let errorMessage = 'Failed to get location'
-
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage =
-                'Location access was denied. Please enable location access in your browser settings.'
-              break
-            case error.POSITION_UNAVAILABLE:
-              errorMessage = 'Location information is unavailable'
-              break
-            case error.TIMEOUT:
-              errorMessage = 'Location request timed out'
-              break
-            default:
-              errorMessage = 'Failed to get location'
-          }
-
-          setError(errorMessage)
-          setLoading(false)
-        },
-        {
-          enableHighAccuracy: false,
-          timeout: 15000,
-          maximumAge: 300000, // cache 5 minutes
-        }
-      )
-    } catch (error) {
-      console.error('Error setting up geolocation:', error)
-      setError('Failed to setup location detection')
-      setLoading(false)
-    }
-  }, [])
-
+  // ✅ Prefer saved location from localStorage; fallback to Geolocation API
   useEffect(() => {
-    if (typeof localStorage !== 'undefined') {
-      try {
-        const stored = localStorage.getItem('guestLocation')
-        if (stored) {
-          const parsed = JSON.parse(stored)
-          setLocation(parsed)
-          setLoading(false)
-          return
-        }
-      } catch (e) {
-        console.error('Error reading from localStorage:', e)
-        try {
-          localStorage.removeItem('guestLocation')
-        } catch (clearErr) {
-          console.error('Error clearing localStorage:', clearErr)
-        }
-      }
+    if (typeof window === "undefined") {
+      setLoading(false);
+      return;
     }
 
-    // No cached location, fetch fresh
-    getLocation()
-  }, [getLocation])
+    // 1) Try localStorage first
+    try {
+      const savedGuest = localStorage.getItem("guestLocation");
+      const savedUser = localStorage.getItem("userLocation");
+      const raw = savedGuest || savedUser;
 
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Support both {lat,lng} and {latitude,longitude} shapes
+        const lat = Number(parsed.lat ?? parsed.latitude);
+        const lng = Number(parsed.lng ?? parsed.longitude);
+
+        if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+          setLocation({ lat, lng });
+          setLoading(false);
+          return; // Skip geolocation if we have a stored location
+        }
+      }
+    } catch (_) {
+      // Ignore JSON parse errors and continue to geolocation
+    }
+
+    // 2) Fallback to Geolocation API
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocation({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+        setLoading(false);
+      },
+      (err) => {
+        setError(err.message);
+        setLoading(false);
+      }
+    );
+  }, []);
+
+  // ✅ Calculate distance via backend API
   const calculateDistanceFrom = useCallback(
-    (to) => {
-      if (!location || !to || typeof to.lat !== 'number' || typeof to.lng !== 'number') {
-        return null
+    async (destLat, destLng) => {
+      if (!location) {
+        console.warn("User location not yet detected.");
+        return null;
       }
 
       try {
-        const toRad = (deg) => deg * (Math.PI / 180)
-        const R = 6371 // Earth radius in km
+        console.log("Sending coordinates to API:", {
+          userLat: location.lat,
+          userLng: location.lng,
+          destLat,
+          destLng,
+          userLatParsed: parseFloat(location.lat),
+          userLngParsed: parseFloat(location.lng),
+          destLatParsed: parseFloat(destLat),
+          destLngParsed: parseFloat(destLng),
+        });
+        const res = await fetch("/api/distance", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userLat: parseFloat(location.lat),
+            userLng: parseFloat(location.lng),
+            destLat: parseFloat(destLat.lat),
+            destLng: parseFloat(destLat.lng),
+          }),
+        });
 
-        const dLat = toRad(to.lat - location.lat)
-        const dLng = toRad(to.lng - location.lng)
+        if (!res.ok) {
+          throw new Error(`Distance API error: HTTP ${res.status}`);
+        }
 
-        const a =
-          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos(toRad(location.lat)) *
-            Math.cos(toRad(to.lat)) *
-            Math.sin(dLng / 2) *
-            Math.sin(dLng / 2)
-
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-        return R * c
-      } catch (error) {
-        console.error('Error calculating distance:', error)
-        return null
+        const data = await res.json();
+        return data;
+      } catch (err) {
+        console.error("Error calculating distance:", err);
+        return null;
       }
     },
     [location]
-  )
+  );
 
-  return {
-    location,
-    error,
-    loading,
-    calculateDistanceFrom,
-    refreshLocation: getLocation, // 🔥 Added manual refresh
-  }
-}
+  return { location, error, loading, calculateDistanceFrom };
+};

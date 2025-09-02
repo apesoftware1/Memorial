@@ -17,9 +17,18 @@ const defaultFilterOptions = {
   style: [
     "Christian Cross", "Heart", "Bible", "Pillars", "Traditional African", "Abstract", "Praying Hands", "Scroll", "Angel", "Mausoleum", "Obelisk", "Plain", "Teddy Bear", "Butterfly", "Car", "Bike", "Sports"
   ],
-  stoneType: ["Granite", "Marble", "Sandstone", "Limestone", "Bronze"],
-  custom: ["Engraving", "Photo", "Gold Leaf", "Special Shape", "Lighting"],
-  colour: ["Black", "White", "Grey", "Brown", "Blue Pearl", "Red"],
+  slabStyle: [
+    "Curved Slab", "Frame with Infill", "Full Slab", "Glass Slab", "Half Slab", "Stepped Slab", "Tiled Slab"
+  ],
+  stoneType: [
+    "Biodegradable", "Brass", "Ceramic/Porcelain", "Composite", "Concrete", "Copper", "Glass",
+    "Granite", "Limestone", "Marble", "Perspex", "Quartzite", "Sandstone", "Slate", "Steel", "Stone", "Tile", "Wood"
+  ],
+  custom: [
+    "Bronze/Stainless Plaques", "Ceramic Photo Plaques", "Flower Vases", "Gold Lettering",
+    "Inlaid Glass", "Photo Laser-Edging", "QR Code"
+  ],
+  colour: ["Black", "Blue", "Green", "Grey-Dark", "Grey-Light", "Maroon", "Pearl", "Red", "White"],
   bodyType: ["Full Tombstone", "Headstone", "Double Headstone", "Cremation Memorial", "Family Monument", "Child Memorial", "Custom Design"],
   culture: ["Christian", "Jewish", "Muslim", "Hindu", "Traditional African"],
 };
@@ -119,6 +128,7 @@ const SearchContainer = ({
     const paramCategory = searchParams.get('category') || searchParams.get('category_listing.name');
     const paramColor = searchParams.get('color') || searchParams.get('colour');
     const paramStyle = searchParams.get('style');
+    const paramSlabStyle = searchParams.get('slabStyle');
     const paramMaterial = searchParams.get('material') || searchParams.get('stoneType');
     const paramCustomization = searchParams.get('customization') || searchParams.get('custom');
     const paramLocation = searchParams.get('location');
@@ -164,6 +174,16 @@ const SearchContainer = ({
       const q = paramStyle.toLowerCase();
       next = next.filter((listing) => {
         const styles = getDetailValues(listing, 'style');
+        const title = (listing?.title || "").toLowerCase();
+        return styles.some((s) => s.includes(q)) || title.includes(q);
+      });
+    }
+
+    // Slab Style (array in productDetails.slabStyle)
+    if (paramSlabStyle) {
+      const q = paramSlabStyle.toLowerCase();
+      next = next.filter((listing) => {
+        const styles = getDetailValues(listing, 'slabStyle');
         const title = (listing?.title || "").toLowerCase();
         return styles.some((s) => s.includes(q)) || title.includes(q);
       });
@@ -221,6 +241,7 @@ const SearchContainer = ({
         search: paramSearch || prev?.search || null,
         colour: paramColor || prev?.colour || null,
         style: paramStyle || prev?.style || null,
+        slabStyle: paramSlabStyle || prev?.slabStyle || null,
         stoneType: paramMaterial || prev?.stoneType || null,
         custom: paramCustomization || prev?.custom || null,
         location: paramLocation || prev?.location || null,
@@ -269,9 +290,13 @@ const SearchContainer = ({
         const colour = (listing?.productDetails?.color?.[0]?.value || '').toLowerCase();
         return colour.includes(query.toLowerCase());
       })
-      // Style (partial)
+      // Head style (partial)
       .filter(listing => f.style && f.style !== 'All' && f.style !== ''
         ? ((listing?.productDetails?.style?.[0]?.value || '').toLowerCase().includes(f.style.toLowerCase()))
+        : true)
+      // Slab style (partial)
+      .filter(listing => f.slabStyle && f.slabStyle !== 'All' && f.slabStyle !== ''
+        ? ((listing?.productDetails?.slabStyle?.[0]?.value || '').toLowerCase().includes(f.slabStyle.toLowerCase()))
         : true)
       // Customization (partial)
       .filter(listing => f.custom && f.custom !== 'All' && f.custom !== ''
@@ -349,17 +374,25 @@ const SearchContainer = ({
       });
     }
 
-    // Filter by style
+    // Filter by head style
     if (filters?.style) {
       filtered = filtered.filter(listing => {
         const listingStyle = listing.productDetails?.style?.[0]?.value ||
-                            listing.title?.toLowerCase();
-        
+                              listing.title?.toLowerCase();
         return listingStyle?.toLowerCase().includes(filters.style.toLowerCase());
       });
     }
 
-    // Filter by customization
+    // Filter by slab style
+    if (filters?.slabStyle) {
+      filtered = filtered.filter(listing => {
+        const listingSlabStyle = listing.productDetails?.slabStyle?.[0]?.value ||
+                                listing.title?.toLowerCase();
+        return listingSlabStyle?.toLowerCase().includes(filters.slabStyle.toLowerCase());
+      });
+    }
+
+    // Filter by customisation
     if (filters?.custom) {
       filtered = filtered.filter(listing => {
         const listingCustom = listing.productDetails?.customization?.[0]?.value ||
@@ -501,121 +534,15 @@ const SearchContainer = ({
     <div className="w-full mt-0 md:mt-20">
       <div className="container mx-auto px-0 max-w-4xl">
         <div className="w-full md:max-w-lg flex flex-col justify-between relative bg-[#005D77]">
-      {/* CategoryTabs - flush with top and sides */}
-      <div className="w-full">
-        <CategoryTabs categories={categories} activeTab={activeTab} setActiveTab={setActiveTab} />
-      </div>
-      {/* Main content with padding below tabs */}
-      <div className="flex flex-col gap-3 sm:gap-4 p-4 sm:p-6">
-        {/* Search Heading */}
-        <h2 className="text-xl sm:text-2xl text-[#D4AF37] font-semibold mb-0 tracking-wide leading-tight">
-          Find Your Loved One A Tombstone!
-        </h2>
+          {/* CategoryTabs - flush with top and sides */}
+          <div className="w-full">
+            <CategoryTabs categories={categories} activeTab={activeTab} setActiveTab={setActiveTab} />
+          </div>
 
-        {/* Search Form */}
-        <SearchForm 
-          onSearch={(searchTerm) => {
-            const searchTermLower = searchTerm.toLowerCase();
-            
-            // Update search filter in real-time as user types
-            if (setFilters) {
-              setFilters(prev => ({ ...prev, search: searchTerm }));
-            }
-            
-            if (setSelectedCategory) {
-              if (searchTermLower.includes('premium')) {
-                setSelectedCategory("PREMIUM");
-              } else if (searchTermLower.includes('family')) {
-                setSelectedCategory("FAMILY");
-              } else if (searchTermLower.includes('child')) {
-                setSelectedCategory("CHILD");
-              } else if (searchTermLower.includes('head')) {
-                setSelectedCategory("HEAD");
-              } else if (searchTermLower.includes('cremation')) {
-                setSelectedCategory("CREMATION");
-              }
-            }
+          {/* Removed duplicate heading + search + reset + first filters grid */}
+          {/* (We keep the later single instance that includes action buttons) */}
 
-            if (setFilters) {
-              const newFilters = { ...filters };
-              
-              if (searchTermLower.includes('cheap') || searchTermLower.includes('affordable')) {
-                newFilters.minPrice = "R 5,001";
-                newFilters.maxPrice = "R 15,000";
-              }
-
-              if (searchTermLower.includes('granite')) {
-                newFilters.stoneType = "Granite";
-              } else if (searchTermLower.includes('marble')) {
-                newFilters.stoneType = "Marble";
-              }
-
-              setFilters(newFilters);
-            }
-          }}
-          onSearchSubmit={(searchContent) => {
-            // Add search content to filters for URL params and immediate filtering
-            if (setFilters) {
-              setFilters(prev => ({ ...prev, search: searchContent }));
-            }
-          }}
-        />
-
-        {/* Reset Link */}
-        <div className="flex justify-end mb-0">
-          <button
-            onClick={() => {
-              if (setFilters) setFilters({});
-              if (setSelectedCategory) setSelectedCategory(null);
-            }}
-            className="text-[#D4AF37] hover:text-[#C4A027] font-medium text-sm tracking-wide transition-colors"
-          >
-            Reset
-          </button>
-        </div>
-
-        {/* All Filters Grid */}
-        <div className="grid grid-cols-2 gap-1 sm:gap-2 relative mb-2">
-          <FilterDropdown
-            name="minPrice"
-            label="Min Price"
-            options={filterOptions.minPrice}
-            openDropdown={uiState.openDropdown}
-            toggleDropdown={toggleDropdown}
-            selectOption={selectOption}
-            filters={filters || {}}
-            dropdownRefs={dropdownRefs}
-          />
-          <FilterDropdown
-            name="maxPrice"
-            label="Max Price"
-            options={filterOptions.maxPrice}
-            openDropdown={uiState.openDropdown}
-            toggleDropdown={toggleDropdown}
-            selectOption={selectOption}
-            filters={filters || {}}
-            dropdownRefs={dropdownRefs}
-          />
-          <FilterDropdown
-            name="location"
-            label="Location"
-            options={filterOptions.location}
-            openDropdown={uiState.openDropdown}
-            toggleDropdown={toggleDropdown}
-            selectOption={selectOption}
-            filters={filters || {}}
-            dropdownRefs={dropdownRefs}
-          />
-          <FilterDropdown
-            name="style"
-            label="Style"
-            options={filterOptions.style}
-            openDropdown={uiState.openDropdown}
-            toggleDropdown={toggleDropdown}
-            selectOption={selectOption}
-            filters={filters || {}}
-            dropdownRefs={dropdownRefs}
-          />
+          {/* Mobile-only: showAllOptions tray (acts like more options) */}
           {!isDesktop && uiState.showAllOptions && (
             <>
               <FilterDropdown
@@ -648,138 +575,271 @@ const SearchContainer = ({
                 filters={filters || {}}
                 dropdownRefs={dropdownRefs}
               />
+              <FilterDropdown
+                name="slabStyle"
+                label="Slab Style"
+                options={filterOptions.slabStyle}
+                openDropdown={uiState.openDropdown}
+                toggleDropdown={toggleDropdown}
+                selectOption={selectOption}
+                filters={filters || {}}
+                dropdownRefs={dropdownRefs}
+              />
             </>
           )}
-        </div>
 
-        {/* Mobile-only Location Modal (full-screen handled inside modal) */}
-        {showLocationModal && (
-          <LocationModal
-            isOpen={showLocationModal}
-            onClose={() => setShowLocationModal(false)}
-            locationsData={mobileLocationsData}
-            onSelectLocation={(loc) => {
-              if (setFilters) {
-                setFilters(prev => ({ ...prev, location: typeof loc === 'string' ? loc : 'Near me' }));
-              }
-              setShowLocationModal(false);
-            }}
-          />
-        )}
+          {/* Main content with padding below tabs (single instance kept) */}
+          <div className="flex flex-col gap-3 sm:gap-4 p-4 sm:p-6">
+            {/* Search Heading */}
+            <h2 className="text-xl sm:text-2xl text-[#D4AF37] font-semibold mb-0 tracking-wide leading-tight">
+              Find Your Loved One A Tombstone!
+            </h2>
 
-        {/* Action Buttons Container */}
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-8 w-full">
-          {/* More Options Button */}
-          {isDesktop ? (
-            <button
-              onClick={() => setMoreOptionsOpen(!moreOptionsOpen)}
-              className="w-full sm:w-[180px] bg-[#0D7C99] text-white font-bold text-sm h-9 transition-colors hover:bg-[#0D7C99]/90 whitespace-nowrap shadow"
-              style={{ borderRadius: '2px' }}
+            {/* Search Form */}
+            <SearchForm
+              onSearch={(searchTerm) => {
+                const searchTermLower = searchTerm.toLowerCase();
+                
+                // Update search filter in real-time as user types
+                if (setFilters) {
+                  setFilters(prev => ({ ...prev, search: searchTerm }));
+                }
+                
+                if (setSelectedCategory) {
+                  if (searchTermLower.includes('premium')) {
+                    setSelectedCategory("PREMIUM");
+                  } else if (searchTermLower.includes('family')) {
+                    setSelectedCategory("FAMILY");
+                  } else if (searchTermLower.includes('child')) {
+                    setSelectedCategory("CHILD");
+                  } else if (searchTermLower.includes('head')) {
+                    setSelectedCategory("HEAD");
+                  } else if (searchTermLower.includes('cremation')) {
+                    setSelectedCategory("CREMATION");
+                  }
+                }
+
+                if (setFilters) {
+                  const newFilters = { ...filters };
+                  
+                  if (searchTermLower.includes('cheap') || searchTermLower.includes('affordable')) {
+                    newFilters.minPrice = "R 5,001";
+                    newFilters.maxPrice = "R 15,000";
+                  }
+
+                  if (searchTermLower.includes('granite')) {
+                    newFilters.stoneType = "Granite";
+                  } else if (searchTermLower.includes('marble')) {
+                    newFilters.stoneType = "Marble";
+                  }
+
+                  setFilters(newFilters);
+                }
+              }}
+              onSearchSubmit={(searchContent) => {
+                // Add search content to filters for URL params and immediate filtering
+                if (setFilters) {
+                  setFilters(prev => ({ ...prev, search: searchContent }));
+                }
+              }}
+            />
+
+            {/* Reset Link */}
+            <div className="flex justify-end mb-0">
+              <button
+                onClick={() => {
+                  if (setFilters) setFilters({});
+                  if (setSelectedCategory) setSelectedCategory(null);
+                }}
+                className="text-[#D4AF37] hover:text-[#C4A027] font-medium text-sm tracking-wide transition-colors"
+              >
+                Reset
+              </button>
+            </div>
+
+            {/* All Filters Grid */}
+            <div className="grid grid-cols-2 gap-1 sm:gap-2 relative mb-2">
+              <FilterDropdown
+                name="minPrice"
+                label="Min Price"
+                options={filterOptions.minPrice}
+                openDropdown={uiState.openDropdown}
+                toggleDropdown={toggleDropdown}
+                selectOption={selectOption}
+                filters={filters || {}}
+                dropdownRefs={dropdownRefs}
+              />
+              <FilterDropdown
+                name="maxPrice"
+                label="Max Price"
+                options={filterOptions.maxPrice}
+                openDropdown={uiState.openDropdown}
+                toggleDropdown={toggleDropdown}
+                selectOption={selectOption}
+                filters={filters || {}}
+                dropdownRefs={dropdownRefs}
+              />
+              <FilterDropdown
+                name="location"
+                label="Location"
+                options={filterOptions.location}
+                openDropdown={uiState.openDropdown}
+                toggleDropdown={toggleDropdown}
+                selectOption={selectOption}
+                filters={filters || {}}
+                dropdownRefs={dropdownRefs}
+              />
+              <FilterDropdown
+                name="style"
+                label="Style"
+                options={filterOptions.style}
+                openDropdown={uiState.openDropdown}
+                toggleDropdown={toggleDropdown}
+                selectOption={selectOption}
+                filters={filters || {}}
+                dropdownRefs={dropdownRefs}
+              />
+              {/* NOTE: Slab Style intentionally NOT here anymore */}
+            </div>
+
+            {/* Mobile-only Location Modal (full-screen handled inside modal) */}
+            {showLocationModal && (
+              <LocationModal
+                isOpen={showLocationModal}
+                onClose={() => setShowLocationModal(false)}
+                locationsData={mobileLocationsData}
+                onSelectLocation={(loc) => {
+                  if (setFilters) {
+                    setFilters(prev => ({ ...prev, location: typeof loc === 'string' ? loc : 'Near me' }));
+                  }
+                  setShowLocationModal(false);
+                }}
+              />
+            )}
+
+            {/* Action Buttons Container */}
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-8 w-full">
+              {/* More Options Button */}
+              {isDesktop ? (
+                <button
+                  onClick={() => setMoreOptionsOpen(!moreOptionsOpen)}
+                  className="w-full sm:w-[180px] bg-[#0D7C99] text-white font-bold text-sm h-9 transition-colors hover:bg-[#0D7C99]/90 whitespace-nowrap shadow"
+                  style={{ borderRadius: '2px' }}
+                >
+                  {moreOptionsOpen ? '- Less Options' : '+ More Options'}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setUiState(prev => ({ ...prev, showAllOptions: !prev.showAllOptions }))}
+                  className="w-full sm:w-[180px] bg-[#0D7C99] text-white font-bold text-sm h-9 transition-colors hover:bg-[#0D7C99]/90 whitespace-nowrap shadow"
+                  style={{ borderRadius: '2px' }}
+                >
+                  {uiState.showAllOptions ? '- Less Options' : '+ More Options'}
+                </button>
+              )}
+              {/* Search Button */}
+              {(!isDesktop && (
+                <div className={`w-full sm:w-[220px] sm:ml-auto transition-transform duration-300 ease-in-out ${moreOptionsOpen ? 'translate-x-[233%]' : 'translate-x-0'} relative z-[5] mb-4 md:mb-0`}>
+                  <button
+                    type="button"
+                    onClick={finalHandleSearch}
+                    disabled={finalIsSearching}
+                    className={`w-full bg-[#D4AF37] text-white rounded font-bold text-sm h-9 transition-colors ${
+                      finalIsSearching ? 'opacity-75 cursor-not-allowed' : 'hover:bg-[#C4A027]'
+                    }`}
+                    style={{ borderRadius: '2px' }}
+                  >
+                    {renderSearchButtonContent()}
+                  </button>
+                </div>
+              )) || (isDesktop && uiState.openDropdown !== 'custom' && (
+                <div className={`w-full sm:w-[220px] sm:ml-auto transition-transform duration-300 ease-in-out ${moreOptionsOpen ? 'translate-x-[233%]' : 'translate-x-0'} relative z-[5] mb-4 md:mb-0`}>
+                  <button
+                    type="button"
+                    onClick={finalHandleSearch}
+                    disabled={finalIsSearching}
+                    className={`w-full bg-[#D4AF37] text-white rounded font-bold text-sm h-9 transition-colors ${
+                      finalIsSearching ? 'opacity-75 cursor-not-allowed' : 'hover:bg-[#C4A027]'
+                    }`}
+                    style={{ borderRadius: '2px' }}
+                  >
+                    {renderSearchButtonContent()}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Desktop More Options Container */}
+          {isDesktop && (
+            <div
+              className={`absolute left-0 w-full md:max-w-lg bg-[#005D77] p-4 sm:p-6 flex flex-col transition-all duration-300 ease-in-out z-[1] 
+                ${moreOptionsOpen ? 'translate-x-[100%] opacity-100 pointer-events-auto' : 'translate-x-0 opacity-0 pointer-events-none'}`}
+              style={{
+                top: '56px',
+                bottom: 0,
+                width: '100%',
+                maxWidth: '32rem',
+                boxShadow: '0 0 10px rgba(0, 0, 0, 0.1)'
+              }}
             >
-              {moreOptionsOpen ? '- Less Options' : '+ More Options'}
-            </button>
-          ) : (
-            <button
-              onClick={() => setUiState(prev => ({ ...prev, showAllOptions: !prev.showAllOptions }))}
-              className="w-full sm:w-[180px] bg-[#0D7C99] text-white font-bold text-sm h-9 transition-colors hover:bg-[#0D7C99]/90 whitespace-nowrap shadow"
-              style={{ borderRadius: '2px' }}
-            >
-              {uiState.showAllOptions ? '- Less Options' : '+ More Options'}
-            </button>
+              {/* Header */}
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-xl text-[#D4AF37] font-semibold">More Options</h3>
+                <button
+                  onClick={() => setMoreOptionsOpen(false)}
+                  className="p-2 rounded-full hover:bg-gray-700 transition-colors"
+                  aria-label="Close more options"
+                >
+                  <X className="h-5 w-5 text-white" />
+                </button>
+              </div>
+              {/* Additional Filters - Reordered as requested */}
+              <div className="grid grid-cols-2 gap-1 mb-2 sm:gap-2" style={{ marginTop: '102px' }}>
+                <FilterDropdown
+                  name="slabStyle"
+                  label="Slab Style"
+                  options={filterOptions.slabStyle}
+                  openDropdown={uiState.openDropdown}
+                  toggleDropdown={toggleDropdown}
+                  selectOption={selectOption}
+                  filters={filters || {}}
+                  dropdownRefs={dropdownRefs}
+                />
+                <FilterDropdown
+                  name="stoneType"
+                  label="Stone Type"
+                  options={filterOptions.stoneType}
+                  openDropdown={uiState.openDropdown}
+                  toggleDropdown={toggleDropdown}
+                  selectOption={selectOption}
+                  filters={filters || {}}
+                  dropdownRefs={dropdownRefs}
+                />
+                <FilterDropdown
+                  name="custom"
+                  label="Customisation"
+                  options={filterOptions.custom}
+                  openDropdown={uiState.openDropdown}
+                  toggleDropdown={toggleDropdown}
+                  selectOption={selectOption}
+                  filters={filters || {}}
+                  dropdownRefs={dropdownRefs}
+                />
+                <FilterDropdown
+                  name="colour"
+                  label="Colour"
+                  options={filterOptions.colour}
+                  openDropdown={uiState.openDropdown}
+                  toggleDropdown={toggleDropdown}
+                  selectOption={selectOption}
+                  filters={filters || {}}
+                  dropdownRefs={dropdownRefs}
+                />
+              </div>
+            </div>
           )}
-          {/* Search Button */}
-          {(!isDesktop && (
-            <div className={`w-full sm:w-[220px] sm:ml-auto transition-transform duration-300 ease-in-out ${moreOptionsOpen ? 'translate-x-[233%]' : 'translate-x-0'} relative z-[5] mb-4 md:mb-0`}>
-              <button
-                type="button"
-                onClick={finalHandleSearch}
-                disabled={finalIsSearching}
-                className={`w-full bg-[#D4AF37] text-white rounded font-bold text-sm h-9 transition-colors ${
-                  finalIsSearching ? 'opacity-75 cursor-not-allowed' : 'hover:bg-[#C4A027]'
-                }`}
-                style={{ borderRadius: '2px' }}
-              >
-                {renderSearchButtonContent()}
-              </button>
-            </div>
-          )) || (isDesktop && uiState.openDropdown !== 'custom' && (
-            <div className={`w-full sm:w-[220px] sm:ml-auto transition-transform duration-300 ease-in-out ${moreOptionsOpen ? 'translate-x-[233%]' : 'translate-x-0'} relative z-[5] mb-4 md:mb-0`}>
-              <button
-                type="button"
-                onClick={finalHandleSearch}
-                disabled={finalIsSearching}
-                className={`w-full bg-[#D4AF37] text-white rounded font-bold text-sm h-9 transition-colors ${
-                  finalIsSearching ? 'opacity-75 cursor-not-allowed' : 'hover:bg-[#C4A027]'
-                }`}
-                style={{ borderRadius: '2px' }}
-              >
-                {renderSearchButtonContent()}
-              </button>
-            </div>
-          ))}
-        </div>
 
-      
-      {/* Desktop More Options Container */}
-      {isDesktop && (
-        <div
-          className={`absolute left-0 w-full md:max-w-lg bg-[#005D77] p-4 sm:p-6 flex flex-col transition-all duration-300 ease-in-out z-[1] 
-            ${moreOptionsOpen ? 'translate-x-[100%] opacity-100 pointer-events-auto' : 'translate-x-0 opacity-0 pointer-events-none'}`}
-          style={{
-            top: '56px',
-            bottom: 0,
-            width: '100%',
-            maxWidth: '32rem',
-            boxShadow: '0 0 10px rgba(0, 0, 0, 0.1)'
-          }}
-        >
-          {/* Header */}
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-xl text-[#D4AF37] font-semibold">More Options</h3>
-            <button
-              onClick={() => setMoreOptionsOpen(false)}
-              className="p-2 rounded-full hover:bg-gray-700 transition-colors"
-              aria-label="Close more options"
-            >
-              <X className="h-5 w-5 text-white" />
-            </button>
-          </div>
-            {/* Additional Filters - Reordered as requested */}
-            <div className="grid grid-cols-2 gap-1 mb-2 sm:gap-2" style={{ marginTop: '102px' }}>
-              <FilterDropdown
-                name="stoneType"
-                label="Material"
-                options={filterOptions.stoneType}
-                openDropdown={uiState.openDropdown}
-                toggleDropdown={toggleDropdown}
-                selectOption={selectOption}
-                filters={filters || {}}
-                dropdownRefs={dropdownRefs}
-              />
-              <FilterDropdown
-                name="custom"
-                label="Customisation"
-                options={filterOptions.custom}
-                openDropdown={uiState.openDropdown}
-                toggleDropdown={toggleDropdown}
-                selectOption={selectOption}
-                filters={filters || {}}
-                dropdownRefs={dropdownRefs}
-              />
-              <FilterDropdown
-                name="colour"
-                label="Colour"
-                options={filterOptions.colour}
-                openDropdown={uiState.openDropdown}
-                toggleDropdown={toggleDropdown}
-                selectOption={selectOption}
-                filters={filters || {}}
-                dropdownRefs={dropdownRefs}
-              />
-            </div>
-          </div>
-        )}
-      </div>
         </div>
       </div>
     </div>

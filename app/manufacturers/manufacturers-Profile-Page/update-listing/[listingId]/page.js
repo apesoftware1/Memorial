@@ -3,10 +3,12 @@
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@apollo/client";
+import React, { useState, useEffect, useMemo } from 'react';
 import { GET_LISTING_BY_ID } from '@/graphql/queries/getListingById';
-import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { uploadToCloudinary } from "@/lib/cloudinary"; // moved from bottom to top
+import pricingAdFlasher from '../../../../../pricingAdFlasher.json';
 
 function isMobile() {
   if (typeof window === 'undefined') return false;
@@ -26,30 +28,105 @@ export default function UpdateListingPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [images, setImages] = useState(Array(11).fill(null));
+  // Product Details state
   const [selectedStyle, setSelectedStyle] = useState([]);
   const [selectedColour, setSelectedColour] = useState([]);
   const [selectedStoneType, setSelectedStoneType] = useState([]);
   const [selectedCulture, setSelectedCulture] = useState([]);
   const [selectedCustomisation, setSelectedCustomisation] = useState([]);
+  const [selectedSlabStyle, setSelectedSlabStyle] = useState([]);
   const [modalMsg, setModalMsg] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   
-  // Additional product details state
-  const [transport, setTransport] = useState("");
-  const [foundation, setFoundation] = useState("");
-  const [warranty, setWarranty] = useState("");
+  // Additional product details state (arrays to match Advert Creator)
+  const [selectedTransport, setSelectedTransport] = useState([]);
+  const [selectedFoundation, setSelectedFoundation] = useState([]);
+  const [selectedWarranty, setSelectedWarranty] = useState([]);
   const [price, setPrice] = useState("");
   const [flasher, setFlasher] = useState("");
   const [manufacturingTimeframe, setManufacturingTimeframe] = useState("1");
-  
+
+  // Manufacturing Lead Time options and helpers
+  const manufacturingLeadTimeOptions = [1, 2, 3, 7, 10, 14, 21];
+  const formatManufacturingLeadTimeText = (days) => {
+    if (days === 1) return "X1 WORKING DAY AFTER POP (Proof of Payment)";
+    return `X${days} WORKING DAYS AFTER POP (Proof of Payment)`;
+  };
+  const handleManufacturingLeadTimeToggle = (days) => {
+    const str = String(days);
+    setManufacturingTimeframe((prev) => (prev === str ? "" : str));
+  };
+
+  // PRICING & ADFLASHER state and helpers (added)
+  const [expandedAdFlasherCategory, setExpandedAdFlasherCategory] = useState(null);
+  const [badgeCategoryKey, setBadgeCategoryKey] = useState(null);
+
+  const PRICING_ADFLASHER = pricingAdFlasher?.PRICING_ADFLASHER || {};
+  const adFlasherOptionsMap = PRICING_ADFLASHER?.AD_FLASHER || {};
+  const priceRuleText = PRICING_ADFLASHER?.PRICE_RULE || "";
+
+  const selectedAdFlasherCategoryKey = useMemo(() => {
+    if (!flasher) return null;
+    for (const [cat, cfg] of Object.entries(adFlasherOptionsMap)) {
+      const options = Array.isArray(cfg) ? cfg : (cfg?.options || []);
+      if (options.includes(flasher)) return cat;
+    }
+    return null;
+  }, [flasher, adFlasherOptionsMap]);
+
+  const effectiveAdFlasherCategoryKey = useMemo(() => {
+    return badgeCategoryKey || selectedAdFlasherCategoryKey;
+  }, [badgeCategoryKey, selectedAdFlasherCategoryKey]);
+
+  const selectedAdFlasherColor = useMemo(() => {
+    if (!effectiveAdFlasherCategoryKey) return "#005bac";
+    const cfg = adFlasherOptionsMap[effectiveAdFlasherCategoryKey];
+    if (cfg && !Array.isArray(cfg) && cfg.color) return cfg.color;
+    if (Array.isArray(cfg) && cfg.color) return cfg.color;
+    return "#005bac";
+  }, [effectiveAdFlasherCategoryKey, adFlasherOptionsMap]);
+
+  const handleToggleAdFlasherCategory = (category) => {
+    setExpandedAdFlasherCategory((prev) => (prev === category ? null : category));
+    setBadgeCategoryKey(category);
+  };
+
+  const handleSelectAdFlasher = (category, option) => {
+    setFlasher(option);
+    setExpandedAdFlasherCategory(category);
+    setBadgeCategoryKey(category);
+  };
+
+  const handlePriceChange = (e) => {
+    // allow digits and a single dot; limit to 2 decimals
+    const raw = e.target.value.replace(/[^0-9.]/g, "");
+    const parts = raw.split(".");
+    let normalized = parts[0];
+    if (parts.length > 1) {
+      normalized += "." + parts[1].slice(0, 2);
+    }
+    setPrice(normalized);
+  };
+
+  const handlePriceBlur = () => {
+    if (price === "") return;
+    const num = Number(price);
+    if (!Number.isNaN(num)) {
+      setPrice(num.toFixed(2));
+    }
+  };
+
   // Loading and success states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
 
+  // Moved these two hooks up here (unconditional)
+  const [imageFiles, setImageFiles] = useState(Array(11).fill(null));
+  const [existingPublicIds, setExistingPublicIds] = useState({ main: null, thumbs: [] });
+
   const listing = data?.listing;
 
-  // After data is loaded, update state
   useEffect(() => {
     if (listing) {
       setTitle(listing.title || "");
@@ -63,14 +140,20 @@ export default function UpdateListingPage() {
       setSelectedStoneType((listing.productDetails?.stoneType || []).map(st => st.value));
       setSelectedCulture((listing.productDetails?.culture || []).map(cu => cu.value));
       setSelectedCustomisation((listing.productDetails?.customization || []).map(cu => cu.value));
-      
-      // Set additional product details
-      setTransport(listing.additionalProductDetails?.transportAndInstallation?.value || "");
-      setFoundation(listing.additionalProductDetails?.foundationOptions?.value || "");
-      setWarranty(listing.additionalProductDetails?.warrantyOrGuarantee?.value || "");
+      setSelectedSlabStyle((listing.productDetails?.slabStyle || []).map(s => s.value));
+
+      // Set additional product details (arrays)
+      setSelectedTransport((listing.additionalProductDetails?.transportAndInstallation || []).map(o => o.value));
+      setSelectedFoundation((listing.additionalProductDetails?.foundationOptions || []).map(o => o.value));
+      setSelectedWarranty((listing.additionalProductDetails?.warrantyOrGuarantee || []).map(o => o.value));
       setPrice(listing.price?.toString() || "");
       setFlasher(listing.adFlasher || "");
       setManufacturingTimeframe(listing.manufacturingTimeframe || "1");
+
+      setExistingPublicIds({
+        main: listing?.mainImagePublicId || null,
+        thumbs: Array.isArray(listing?.thumbnailPublicIds) ? listing.thumbnailPublicIds : [],
+      });
     }
   }, [listing]);
 
@@ -87,32 +170,88 @@ export default function UpdateListingPage() {
     setShowMessage(false);
 
     try {
+      const folderName = listing?.company?.name || undefined;
+
+      // detect replacements
+      const replacingMain = Boolean(imageFiles[0]);
+      const thumbFilesToUpload = [];
+      for (let idx = 1; idx <= 5; idx++) {
+        if (imageFiles[idx]) thumbFilesToUpload.push({ idx, file: imageFiles[idx] });
+      }
+
+      // Main image (upload if replacing)
+      let mainImageUrl = listing?.mainImageUrl || null;
+      let mainImagePublicId = existingPublicIds.main || null;
+      if (replacingMain) {
+        const uploaded = await uploadToCloudinary(imageFiles[0], folderName);
+        mainImageUrl = uploaded?.url || uploaded?.secure_url || mainImageUrl;
+        mainImagePublicId = uploaded?.public_id || mainImagePublicId;
+      }
+
+      // Thumbnails (upload if any replacement provided)
+      const finalThumbUrls = [];
+      const finalThumbPublicIds = [];
+      if (thumbFilesToUpload.length > 0) {
+        const uploadedThumbs = await Promise.all(
+          thumbFilesToUpload.map(({ file }) => uploadToCloudinary(file, folderName))
+        );
+        uploadedThumbs.forEach(u => {
+          if (u?.url || u?.secure_url) {
+            finalThumbUrls.push(u.url || u.secure_url);
+            finalThumbPublicIds.push(u.public_id || null);
+          }
+        });
+      } else {
+        // keep existing if none supplied
+        (Array.isArray(listing?.thumbnailUrls) ? listing.thumbnailUrls : []).forEach(u => finalThumbUrls.push(u));
+        (Array.isArray(listing?.thumbnailPublicIds) ? listing.thumbnailPublicIds : []).forEach(pid => finalThumbPublicIds.push(pid));
+      }
+
       const payload = {
         data: {
-          title: title, // string
-          description: description, // string
-          price: parseFloat(price), // number
-          adFlasher: flasher, // string
-          manufacturingTimeframe: manufacturingTimeframe, // string
+          title,
+          description,
+          price: parseFloat(price),
+          adFlasher: flasher,
+          adFlasherColor: selectedAdFlasherColor, // NEW: persist color on update
+          manufacturingTimeframe: manufacturingTimeframe,
+          mainImageUrl: mainImageUrl || null,
+          mainImagePublicId: mainImagePublicId || null,
+          thumbnailUrls: finalThumbUrls,
+          thumbnailPublicIds: finalThumbPublicIds,
           productDetails: {
-            color: selectedColour.map(color => ({ value: color })),
-            style: selectedStyle.map(style => ({ value: style })),
-            stoneType: selectedStoneType.map(stone => ({ value: stone })),
-            customization: selectedCustomisation.map(custom => ({ value: custom })),
+            color: selectedColour.map((value) => ({
+              value,
+              icon: getIconPath('color', value),
+            })),
+            style: selectedStyle.map((value) => ({
+              value,
+              icon: getIconPath('style', value),
+            })),
+            slabStyle: selectedSlabStyle.map((value) => ({
+              value,
+              icon: getIconPath('slabStyle', value),
+            })),
+            stoneType: selectedStoneType.map((value) => ({
+              value,
+              icon: getIconPath('stoneType', value),
+            })),
+            customization: selectedCustomisation.map((value) => ({
+              value,
+              icon: getIconPath('customization', value),
+            })),
           },
           additionalProductDetails: {
-            transportAndInstallation: transport ? [{ value: transport }] : [],
-            foundationOptions: foundation ? [{ value: foundation }] : [],
-            warrantyOrGuarantee: warranty ? [{ value: warranty }] : [],
+            transportAndInstallation: selectedTransport.map((value) => ({ value })),
+            foundationOptions: selectedFoundation.map((value) => ({ value })),
+            warrantyOrGuarantee: selectedWarranty.map((value) => ({ value })),
           }
         }
       };
 
       const response = await fetch(`https://typical-car-e0b66549b3.strapiapp.com/api/listings/${listing.documentId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
@@ -120,17 +259,34 @@ export default function UpdateListingPage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
+      // Cleanup old Cloudinary assets only if they were replaced
+      try {
+        const publicIdsToDelete = [];
+        if (replacingMain && existingPublicIds.main) {
+          publicIdsToDelete.push(existingPublicIds.main);
+        }
+        if (thumbFilesToUpload.length > 0 && Array.isArray(existingPublicIds.thumbs) && existingPublicIds.thumbs.length) {
+          publicIdsToDelete.push(...existingPublicIds.thumbs);
+        }
+        if (publicIdsToDelete.length > 0) {
+          await fetch('/api/cloudinary/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ publicIds: publicIdsToDelete }),
+          });
+        }
+      } catch (cleanupErr) {
+        console.warn('Cloudinary cleanup failed:', cleanupErr);
+      }
+
       const result = await response.json();
       setSubmitMessage("Listing updated successfully!");
       setShowMessage(true);
-      
-      // Redirect to profile page after successful update
       setTimeout(() => {
         router.push('/manufacturers/manufacturers-Profile-Page');
       }, 2000);
 
     } catch (error) {
-    
       setSubmitMessage(`Error updating listing: ${error.message}`);
       setShowMessage(true);
     } finally {
@@ -154,8 +310,6 @@ export default function UpdateListingPage() {
   if (loading) return <div>Loading listing data...</div>;
   if (error) return <div>Error loading listing data.</div>;
   if (!listing) return <div>Listing not found.</div>;
-
-  // ...rest of your component (form, UI, etc.)...
 
   return (
     <div style={{
@@ -239,9 +393,16 @@ export default function UpdateListingPage() {
                   accept="image/*"
                   style={{ display: "none" }}
                   onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
                     const newImages = [...images];
-                    newImages[0] = URL.createObjectURL(e.target.files[0]);
+                    newImages[0] = URL.createObjectURL(file);
                     setImages(newImages);
+
+                    const newFiles = [...imageFiles];
+                    newFiles[0] = file;
+                    setImageFiles(newFiles);
                   }}
                 />
               </div>
@@ -270,7 +431,9 @@ export default function UpdateListingPage() {
                     {images[idx] ? (
                       <img src={images[idx]} alt="" style={{ width: 40, height: 40, borderRadius: 8 }} />
                     ) : (
-                      <span style={{ color: idx > 5 ? "#999" : "#bbb", fontSize: 22, fontWeight: 700 }}>{idx > 5 ? "×" : "+"}</span>
+                      <span style={{ color: idx > 5 ? "#999" : "#bbb", fontSize: 22, fontWeight: 700 }}>
+                        {idx > 5 ? "×" : "+"}
+                      </span>
                     )}
                     <input
                       id={`img-upload-${idx}`}
@@ -279,9 +442,16 @@ export default function UpdateListingPage() {
                       style={{ display: "none" }}
                       onChange={e => {
                         if (idx <= 5) {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+
                           const newImages = [...images];
-                          newImages[idx] = URL.createObjectURL(e.target.files[0]);
+                          newImages[idx] = URL.createObjectURL(file);
                           setImages(newImages);
+
+                          const newFiles = [...imageFiles];
+                          newFiles[idx] = file;
+                          setImageFiles(newFiles);
                         }
                       }}
                       disabled={idx > 5}
@@ -298,89 +468,147 @@ export default function UpdateListingPage() {
         <span style={{ marginRight: 8 }}>PRODUCT DETAILS</span>
       </div>
       <div style={{ height: 12 }} />
-      {/* Product Details Grid with Icons */}
+      {/* Product Details Grid with Icons (copied style from Advert Creator) */}
       {(() => {
-        // Options
-        const styleOptions = ["Christian Cross", "Heart", "Bible", "Pillars", "Traditional African", "Abstract", "Praying Hands", "Scroll", "Angel", "Mausoleum", "Obelisk", "Plain", "Teddy Bear", "Butterfly", "Car", "Bike", "Sports"];
-        const colourOptions = ["Black", "Grey", "White", "Red", "Blue", "Mixed"];
-        const stoneTypeOptions = ["Granite", "Marble", "Concrete", "Sandstone", "Limestone", "Bronze", "Quartz", "Glass", "Mixed"];
-        const cultureOptions = ["Christian", "Jewish", "Muslim", "Hindu", "Traditional African", "Any"];
-        const customisationOptions = ["Photo Engraving", "Photo Etching", "Gold Leaf", "Leather Finish", "Engraving", "Special Shape", "Lighting"];
-
+        // Options from Advert Creator
+        const styleOptions = [
+          'Christian Cross','Heart','Bible','Pillars','Traditional African','Abstract',
+          'Praying Hands','Scroll','Angel','Mausoleum','Obelisk','Plain','Teddy Bear','Butterfly','Car','Bike','Sports',
+        ];
+        const slabStyleOptions = [
+          'Curved Slab','Frame with Infill','Full Slab','Glass Slab','Half Slab','Stepped Slab','Tiled Slab',
+        ];
+        const colorOptions = [
+          'Black','Blue','Green','Grey-Dark','Grey-Light','Maroon','Pearl','Red','White','Mixed',
+        ];
+        const stoneTypeOptions = [
+          'Biodegradable','Brass','Ceramic/Porcelain','Composite','Concrete','Copper','Glass','Granite',
+          'Limestone','Marble','Perspex','Quartzite','Sandstone','Slate','Steel','Stone','Tile','Wood',
+        ];
+        const customizationOptions = [
+          'Bronze/Stainless Plaques','Ceramic Photo Plaques','Flower Vases','Gold Lettering','Inlaid Glass','Photo Laser-Edging','QR Code',
+        ];
+      
         return (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 24, marginBottom: 32 }}>
-            {/* STYLE */}
+            {/* HEAD STYLE (max 2) */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-                <Image src="/new files/newIcons/Styles_Icons/Styles_Icons-11.svg" alt="Style" width={18} height={18} style={{ marginRight: 6 }} />
-                Style
+                <Image src="/new files/newIcons/Styles_Icons/Styles_Icons-11.svg" alt="Head Style" width={18} height={18} style={{ marginRight: 6 }} />
+                Head Style
               </div>
-              {styleOptions.map((s) => (
-                <label key={s} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedStyle.includes(s)}
-                    onChange={() => handleCheckboxChange(selectedStyle, setSelectedStyle, s, 2)}
-                    style={{ marginRight: 6 }}
-                  />
-                  {s}
-                </label>
-              ))}
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>Can choose up to X2 HEAD STYLE Options</div>
+              {styleOptions.map((s) => {
+                const icon = getIconPath('style', s);
+                return (
+                  <label key={s} style={{ display: "flex", alignItems: "center", fontSize: 13, marginBottom: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedStyle.includes(s)}
+                      onChange={() => handleCheckboxChange(selectedStyle, setSelectedStyle, s, 2)}
+                      style={{ marginRight: 8 }}
+                    />
+                    {icon && <Image src={icon} alt={`${s} icon`} width={22} height={22} style={{ marginRight: 8, objectFit: 'contain' }} />}
+                    <span>{s}</span>
+                  </label>
+                );
+              })}
             </div>
-            {/* COLOUR */}
+      
+            {/* SLAB STYLE (max 1) */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                <Image src="/new files/newIcons/Styles_Icons/Styles_Icons-11.svg" alt="Slab Style" width={18} height={18} style={{ marginRight: 6 }} />
+                Slab Style
+              </div>
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>Can choose up to X1 Slab Style Option</div>
+              {slabStyleOptions.map((s) => {
+                const icon = getIconPath('slabStyle', s);
+                return (
+                  <label key={s} style={{ display: "flex", alignItems: "center", fontSize: 13, marginBottom: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedSlabStyle.includes(s)}
+                      onChange={() => handleCheckboxChange(selectedSlabStyle, setSelectedSlabStyle, s, 1)}
+                      style={{ marginRight: 8 }}
+                    />
+                    {icon && <Image src={icon} alt={`${s} icon`} width={22} height={22} style={{ marginRight: 8, objectFit: 'contain' }} />}
+                    <span>{s}</span>
+                  </label>
+                );
+              })}
+            </div>
+      
+            {/* COLOUR (max 2) */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
                 <Image src="/new files/newIcons/Colour_Icons/Colour_Icons-28.svg" alt="Colour" width={18} height={18} style={{ marginRight: 6 }} />
                 Colour
               </div>
-              {colourOptions.map((c) => (
-                <label key={c} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedColour.includes(c)}
-                    onChange={() => handleCheckboxChange(selectedColour, setSelectedColour, c, 2)}
-                    style={{ marginRight: 6 }}
-                  />
-                  {c}
-                </label>
-              ))}
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>Can choose up to X2 Colour Options</div>
+              {colorOptions.map((c) => {
+                const icon = getIconPath('color', c);
+                return (
+                  <label key={c} style={{ display: "flex", alignItems: "center", fontSize: 13, marginBottom: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedColour.includes(c)}
+                      onChange={() => handleCheckboxChange(selectedColour, setSelectedColour, c, 2)}
+                      style={{ marginRight: 8 }}
+                    />
+                    {icon && <Image src={icon} alt={`${c} icon`} width={22} height={22} style={{ marginRight: 8, objectFit: 'contain' }} />}
+                    <span>{c}</span>
+                  </label>
+                );
+              })}
             </div>
-            {/* STONE TYPE */}
+      
+            {/* STONE TYPE (max 2) */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
                 <Image src="/new files/newIcons/Material_Icons/Material_Icons-39.svg" alt="Stone Type" width={18} height={18} style={{ marginRight: 6 }} />
                 Stone Type
               </div>
-              {stoneTypeOptions.map((st) => (
-                <label key={st} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedStoneType.includes(st)}
-                    onChange={() => handleCheckboxChange(selectedStoneType, setSelectedStoneType, st, 2)}
-                    style={{ marginRight: 6 }}
-                  />
-                  {st}
-                </label>
-              ))}
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>Can choose up to X2 Material Options</div>
+              {stoneTypeOptions.map((st) => {
+                const icon = getIconPath('stoneType', st);
+                return (
+                  <label key={st} style={{ display: "flex", alignItems: "center", fontSize: 13, marginBottom: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedStoneType.includes(st)}
+                      onChange={() => handleCheckboxChange(selectedStoneType, setSelectedStoneType, st, 2)}
+                      style={{ marginRight: 8 }}
+                    />
+                    {icon && <Image src={icon} alt={`${st} icon`} width={22} height={22} style={{ marginRight: 8, objectFit: 'contain' }} />}
+                    <span>{st}</span>
+                  </label>
+                );
+              })}
             </div>
-          
-            {/* CUSTOMISATION */}
+      
+            {/* CUSTOMISATION (max 3) */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
                 <Image src="/new files/newIcons/Custom_Icons/Custom_Icons-54.svg" alt="Customisation" width={18} height={18} style={{ marginRight: 6 }} />
                 Customisation
               </div>
-              {customisationOptions.map((cu) => (
-                <label key={cu} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedCustomisation.includes(cu)}
-                    onChange={() => handleCheckboxChange(selectedCustomisation, setSelectedCustomisation, cu, 2)}
-                    style={{ marginRight: 6 }}
-                  />
-                  {cu}
-                </label>
-              ))}
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>Can choose up to X3 Custom Options</div>
+              {customizationOptions.map((cu) => {
+                const icon = getIconPath('customization', cu);
+                return (
+                  <label key={cu} style={{ display: "flex", alignItems: "center", fontSize: 13, marginBottom: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedCustomisation.includes(cu)}
+                      onChange={() => handleCheckboxChange(selectedCustomisation, setSelectedCustomisation, cu, 3)}
+                      style={{ marginRight: 8 }}
+                    />
+                    {icon && <Image src={icon} alt={`${cu} icon`} width={22} height={22} style={{ marginRight: 8, objectFit: 'contain' }} />}
+                    <span>{cu}</span>
+                  </label>
+                );
+              })}
             </div>
             {/* Modal for max selection warning */}
             {modalOpen && (
@@ -400,236 +628,390 @@ export default function UpdateListingPage() {
         <span style={{ marginRight: 8 }}>ADDITIONAL PRODUCT DETAILS</span>
       </div>
       <div style={{ height: 12 }} />
+
+      {/* Additional Product Details Content (updated to checkbox groups) */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 32 }}>
+        {/* 1. TRANSPORT AND INSTALLATION (max 2) */}
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>1. TRANSPORT AND INSTALLATION</div>
+          <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X2 Transport and Installation Options)</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {[
+              "FREE TRANSPORT AND INSTALLATION WITHIN 5KM OF FACTORY",
+              "FREE TRANSPORT AND INSTALLATION WITHIN 20KM OF FACTORY",
+              "FREE TRANSPORT AND INSTALLATION WITHIN 50KM OF FACTORY",
+              "FREE TRANSPORT AND INSTALLATION WITHIN 100KM OF FACTORY",
+              "FREE TRANSPORT AND INSTALLATION",
+              "DISCOUNTED TRANSPORT AND INSTALLATION COST INCLUDED IN SALE",
+              "FINAL TRANSPORT AND INSTALLATION COST TO BE CONFIRMED BY MANUFACTURER",
+            ].map((option) => (
+              <label key={option} style={{ display: "block", fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={selectedTransport.includes(option)}
+                  onChange={() => handleCheckboxChange(selectedTransport, setSelectedTransport, option, 2)}
+                  style={{ marginRight: 6 }}
+                />
+                {option}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* 2. FOUNDATION OPTIONS (max 3) */}
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>2. FOUNDATION OPTIONS</div>
+          <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X3 Foundation Options)</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {[
+              "NO FOUNDATION COSTS INCLUDED IN PRICE",
+              "GRAVESITE CLEARING COST NOT INCLUDED IN PRICE",
+              "GRAVESITE CLEARING COST INCLUDED IN PRICE",
+              "CEMENT FOUNDATION COST NOT INCLUDED IN PRICE",
+              "CEMENT FOUNDATION COST INCLUDED IN PRICE",
+              "BRICK FOUNDATION COST NOT INCLUDED IN PRICE",
+              "BRICK FOUNDATION COST INCLUDED IN PRICE",
+              "X1 LAYER BRICK FOUNDATION COST INCLUDED IN PRICE",
+              "X2 LAYER BRICK FOUNDATION COST INCLUDED IN PRICE",
+              "X3 LAYER BRICK FOUNDATION COST INCLUDED IN PRICE",
+            ].map((option) => (
+              <label key={option} style={{ display: "block", fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={selectedFoundation.includes(option)}
+                  onChange={() => handleCheckboxChange(selectedFoundation, setSelectedFoundation, option, 3)}
+                  style={{ marginRight: 6 }}
+                />
+                {option}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* 3. WARRANTY/GUARANTEE (max 1) */}
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>3. WARRANTY/GUARANTEE</div>
+          <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X1 Warranty/Guarantee Options)</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {[
+              "5   YEAR MANUFACTURES WARRANTY",
+              "5   YEAR MANUFACTURES GUARANTEE",
+              "10 YEAR MANUFACTURES WARRANTY",
+              "10 YEAR MANUFACTURES GUARANTEE",
+              "15 YEAR MANUFACTURES WARRANTY",
+              "15 YEAR MANUFACTURES GUARANTEE",
+              "20 YEAR MANUFACTURES WARRANTY",
+              "20 YEAR MANUFACTURES GUARANTEE",
+              "LIFETIME MANUFACTURERS WARRANTY",
+              "LIFETIME MANUFACTURERS GUARANTEE",
+            ].map((option) => (
+              <label key={option} style={{ display: "block", fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={selectedWarranty.includes(option)}
+                  onChange={() => handleCheckboxChange(selectedWarranty, setSelectedWarranty, option, 1)}
+                  style={{ marginRight: 6 }}
+                />
+                {option}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* 4. MANUFACTURING LEAD TIME (single select via checkbox) */}
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>4. MANUFACTURING LEAD TIME</div>
+          <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X1 Manufacturing Lead Time)</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {manufacturingLeadTimeOptions.map((days) => {
+              const str = String(days);
+              const checked = manufacturingTimeframe === str;
+              return (
+                <label key={str} style={{ display: "block", fontSize: 13 }}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => handleManufacturingLeadTimeToggle(days)}
+                    style={{ marginRight: 6 }}
+                  />
+                  {formatManufacturingLeadTimeText(days)}
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+ 
+      {/* PRICING & ADFLASHER state and helpers */}
+      {/* PRICING & ADFLASHER */}
+      <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px ", marginTop: 0, marginBottom: 0, letterSpacing: 0.5, display: 'flex', alignItems: 'center' }}>
+        <span style={{ marginRight: 8 }}>PRICING & ADFLASHER</span>
+      </div>
+      <div style={{ height: 12 }} />
       
-      {/* Additional Product Details Content */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 32 }}>
-      {/* Transport */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 32 }}>
+        {/* LEFT: ADVERT FLASHER */}
         <div>
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block", fontWeight: 600, color: "#555" }}>Transport & Installation</label>
-          <select 
-            style={{ 
-              width: "100%", 
-              border: "1px solid #ccc", 
-              borderRadius: 4, 
-              padding: "8px 12px", 
-              outline: "none",
-              fontSize: 13,
-              background: "#fff"
-            }} 
-            value={transport} 
-            onChange={e => setTransport(e.target.value)}
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>ADVERT FLASHER</div>
+          <div style={{ fontSize: 12, color: '#555', marginBottom: 8 }}>(Can only choose X1 Advert Flasher per Ad)</div>
+
+          {/* Categories grid: [name | arrow] */}
+          <div style={{ display: "grid", gridTemplateColumns: "max-content 16px", columnGap: 8, rowGap: 6, alignItems: "start" }}>
+            {Object.entries(adFlasherOptionsMap).map(([category, cfg]) => {
+              const options = Array.isArray(cfg) ? cfg : (cfg?.options || []);
+
+              return (
+                <React.Fragment key={category}>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleAdFlasherCategory(category)}
+                    aria-expanded={expandedAdFlasherCategory === category}
+                    aria-controls={`adflasher-panel-${category}`}
+                    style={{ display: "contents" }}
+                  >
+                    {/* Column 1: name */}
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#222", alignSelf: "start" }}>
+                      {category.replace(/_/g, " ")}
+                    </span>
+                    {/* Column 2: arrow */}
+                    <span
+                      style={{
+                        fontSize: 12,
+                        color: "#111",
+                        lineHeight: 1,
+                        alignSelf: "start",
+                        justifySelf: "end",
+                        display: "inline-block",
+                        width: 16,
+                        textAlign: "center",
+                      }}
+                    >
+                      {expandedAdFlasherCategory === category ? "▼" : "▶"}
+                    </span>
+                  </button>
+
+                  {/* Expanded options for this category */}
+                  {expandedAdFlasherCategory === category && (
+                    <div
+                      id={`adflasher-panel-${category}`}
+                      style={{ gridColumn: "1 / -1", padding: "4px 0 8px 18px" }}
+                    >
+                      {options.map((option) => (
+                        <label
+                          key={option}
+                          style={{ display: "flex", alignItems: "center", fontSize: 13, marginBottom: 6 }}
+                        >
+                          <input
+                            type="radio"
+                            name="adFlasherRadio"
+                            checked={flasher === option}
+                            onChange={() => handleSelectAdFlasher(category, option)}
+                            style={{ marginRight: 8 }}
+                          />
+                          <span>{option}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+
+          {/* Selection preview box (always visible; color updates by category) */}
+          <div
+            style={{
+              marginTop: 12,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 10px",
+              border: "1px dashed #C8C8C8",
+              borderRadius: 8,
+              background: "#fff",
+            }}
           >
-            <option value="">Select transport option</option>
-            <option value="Free delivery within 50km">Free delivery within 50km</option>
-            <option value="Free delivery within 100km">Free delivery within 100km</option>
-            <option value="Delivery included in price">Delivery included in price</option>
-            <option value="Delivery at additional cost">Delivery at additional cost</option>
-            <option value="Self-collection only">Self-collection only</option>
-            <option value="Installation included">Installation included</option>
-            <option value="Installation at additional cost">Installation at additional cost</option>
-          </select>
+            <span style={{ fontSize: 12, color: "#444" }}>Selection</span>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "#fff",
+                background: selectedAdFlasherColor,
+                padding: "4px 10px",
+                borderRadius: 999,
+              }}
+            >
+              {flasher || "None"}
+            </span>
+          </div>
         </div>
-        
-        {/* Foundation */}
+
+        {/* RIGHT: ADVERTISED PRICE */}
         <div>
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block", fontWeight: 600, color: "#555" }}>Foundation Options</label>
-          <select 
-            style={{ 
-              width: "100%", 
-              border: "1px solid #ccc", 
-              borderRadius: 4, 
-              padding: "8px 12px", 
-              outline: "none",
-              fontSize: 13,
-              background: "#fff"
-            }} 
-            value={foundation} 
-            onChange={e => setFoundation(e.target.value)}
-          >
-            <option value="">Select foundation option</option>
-            <option value="Concrete base included">Concrete base included</option>
-            <option value="Concrete base at additional cost">Concrete base at additional cost</option>
-            <option value="No foundation provided">No foundation provided</option>
-            <option value="Foundation preparation included">Foundation preparation included</option>
-            <option value="Site clearing included">Site clearing included</option>
-            <option value="Custom foundation design">Custom foundation design</option>
-          </select>
-        </div>
-        
-        {/* Warranty */}
-        <div>
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block", fontWeight: 600, color: "#555" }}>Warranty or Guarantee</label>
-          <select 
-            style={{ 
-              width: "100%", 
-              border: "1px solid #ccc", 
-              borderRadius: 4, 
-              padding: "8px 12px", 
-              outline: "none",
-              fontSize: 13,
-              background: "#fff"
-            }} 
-            value={warranty} 
-            onChange={e => setWarranty(e.target.value)}
-          >
-            <option value="">Select warranty option</option>
-            <option value="1-year warranty">1-year warranty</option>
-            <option value="2-year warranty">2-year warranty</option>
-            <option value="3-year warranty">3-year warranty</option>
-            <option value="5-year warranty">5-year warranty</option>
-            <option value="10-year warranty">10-year warranty</option>
-            <option value="Lifetime warranty">Lifetime warranty</option>
-            <option value="No warranty">No warranty</option>
-            <option value="Guarantee against defects">Guarantee against defects</option>
-          </select>
-        </div>
-        
-        {/* Price */}
-        <div>
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block", fontWeight: 600, color: "#555" }}>Price (R)</label>
-          <input 
-            style={{ 
-              width: "100%", 
-              border: "1px solid #ccc", 
-              borderRadius: 4, 
-              padding: "8px 12px", 
-              outline: "none",
-              fontSize: 13
-            }} 
-            value={price} 
-            onChange={e => setPrice(e.target.value)}
-            placeholder="e.g., 8600"
-            type="number"
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>ADVERTISED PRICE</div>
+          {/* Removed helper rule text */}
+          <input
+            type="text"
+            name="price"
+            placeholder="12500.00"
+            value={price}
+            onChange={handlePriceChange}
+            onBlur={handlePriceBlur}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              borderRadius: 8,
+              border: '1px solid #ccc',
+              fontSize: 14,
+              outline: 'none'
+            }}
           />
-      </div>
-       
-        {/* Flasher */}
-        <div>
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block", fontWeight: 600, color: "#555" }}>Ad Flasher</label>
-          <select 
-            style={{ 
-              width: "100%", 
-              border: "1px solid #ccc", 
-              borderRadius: 4, 
-              padding: "8px 12px", 
-              outline: "none",
-              fontSize: 13,
-              background: "#fff"
-            }} 
-            value={flasher} 
-            onChange={e => setFlasher(e.target.value)}
-          >
-            <option value="">Select ad flasher</option>
-            <option value="Abstract">Abstract</option>
-                  <option value="Angel">Angel</option>
-                  <option value="Best seller">Best seller</option>
-                  <option value="Bible">Bible</option>
-                  <option value="Bike">Bike</option>
-                  <option value="Butterfly">Butterfly</option>
-                  <option value="Car">Car</option>
-                  <option value="Christian Cross">Christian Cross</option>
-                  <option value="Custom design">Custom design</option>
-                  <option value="Exclusive">Exclusive</option>
-                  <option value="Handcrafted">Handcrafted</option>
-                  <option value="Heart">Heart</option>
-                  <option value="Limited time deal">Limited time deal</option>
-                  <option value="Mausoleum">Mausoleum</option>
-                  <option value="New arrival">New arrival</option>
-                  <option value="Obelisk">Obelisk</option>
-                  <option value="Plain">Plain</option>
-                  <option value="Pillars">Pillars</option>
-                  <option value="Popular choice">Popular choice</option>
-                  <option value="Praying Hands">Praying Hands</option>
-                  <option value="Premium quality">Premium quality</option>
-                  <option value="Scroll">Scroll</option>
-                  <option value="Special offer">Special offer</option>
-                  <option value="Sports">Sports</option>
-                  <option value="Teddy Bear">Teddy Bear</option>
-                  <option value="Traditional African">Traditional African</option>
-                  <option value="Trending">Trending</option>
-
-          </select>
         </div>
       </div>
-
+      
       {/* Action Buttons */}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 32 }}>
-        <button 
-          type="submit"
+      <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", justifyContent: "flex-end", gap: 12, padding: "12px 0 24px 0" }}>
+        <button
+          type="button"
+          onClick={(e) => handleSubmit(e)}
           disabled={isSubmitting}
-          onClick={handleSubmit}
           style={{
-            background: isSubmitting ? "#ccc" : "#005bac",
+            background: "#005bac",
             color: "#fff",
-            padding: "12px 24px",
-            borderRadius: 8,
             border: "none",
-            cursor: isSubmitting ? "not-allowed" : "pointer",
-            fontSize: 14,
-            fontWeight: "bold",
+            borderRadius: 8,
+            padding: "10px 16px",
+            fontWeight: 700,
             textTransform: "uppercase",
             letterSpacing: 0.5,
-            transition: "background-color 0.2s ease"
+            cursor: "pointer",
+            opacity: isSubmitting ? 0.7 : 1
           }}
-          onMouseOver={(e) => !isSubmitting && (e.target.style.background = "#004a8c")}
-          onMouseOut={(e) => !isSubmitting && (e.target.style.background = "#005bac")}
         >
-          {isSubmitting ? "Updating..." : "Save Changes"}
+          {isSubmitting ? "SAVING..." : "SAVE CHANGES"}
         </button>
-        <button 
-          onClick={() => {
-            // Reset form to original values
-            if (listing) {
-              setTitle(listing.title || "");
-              setDescription(listing.description || "");
-              setTransport(listing.additionalProductDetails?.transportAndInstallation?.value || "");
-              setFoundation(listing.additionalProductDetails?.foundationOptions?.value || "");
-              setWarranty(listing.additionalProductDetails?.warrantyOrGuarantee?.value || "");
-              setPrice(listing.price?.toString() || "");
-              setFlasher(listing.adFlasher || "");
-              setManufacturingTimeframe(listing.manufacturingTimeframe || "1");
-            }
-            router.push('/manufacturers/manufacturers-Profile-Page');
-          }}
-          disabled={isSubmitting}
+        <button
+          type="button"
+          onClick={() => router.push("/manufacturers/manufacturers-Profile-Page")}
           style={{
-            background: isSubmitting ? "#eee" : "#ccc",
+            background: "#d9d9d9",
             color: "#333",
-            padding: "12px 24px",
-            borderRadius: 8,
             border: "none",
-            cursor: isSubmitting ? "not-allowed" : "pointer",
-            fontSize: 14,
-            fontWeight: "bold",
+            borderRadius: 8,
+            padding: "10px 16px",
+            fontWeight: 700,
             textTransform: "uppercase",
             letterSpacing: 0.5,
-            transition: "background-color 0.2s ease"
+            cursor: "pointer"
           }}
-          onMouseOver={(e) => !isSubmitting && (e.target.style.background = "#bbb")}
-          onMouseOut={(e) => !isSubmitting && (e.target.style.background = "#ccc")}
         >
-          Cancel
+          CANCEL
         </button>
       </div>
-
-      {/* Success/Error Message */}
-      {showMessage && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          padding: '16px 24px',
-          borderRadius: '8px',
-          color: '#fff',
-          fontWeight: 'bold',
-          zIndex: 1000,
-          background: submitMessage.includes('Error') ? '#dc3545' : '#28a745',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          animation: 'slideIn 0.3s ease'
-        }}>
-          {submitMessage}
-        </div>
-      )}
     </div>
   );
 }
+
+
+// Icon maps copied from Advert Creator
+const COLOR_ICON_MAP = {
+  Black: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Black.svg",
+  Blue: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Blue.svg",
+  Green: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Green.svg",
+  "Grey-Dark": "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Dark.svg",
+  "Grey-Light": "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Light.svg",
+  Maroon: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Maroon.svg",
+  Pearl: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Pearl.svg",
+  Red: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Red.svg",
+  White: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_White.svg",
+  Mixed: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Mixed.svg",
+};
+
+const HEAD_STYLE_ICON_MAP = {
+  "Christian Cross": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_ChristianCross.svg",
+  "Heart": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Heart.svg",
+  "Bible": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bible.svg",
+  "Pillars": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Pillars.svg",
+  "Traditional African": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TraditionalAfrican.svg",
+  "Abstract": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Abstract.svg",
+  "Praying Hands": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_PrayingHands.svg",
+  "Scroll": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Scroll.svg",
+  "Angel": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Angel.svg",
+  "Mausoleum": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Mausolean.svg",
+  "Obelisk": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Obelisk.svg",
+  "Plain": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg",
+  "Teddy Bear": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TeddyBear.svg",
+  "Butterfly": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Butterfly.svg",
+  "Car": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Car.svg",
+  "Bike": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bike.svg",
+  "Sports": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Sport.svg",
+};
+
+const STONE_TYPE_ICON_MAP = {
+  "Biodegradable": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Biodegradable.svg",
+  "Brass": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Brass.svg",
+  "Ceramic/Porcelain": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Ceramic_Porcelain.svg",
+  "Composite": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Composite.svg",
+  "Concrete": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Concrete.svg",
+  "Copper": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Copper.svg",
+  "Glass": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Glass.svg",
+  "Granite": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Granite.svg",
+  "Limestone": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Limestone.svg",
+  "Marble": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Marble.svg",
+  "Perspex": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Perspex.svg",
+  "Quartzite": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Quartzite.svg",
+  "Sandstone": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Sandstone.svg",
+  "Slate": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Slate.svg",
+  "Steel": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Steel.svg",
+  "Stone": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg",
+  "Tile": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Tile.svg",
+  "Wood": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Wood.svg",
+};
+
+const CUSTOMIZATION_ICON_MAP = {
+  "Bronze/Stainless Plaques": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_BronzeStainless Plaque.svg",
+  "Ceramic Photo Plaques": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_CeramicPhotoPlaque.svg",
+  "Flower Vases": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_FlowerVase.svg",
+  "Gold Lettering": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_GoldLettering.svg",
+  "Inlaid Glass": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_InlaidGlass.svg",
+  "Photo Laser-Edging": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_PhotoLaserEdginhg.svg",
+  "QR Code": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_QR Code.svg",
+};
+
+const SLAB_STYLE_ICON_MAP = {
+  "Curved Slab": "/last icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_CurvedSlab.svg",
+  "Frame with Infill": "/last icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_FramewithInfill.svg",
+  "Full Slab": "/last icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_FullSlab.svg",
+  "Glass Slab": "/last icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_GlassSlab.svg",
+  "Half Slab": "/last icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_HalfSlab.svg",
+  "Stepped Slab": "/last icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Stepped.svg",
+  "Tiled Slab": "/last icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Tiled.svg",
+};
+
+const getIconPath = (type, value) => {
+  switch (type) {
+    case 'color': {
+      const key = String(value).trim();
+      return COLOR_ICON_MAP[key] || null;
+    }
+    case 'style': {
+      const key = String(value).trim();
+      return HEAD_STYLE_ICON_MAP[key] || '/new files/newIcons/Styles_Icons/Styles_Icons-11.svg';
+    }
+    case 'slabStyle': {
+      const key = String(value).trim();
+      return SLAB_STYLE_ICON_MAP[key] || '/new files/newIcons/Styles_Icons/Styles_Icons-11.svg';
+    }
+    case 'stoneType': {
+      const key = String(value).trim();
+      return STONE_TYPE_ICON_MAP[key] || null;
+    }
+    case 'customization': {
+      const key = String(value).trim();
+      return CUSTOMIZATION_ICON_MAP[key] || '/new files/newIcons/Custom_Icons/Custom_Icons-54.svg';
+    }
+    default:
+      return null;
+  }
+};

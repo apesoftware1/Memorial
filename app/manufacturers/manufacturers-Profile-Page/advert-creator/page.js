@@ -1,21 +1,27 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/navigation'
 import Image from "next/image"
 import adFlasherOptions from '../../../../adFlasher.json'
+import pricingAdFlasher from '../../../../pricingAdFlasher.json'
 import { useApolloClient } from '@apollo/client'
 import { GET_LISTINGS } from '@/graphql/queries/getListings'
 import { useListingCategories } from '@/hooks/use-ListingCategories'
+import { desiredOrder } from '@/lib/categories'
 
 const colorOptions = [
   'Black',
-  'White',
-  'Grey',
-  'Brown',
-  'Blue Pearl',
+  'Blue',
+  'Green',
+  'Grey-Dark',
+  'Grey-Light',
+  'Maroon',
+  'Pearl',
   'Red',
+  'White',
+  'Mixed',
 ];
 const styleOptions = [
   'Christian Cross',
@@ -37,28 +43,83 @@ const styleOptions = [
   'Sports',
 ];
 const stoneTypeOptions = [
+  'Biodegradable',
+  'Brass',
+  'Ceramic/Porcelain',
+  'Composite',
+  'Concrete',
+  'Copper',
+  'Glass',
   'Granite',
-  'Marble',
-  'Sandstone',
   'Limestone',
-  'Bronze',
+  'Marble',
+  'Perspex',
+  'Quartzite',
+  'Sandstone',
+  'Slate',
+  'Steel',
+  'Stone',
+  'Tile',
+  'Wood',
 ];
 
 const customizationOptions = [
-  'Engraving Photo',
-  'Gold Leaf',
-  'Special Shape',
-  'Lighting'];
+  'Bronze/Stainless Plaques',
+  'Ceramic Photo Plaques',
+  'Flower Vases',
+  'Gold Lettering',
+  'Inlaid Glass',
+  'Photo Laser-Edging',
+  'QR Code',
+];
+
+// Add slab style options
+const slabStyleOptions = [
+  'Curved Slab',
+  'Frame with Infill',
+  'Full Slab',
+  'Glass Slab',
+  'Half Slab',
+  'Stepped Slab',
+  'Tiled Slab',
+];
 
 const transportOptions = ['Free transport within 20km', 'Paid delivery']
 const foundationOptions = ['Brick foundation', 'Cement base']
 const warrantyOptions = ['5-year warranty', '10-year manufacturer warranty']
+
+// Use numeric values that will be submitted (as strings via handleChange)
+const manufacturingLeadTimeOptions = [1, 2, 3, 7, 10, 14, 21]
+
+// Helper function to format manufacturing lead time display text
+const formatManufacturingLeadTimeText = (days) => {
+  if (days === 1) {
+    return "X1 WORKING DAY AFTER POP (Proof of Payment)";
+  }
+  return `X${days} WORKING DAYS AFTER POP (Proof of Payment)`;
+};
+
+// Category icon map for Category Selection (Advert Creator)
+const CATEGORY_ICON_MAP = {
+  SINGLE: "/last icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_1_Single.svg",
+  DOUBLE: "/last icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_2_Double.svg",
+  CHILD: "/last icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_3_Child.svg",
+  HEAD: "/last icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_4_Head.svg",
+  PLAQUES: "/last icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_5-Plaques.svg",
+  CREMATION: "/last icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_6_Cremation.svg",
+};
 
 export default function CreateListingForm() {
   const router = useRouter();
   const client = useApolloClient();
   const [company, setCompany] = useState(null);
   const { categories, loading: categoriesLoading, error: categoriesError } = useListingCategories();
+  
+  const sortedCategories = Array.isArray(categories)
+      ? desiredOrder
+          .map(name => categories.find(cat => cat?.name && cat.name.toUpperCase() === name))
+          .filter(Boolean)
+      : [];
   
   // Loading and success states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,15 +157,16 @@ export default function CreateListingForm() {
     manufacturingTimeframe: '1',
     productDetails: {
       color: [],
-      style: [],
+      headStyle: [],
       stoneType: [],
-     
+      slabStyle: [],
       customization: []
     },
     additionalProductDetails: {
       transportAndInstallation: [],
       foundationOptions: [],
-      warrantyOrGuarantee: []
+      warrantyOrGuarantee: [],
+      manufacturingLeadTime: [] // ADDED: store the single selected lead time here
     },
     // Remove companyDocumentId from the form, but keep in state for payload
     companyDocumentId: '',
@@ -129,6 +191,22 @@ export default function CreateListingForm() {
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [modalMsg, setModalMsg] = useState("")
   const [modalOpen, setModalOpen] = useState(false)
+  const [expandedAdFlasherCategory, setExpandedAdFlasherCategory] = useState(null)
+  const [badgeCategoryKey, setBadgeCategoryKey] = useState(null)
+  const [priceMajor, setPriceMajor] = useState('')
+  const [priceMinor, setPriceMinor] = useState('00')
+  const [priceInput, setPriceInput] = useState('')
+
+  // Optional preload of price display from existing formData.price
+  useEffect(() => {
+    if (formData?.price != null && formData.price !== '') {
+      const [major, minor] = String(formData.price).split('.')
+      setPriceMajor((major || '').replace(/[^\d]/g, ''))
+      setPriceMinor((minor || '00').padEnd(2, '0').slice(0, 2))
+      const v = String(formData.price).replace(/,/g, '').replace(/\s+/g, '')
+      setPriceInput(v)
+    }
+  }, [])
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -163,6 +241,22 @@ export default function CreateListingForm() {
     }))
   }
 
+  const handleManufacturingLeadTimeToggle = (days) => {
+    setFormData((prev) => {
+      const str = String(days);
+      const isSelected = prev.additionalProductDetails.manufacturingLeadTime.includes(str);
+      const nextArray = isSelected ? [] : [str];
+      return {
+        ...prev,
+        manufacturingTimeframe: isSelected ? '' : str, // mirror into existing payload field
+        additionalProductDetails: {
+          ...prev.additionalProductDetails,
+          manufacturingLeadTime: nextArray,
+        },
+      };
+    });
+  };
+
   const handleCategorySelect = (category) => {
     setSelectedCategory(category)
     setFormData((prev) => ({
@@ -192,6 +286,57 @@ export default function CreateListingForm() {
       setThumbnails(newThumbnails)
       
     }
+  }
+
+  const handlePriceMajorChange = (e) => {
+    const raw = e.target.value.replace(/[^\d]/g, '')
+    setPriceMajor(raw)
+    const major = parseInt(raw || '0', 10)
+    const minor = parseInt((priceMinor || '0').slice(0, 2), 10)
+    const price = (major + minor / 100).toFixed(2)
+    setFormData((prev) => ({ ...prev, price }))
+  }
+
+  const handlePriceMinorChange = (e) => {
+    let raw = e.target.value.replace(/[^\d]/g, '').slice(0, 2)
+    setPriceMinor(raw)
+    const major = parseInt(priceMajor || '0', 10)
+    const minor = parseInt(raw || '0', 10)
+    const price = (major + minor / 100).toFixed(2)
+    setFormData((prev) => ({ ...prev, price }))
+  }
+
+  const handlePriceChange = (e) => {
+    const raw = e.target.value.replace(/,/g, '').replace(/\s+/g, '')
+    if (!/^\d*\.?\d*$/.test(raw)) return
+    setPriceInput(raw)
+    if (raw === '') {
+      setFormData((prev) => ({ ...prev, price: '' }))
+    } else {
+      const num = Number(raw)
+      if (!Number.isNaN(num)) {
+        setFormData((prev) => ({ ...prev, price: num.toFixed(2) }))
+      }
+    }
+  }
+
+  const handlePriceBlur = () => {
+    if (priceInput === '') return
+    const num = Number(priceInput)
+    if (!Number.isNaN(num)) {
+      const formatted = num.toFixed(2)
+      setPriceInput(formatted)
+      setFormData((prev) => ({ ...prev, price: formatted }))
+    }
+  }
+
+  const handleToggleAdFlasherCategory = (category) => {
+    setExpandedAdFlasherCategory((prev) => (prev === category ? null : category))
+    setBadgeCategoryKey(category)
+  }
+
+  const handleSelectAdFlasher = (category, option) => {
+    setFormData((prev) => ({ ...prev, adFlasher: option }))
   }
 
   const uploadToCloudinary = async (file) => {
@@ -247,6 +392,146 @@ export default function CreateListingForm() {
     }
   };
 
+  const COLOR_ICON_MAP = {
+    Black: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Black.svg",
+    Blue: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Blue.svg",
+    Green: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Green.svg",
+    "Grey-Dark": "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Dark.svg",
+    "Grey-Light": "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Light.svg",
+    Maroon: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Maroon.svg",
+    Pearl: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Pearl.svg",
+    White: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_White.svg",
+    Mixed: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Mixed.svg",
+    // Red icon not present in folder listing; add when available
+    // Red: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Red.svg",
+  };
+
+  const HEAD_STYLE_ICON_MAP = {
+    "Christian Cross": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_ChristianCross.svg",
+    "Heart": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Heart.svg",
+    "Bible": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bible.svg",
+    "Pillars": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Pillars.svg",
+    "Traditional African": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TraditionalAfrican.svg",
+    "Abstract": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Abstract.svg",
+    "Praying Hands": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_PrayingHands.svg",
+    "Scroll": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Scroll.svg",
+    "Angel": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Angel.svg",
+    "Mausoleum": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Mausolean.svg",
+    "Obelisk": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Obelisk.svg",
+    "Plain": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg",
+    "Teddy Bear": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TeddyBear.svg",
+    "Butterfly": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Butterfly.svg",
+    "Car": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Car.svg",
+    "Bike": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bike.svg",
+    "Sports": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Sport.svg",
+  };
+
+
+
+  // Stone Type icons map (corrected nested folder path)
+  const STONE_TYPE_ICON_MAP = {
+    "Biodegradable": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Biodegradable.svg",
+    "Brass": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Brass.svg",
+    "Ceramic/Porcelain": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Ceramic_Porcelain.svg",
+    "Composite": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Composite.svg",
+    "Concrete": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Concrete.svg",
+    "Copper": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Copper.svg",
+    "Glass": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Glass.svg",
+    "Granite": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Granite.svg",
+    "Limestone": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Limestone.svg",
+    "Marble": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Marble.svg",
+    "Perspex": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Perspex.svg",
+    "Quartzite": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Quartzite.svg",
+    "Sandstone": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Sandstone.svg",
+    "Slate": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Slate.svg",
+    "Steel": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Steel.svg",
+    "Stone": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg",
+    "Tile": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Tile.svg",
+    "Wood": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Wood.svg",
+  };
+
+  // Customization icons map
+  const CUSTOMIZATION_ICON_MAP = {
+    "Bronze/Stainless Plaques": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_BronzeStainless Plaque.svg",
+    "Ceramic Photo Plaques": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_CeramicPhotoPlaque.svg",
+    "Flower Vases": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_FlowerVase.svg",
+    "Gold Lettering": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_GoldLettering.svg",
+    "Inlaid Glass": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_InlaidGlass.svg",
+    "Photo Laser-Edging": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_PhotoLaserEdginhg.svg",
+    "QR Code": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_QR Code.svg",
+  };
+
+  // Slab Style icons map
+  const SLAB_STYLE_ICON_MAP = {
+    "Curved Slab": "/last icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_CurvedSlab.svg",
+    "Frame with Infill": "/last icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_FramewithInfill.svg",
+    "Full Slab": "/last icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_FullSlab.svg",
+    "Glass Slab": "/last icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_GlassSlab.svg",
+    "Half Slab": "/last icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_HalfSlab.svg",
+    "Stepped Slab": "/last icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Stepped.svg",
+    "Tiled Slab": "/last icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Tiled.svg",
+  };
+
+  const getIconPath = (type, value) => {
+    switch (type) {
+      case 'color': {
+        const key = String(value).trim();
+        return COLOR_ICON_MAP[key] || null;
+      }
+      case 'style': {
+        const key = String(value).trim();
+        return HEAD_STYLE_ICON_MAP[key] || '/new files/newIcons/Styles_Icons/Styles_Icons-11.svg';
+      }
+      case 'slabStyle': {
+        const key = String(value).trim();
+        return SLAB_STYLE_ICON_MAP[key] || '/new files/newIcons/Styles_Icons/Styles_Icons-11.svg';
+      }
+      case 'stoneType': {
+        const key = String(value).trim();
+        return STONE_TYPE_ICON_MAP[key] || null;
+      }
+      case 'customization': {
+        const key = String(value).trim();
+        return CUSTOMIZATION_ICON_MAP[key] || '/new files/newIcons/Custom_Icons/Custom_Icons-54.svg';
+      }
+      default:
+        return null;
+    }
+  };
+
+  const normalizeAdFlasherKey = (label) => {
+    const upper = label.toUpperCase().replace(/\s+/g, '_')
+    if (upper === 'TRADITIONAL_AFRICAN') return 'AFRICAN'
+    if (upper === 'SPORTS') return 'SPORT'
+    return upper
+  }
+
+  const PRICING_ADFLASHER = pricingAdFlasher?.PRICING_ADFLASHER || {}
+  const adFlasherOptionsMap = PRICING_ADFLASHER?.AD_FLASHER || {}
+  const priceRuleText = PRICING_ADFLASHER?.PRICE_RULE || ''
+
+  const selectedAdFlasherCategoryKey = useMemo(() => {
+    if (!formData.adFlasher) return null
+    for (const [cat, cfg] of Object.entries(adFlasherOptionsMap)) {
+      const options = Array.isArray(cfg) ? cfg : (cfg?.options || [])
+      if (options.includes(formData.adFlasher)) return cat
+    }
+    return null
+  }, [formData.adFlasher, adFlasherOptionsMap])
+
+  // Use the last clicked category for badge color/label when no option is chosen
+  const effectiveAdFlasherCategoryKey = useMemo(() => {
+    return badgeCategoryKey || selectedAdFlasherCategoryKey
+  }, [badgeCategoryKey, selectedAdFlasherCategoryKey])
+
+  const selectedAdFlasherColor = useMemo(() => {
+    if (!effectiveAdFlasherCategoryKey) return null
+    const cfg = adFlasherOptionsMap[effectiveAdFlasherCategoryKey]
+    if (cfg && !Array.isArray(cfg) && cfg.color) return cfg.color
+    if (Array.isArray(cfg) && cfg.color) return cfg.color
+    return '#005bac'
+  }, [effectiveAdFlasherCategoryKey, adFlasherOptionsMap])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     
@@ -283,6 +568,7 @@ export default function CreateListingForm() {
         description: formData.description,
         price: parseFloat(formData.price),
         adFlasher: formData.adFlasher,
+        adFlasherColor: selectedAdFlasherColor,
         // Always send these as false
         isPremium: true,
         isFeatured: false,
@@ -307,10 +593,26 @@ export default function CreateListingForm() {
         },
 
         productDetails: {
-          color: formData.productDetails.color.map((value) => ({ value })),
-          style: formData.productDetails.style.map((value) => ({ value })),
-          stoneType: formData.productDetails.stoneType.map((value) => ({ value })),
-          customization: formData.productDetails.customization.map((value) => ({ value }))
+          color: formData.productDetails.color.map((value) => ({
+            value,
+            icon: getIconPath('color', value)
+          })),
+          style: formData.productDetails.headStyle.map((value) => ({
+            value,
+            icon: getIconPath('style', value)
+          })), // map headStyle -> style for backend
+          slabStyle: formData.productDetails.slabStyle.map((value) => ({
+            value,
+            icon: getIconPath('slabStyle', value)
+          })),
+          stoneType: formData.productDetails.stoneType.map((value) => ({
+            value,
+            icon: getIconPath('stoneType', value)
+          })),
+          customization: formData.productDetails.customization.map((value) => ({
+            value,
+            icon: getIconPath('customization', value)
+          }))
         },
 
         additionalProductDetails: {
@@ -347,6 +649,7 @@ export default function CreateListingForm() {
               description: formData.description,
               price: parseFloat(formData.price),
               adFlasher: formData.adFlasher,
+              adFlasherColor: selectedAdFlasherColor,
               isPremium: false,
               isFeatured: false,
               isOnSpecial: false,
@@ -357,11 +660,27 @@ export default function CreateListingForm() {
               thumbnailUrls: uploadedThumbnails.map(thumb => thumb.url),
               thumbnailPublicIds: uploadedThumbnails.map(thumb => thumb.public_id),
               productDetails: {
-                color: formData.productDetails.color.map((value) => ({ value })),
-                style: formData.productDetails.style.map((value) => ({ value })),
-                stoneType: formData.productDetails.stoneType.map((value) => ({ value })),
-                customization: formData.productDetails.customization.map((value) => ({ value }))
-              },
+            color: formData.productDetails.color.map((value) => ({
+              value,
+              icon: getIconPath('color', value)
+            })),
+            style: formData.productDetails.headStyle.map((value) => ({
+              value,
+              icon: getIconPath('style', value)
+            })),
+            slabStyle: formData.productDetails.slabStyle.map((value) => ({
+              value,
+              icon: getIconPath('slabStyle', value)
+            })),
+            stoneType: formData.productDetails.stoneType.map((value) => ({
+              value,
+              icon: getIconPath('stoneType', value)
+            })),
+            customization: formData.productDetails.customization.map((value) => ({
+              value,
+              icon: getIconPath('customization', value)
+            }))
+          },
               additionalProductDetails: {
                 transportAndInstallation: formData.additionalProductDetails.transportAndInstallation.map((value) => ({ value })),
                 foundationOptions: formData.additionalProductDetails.foundationOptions.map((value) => ({ value })),
@@ -408,27 +727,47 @@ export default function CreateListingForm() {
   }
 
   // Helper to render a checkbox group for a field, with subtitle
-  const renderCheckboxGroup = (options, field, section, label, subtitle, iconSrc) => {
+  const renderCheckboxGroup = (options, field, section, label, subtitle, iconSrc, max = 2) => {
     const currentSelected = formData[section][field];
-    
+    // resolve icon map key: headStyle uses backend key 'style'
+    const iconPathKey = field === 'headStyle' ? 'style' : field;
+
     return (
       <div>
         <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
           {iconSrc && <Image src={iconSrc} alt={label} width={18} height={18} style={{ marginRight: 6 }} />}
           {label}
         </div>
+        {subtitle && (
+          <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>{subtitle}</div>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {options.map((option) => (
-            <label key={option} style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
-              <input
-                type="checkbox"
-                checked={currentSelected.includes(option)}
-                onChange={() => handleCheckboxChange(section, field, option, 2)}
-                style={{ marginRight: 6 }}
-              />
-              {option}
-            </label>
-          ))}
+          {options.map((option) => {
+            const optionIcon = getIconPath(iconPathKey, option);
+            return (
+              <label
+                key={option}
+                style={{ display: "flex", alignItems: "center", fontSize: 13, marginBottom: 6 }}
+              >
+                <input
+                  type="checkbox"
+                  checked={currentSelected.includes(option)}
+                  onChange={() => handleCheckboxChange(section, field, option, max)}
+                  style={{ marginRight: 8 }}
+                />
+                {optionIcon && (
+                  <Image
+                    src={optionIcon}
+                    alt={`${option} icon`}
+                    width={22}
+                    height={22}
+                    style={{ marginRight: 8, display: 'inline-block', objectFit: 'contain' }}
+                  />
+                )}
+                <span>{option}</span>
+              </label>
+            );
+          })}
         </div>
       </div>
     );
@@ -509,7 +848,7 @@ export default function CreateListingForm() {
 
       <form onSubmit={handleSubmit}>
         {/* Advert Contact Details & Store Location Section Header */}
-        <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
+        <div style={{ background: "#005bac", color: "#fff", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
           ADVERT CONTACT DETAILS & STORE LOCATION
         </div>
         
@@ -527,7 +866,7 @@ export default function CreateListingForm() {
                 disabled
               />
               
-              <label style={{ fontSize: 12, marginBottom: 4, display: "block", color: "##f9f9f9" }}>Sales Person WhatsApp Number</label>
+              <label style={{ fontSize: 12, marginBottom: 4, display: "block", color: "#555" }}>Sales Person WhatsApp Number</label>
               <input 
                 type="text"
                 value={company.user.whatsappNumber || ''}
@@ -537,7 +876,7 @@ export default function CreateListingForm() {
               />
               
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <label style={{ fontSize: 12, color: "##f9f9f9", flex: 1 }}>Store Google Location Pin</label>
+                <label style={{ fontSize: 12, color: "#555", flex: 1 }}>Store Google Location Pin</label>
                 <div style={{ 
                   width: 24, 
                   height: 24, 
@@ -558,7 +897,7 @@ export default function CreateListingForm() {
             
             {/* Right Column */}
             <div>
-              <label style={{ fontSize: 12, marginBottom: 4, display: "block", color: "##f9f9f9" }}>Sales Person Phone Number</label>
+              <label style={{ fontSize: 12, marginBottom: 4, display: "block", color: "#555" }}>Sales Person Phone Number</label>
               <input 
                 type="text"
                 value={company.user.phoneNumber || ''}
@@ -567,7 +906,7 @@ export default function CreateListingForm() {
                 disabled
               />
               
-              <label style={{ fontSize: 12, marginBottom: 4, display: "block", color: "##f9f9f9" }}>Sales Person E-mail Address</label>
+              <label style={{ fontSize: 12, marginBottom: 4, display: "block", color: "#555" }}>Sales Person E-mail Address</label>
               <input 
                 type="email"
                 value={company.user.email || ''}
@@ -584,7 +923,7 @@ export default function CreateListingForm() {
         )}
 
         {/* Category Selection Section Header */}
-        <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13,  padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
+        <div style={{ background: "#005bac", color: "#fff", fontWeight: 700, fontSize: 13,  padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
           CATEGORY SELECTION
         </div>
         <div style={{ height: 12 }} />
@@ -593,7 +932,7 @@ export default function CreateListingForm() {
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 12, marginBottom: 8, color: "#555" }}>Select a category for your listing:</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-            {categories.map((category) => {
+            {sortedCategories.map((category) => {
               return (
                 <button
                   key={category.documentId}
@@ -617,12 +956,12 @@ export default function CreateListingForm() {
                   }}
                 >
                   <Image 
-                    src={category.name === 'SINGLE' ? '/final-icons/single.svg' : category.icon} 
-                    alt={category.name} 
-                    width={20} 
-                    height={20} 
-                    style={{ flexShrink: 0 }}
-                  />
+                src={CATEGORY_ICON_MAP[category.name] || category.icon} 
+                alt={category.name} 
+                width={20} 
+                height={20} 
+                style={{ flexShrink: 0 }}
+              />
                   {category.name}
                 </button>
               );
@@ -636,7 +975,7 @@ export default function CreateListingForm() {
         </div>
 
         {/* Product Name, Description & Images Section Header */}
-        <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
+        <div style={{ background: "#005bac", color: "#fff", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
           PRODUCT NAME, DESCRIPTION & IMAGES
         </div>
         <div style={{ height: 12 }} />
@@ -759,64 +1098,17 @@ export default function CreateListingForm() {
           </div>
         </div>
 
-        {/* Pricing & AdFlasher Section Header */}
-        <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
-          PRICING & ADFLASHER
-        </div>
-        <div style={{ height: 12 }} />
-        
-        {/* Pricing & AdFlasher Content */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 32 }}>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Price:</span>
-            <input 
-              name="price"
-              type="number"
-              value={formData.price}
-              onChange={handleChange}
-              style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }} 
-            />
-          </div>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>AdFlasher:</span>
-      <select
-        name="adFlasher"
-              value={formData.adFlasher}
-        onChange={handleChange}
-              style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", background: "white" }}
-      >
-              <option value="">Select AdFlasher</option>
-        {adFlasherOptions.map((option) => (
-          <option key={option} value={option}>{option}</option>
-        ))}
-      </select>
-          </div>
-        </div>
-
-        {/* Manufacturing Timeframe Section */}
-        <div style={{ display: "flex", alignItems: "center", marginBottom: 32 }}>
-          <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Manufacturing Timeframe:</span>
-      <select
-        name="manufacturingTimeframe"
-            value={formData.manufacturingTimeframe}
-        onChange={handleChange}
-            style={{ width: "200px", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", background: "white" }}
-      >
-        {[1,2,3,4,5,6].map((week) => (
-          <option key={week} value={week}>{week} week{week > 1 ? 's' : ''}</option>
-        ))}
-      </select>
-        </div>
 
         {/* Product Details Section Header */}
-        <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5, display: 'flex', alignItems: 'center' }}>
-          <span style={{ marginRight: 8 }}>PRODUCT DETAILS</span>
+        <div style={{ background: "#005bac", color: "#fff", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5, display: 'flex', alignItems: 'center' }}>
+          <span style={{ marginRight: 6 }}>PRODUCT DETAILS</span>
         </div>
         <div style={{ height: 12 }} />
         
         {/* Product Details Grid with Icons */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 24, marginBottom: 32 }}>
-          {renderCheckboxGroup(styleOptions, 'style', 'productDetails', 'Style', 'Can choose up to X2 Style Options', '/new files/newIcons/Styles_Icons/Styles_Icons-11.svg')}
+          {renderCheckboxGroup(styleOptions, 'headStyle', 'productDetails', 'Head Style', 'Can choose up to X2 HEAD STYLE Options', '/new files/newIcons/Styles_Icons/Styles_Icons-11.svg')}
+          {renderCheckboxGroup(slabStyleOptions, 'slabStyle', 'productDetails', 'Slab Style', 'Can choose up to X1 Slab Style Option', null, 1)}
           {renderCheckboxGroup(colorOptions, 'color', 'productDetails', 'Colour', 'Can choose up to X2 Colour Options', '/new files/newIcons/Colour_Icons/Colour_Icons-28.svg')}
           {renderCheckboxGroup(stoneTypeOptions, 'stoneType', 'productDetails', 'Stone Type', 'Can choose up to X2 Material Options', '/new files/newIcons/Material_Icons/Material_Icons-39.svg')}
  
@@ -824,56 +1116,267 @@ export default function CreateListingForm() {
         </div>
 
         {/* Additional Product Details Section Header */}
-        <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5, display: 'flex', alignItems: 'center' }}>
-          <span style={{ marginRight: 8 }}>ADDITIONAL PRODUCT DETAILS</span>
+        <div style={{ background: "#005bac", color: "#fff", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5, display: 'flex', alignItems: 'center' }}>
+          <span style={{ marginRight: 6 }}>ADDITIONAL PRODUCT DETAILS</span>
         </div>
         <div style={{ height: 12 }} />
         
         {/* Additional Product Details Content */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 32 }}>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Transport:</span>
-            <select
-              name="transportAndInstallation"
-              value={formData.additionalProductDetails.transportAndInstallation[0] || ""}
-              onChange={(e) => handleAdditionalProductDetailsChange('transportAndInstallation', e.target.value)}
-              style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", background: "white" }}
-            >
-              <option value="">Select Transport Option</option>
-              {transportOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
+          {/* 1. TRANSPORT AND INSTALLATION (max 2) */}
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>1. TRANSPORT AND INSTALLATION</div>
+            <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X2 Transport and Installation Options)</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {[
+                "FREE TRANSPORT AND INSTALLATION WITHIN 5KM OF FACTORY",
+                "FREE TRANSPORT AND INSTALLATION WITHIN 20KM OF FACTORY",
+                "FREE TRANSPORT AND INSTALLATION WITHIN 50KM OF FACTORY",
+                "FREE TRANSPORT AND INSTALLATION WITHIN 100KM OF FACTORY",
+                "FREE TRANSPORT AND INSTALLATION",
+                "DISCOUNTED TRANSPORT AND INSTALLATION COST INCLUDED IN SALE",
+                "FINAL TRANSPORT AND INSTALLATION COST TO BE CONFIRMED BY MANUFACTURER",
+              ].map((option) => (
+                <label key={option} style={{ display: "block", fontSize: 13 }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.additionalProductDetails.transportAndInstallation.includes(option)}
+                    onChange={() =>
+                      handleCheckboxChange(
+                        "additionalProductDetails",
+                        "transportAndInstallation",
+                        option,
+                        2
+                      )
+                    }
+                    style={{ marginRight: 6 }}
+                  />
+                  {option}
+                </label>
               ))}
-            </select>
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Foundation:</span>
-            <select
-              name="foundationOptions"
-              value={formData.additionalProductDetails.foundationOptions[0] || ""}
-              onChange={(e) => handleAdditionalProductDetailsChange('foundationOptions', e.target.value)}
-              style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", background: "white" }}
-            >
-              <option value="">Select Foundation Option</option>
-              {foundationOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
+
+          {/* 2. FOUNDATION OPTIONS (max 3) */}
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>2. FOUNDATION OPTIONS</div>
+            <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X3 Foundation Options)</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {[
+                "NO FOUNDATION COSTS INCLUDED IN PRICE",
+                "GRAVESITE CLEARING COST NOT INCLUDED IN PRICE",
+                "GRAVESITE CLEARING COST INCLUDED IN PRICE",
+                "CEMENT FOUNDATION COST NOT INCLUDED IN PRICE",
+                "CEMENT FOUNDATION COST INCLUDED IN PRICE",
+                "BRICK FOUNDATION COST NOT INCLUDED IN PRICE",
+                "BRICK FOUNDATION COST INCLUDED IN PRICE",
+                "X1 LAYER BRICK FOUNDATION COST INCLUDED IN PRICE",
+                "X2 LAYER BRICK FOUNDATION COST INCLUDED IN PRICE",
+                "X3 LAYER BRICK FOUNDATION COST INCLUDED IN PRICE",
+              ].map((option) => (
+                <label key={option} style={{ display: "block", fontSize: 13 }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.additionalProductDetails.foundationOptions.includes(option)}
+                    onChange={() =>
+                      handleCheckboxChange(
+                        "additionalProductDetails",
+                        "foundationOptions",
+                        option,
+                        3
+                      )
+                    }
+                    style={{ marginRight: 6 }}
+                  />
+                  {option}
+                </label>
               ))}
-            </select>
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ fontSize: 12, marginRight: 8, color: "#555" }}>Warranty:</span>
-            <select
-              name="warrantyOrGuarantee"
-              value={formData.additionalProductDetails.warrantyOrGuarantee[0] || ""}
-              onChange={(e) => handleAdditionalProductDetailsChange('warrantyOrGuarantee', e.target.value)}
-              style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", background: "white" }}
-            >
-              <option value="">Select Warranty Option</option>
-              {warrantyOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
+
+          {/* 3. WARRANTY/GUARANTEE (max 1) */}
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>3. WARRANTY/GUARANTEE</div>
+            <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X1 Warranty/Guarantee Options)</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {[
+                "5   YEAR MANUFACTURES WARRANTY",
+                "5   YEAR MANUFACTURES GUARANTEE",
+                "10 YEAR MANUFACTURES WARRANTY",
+                "10 YEAR MANUFACTURES GUARANTEE",
+                "15 YEAR MANUFACTURES WARRANTY",
+                "15 YEAR MANUFACTURES GUARANTEE",
+                "20 YEAR MANUFACTURES WARRANTY",
+                "20 YEAR MANUFACTURES GUARANTEE",
+                "LIFETIME MANUFACTURERS WARRANTY",
+                "LIFETIME MANUFACTURERS GUARANTEE",
+              ].map((option) => (
+                <label key={option} style={{ display: "block", fontSize: 13 }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.additionalProductDetails.warrantyOrGuarantee.includes(option)}
+                    onChange={() =>
+                      handleCheckboxChange(
+                        "additionalProductDetails",
+                        "warrantyOrGuarantee",
+                        option,
+                        1
+                      )
+                    }
+                    style={{ marginRight: 6 }}
+                  />
+                  {option}
+                </label>
               ))}
-            </select>
+            </div>
+          </div>
+
+          {/* 4. MANUFACTURING LEAD TIME (single select via checkbox) */}
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>4. MANUFACTURING LEAD TIME</div>
+            <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X1 Manufacturing Lead Time)</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {manufacturingLeadTimeOptions.map((days) => {
+                const str = String(days);
+                const checked = formData.additionalProductDetails.manufacturingLeadTime.includes(str);
+                return (
+                  <label key={str} style={{ display: "block", fontSize: 13 }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => handleManufacturingLeadTimeToggle(days)}
+                      style={{ marginRight: 6 }}
+                    />
+                    {formatManufacturingLeadTimeText(days)}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+
+        </div>
+
+        {/* Pricing & AdFlasher Section Header */}
+        <div style={{ background: "#d32f2f", color: "#fff", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
+          PRICING & ADFLASHER
+        </div>
+        <div style={{ height: 12 }} />
+        
+        {/* Pricing & AdFlasher Content (Ad Flasher LEFT, Price RIGHT) */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 12, marginBottom: 32 }}>
+          {/* LEFT: ADVERT FLASHER */}
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>ADVERT FLASHER</div>
+            <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>
+              (Can only choose X1 Advert Flasher per Ad)
+            </div>
+
+            {/* Make the list a 2-col grid: [name | arrow] so arrows sit close and align */}
+            <div style={{ display: "grid", gridTemplateColumns: "max-content 22px", columnGap: 8, rowGap: 6 }}>
+              {Object.entries(adFlasherOptionsMap).map(([category, cfg]) => {
+                const options = Array.isArray(cfg) ? cfg : (cfg?.options || []);
+      
+                return (
+                  <React.Fragment key={category}>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleAdFlasherCategory(category)}
+                      aria-expanded={expandedAdFlasherCategory === category}
+                      aria-controls={`adflasher-panel-${category}`}
+                      style={{ display: "contents" }}
+                    >
+                      {/* Column 1: name */}
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "#222", alignSelf: "center" }}>
+                        {category.replace(/_/g, " ")}
+                      </span>
+                      {/* Column 2: arrow (right next to the name, aligned across rows) */}
+                      <span style={{ fontSize: 12, color: "#111", lineHeight: 1, alignSelf: "center" }}>
+                        {expandedAdFlasherCategory === category ? "▼" : "▶"}
+                      </span>
+                    </button>
+      
+                    {/* Expanded panel spans both columns below the row */}
+                    {expandedAdFlasherCategory === category && (
+                      <div
+                        id={`adflasher-panel-${category}`}
+                        style={{ gridColumn: "1 / -1", padding: "4px 0 8px 18px" }}
+                      >
+                        {options.map((option) => (
+                          <label
+                            key={option}
+                            style={{ display: "flex", alignItems: "center", fontSize: 13, marginBottom: 6 }}
+                          >
+                            <input
+                              type="radio"
+                              name="adFlasherRadio"
+                              checked={formData.adFlasher === option}
+                              onChange={() => handleSelectAdFlasher(category, option)}
+                              style={{ marginRight: 8 }}
+                            />
+                            <span>{option}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+
+            <div style={{ marginTop: 8 }}>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  border: '1px dashed #ccc',
+                  borderRadius: 6,
+                  padding: '6px 8px',
+                  background: '#fafafa',
+                }}
+              >
+                <span style={{ fontSize: 12, color: '#555' }}>Selection</span>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    padding: '4px 8px',
+                    borderRadius: 999,
+                    background: selectedAdFlasherColor || '#005bac',
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                  }}
+                >
+                  {formData.adFlasher
+                    ? formData.adFlasher
+                    : (effectiveAdFlasherCategoryKey
+                        ? String(effectiveAdFlasherCategoryKey).replace(/_/g, ' ')
+                        : 'None')}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT: ADVERTISED PRICE */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <label style={{ fontSize: 12, color: "#555" }}>Advertised Price</label>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 14, color: "#555" }}>R</span>
+              <input
+                name="price"
+                type="text"
+                value={priceInput}
+                onChange={handlePriceChange}
+                onBlur={handlePriceBlur}
+                style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none" }}
+                placeholder="000 000.00"
+              />
+            </div>
           </div>
         </div>
+
 
         {/* Action Buttons */}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>

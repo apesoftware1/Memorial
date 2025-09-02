@@ -46,6 +46,7 @@ export const GET_COMPANY_BY_USER = gql`
         slug
         price
         adFlasher
+        adFlasherColor
         isFeatured
         isOnSpecial
         isPremium
@@ -60,7 +61,7 @@ export const GET_COMPANY_BY_USER = gql`
           color { id value }
           style { id value }
           stoneType { id value }
-          
+          slabStyle { id value }
           customization { id value }
         }
         additionalProductDetails {

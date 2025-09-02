@@ -1,0 +1,262 @@
+{
+  "PRICING_ADFLASHER": {
+    "PRICE_RULE": "No spaces, No commas. Please use Full Stop(.) to separate Rands from Cents. Example: 12500.00",
+    "AD_FLASHER": {
+      "ABSTRACT": {
+        "options": [
+          "Modern Style",
+          "Unique Form",
+          "Artistic Tribute",
+          "Contemporary Look",
+          "Creative Design",
+          "Stylish Twist",
+          "Unusual Beauty",
+          "Geometric Elegance",
+          "Bold Tribute",
+          "Abstract Memory"
+        ],
+        "color": "#6A5ACD"
+      },
+      "AFRICAN": {
+        "options": [
+          "Cultural Pride",
+          "Heritage Honour",
+          "African Legacy",
+          "Traditional Roots",
+          "Ethnic Tribute",
+          "Tribal Design",
+          "Ancestral Memory",
+          "Native Style",
+          "Cultural Expression",
+          "Ubuntu Spirit"
+        ],
+        "color": "#8B5E3C"
+      },
+      "ANGEL": {
+        "options": [
+          "Guardian Tribute",
+          "Heavenly Messenger",
+          "Wings of Love",
+          "Celestial Grace",
+          "Angelic Design",
+          "Heaven Sent",
+          "Peaceful Spirit",
+          "Eternal Wings",
+          "Divine Figure",
+          "Guiding Angel"
+        ],
+        "color": "#A7C7E7"
+      },
+      "BIBLE": {
+        "options": [
+          "Scripture Style",
+          "Holy Book Design",
+          "Biblical Tribute",
+          "Sacred Text",
+          "Faith-Based",
+          "Eternal Wisdom",
+          "Word of God",
+          "Scriptural Elegance",
+          "Divine Message",
+          "Spiritual Book"
+        ],
+        "color": "#6D2C2C"
+      },
+      "BIKE": {
+        "options": [
+          "Ride in Peace",
+          "Two-Wheel Tribute",
+          "Biker’s Honour",
+          "Cycle of Life",
+          "Throttle Memory",
+          "Endless Ride",
+          "Motor Tribute",
+          "Freedom Rider",
+          "Bike Spirit",
+          "Ride Forever"
+        ],
+        "color": "#4B5D67"
+      },
+      "BUTTERFLY": {
+        "options": [
+          "Peaceful Flight",
+          "Transformation Symbol",
+          "Gentle Tribute",
+          "Nature's Grace",
+          "Ethereal Beauty",
+          "Delicate Wings",
+          "Freedom Tribute",
+          "Spiritual Flight",
+          "Colourful Memory",
+          "Metamorphic Message"
+        ],
+        "color": "#9A6E9E"
+      },
+      "CAR": {
+        "options": [
+          "Driven Tribute",
+          "On the Road",
+          "Auto Legacy",
+          "Vehicle Memorial",
+          "Racing Spirit",
+          "Fast Track",
+          "Motoring Honour",
+          "Car Lover's Rest",
+          "Wheel of Time",
+          "Fuelled by Memory"
+        ],
+        "color": "#3A3A3A"
+      },
+      "CHRISTIAN_CROSS": {
+        "options": [
+          "Faithful Tribute",
+          "Sacred Symbol",
+          "Graceful Cross",
+          "Divine Rest",
+          "Spiritual Elegance",
+          "Holy Tribute",
+          "Peaceful Memory",
+          "Sacred Rest",
+          "Heavenly Marker",
+          "Blessed Design"
+        ],
+        "color": "#2C3E92"
+      },
+      "HEART": {
+        "options": [
+          "Forever Loved",
+          "Heartfelt Memory",
+          "Loving Tribute",
+          "Endless Love",
+          "Cherished Always",
+          "Devoted Design",
+          "Soulful Elegance",
+          "Love Remembered",
+          "Emotional Tribute",
+          "True Devotion"
+        ],
+        "color": "#B23A48"
+      },
+      "MAUSOLEUM": {
+        "options": [
+          "Regal Resting",
+          "Private Memorial",
+          "Family Legacy",
+          "Grand Tribute",
+          "Elegant Shelter",
+          "Architectural Honour",
+          "Noble Structure",
+          "Timeless Tomb",
+          "Estate Memorial",
+          "Luxurious Rest"
+        ],
+        "color": "#6E6E6E"
+      },
+      "OBELISK": {
+        "options": [
+          "Historic Tribute",
+          "Towering Memory",
+          "Eternal Monument",
+          "Ancient Grace",
+          "Pointed Elegance",
+          "Timeless Pillar",
+          "Majestic Stone",
+          "Obelisk Form",
+          "Vertical Tribute",
+          "Structured Honour"
+        ],
+        "color": "#C4B7A6"
+      },
+      "PILLARS": {
+        "options": [
+          "Stately Design",
+          "Majestic Tribute",
+          "Timeless Columns",
+          "Elegant Strength",
+          "Classic Pillars",
+          "Architectural Grace",
+          "Noble Look",
+          "Structured Style",
+          "Column Legacy",
+          "Pillar of Memory"
+        ],
+        "color": "#E8E4D9"
+      },
+      "PLAIN": {
+        "options": [
+          "Simple Elegance",
+          "Minimal Tribute",
+          "Clean Design",
+          "Unadorned Style",
+          "Quiet Honour",
+          "Modest Beauty",
+          "Basic Grace",
+          "Pure Simplicity",
+          "Classic Form",
+          "Essential Tribute"
+        ],
+        "color": "#B8A99A"
+      },
+      "PRAYING_HANDS": {
+        "options": [
+          "Prayerful Tribute",
+          "Humble Honour",
+          "Spiritual Gesture",
+          "Faithful Symbol",
+          "Grace in Prayer",
+          "Reverent Design",
+          "Sacred Hands",
+          "Peaceful Prayer",
+          "Heavenly Hope",
+          "Blessed Gesture"
+        ],
+        "color": "#D1B490"
+      },
+      "SCROLL": {
+        "options": [
+          "Scripted Memory",
+          "Elegant Scroll",
+          "Timeless Text",
+          "Ancient Style",
+          "Inscribed Tribute",
+          "Historical Grace",
+          "Rolled Design",
+          "Textual Beauty",
+          "Legacy Scroll",
+          "Scroll of Life"
+        ],
+        "color": "#D9C49C"
+      },
+      "SPORT": {
+        "options": [
+          "Athletic Tribute",
+          "Game On",
+          "Sporting Spirit",
+          "Champion Rest",
+          "Team Legacy",
+          "Fitness Memory",
+          "Competitive Soul",
+          "Victory Symbol",
+          "Player’s Honour",
+          "Sportsman’s Glory"
+        ],
+        "color": "#4C9141"
+      },
+      "TEDDY_BEAR": {
+        "options": [
+          "Innocent Love",
+          "Child's Comfort",
+          "Playful Memory",
+          "Soft Tribute",
+          "Gentle Design",
+          "Beloved Toy",
+          "Comfort Bear",
+          "Sweet Keepsake",
+          "Forever Snuggled",
+          "Tender Tribute"
+        ],
+        "color": "#C18F65"
+      }
+    }
+  }
+}

@@ -12,6 +12,10 @@ import { useManufacturerLocation } from '@/hooks/useManufacturerLocation'
 import ManufacturerLocationModal from '@/components/ManufacturerLocationModal';
 import { updateCompanyField } from '@/graphql/mutations/updateCompany';
 import { toast } from "@/hooks/use-toast";
+import { uploadToCloudinary } from "@/lib/cloudinary";
+import { useApolloClient } from '@apollo/client';
+import { GET_LISTING_BY_ID } from '@/graphql/queries/getListingById';
+import { GET_LISTING_CATEGORY } from '@/graphql/queries/getListingCategory';
 
 // SVG Settings (gear) icon component
 const SettingsIcon = (props) => (
@@ -83,6 +87,302 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
   // Company state management
   const [company, setCompany] = useState(initialCompany);
   
+  // New per-day Operating Hours editor state
+  const defaultDailyHours = {
+    sunday:        { open: false, openTime: "09:00 AM", closeTime: "05:00 PM" },
+    monday:        { open: true,  openTime: "09:00 AM", closeTime: "05:00 PM" },
+    tuesday:       { open: true,  openTime: "09:00 AM", closeTime: "05:00 PM" },
+    wednesday:     { open: true,  openTime: "09:00 AM", closeTime: "05:00 PM" },
+    thursday:      { open: true,  openTime: "09:00 AM", closeTime: "05:00 PM" },
+    friday:        { open: true,  openTime: "09:00 AM", closeTime: "05:00 PM" },
+    saturday:      { open: false, openTime: "09:00 AM", closeTime: "05:00 PM" },
+    publicHoliday: { open: false, openTime: "09:00 AM", closeTime: "02:00 PM" },
+  };
+
+  const [dailyHours, setDailyHours] = useState(() => {
+    // Prefer company.operatingHoursDaily if present, otherwise derive sensible defaults
+    const saved = initialCompany?.operatingHoursDaily;
+    if (saved && typeof saved === "object") {
+      return { ...defaultDailyHours, ...saved };
+    }
+    return defaultDailyHours;
+  });
+
+  // Keep local state in sync when company changes
+  useEffect(() => {
+    const saved = initialCompany?.operatingHoursDaily;
+    if (saved && typeof saved === "object") {
+      setDailyHours(prev => ({ ...prev, ...saved }));
+    }
+  }, [initialCompany]);
+
+  // Time options in 30-minute increments (12-hour format)
+  const timeOptions = (() => {
+    const times = [];
+    let h = 6; // 6 AM
+    let m = 0;
+    while (h < 21 || (h === 20 && m === 30)) { // up to 8:30 PM
+      const hour12 = ((h + 11) % 12) + 1;
+      const ampm = h < 12 ? "AM" : "PM";
+      const mm = m.toString().padStart(2, "0");
+      times.push(`${hour12}:${mm} ${ampm}`);
+      m += 30;
+      if (m >= 60) {
+        m = 0;
+        h += 1;
+      }
+    }
+    return times;
+  })();
+
+  const client = useApolloClient();
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const slugify = (s) => String(s || "")
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+
+  async function handleDuplicate(listing) {
+    if (!listing?.documentId) {
+      toast({ title: "Duplicate failed", description: "Listing ID not found.", variant: "destructive" });
+      return;
+    }
+    try {
+      setIsDuplicating(true);
+
+      // 1) Load full listing details so we can mirror Advert Creator payload
+      const { data } = await client.query({
+        query: GET_LISTING_BY_ID,
+        variables: { documentID: listing.documentId },
+        fetchPolicy: 'network-only'
+      });
+      const full = data?.listing;
+      if (!full) throw new Error("Full listing details not found.");
+
+      // 2) Icon maps + resolver (mirrors Advert Creator)
+      const COLOR_ICON_MAP = {
+        Black: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Black.svg",
+        Blue: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Blue.svg",
+        Green: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Green.svg",
+        "Grey-Dark": "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Dark.svg",
+        "Grey-Light": "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Light.svg",
+        Maroon: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Maroon.svg",
+        Pearl: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Pearl.svg",
+        White: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_White.svg",
+        Mixed: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Mixed.svg",
+      };
+      const HEAD_STYLE_ICON_MAP = {
+        "Christian Cross": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_ChristianCross.svg",
+        "Heart": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Heart.svg",
+        "Bible": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bible.svg",
+        "Pillars": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Pillars.svg",
+        "Traditional African": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TraditionalAfrican.svg",
+        "Abstract": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Abstract.svg",
+        "Praying Hands": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_PrayingHands.svg",
+        "Scroll": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Scroll.svg",
+        "Angel": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Angel.svg",
+        "Mausoleum": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Mausolean.svg",
+        "Obelisk": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Obelisk.svg",
+        "Plain": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg",
+        "Teddy Bear": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TeddyBear.svg",
+        "Butterfly": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Butterfly.svg",
+        "Car": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Car.svg",
+        "Bike": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bike.svg",
+        "Sports": "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Sport.svg",
+      };
+      const STONE_TYPE_ICON_MAP = {
+        "Biodegradable": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Biodegradable.svg",
+        "Brass": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Brass.svg",
+        "Ceramic/Porcelain": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Ceramic_Porcelain.svg",
+        "Composite": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Composite.svg",
+        "Concrete": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Concrete.svg",
+        "Copper": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Copper.svg",
+        "Glass": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Glass.svg",
+        "Granite": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Granite.svg",
+        "Limestone": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Limestone.svg",
+        "Marble": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Marble.svg",
+        "Perspex": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Perspex.svg",
+        "Quartzite": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Quartzite.svg",
+        "Sandstone": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Sandstone.svg",
+        "Slate": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Slate.svg",
+        "Steel": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Steel.svg",
+        "Stone": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg",
+        "Tile": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Tile.svg",
+        "Wood": "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Wood.svg",
+      };
+      const CUSTOMIZATION_ICON_MAP = {
+        "Bronze/Stainless Plaques": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_BronzeStainless Plaque.svg",
+        "Ceramic Photo Plaques": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_CeramicPhotoPlaque.svg",
+        "Flower Vases": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_FlowerVase.svg",
+        "Gold Lettering": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_GoldLettering.svg",
+        "Inlaid Glass": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_InlaidGlass.svg",
+        "Photo Laser-Edging": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_PhotoLaserEdginhg.svg",
+        "QR Code": "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_QR Code.svg",
+      };
+      const getIconPath = (type, value) => {
+        const key = String(value || "").trim();
+        switch (type) {
+          case 'color': return COLOR_ICON_MAP[key] || null;
+          case 'style': return HEAD_STYLE_ICON_MAP[key] || '/new files/newIcons/Styles_Icons/Styles_Icons-11.svg';
+          case 'stoneType': return STONE_TYPE_ICON_MAP[key] || null;
+          case 'customization': return CUSTOMIZATION_ICON_MAP[key] || '/new files/newIcons/Custom_Icons/Custom_Icons-54.svg';
+          default: return null;
+        }
+      };
+
+      // 3) Compute unique slug and duplicated title
+      const baseSlug = slugify(full.slug || full.title || "listing");
+      const uniqueSlug = `${baseSlug}-copy-${Date.now().toString(36)}`;
+      const duplicatedTitle = `${full.title || "Listing"} 1`;
+
+      // 4) Resolve category documentId using live categories (match by name)
+      const thisListing = (full.company?.listings || []).find(l => l.documentId === full.documentId);
+      const categoryName = (thisListing?.listing_category?.name || "").trim().toLowerCase();
+      let categoryDocId = undefined;
+      try {
+        const categoriesResp = await client.query({
+          query: GET_LISTING_CATEGORY,
+          fetchPolicy: 'network-only'
+        });
+        const categories = categoriesResp?.data?.listingCategories || [];
+        const matched = categories.find(c => String(c.name).trim().toLowerCase() === categoryName);
+        categoryDocId = matched?.documentId;
+      } catch {
+        // If categories fetch fails, fall back to leaving category unset
+        categoryDocId = undefined;
+      }
+
+      // 5) Build payload mirroring Advert Creator (using existing images—no reupload)
+      const payload = {
+        data: {
+          title: duplicatedTitle,
+          slug: uniqueSlug,
+          description: full.description || "",
+          price: Number(full.price) || 0,
+          adFlasher: full.adFlasher || "",
+          isPremium: Boolean(full.isPremium),
+          isFeatured: Boolean(full.isFeatured),
+          isOnSpecial: false,
+          isStandard: Boolean(full.isStandard),
+          manufacturingTimeframe: full.manufacturingTimeframe || "1",
+
+          mainImageUrl: full.mainImageUrl || null,
+          mainImagePublicId: full.mainImagePublicId || null,
+          thumbnailUrls: Array.isArray(full.thumbnailUrls) ? full.thumbnailUrls : [],
+          thumbnailPublicIds: Array.isArray(full.thumbnailPublicIds) ? full.thumbnailPublicIds : [],
+
+          company: full.company?.documentId ? { connect: [{ documentId: full.company.documentId }] } : undefined,
+          categoryRef: categoryDocId ? { connect: [{ documentId: categoryDocId }] } : undefined,
+          listing_category: categoryDocId ? { connect: [{ documentId: categoryDocId }] } : undefined,
+
+          productDetails: {
+            color: (full.productDetails?.color || []).map(({ value }) => ({ value, icon: getIconPath('color', value) })),
+            style: (full.productDetails?.style || []).map(({ value }) => ({ value, icon: getIconPath('style', value) })),
+            stoneType: (full.productDetails?.stoneType || []).map(({ value }) => ({ value, icon: getIconPath('stoneType', value) })),
+            customization: (full.productDetails?.customization || []).map(({ value }) => ({ value, icon: getIconPath('customization', value) })),
+          },
+
+          additionalProductDetails: {
+            transportAndInstallation: (full.additionalProductDetails?.transportAndInstallation || []).map(({ value }) => ({ value })),
+            foundationOptions: (full.additionalProductDetails?.foundationOptions || []).map(({ value }) => ({ value })),
+            warrantyOrGuarantee: (full.additionalProductDetails?.warrantyOrGuarantee || []).map(({ value }) => ({ value })),
+          }
+        }
+      };
+
+      // 6) Create duplicate
+      const res = await fetch('https://typical-car-e0b66549b3.strapiapp.com/api/listings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Create failed (${res.status}). ${text}`);
+      }
+
+      const created = await res.json();
+      const newDocId = created?.data?.documentId || created?.data?.id;
+      toast({ title: "Listing duplicated", description: `"${duplicatedTitle}" created successfully.` });
+
+      // 7) Navigate to edit the duplicated listing immediately
+      if (newDocId) {
+        router.push(`/manufacturers/manufacturers-Profile-Page/update-listing/${newDocId}`);
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Duplicate failed", description: err.message || String(err), variant: "destructive" });
+    } finally {
+      setIsDuplicating(false);
+    }
+  }
+
+  const toggleDayOpen = (key) => {
+    setDailyHours(prev => ({
+      ...prev,
+      [key]: { ...prev[key], open: !prev[key].open },
+    }));
+  };
+
+  const updateDayTime = (key, field, value) => {
+    setDailyHours(prev => ({
+      ...prev,
+      [key]: { ...prev[key], [field]: value },
+    }));
+  };
+
+  // Helpers to convert 12h to 24h for legacy summary fields
+  const to24h = (t) => {
+    // e.g., "9:00 AM" -> "09:00"
+    if (!t) return "";
+    const match = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return t;
+    let [_, hh, mm, ap] = match;
+    let H = parseInt(hh, 10);
+    if (ap.toUpperCase() === "AM") {
+      if (H === 12) H = 0;
+    } else {
+      if (H !== 12) H += 12;
+    }
+    return `${H.toString().padStart(2, "0")}:${mm}`;
+  };
+
+  const range24 = (openTime12, closeTime12) => {
+    const o = to24h(openTime12);
+    const c = to24h(closeTime12);
+    if (!o || !c) return "";
+    return `${o} - ${c}`;
+  };
+
+  // Derive legacy summary (monToFri/saturday/sunday/publicHoliday)
+  const deriveLegacyOperatingHours = (dh) => {
+    const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+    const weekdayOpen = weekdays.every(d => dh[d].open);
+    const sameTimes = new Set(
+      weekdays.map(d => `${dh[d].openTime}__${dh[d].closeTime}`)
+    ).size === 1;
+
+    const monToFri = (weekdayOpen && sameTimes)
+      ? range24(dh.monday.openTime, dh.monday.closeTime)
+      : (weekdayOpen ? "Varies" : "Closed");
+
+    const saturday = dh.saturday.open
+      ? range24(dh.saturday.openTime, dh.saturday.closeTime)
+      : "Closed";
+
+    const sunday = dh.sunday.open
+      ? range24(dh.sunday.openTime, dh.sunday.closeTime)
+      : "Closed";
+
+    const publicHoliday = dh.publicHoliday.open
+      ? range24(dh.publicHoliday.openTime, dh.publicHoliday.closeTime)
+      : "Closed";
+
+    return { monToFri, saturday, sunday, publicHoliday };
+  };
+  
   // Add CSS animation for slideIn effect
   useEffect(() => {
     const style = document.createElement('style');
@@ -121,30 +421,19 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
     setVisibleCount(Infinity);
   }, [companyListings, sortBy]);
   
-  // Calculate notification count from unread/new inquiries
+  // Calculate notification count from unread inquiries
   useEffect(() => {
     const allInquiries = (Array.isArray(companyListings) ? companyListings : []).flatMap(listing =>
       (listing.inquiries || listing.inquiries_c || []).map(inq => ({ 
         ...inq, 
+        // If GraphQL returns these, they’ll be truthy/falsy as stored in DB
         isRead: inq.isRead !== undefined ? inq.isRead : false,
         isNew: inq.isNew !== undefined ? inq.isNew : false
       }))
     );
-    
-    // Count only NEW inquiries for the badge (not unread)
-    const newCount = allInquiries.filter(inq => inq.isNew === true).length;
-    setNotificationCount(newCount);
-    
-    console.log('Notification count calculation:', {
-      totalInquiries: allInquiries.length,
-      newInquiries: newCount,
-      inquiries: allInquiries.map(inq => ({
-        id: inq.id || inq.documentId,
-        name: inq.name,
-        isRead: inq.isRead,
-        isNew: inq.isNew
-      }))
-    });
+
+    const unreadCount = allInquiries.filter(inq => inq.isRead !== true).length;
+    setNotificationCount(unreadCount);
   }, [companyListings]);
   
   // Location check hook with company update callback
@@ -429,34 +718,30 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
   // Function to handle saving all operating hours changes
   const handleSaveAllOperatingHours = async () => {
     try {
-      // Create the nested operatingHours object for the API
+      // Prepare both detailed daily structure and legacy summary
+      const legacy = deriveLegacyOperatingHours(dailyHours);
+
       const operatingHoursUpdate = {
-        operatingHours: editingOperatingHours
+        operatingHoursDaily: dailyHours,
+        operatingHours: legacy,
       };
-      
-      // Update the field in the API
+
       const updatedData = await updateCompanyField(company.documentId, operatingHoursUpdate);
-      
+
       if (updatedData) {
-        // Update local state with the new values
         setCompany(prevCompany => ({
           ...prevCompany,
-          operatingHours: editingOperatingHours
+          operatingHoursDaily: dailyHours,
+          operatingHours: legacy,
         }));
-        
-        // Close edit mode
+
+        // Close edit mode if you're using editingField pattern
         setEditingField(null);
         setEditingOperatingHours({});
-        
-        // Optional: Show success message
-       
       } else {
-        // Handle error
-     
         alert('Failed to update operating hours. Please try again.');
       }
     } catch (error) {
-     
       alert('Error updating operating hours. Please try again.');
     }
   };
@@ -513,32 +798,7 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
     }
   };
 
-  // Function to upload image to Cloudinary
-  const uploadToCloudinary = async (file) => {
-    try {
-      const uploadData = new FormData();
-      uploadData.append('file', file);
-      uploadData.append('upload_preset', 'listings');
-      
-      const res = await fetch(`https://api.cloudinary.com/v1_1/dtymvjhjq/image/upload`, {
-        method: 'POST',
-        mode: 'cors', // Add this line to enable CORS
-        body: uploadData
-      });
-      
-     if (!res.ok) {
-  const errorText = await res.text();
-  throw new Error(`Upload failed: ${res.status} - ${errorText}`);
-}
-      
-      const data = await res.json();
-     
-      return data; // Return the full Cloudinary response (url, public_id, etc.)
-    } catch (error) {
-      
-      throw error;
-    }
-  };
+
 
   // Function to handle logo upload
   const handleLogoUpload = async (e) => {
@@ -548,9 +808,9 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
     try {
       setIsUploading(true);
       
-      // Upload to Cloudinary
-      const uploadedImage = await uploadToCloudinary(file);
-      
+      // Upload to Cloudinary using shared util (with folder by company)
+      const uploadedImage = await uploadToCloudinary(file, company?.name)
+      console.log(uploadedImage)
       // Update company with new logo information
       const logoUpdate = {
         logoUrl: uploadedImage.secure_url,
@@ -830,14 +1090,6 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                       </div>
                     ))}
                   </div>
-                  {/* Right-side vertical accent for visual separation */}
-                  <div
-                    style={{
-                      width: 3,
-                      borderRadius: 3,
-                      background: '#ff6b3d',
-                    }}
-                  />
                 </div>
               )}
 
@@ -1441,6 +1693,16 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => window.location.href = `/manufacturers/manufacturers-Profile-Page/update-listing/${listing.documentId || listing.id}`}>Edit Listing</DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDuplicate(listing)}
+                          disabled={isDuplicating}
+                          style={{
+                            opacity: isDuplicating ? 0.6 : 1,
+                            cursor: isDuplicating ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          {isDuplicating ? "Duplicating..." : "Duplicate Listing"}
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
                             setListingToDelete(listing);

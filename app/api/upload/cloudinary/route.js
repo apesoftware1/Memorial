@@ -15,7 +15,7 @@ export async function POST(request) {
     const uploadFormData = new FormData();
     uploadFormData.append('file', file);
     uploadFormData.append('upload_preset', 'listings');
-    uploadFormData.append('folder', 'myImages');
+   formData.append("folder", company.name.replace(/\s+/g, "_"));
     uploadFormData.append('transformation', 'w_800,h_600,c_limit,q_auto,f_auto');
 
     // Upload to Cloudinary using upload_preset

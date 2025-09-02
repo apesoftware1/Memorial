@@ -4,6 +4,9 @@ export const GET_MANUFACTURERS = gql`
   query Companies {
     companies {
       phone
+      bannerAd{
+        url
+      }
       documentId
       name
       googleRating
