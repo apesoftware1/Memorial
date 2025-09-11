@@ -70,7 +70,7 @@ export const GET_COMPANY_BY_ID = gql`
           foundationOptions { id value }
           warrantyOrGuarantee { id value }
         }
-        // Fetch read state so unread count persists after refresh
+      
         inquiries_c {
           documentId
           name

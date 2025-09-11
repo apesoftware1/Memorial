@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 export const GET_LISTING_BY_ID = gql`
   query Listing($documentID: ID!) {
@@ -63,17 +63,29 @@ export const GET_LISTING_BY_ID = gql`
         }
       }
       manufacturingTimeframe
-      inquiries_c { documentId }
+      inquiries_c {
+        documentId
+      }
       company {
         documentId
         phone
         name
+        mapUrl
+        sales_reps {
+          call
+          whatsapp
+          name
+
+          avatar {
+            url
+          }
+        }
         location
         latitude
         longitude
         googleRating
         logoUrl
-        logoUrlPublicId 
+        logoUrlPublicId
         operatingHours {
           id
           monToFri
@@ -93,14 +105,13 @@ export const GET_LISTING_BY_ID = gql`
           messenger
         }
         listings(pagination: { limit: -1 }) {
-        mainImageUrl
-        thumbnailUrls
+          mainImageUrl
+          thumbnailUrls
           title
           price
           documentId
           listing_category {
             name
-          
           }
           productDetails {
             stoneType {

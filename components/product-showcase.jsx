@@ -3,23 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  Facebook,
-  Twitter,
-  Mail,
-  MapPin,
-  X,
-  Whatsapp,
-  FacebookMessenger,
-  Heart,
-  User2,
-  Cross,
-  Gem,
-  Camera,
-  Flower,
-  Truck,
-  Info,
-  CircleX,
-  Clock,
+  Facebook,Twitter,Mail,MapPinX,Whatsapp,FacebookMessenger,Heart,User2,
+  Cross,Gem,Camera,Flower,Truck,Info,CircleX,Clock,
 } from "lucide-react";
 import { formatPrice } from "@/lib/priceUtils";
 import { Input } from "@/components/ui/input";
@@ -30,96 +15,44 @@ import { FavoriteButton } from "./favorite-button";
 import Header from "@/components/Header";
 import ProductContactForm from "./product-contact-form";
 import { useGuestLocation } from "@/hooks/useGuestLocation";
-// Remove this line: import { calculateDistanceFrom } from "@/lib/locationUtil";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import MapModal from "./MapModal";
+import { useProductShowcaseLogic } from "@/hooks/product-showcase-logic";
+// Added missing modular component imports
+import ProductGallery from "./ProductGallery";
+import ProductDetails from "./ProductDetails";
+import ProductDescription from "./ProductDescription";
+import CompanyInfoCard from "./CompanyInfoCard";
+import SocialShare from "./SocialShare";
+import RelatedProducts from "./RelatedProducts";
+import WhatsAppContactDrawer from "./WhatsAppContactDrawer";
 
 export default function ProductShowcase({ listing, id }) {
   if (!listing) {
     return null;
   }
   const [isMapOpen, setIsMapOpen] = useState(false);
-  const [showContact, setShowContact] = useState(false);
 
-  useEffect(() => {
-    trackAnalyticsEvent("listing_view", listing.documentId);
-  }, [listing.documentId]);
-  const { location, error, loading, calculateDistanceFrom, refreshLocation } =
-    useGuestLocation();
-  // NEW: keep distance info from Distance API
-  const [distanceInfo, setDistanceInfo] = useState(null);
+  const {
+    allImages,
+    selectedImageIndex,
+    setSelectedImageIndex,
+    productDetails,
+    additionalDetails,
+    icons: { stoneTypeIcon, headStyleIcon, slabStyleIcon, colourIcon, customIcon },
+    getFirstValue,
+    getAllValues,
+    distanceInfo,
+    loading,
+    error,
+    refreshLocation,
+    showContact,
+    handleShowContact,
+    info,
+  } = useProductShowcaseLogic(listing);
 
-  // Prepare images: main image + thumbnails (all as URLs, no duplicates)
-  const mainImageUrl =
-    listing.mainImageUrl || listing.image || "/placeholder.svg";
-  const thumbnailUrls = Array.isArray(listing.thumbnailUrls)
-    ? listing.thumbnailUrls.filter((url) => url && url !== mainImageUrl)
-    : [];
-  const allImages = [mainImageUrl, ...thumbnailUrls];
-  const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
-
-  // Helper to extract first value from array fields
-  const getFirstValue = (arr) =>
-    Array.isArray(arr) && arr.length > 0 ? arr[0].value : undefined;
-  const getAllValues = (arr) =>
-    Array.isArray(arr) ? arr.map((item) => item.value) : [];
-
-  // Resolve backend-relative icon paths to absolute URLs
-  
-  const productDetails = listing.productDetails || {};
-  // Get the first item's icon (relative or absolute URL)
-  const getFirstIcon = (arr) =>
-    Array.isArray(arr) && arr.length > 0 && arr[0]?.icon
-      ? arr[0].icon
-      : undefined;
-
-  // Pre-resolve icons for product detail chips
-  const stoneTypeIcon = getFirstIcon(productDetails.stoneType);
-  const headStyleIcon = getFirstIcon(productDetails.style);
-  const slabStyleIcon = getFirstIcon(productDetails.slabStyle);
-  const colourIcon = getFirstIcon(productDetails.color);
-  const customIcon = getFirstIcon(productDetails.customization);
-  
-  const additionalDetails = listing.additionalProductDetails || {};
-
-  // Manufacturer info
-  const info = {
-    logo: listing.company?.logoUrl || "/placeholder-logo.svg",
-    rating: listing.company?.googleRating || 4.7,
-    hours: [],
-  };
-
-  // UPDATED: flat lat/lng object (not nested in coords)
-  const companyLocation = {
-    lat: Number(listing?.company?.latitude),
-    lng: Number(listing?.company?.longitude),
-  };
-
-  // UPDATED: async distance fetch similar to premium-listing-card
-  useEffect(() => {
-    trackAnalyticsEvent("listing_view", listing.documentId);
-  }, [listing.documentId]);
-  useEffect(() => {
-    let cancelled = false;
-    const fetchDistance = async () => {
-      if (!companyLocation.lat || !companyLocation.lng) return;
-      const result = await calculateDistanceFrom(companyLocation);
-      if (!cancelled) setDistanceInfo(result);
-    };
-    fetchDistance();
-    return () => {
-      cancelled = true;
-    };
-  }, [companyLocation.lat, companyLocation.lng, calculateDistanceFrom]);
   if (loading) return <p>Detecting your location…</p>;
   if (error) return <p>{error}</p>;
-  // Removed incorrect call that passed undefined coords:
-  // const distance = calculateDistanceFrom(companyLocation.coords);
-
-  const handleShowContact = () => {
-    setShowContact(!showContact);
-    // Debug: Log the company data to see what's available
-  };
 
   return (
     <>
@@ -217,254 +150,29 @@ export default function ProductShowcase({ listing, id }) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Left Column - Product Images and Details */}
           <div className="md:col-span-2">
-            {/* Main image edge-to-edge, outside of padded card */}
-            <div className="relative w-full h-[400px] overflow-hidden mb-2 px-2 sm:px-0 ">
-              <Image
-                src={allImages[selectedImageIndex] || "/placeholder.svg"}
-                alt={listing.title}
-                fill
-                className="object-cover"
-              />
-              {/* Favorite Button Overlay */}
-              <div className="absolute top-3 right-3 z-10">
-                <FavoriteButton product={listing} size="md" />
-              </div>
-            </div>
-            {/* Thumbnails row below main image */}
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-1 mb-4 px-2 sm:px-0">
-              {allImages.map((image, index) => (
-                <div
-                  key={index}
-                  className={`relative h-16 w-full border cursor-pointer border-gray-200 ${
-                    selectedImageIndex === index ? "ring-2 ring-blue-500" : ""
-                  }`}
-                  onClick={() => setSelectedImageIndex(index)}
-                >
-                  <Image
-                    src={image || "/placeholder.svg"}
-                    alt={`Thumbnail ${index + 1}`}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              ))}
-            </div>
+            {/* Gallery */}
+            <ProductGallery
+              images={allImages}
+              selectedIndex={selectedImageIndex}
+              onSelect={setSelectedImageIndex}
+              productTitle={listing.title}
+              favoriteProduct={listing}
+            />
             {/* Product Metadata/Features */}
-            <div className="border-y border-gray-200 py-2 mb-4">
-              <div className="flex flex-wrap gap-2 text-sm text-gray-700">
-                {getFirstValue(productDetails.style) && (
-                  <div className="flex items-center border border-gray-300 rounded px-3 py-1.5 font-medium bg-white">
-                    {headStyleIcon ? (
-                      <Image
-                        src={headStyleIcon}
-                        alt="Head Style Icon"
-                        width={16}
-                        height={16}
-                        className="mr-2"
-                      />
-                    ) : (
-                      <Cross size={16} className="text-gray-500 mr-2" />
-                    )}
-                    <span>
-                     Head Style:{" "}
-                      <span className="font-semibold">
-                        {getFirstValue(productDetails.style)}
-                      </span>
-                    </span>
-                  </div>
-                )}
-                {Array.isArray(productDetails.slabStyle) && productDetails.slabStyle.length > 0 && (
-                  <div className="flex items-center border border-gray-300 rounded px-3 py-1.5 font-medium bg-white">
-                    {slabStyleIcon ? (
-                      <Image
-                        src={slabStyleIcon}
-                        alt="Slab Style Icon"
-                        width={16}
-                        height={16}
-                        className="mr-2"
-                      />
-                    ) : (
-                      <Gem size={16} className="text-gray-500 mr-2" />
-                    )}
-                    <span>
-                      Slab Style:{" "}
-                      <span className="font-semibold">
-                        {getFirstValue(productDetails.slabStyle)}
-                      </span>
-                    </span>
-                  </div>
-                )}
-                {getFirstValue(productDetails.color) && (
-                  <div className="flex items-center border border-gray-300 rounded px-3 py-1.5 font-medium bg-white">
-                    {colourIcon ? (
-                      <Image
-                        src={colourIcon}
-                        alt="Colour Icon"
-                        width={16}
-                        height={16}
-                        className="mr-2"
-                      />
-                    ) : (
-                      <Gem size={16} className="text-gray-500 mr-2" />
-                    )}
-                    <span>
-                      Colour:{" "}
-                      <span className="font-semibold">
-                        {getFirstValue(productDetails.color)}
-                      </span>
-                    </span>
-                  </div>
-                )}
-                {getFirstValue(productDetails.customization) && (
-                  <div className="flex items-center border border-gray-300 rounded px-3 py-1.5 font-medium bg-white">
-                    {customIcon ? (
-                      <Image
-                        src={customIcon}
-                        alt="Customisation Icon"
-                        width={16}
-                        height={16}
-                        className="mr-2"
-                      />
-                    ) : (
-                      <Camera size={16} className="text-gray-500 mr-2" />
-                    )}
-                    <span>
-                      Customisation:{" "}
-                      <span className="font-semibold">
-                        {getFirstValue(productDetails.customization)}
-                      </span>
-                    </span>
-                  </div>
-                )}
-                {getFirstValue(productDetails.stoneType) && (
-                  <div className="flex items-center border border-gray-300 rounded px-3 py-1.5 font-medium bg-white">
-                    {stoneTypeIcon ? (
-                      <Image
-                        src={stoneTypeIcon}
-                        alt="Stone Type Icon"
-                        width={16}
-                        height={16}
-                        className="mr-2"
-                      />
-                    ) : (
-                      <Gem size={16} className="text-gray-500 mr-2" />
-                    )}
-                    <span>
-                      Stone Type:{" "}
-                      <span className="font-semibold">
-                        {getFirstValue(productDetails.stoneType)}
-                      </span>
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
+            <ProductDetails
+              productDetails={productDetails}
+              icons={{ stoneTypeIcon, headStyleIcon, slabStyleIcon, colourIcon, customIcon }}
+              getFirstValue={getFirstValue}
+              getAllValues={getAllValues}
+            />
             {/* Product Description and Additional Details */}
-            <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
-              {/* Product Description */}
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold mb-2">Tombstone Description</h2>
-                <p className="text-sm text-gray-700 mb-0">{listing.description}</p>
-              </div>
-            
-              {/* Additional Tombstone Details */}
-              <div className="mb-0">
-                <h2 className="text-lg font-semibold mb-2">Additional Tombstone Details</h2>
-            
-                <div className="space-y-6 text-sm text-gray-800">
-                  {/* Transport and Installation */}
-                  {getAllValues(additionalDetails.transportAndInstallation).length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-3 font-semibold uppercase text-gray-700">
-                        <Image
-                          src="/last%20icons/Addional_ProductInfo_Icons/Additional_Icons_Transport.svg"
-                          alt="Transport & Installation"
-                          width={34}
-                          height={34}
-                          className="shrink-0"
-                        />
-                        <span>Transport and Installation</span>
-                      </div>
-                      <ul className="mt-2 space-y-1">
-                        {getAllValues(additionalDetails.transportAndInstallation).map((detail, i) => (
-                          <li key={i} className="pl-5 relative leading-snug">
-                            <span className="absolute left-0 top-0 text-gray-700">•</span>
-                            <span>{detail}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-            
-                  {/* Foundation Options */}
-                  {getAllValues(additionalDetails.foundationOptions).length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-3 font-semibold uppercase text-gray-700">
-                        <Image
-                          src="/last%20icons/Addional_ProductInfo_Icons/Additional_Icons_Foundations.svg"
-                          alt="Foundation Options"
-                          width={34}
-                          height={34}
-                          className="shrink-0"
-                        />
-                        <span>Foundation Options</span>
-                      </div>
-                      <ul className="mt-2 space-y-1">
-                        {getAllValues(additionalDetails.foundationOptions).map((detail, i) => (
-                          <li key={i} className="pl-5 relative leading-snug">
-                            <span className="absolute left-0 top-0 text-gray-700">•</span>
-                            <span>{detail}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-            
-                  {/* Warranty/Guarantee */}
-                  {getAllValues(additionalDetails.warrantyOrGuarantee).length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-3 font-semibold uppercase text-gray-700">
-                        <Image
-                          src="/last%20icons/Addional_ProductInfo_Icons/Additional_Icons_WarrentyGuarantee.svg"
-                          alt="Warranty / Guarantee"
-                          width={34}
-                          height={34}
-                          className="shrink-0"
-                        />
-                        <span>Warranty/Guarantee</span>
-                      </div>
-                      <ul className="mt-2 space-y-1">
-                        {getAllValues(additionalDetails.warrantyOrGuarantee).map((detail, i) => (
-                          <li key={i} className="pl-5 relative leading-snug">
-                            <span className="absolute left-0 top-0 text-gray-700">•</span>
-                            <span>{detail}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-            
-                  {/* Manufacturing Lead Time (fallback icon) */}
-                  {getAllValues(additionalDetails.manufacturingLeadTime).length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-3 font-semibold uppercase text-gray-700">
-                        <Clock size={28} className="text-gray-700 shrink-0" />
-                        <span>Manufacturing Lead Time</span>
-                      </div>
-                      <ul className="mt-2 space-y-1">
-                        {getAllValues(additionalDetails.manufacturingLeadTime).map((detail, i) => (
-                          <li key={i} className="pl-5 relative leading-snug">
-                            <span className="absolute left-0 top-0 text-gray-700">•</span>
-                            <span>{detail}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            {/* Price and Notes Card (directly under Additional Tombstone Details) */}
+            <ProductDescription
+              description={listing.description}
+              additionalDetails={additionalDetails}
+              getAllValues={getAllValues}
+            />
+
+            {/* Price and Notes Card (unchanged) */}
             <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
               <h3 className="text-sm text-gray-700 font-semibold mb-1">
                 Price
@@ -494,11 +202,11 @@ export default function ProductShowcase({ listing, id }) {
             <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
               <h2 className="text-lg font-semibold mb-4">Send Message</h2>
               <div className="flex flex-col md:flex-row md:gap-6">
-                {/* Left: Contact Form */}
                 <div className="flex-1">
                   <ProductContactForm
                     documentId={id}
                     className="space-y-4 px-4 pb-4"
+                    listingTitle={listing.title}
                   />
                 </div>
                 {/* Right: Logo, Rating, Show Contact Number */}
@@ -592,7 +300,7 @@ export default function ProductShowcase({ listing, id }) {
             {/* Main contact card container */}
             <div className="rounded mb-6 shadow-sm overflow-hidden">
               {/* Dark blue header */}
-              <div className="bg-[#1F2B45] text-white py-6 text-center px-4 rounded-t-lg">
+              <div className="bg-[#1F2B45] text-white pt-6 pb-0 text-center px-4 rounded-t-lg rounded-b-lg overflow-hidden">
                 CONTACT THE MANUFACTURER
                 <button
                   onClick={() => {
@@ -603,6 +311,14 @@ export default function ProductShowcase({ listing, id }) {
                 >
                   {showContact ? "Hide Contact Number" : "Show Contact Number"}
                 </button>
+                {/* WhatsApp button visible below the contact button */}
+                <WhatsAppContactDrawer
+                  className="-mx-4 mt-3"
+                  reps={
+                    listing?.company?.sales_reps || []
+                  }
+                  listing_id={listing.documentId}
+                />
                 {showContact && (
                   <div className="mt-4 p-4 bg-white text-gray-800 rounded-lg mx-auto max-w-sm">
                     <div className="text-center space-y-2">
@@ -686,6 +402,7 @@ export default function ProductShowcase({ listing, id }) {
                 <ProductContactForm
                   documentId={id}
                   className="space-y-4 px-4 pb-4"
+                  listingTitle={listing.title}
                 />
               </div>
             </div>
@@ -835,6 +552,7 @@ export default function ProductShowcase({ listing, id }) {
           isOpen={isMapOpen}
           onClose={() => setIsMapOpen(false)}
           mapUrl={listing.company?.mapUrl}
+
         />
       </div>
     </>

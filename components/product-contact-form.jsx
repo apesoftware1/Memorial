@@ -6,13 +6,23 @@ import { sendInquiryRest } from "@/graphql/queries/sendInquiry";
 import { CheckCircle, X, AlertCircle } from "lucide-react";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 
-export default function ProductContactForm({ documentId, className = " " }) {
-  const [form, setForm] = useState({ name: '', email: '', message: '' });
+export default function ProductContactForm({ documentId, className = " ", listingTitle }) {
+  const getDefaultMessage = () =>
+    listingTitle
+      ? `I would like to find out more about the ${listingTitle} Tombstone.`
+      : `I would like to find out more about the Tombstone for sale.`;
+
+  const [form, setForm] = useState({ name: '', email: '', message: getDefaultMessage() });
   const [status, setStatus] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('success');
 
+  useEffect(() => {
+    // Keep message aligned with the current listing title
+    setForm((prev) => ({ ...prev, message: getDefaultMessage() }));
+  }, [listingTitle]);
+  
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -26,7 +36,7 @@ export default function ProductContactForm({ documentId, className = " " }) {
         documentId: documentId,
       });
       setStatus('Inquiry sent successfully!');
-      setForm({ name: '', email: '', message: '' });
+      setForm({ name: '', email: '', message: getDefaultMessage() });
       
       // Show success toast
       setToastMessage('Inquiry sent successfully!');
@@ -98,7 +108,7 @@ export default function ProductContactForm({ documentId, className = " " }) {
             name="message"
             value={form.message}
             onChange={handleChange}
-            placeholder={`I would like to find out more about the Tombstone for sale.`}
+            placeholder={getDefaultMessage()}
             required
           />
         </div>

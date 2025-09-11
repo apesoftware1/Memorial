@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Star, MapPin, Edit2, Upload } from "lucide-react";
+import { Star, MapPin, Edit2, Upload, Lock } from "lucide-react";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { PremiumListingCard } from "@/components/premium-listing-card";
@@ -16,6 +16,8 @@ import { uploadToCloudinary } from "@/lib/cloudinary";
 import { useApolloClient } from '@apollo/client';
 import { GET_LISTING_BY_ID } from '@/graphql/queries/getListingById';
 import { GET_LISTING_CATEGORY } from '@/graphql/queries/getListingCategory';
+import CreateBranchModal from "@/components/CreateBranchModal";
+
 
 // SVG Settings (gear) icon component
 const SettingsIcon = (props) => (
@@ -83,6 +85,10 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
   // Logo upload state
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
+  // Profile picture upload state + Video modal
+  const profilePicInputRef = useRef(null);
+  const [isUploadingProfilePic, setIsUploadingProfilePic] = useState(false);
+  const [showVideoSlotModal, setShowVideoSlotModal] = useState(false);
   
   // Company state management
   const [company, setCompany] = useState(initialCompany);
@@ -858,6 +864,56 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
     }
   };
 
+  // Function to handle profile picture upload
+  const handleProfilePicUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingProfilePic(true);
+
+      // Upload to Cloudinary using shared util (with folder by company)
+      const uploadedImage = await uploadToCloudinary(file, company?.name);
+
+      const update = {
+        profilePicUrl: uploadedImage.secure_url,
+        profilePicPublicId: uploadedImage.public_id,
+      };
+
+      // Update the field in the API
+      const updatedData = await updateCompanyField(company.documentId, update);
+
+      if (updatedData) {
+        // Update local state with the new profile picture
+        setCompany((prev) => ({
+          ...prev,
+          profilePicUrl: uploadedImage.secure_url,
+          profilePicPublicId: uploadedImage.public_id,
+        }));
+
+        toast({
+          title: "Profile picture updated",
+          description: "Your profile photo has been updated.",
+          variant: "success",
+        });
+      } else {
+        toast({
+          title: "Failed to update profile photo",
+          description: "Please try again later.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error updating profile photo",
+        description: "An error occurred while uploading your photo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingProfilePic(false);
+    }
+  };
+
   return (
     <>
       <Header showLogout={isOwner} />
@@ -1347,67 +1403,131 @@ export default function ManufacturerProfileEditor({ isOwner, company: initialCom
                 )}
               </>
             )}
-            {/* Promo Label */}
-            <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 2 }}>Company Promo 30 Second Video - Only valid for Premium Customers</div>
-            {editingField === 'promo' ? (
-              <div style={{ marginBottom: 8 }}>
+            {/* Profile Photo & Promo Video (replacing old promo section) */}
+            <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 6 }}>
+              Profile Photo & Promo Video
+            </div>
+           <div>
+              <CreateBranchModal documentId={company.documentId }/>
+           </div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'stretch', marginBottom: 8 }}>
+              {/* Profile Picture Box */}
+              <div
+                style={{
+                  border: '2px solid #00baff',
+                  borderRadius: 8,
+                  background: '#fff',
+                  padding: 8,
+                  position: 'relative',
+                  minWidth: 240,
+                  minHeight: 120,
+                  flex: '1 1 280px',
+                  cursor: isOwner ? 'pointer' : 'default'
+                }}
+                onClick={() => isOwner && profilePicInputRef.current?.click()}
+              >
+                <div style={{ position: 'absolute', top: 8, left: 8, fontSize: 11, color: '#888', fontWeight: 700 }}>
+                  Profile Picture
+                </div>
+                <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                  <Image
+                    src={`${company.profilePicUrl || '/placeholder-logo.svg'}?t=${Date.now()}`}
+                    alt="Profile Picture"
+                    width={220}
+                    height={110}
+                    style={{ objectFit: 'cover', width: '100%', height: '100%', borderRadius: 6 }}
+                  />
+                  {isOwner && isUploadingProfilePic && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'rgba(0,0,0,0.3)'
+                      }}
+                    >
+                      <Upload style={{ width: 24, height: 24, color: 'white' }} />
+                    </div>
+                  )}
+                </div>
                 <input
-                  value={editValue}
-                  onChange={e => setEditValue(e.target.value)}
-                  style={{ 
-                    width: '100%',
-                    padding: '8px 12px', 
-                    borderRadius: 20, 
-                    border: '1px solid #ccc', 
-                    fontSize: 15,
-                    fontFamily: 'Arial, sans-serif'
-                  }}
-                  placeholder="Enter promo video URL or description..."
+                  type="file"
+                  ref={profilePicInputRef}
+                  style={{ display: 'none' }}
+                  accept="image/*"
+                  onChange={handleProfilePicUpload}
                 />
-                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <button 
-                    onClick={() => handleSaveField('promo', editValue)}
-                    style={{ 
-                      color: '#28a745', 
-                      fontWeight: 700, 
-                      border: 'none', 
-                      background: 'none', 
-                      cursor: 'pointer',
-                      fontSize: 14
-                    }}
-                  >
-                    Save
-                  </button>
-                  <button 
-                    onClick={() => setEditingField(null)}
-                    style={{ 
-                      color: '#888', 
-                      fontWeight: 700, 
-                      border: 'none', 
-                      background: 'none', 
-                      cursor: 'pointer',
-                      fontSize: 14
-                    }}
-                  >
-                    Cancel
-                  </button>
+              </div>
+
+              {/* Promo Video Box - Locked */}
+              <div
+                style={{
+                  border: '2px dashed #ccc',
+                  borderRadius: 8,
+                  background: '#fafafa',
+                  padding: 8,
+                  position: 'relative',
+                  minWidth: 240,
+                  minHeight: 120,
+                  flex: '1 1 280px',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setShowVideoSlotModal(true)}
+                title="Promo video slot is locked"
+              >
+                <div style={{ position: 'absolute', top: 8, left: 8, fontSize: 11, color: '#888', fontWeight: 700 }}>
+                  Promo Video (Locked)
+                </div>
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
+                  <Lock style={{ width: 24, height: 24, marginRight: 6 }} />
+                  <span style={{ fontWeight: 700 }}>Contact TombstonesFinder</span>
                 </div>
               </div>
-            ) : (
-              <>
-                <div style={{ background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 20, padding: '4px 16px', fontSize: 15, color: '#333', display: 'inline-block', marginBottom: 8 }}>{company.promo || 'Company Promo 30 Sec.'}</div>
-                {isOwner && (
-                  <button 
-                    style={{ background: 'none', border: 'none', marginLeft: 8, cursor: 'pointer' }}
-                    onClick={() => {
-                      setEditingField('promo');
-                      setEditValue(company.promo || '');
-                    }}
-                  >
-                    <Edit2 style={{ width: 16, height: 16, color: '#888' }} />
-                  </button>
-                )}
-              </>
+            </div>
+
+            {/* Warning Modal */}
+            {showVideoSlotModal && (
+              <div
+                style={{
+                  position: 'fixed',
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  background: 'rgba(0,0,0,0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 9999
+                }}
+                onClick={() => setShowVideoSlotModal(false)}
+              >
+                <div
+                  style={{ background: '#fff', padding: 20, borderRadius: 8, maxWidth: 420, width: '90%', textAlign: 'center' }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>Promo Video Slot</div>
+                  <div style={{ fontSize: 14, color: '#444', marginBottom: 16 }}>
+                    Contact TombstonesFinder to purchase a video slot.
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+                    <a
+                      href="mailto:info@tombstonesfinder.com"
+                      style={{ background: '#00baff', color: '#fff', padding: '8px 12px', borderRadius: 6, textDecoration: 'none', fontWeight: 700 }}
+                    >
+                      Contact
+                    </a>
+                    <button
+                      onClick={() => setShowVideoSlotModal(false)}
+                      style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #ccc', background: '#f5f5f5', fontWeight: 700 }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
           {/* Right Column */}

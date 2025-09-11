@@ -65,7 +65,7 @@ export default function Header({
                 alt="TombstonesFinder Logo"
                 width={464}
                 height={70}
-                className="h-10 w-auto"
+                className="h-10 mr-10 "
                 priority
                 unoptimized
               />
@@ -78,7 +78,7 @@ export default function Header({
                   Find a Tombstone
                   <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
                 </button>
-                <div className="absolute left-0 top-full min-w-max bg-white rounded-none overflow-hidden shadow-xl border border-gray-200 hidden group-hover:block animate-slide-in z-50 px-0 origin-top-left">
+                <div className="absolute left-0 top-full min-w-max bg-white rounded-none overflow-hidden shadow-xl hidden group-hover:block animate-slide-in z-50 px-0 origin-top-left">
                   <div className="p-0">
                     <Link
                       href="/tombstones-for-sale"
@@ -102,7 +102,7 @@ export default function Header({
                   Find a Manufacturer
                   <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
                 </button>
-                <div className="absolute left-0 top-full w-48 bg-white rounded-none overflow-hidden shadow-xl border border-gray-200 hidden group-hover:block animate-slide-in z-50">
+                <div className="absolute left-0 top-full w-48 bg-white rounded-none overflow-hidden shadow-xl hidden group-hover:block animate-slide-in z-50">
                   <div className="p-0">
                     <Link
                       href="/manufacturers"
@@ -120,7 +120,7 @@ export default function Header({
                   Services
                   <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
                 </button>
-                <div className="absolute left-0 top-full min-w-max bg-white rounded-none overflow-hidden shadow-xl border border-gray-200 hidden group-hover:block animate-slide-in z-50 px-0 origin-top-left">
+                <div className="absolute left-0 top-full min-w-max bg-white rounded-none overflow-hidden shadow-xl hidden group-hover:block animate-slide-in z-50 px-0 origin-top-left">
                   <div className="p-0">
                     <Link
                       href="/services/tombstone-finance"
@@ -150,7 +150,7 @@ export default function Header({
                   Favourites
                   <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
                 </button>
-                <div className="absolute left-0 top-full w-48 bg-white rounded-none overflow-hidden shadow-xl border border-gray-200 hidden group-hover:block animate-slide-in z-50">
+                <div className="absolute left-0 top-full w-48 bg-white rounded-none overflow-hidden shadow-xl hidden group-hover:block animate-slide-in z-50">
                   <div className="p-0">
                     <Link
                       href="/favorites"
@@ -186,7 +186,7 @@ export default function Header({
                 Login / Register
                 <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
               </button>
-              <div className="absolute right-0 top-full w-64 bg-white rounded-none overflow-hidden shadow-xl border border-gray-200 hidden group-hover:block animate-slide-in z-50">
+              <div className="absolute right-0 top-full w-64 bg-white rounded-none overflow-hidden shadow-xl hidden group-hover:block animate-slide-in z-50">
                 <div className="p-0">
                   <Link
                     href="/manufacturers/login-page"

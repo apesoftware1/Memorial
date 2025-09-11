@@ -94,7 +94,7 @@ export function PremiumListingCard({
       {/* Mobile Layout (up to 768px) */}
       <div className="relative flex flex-col md:hidden">
         {/* Manufacturer Logo in its own box, bottom right corner (Mobile only) */}
-        <div className="absolute bottom-3 right-3 z-20 bg-gray-50 p-2 rounded-lg md:hidden">
+        <div className="absolute bottom-3 right-3 z-20 bg-white p-2 rounded-lg md:hidden">
           <div
             className="manufacturer-link"
             onClick={(e) => e.stopPropagation()}
@@ -156,7 +156,7 @@ export function PremiumListingCard({
           </div>
         </div>
         {/* Content (Mobile) */}
-        <div className="w-full px-4 pt-4 pb-2 bg-gray-50 flex flex-col">
+        <div className="w-full px-4 pt-4 pb-2 bg-white flex flex-col">
           {/* Price, Badge, and Heart (Mobile) */}
           <div className="flex flex-col items-start mb-3">
             <div className="text-2xl font-bold text-blue-600">

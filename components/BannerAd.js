@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { useState } from 'react'
 
 const BannerAd = ({
   bannerAd, // can be a string URL or an object with fields
@@ -46,8 +47,16 @@ const BannerAd = ({
     return null;
   }
 
+  // Track the mobile image aspect ratio so the container can match it exactly
+  const [mobileAR, setMobileAR] = useState(null)
+  const handleMobileLoaded = ({ naturalWidth, naturalHeight }) => {
+    if (naturalWidth && naturalHeight) {
+      setMobileAR(naturalWidth / naturalHeight)
+    }
+  }
+
   return (
-    <div className="w-full mx-auto my-6 border border-gray-300 rounded overflow-hidden">
+    <div className="w-full mx-auto my-0 border border-light-gray-300 rounded overflow-hidden">
       <Link href={resolvedHref} target="_blank" rel="noopener noreferrer">
         {/* Desktop Banner */}
         <div className={`hidden md:flex relative bg-gray-100 items-center justify-center ${desktopContainerClasses}`}>
@@ -60,9 +69,23 @@ const BannerAd = ({
         </div>
 
         {/* Mobile Banner */}
-        <div className={`block md:hidden relative bg-gray-100 flex items-center justify-center ${mobileContainerClasses}`}>
+        <div
+          className={`block md:hidden relative bg-white flex items-center justify-center ${mobileContainerClasses}`}
+          style={{
+            // Ensure height matches the image’s aspect ratio so it fills top and bottom with no cropping
+            aspectRatio: mobileAR || 3.2, // fallback ~320x100
+            height: 'auto' // override fixed h-24 from classes to respect aspect-ratio
+          }}
+        >
           {resolvedMobileSrc ? (
-            <Image src={resolvedMobileSrc} alt={resolvedAlt} fill className="object-contain" unoptimized />
+            <Image
+              src={resolvedMobileSrc}
+              alt={resolvedAlt}
+              fill
+              className="object-contain object-center"
+              onLoadingComplete={handleMobileLoaded}
+              unoptimized
+            />
           ) : (
             <p className="text-gray-500 text-sm">Mobile Banner Ad (Animated Gif - Linked)</p>
           )}
