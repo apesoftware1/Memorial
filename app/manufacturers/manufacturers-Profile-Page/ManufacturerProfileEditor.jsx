@@ -16,7 +16,7 @@ import { uploadToCloudinary } from "@/lib/cloudinary";
 import { useApolloClient } from '@apollo/client';
 import { GET_LISTING_BY_ID } from '@/graphql/queries/getListingById';
 import { GET_LISTING_CATEGORY } from '@/graphql/queries/getListingCategory';
-import CreateBranchModal from "@/components/CreateBranchModal";
+import CreateBranchModal from "@/components/CreatebranchModal";
 
 
 // SVG Settings (gear) icon component
