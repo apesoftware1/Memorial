@@ -7,7 +7,7 @@ import ManufacturerProfileEditor from '../ManufacturerProfileEditor';
 
 export default function ManufacturerProfilePage() {
   const { slug: documentId } = useParams();
-  console.log(documentId, typeof documentId)
+  
   const { data, loading, error } = useQuery(GET_COMPANY_BY_ID, {
     variables: { documentId: documentId },
     skip: !documentId,
@@ -17,7 +17,7 @@ export default function ManufacturerProfilePage() {
   if (error) return <div>Error loading company data.</div>;
   const company = data?.companies[0];
   
-  console.log(company)
+ 
   if (!company) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: '#888' }}>

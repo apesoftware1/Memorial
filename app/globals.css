@@ -2,6 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide "Available at X Branches" text everywhere */
+div[class*="bg-gray-700"][class*="text-white"][class*="text-center"]:contains("Available at") {
+  display: none !important;
+}
+
+/* Alternative selector to ensure it's hidden */
+div:has(> div:contains("Available at")) {
+  display: none !important;
+}
+
+/* Hide blue "2 Branches" button on mobile */
+@media (max-width: 768px) {
+  /* Target the specific blue button next to adflasher */
+  button.bg-blue-500:has(span:contains("2 Branches")),
+  a.bg-blue-500:has(span:contains("2 Branches")),
+  div.bg-blue-500:has(span:contains("2 Branches")),
+  /* More specific selectors */
+  .bg-blue-500:has(span:contains("2 Branches")),
+  [class*="bg-blue-500"]:has(span:contains("2 Branches")),
+  [class*="bg-blue"]:has(span:contains("2 Branches")),
+  /* Target by position if near adflasher */
+  div:has(+ div[class*="adflasher"]) .bg-blue-500:has(span:contains("2 Branches")),
+  div[class*="adflasher"] ~ div .bg-blue-500:has(span:contains("2 Branches")) {
+    display: none !important;
+  }
+  
+  /* Additional JavaScript to ensure it's hidden */
+  body::after {
+    content: "";
+    display: none;
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

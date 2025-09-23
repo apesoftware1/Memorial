@@ -41,7 +41,19 @@ export const GET_COMPANY_BY_USER = gql`
       }
         listings(pagination: { limit: -1 }) {
         createdAt
+         branches {
+        name
+        location {
+          address
+          latitude
+          longitude
+          mapUrl
+        }
+      }
         documentId
+          listing_category {
+      name
+    }
         title
         slug
         price

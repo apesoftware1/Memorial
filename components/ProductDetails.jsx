@@ -37,7 +37,7 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
             ) : (
               <Cross size={16} className="text-gray-500 mx-2" />
             )}
-            <span className="font-semibold">{getFirstValue(productDetails.style)}</span>
+            <span className="font-bold">{getFirstValue(productDetails.style)}</span>
           </div>
         )}
 
@@ -50,7 +50,7 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
             ) : (
               <Gem size={16} className="text-gray-500 mx-2" />
             )}
-            <span className="font-semibold">{getFirstValue(productDetails.slabStyle)}</span>
+            <span className="font-bold">{getFirstValue(productDetails.slabStyle)}</span>
           </div>
         )}
 
@@ -63,7 +63,7 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
             ) : (
               <Gem size={16} className="text-gray-500 mx-2" />
             )}
-            <span className="font-semibold">{getFirstValue(productDetails.color)}</span>
+            <span className="font-bold">{getFirstValue(productDetails.color)}</span>
           </div>
         )}
 
@@ -76,7 +76,7 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
             ) : (
               <Camera size={16} className="text-gray-500 mx-2" />
             )}
-            <span className="font-semibold">{getFirstValue(productDetails.customization)}</span>
+            <span className="font-bold">{getFirstValue(productDetails.customization)}</span>
           </div>
         )}
 
@@ -89,7 +89,7 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
             ) : (
               <Gem size={16} className="text-gray-500 mx-2" />
             )}
-            <span className="font-semibold">{getFirstValue(productDetails.stoneType)}</span>
+            <span className="font-bold">{getFirstValue(productDetails.stoneType)}</span>
           </div>
         )}
       </div>

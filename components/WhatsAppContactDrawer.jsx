@@ -20,6 +20,14 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
     return ("" + p).replace(/[^\d+]/g, ""); // only digits + optional +
   };
 
+  const phoneForDisplay = (p) => {
+    if (!p) return "";
+    const digits = ("" + p).replace(/[^\d]/g, "");
+    if (digits.length === 10) return `${digits.slice(0,3)} ${digits.slice(3,6)} ${digits.slice(6)}`;
+    if (digits.length === 11) return `${digits.slice(0,3)} ${digits.slice(3,7)} ${digits.slice(7)}`;
+    return ("" + p).trim();
+  };
+
   const isValidPhone = (p) => /^\+?\d{7,15}$/.test(p);
   const isValidEmail = (e) => !e || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
@@ -40,6 +48,7 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
   const openFormForRep = (idx) => {
     setSelectedRepIndex(idx);
     setErrors({});
+    setShowPhoneIndex(null);
     setView("form");
   };
 
@@ -50,6 +59,7 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
     setEmail("");
     setUserPhone("");
     setErrors({});
+    setShowPhoneIndex(null);
   };
 
   // Build the backend inquiry payload
@@ -119,6 +129,7 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
             onClick={() => {
               setOpen(false);
               setView("list");
+              setShowPhoneIndex(null);
             }}
           />
           <aside className="absolute right-0 top-0 h-full w-[90%] sm:w-[420px] bg-white shadow-xl flex flex-col">
@@ -132,16 +143,47 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
               </div>
             ) : (
               <div className="px-5 py-4 border-b">
-                <div className="flex items-center gap-3">
-                  <button type="button" onClick={closeForm} className="text-gray-700 hover:text-gray-900" aria-label="Back" title="Back">
+                <div className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={closeForm}
+                    className="text-gray-700 hover:text-gray-900 mr-4"
+                    aria-label="Back"
+                    title="Back"
+                  >
                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none">
                       <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </button>
                   <div className="flex flex-col">
-                    {typeof selectedRepIndex === "number" && reps[selectedRepIndex] && (
-                      <span className="text-sm font-semibold text-black">{reps[selectedRepIndex]?.name || "Representative"}</span>
-                    )}
+                    <h2 className="text-lg font-semibold text-black">Chat on WhatsApp</h2>
+                    <div className="flex items-center gap-1">
+                      {typeof selectedRepIndex === "number" && reps[selectedRepIndex] ? (
+                        <>
+                          {reps[selectedRepIndex]?.avatar?.url ? (
+                            <div className="w-6 h-6 rounded-full overflow-hidden mr-1">
+                              <Image 
+                                src={reps[selectedRepIndex].avatar.url} 
+                                width={24} 
+                                height={24} 
+                                alt={reps[selectedRepIndex]?.name || "Representative"} 
+                                className="rounded-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center mr-1">
+                              <span className="text-gray-500 text-xs">
+                                {(reps[selectedRepIndex]?.name || "M").charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                          <span className="text-base font-semibold text-black">{reps[selectedRepIndex]?.name || "Moruti"}</span>
+                        </>
+                      ) : (
+                        <span className="text-base font-semibold text-black">Moruti</span>
+                      )}
+                      <span className="text-green-500">💚</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -158,33 +200,47 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
                     const avatarUrl = r?.avatar?.url || "";
 
                     return (
-                      <li key={idx} className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                            {avatarUrl ? (
-                              <Image src={avatarUrl} width={40} height={40} alt={r?.name || "Rep"} />
-                            ) : (
-                              <span className="text-sm text-gray-500">IMG</span>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="font-medium truncate text-black">{r?.name || "Representative"}</span>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            {waNumber ? (
-                              <button type="button" onClick={() => openFormForRep(idx)} className="text-green-600 hover:text-green-700" aria-label="WhatsApp">
-                                💬
-                              </button>
-                            ) : (
-                              <span className="text-gray-300">—</span>
-                            )}
-                            {telHref ? (
-                              <a href={telHref} className="text-blue-600 hover:text-blue-700" aria-label="Call">
-                                📞
-                              </a>
-                            ) : (
-                              <span className="text-gray-300">—</span>
-                            )}
+                      <li key={idx} className="pl-5 pr-0 py-4">
+                        <div className="flex-end gap-8">
+                          <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                              {avatarUrl ? (
+                                <Image src={avatarUrl} width={40} height={40} alt={r?.name || "Rep"} />
+                              ) : (
+                                <span className="text-sm text-gray-500">IMG</span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div>
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium truncate text-black">{r?.name || "Representative"}</span>
+                                  <span className="text-green-600" title="Preferred rep">💚</span>
+                                </div>
+                              </div>
+                              {telNumber && showPhoneIndex === idx && (
+                                <a href={telHref} className="block text-sm flex-item-start font-semibold text-blue-600 mt-0.5">
+                                  {phoneForDisplay(r?.call || "")}
+                                </a>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mr-4">
+                              {waNumber ? (
+                                <button type="button" onClick={() => openFormForRep(idx)} className="text-green-600 hover:text-green-700" aria-label="WhatsApp" title="WhatsApp">
+                                  <Image src="/new files/Social Media Icons/Social Media Icons/whatsapp.svg" width={20} height={20} alt="WhatsApp" />
+                                </button>
+                              ) : (
+                                <span className="text-gray-300">—</span>
+                              )}
+                              {telNumber ? (
+                                <button type="button" onClick={() => setShowPhoneIndex(idx)} className="text-blue-600 hover:text-blue-700" aria-label="Call" title="Call">
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.86 19.86 0 0 1 3.11 5.18 2 2 0 0 1 5.11 3h3a2 2 0 0 1 2 1.72 12.44 12.44 0 0 0 .7 2.57 2 2 0 0 1-.45 2.11L9.09 10.91a16 16 0 0 0 6 6l1.51-1.27a2 2 0 0 1 2.11-.45 12.44 12.44 0 0 0 2.57.7A2 2 0 0 1 22 16.92z"></path>
+                                  </svg>
+                                </button>
+                              ) : (
+                                <span className="text-gray-300">—</span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </li>
@@ -199,7 +255,7 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
                         type="text"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm focus:ring-2 focus:ring-green-600"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-black placeholder-gray-500 focus:ring-2 focus:ring-green-600"
                         placeholder="Full name"
                       />
                       {errors.fullName && <p className="mt-1 text-xs text-red-600">{errors.fullName}</p>}
@@ -209,7 +265,7 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm focus:ring-2 focus:ring-green-600"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-black placeholder-gray-500 focus:ring-2 focus:ring-green-600"
                         placeholder="Email (optional)"
                       />
                       {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
@@ -219,7 +275,7 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
                         type="tel"
                         value={userPhone}
                         onChange={(e) => setUserPhone(e.target.value)}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm focus:ring-2 focus:ring-green-600"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-black placeholder-gray-500 focus:ring-2 focus:ring-green-600"
                         placeholder="Mobile number"
                       />
                       {errors.userPhone && <p className="mt-1 text-xs text-red-600">{errors.userPhone}</p>}
@@ -238,14 +294,61 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
                       }}
                       className="w-full inline-flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-3 font-semibold rounded-lg disabled:opacity-60"
                     >
-                      {submitting ? "Opening..." : "Start WhatsApp chat"}
+                      {submitting ? (
+                        "Opening..."
+                      ) : (
+                        <>
+                          <Image src="/new files/Social Media Icons/Social Media Icons/whatsapp.svg" alt="WhatsApp" width={18} height={18} />
+                          <span>Start WhatsApp chat</span>
+                        </>
+                      )}
                     </button>
+                    <p className="mt-3 text-center text-xs text-gray-600">
+                      By continuing I understand and agree to our
+                      {" "}
+                      <a href="/terms" className="text-blue-600 underline">Terms &amp; Conditions</a>
+                      {" "}and{" "}
+                      <a href="/privacy" className="text-blue-600 underline">Privacy Policy</a>.
+                    </p>
                     {errors.general && <p className="text-xs text-red-600">{errors.general}</p>}
                   </div>
                 </div>
               )}
             </div>
           </aside>
+          {/* Bottom sheet for phone call */}
+          {showPhoneIndex !== null && (() => {
+            const rep = reps?.[showPhoneIndex];
+            const tel = phoneForLink(rep?.call || "");
+            const telHref = tel ? `tel:${tel}` : null;
+            const telDisplay = rep?.call || tel;
+            return (
+              <div className="absolute inset-y-0 right-0 w-[90%] sm:w-[420px] z-50">
+                <div className="absolute inset-0 bg-black/20" onClick={() => setShowPhoneIndex(null)} />
+                <div className="absolute left-0 right-0 bottom-0 p-4">
+                  <div className="mx-2 space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => { if (telHref) window.location.href = telHref; setShowPhoneIndex(null); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-blue-600 bg-white rounded-2xl shadow-2xl hover:bg-gray-50"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.86 19.86 0 0 1 3.11 5.18 2 2 0 0 1 5.11 3h3a2 2 0 0 1 2 1.72 12.44 12.44 0 0 0 .7 2.57 2 2 0 0 1-.45 2.11L9.09 10.91a16 16 0 0 0 6 6l1.51-1.27a2 2 0 0 1 2.11-.45 12.44 12.44 0 0 0 2.57.7A2 2 0 0 1 22 16.92z"></path>
+                      </svg>
+                      <span className="font-semibold">Call {phoneForDisplay(telDisplay)}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPhoneIndex(null)}
+                      className="w-full px-4 py-3 text-blue-600 font-semibold bg-white rounded-2xl shadow-2xl hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

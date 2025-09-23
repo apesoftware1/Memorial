@@ -42,6 +42,15 @@ export const GET_COMPANY_BY_ID = gql`
       }
         listings(pagination: { limit: -1 }) {
         createdAt
+        branches {
+        name
+        location {
+          address
+          latitude
+          longitude
+          mapUrl
+        }
+      }
         documentId
         title
         slug

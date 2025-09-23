@@ -4,6 +4,15 @@ export const GET_LISTING_BY_ID = gql`
   query Listing($documentID: ID!) {
     listing(documentId: $documentID) {
       documentId
+      branches {
+        name
+        location {
+          address
+          latitude
+          longitude
+          mapUrl
+        }
+      }
       title
       mainImageUrl
       mainImagePublicId

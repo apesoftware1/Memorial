@@ -1,15 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createBranch } from "@/graphql/mutation/createBranch";
+import { createBranch } from "@/graphql/mutations/createBranch";
 
-
-export default function CreateBranchModal({ documentId }) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function CreateBranchModal({ documentId, isOpen = false, onClose }) {
+  const [modalOpen, setModalOpen] = useState(isOpen);
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
-  const [latitude, setLatitude] = useState(""); // string
-  const [longitude, setLongitude] = useState(""); // string
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Detect user location
@@ -17,7 +16,6 @@ export default function CreateBranchModal({ documentId }) {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          // Convert to string immediately
           setLatitude(position.coords.latitude.toString());
           setLongitude(position.coords.longitude.toString());
         },
@@ -37,19 +35,20 @@ export default function CreateBranchModal({ documentId }) {
         name,
         location: {
           address,
-          latitude: String(latitude),
-          longitude: String(longitude),
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
         },
         company: {
-          connect: [{ documentId }],
+          connect: [{ documentId }], // must be array even if only 1
         },
       },
     };
 
     try {
       const result = await createBranch(payload);
-      console.log("Branch created successfully:", result);
-      setIsOpen(false);
+      console.log("Branch created:", result);
+      setModalOpen(false);
+      if (onClose) onClose();
       setName("");
       setAddress("");
       setLatitude("");
@@ -64,14 +63,7 @@ export default function CreateBranchModal({ documentId }) {
 
   return (
     <>
-      <button
-        onClick={() => setIsOpen(true)}
-        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-      >
-        Create Branch
-      </button>
-
-      {isOpen && (
+      {modalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
             <h2 className="text-xl font-semibold mb-4">Create Branch</h2>
@@ -124,7 +116,10 @@ export default function CreateBranchModal({ documentId }) {
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsOpen(false)}
+                  onClick={() => {
+                    setModalOpen(false);
+                    if (onClose) onClose();
+                  }}
                   className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
                 >
                   Cancel

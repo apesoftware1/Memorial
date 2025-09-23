@@ -12,23 +12,23 @@ export default function ProductDescription({ description, additionalDetails, get
       </div>
 
       <div className="mb-0">
-        <h2 className="text-lg font-bold uppercase mb-2">Additional Tombstone Details</h2>
-        <div className="space-y-6 text-sm text-gray-800">
+        <h2 className="text-lg font-bold uppercase mb-0">Additional Tombstone Details</h2>
+        <div className="space-y-0 text-sm text-gray-800">
           {getAllValues(additionalDetails.transportAndInstallation).length > 0 && (
             <div>
               <div className="flex items-center gap-3 font-bold text-gray-700">
                 <Image
-                  src="/last%20icons/Addional_ProductInfo_Icons/Additional_Icons_Transport.svg"
+                  src="/last_icons/Addional_ProductInfo_Icons/Additional_Icons_Transport.svg"
                   alt="Transport & Installation"
                   width={42}
                   height={42}
                   className="shrink-0"
                 />
-                <span>Transport and Installation</span>
+                <span className="text-base">Transport and Installation</span>
               </div>
-              <ul className="mt-1 text-bold-20 space-y-1 ml-[54px]">
+              <ul className="mt-0 text-bold-20 space-y-0 ml-[54px]">
                 {getAllValues(additionalDetails.transportAndInstallation).map((detail, i) => (
-                  <li key={i} className="pl-4 relative leading-tight">
+                  <li key={i} className="pl-2 relative leading-snug">
                     <span className="absolute left-0 top-0 text-gray-700">•</span>
                     <span>{detail}</span>
                   </li>
@@ -41,17 +41,17 @@ export default function ProductDescription({ description, additionalDetails, get
             <div>
               <div className="flex items-center gap-3 font-bold text-gray-700">
                 <Image
-                  src="/last%20icons/Addional_ProductInfo_Icons/Additional_Icons_Foundations.svg"
+                  src="/last_icons/Addional_ProductInfo_Icons/Additional_Icons_Foundations.svg"
                   alt="Foundation Options"
                   width={42}
                   height={42}
                   className="shrink-0"
                 />
-                <span>Foundation Options</span>
+                <span className="text-base">Foundation Options</span>
               </div>
-              <ul className="mt-1 space-y-1 ml-[54px]">
+              <ul className="mt-0 space-y-0 ml-[54px]">
                 {getAllValues(additionalDetails.foundationOptions).map((detail, i) => (
-                  <li key={i} className="pl-4 relative leading-tight">
+                  <li key={i} className="pl-2 relative leading-snug">
                     <span className="absolute left-0 top-0 text-gray-700">•</span>
                     <span>{detail}</span>
                   </li>
@@ -64,17 +64,17 @@ export default function ProductDescription({ description, additionalDetails, get
             <div>
               <div className="flex items-center gap-3 font-bold text-gray-700">
                 <Image
-                  src="/last%20icons/Addional_ProductInfo_Icons/Additional_Icons_WarrentyGuarantee.svg"
+                  src="/last_icons/Addional_ProductInfo_Icons/Additional_Icons_WarrentyGuarantee.svg"
                   alt="Warranty / Guarantee"
                   width={42}
                   height={42}
                   className="shrink-0"
                 />
-                <span>Warranty/Guarantee</span>
+                <span className="text-base">Warranty/Guarantee</span>
               </div>
-              <ul className="mt-1 space-y-1 ml-[54px]">
+              <ul className="mt-0 space-y-0 ml-[54px]">
                 {getAllValues(additionalDetails.warrantyOrGuarantee).map((detail, i) => (
-                  <li key={i} className="pl-4 relative leading-tight">
+                  <li key={i} className="pl-2 relative leading-snug">
                     <span className="absolute left-0 top-0 text-gray-700">•</span>
                     <span>{detail}</span>
                   </li>

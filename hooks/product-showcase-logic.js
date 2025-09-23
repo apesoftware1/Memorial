@@ -11,7 +11,20 @@ export function getAllValues(arr) {
 }
 
 function getFirstIcon(arr) {
-  return Array.isArray(arr) && arr.length > 0 && arr[0]?.icon ? arr[0].icon : undefined;
+  // If array exists and has items
+  if (Array.isArray(arr) && arr.length > 0) {
+    // First try to get icon from first item
+    if (arr[0]?.icon) {
+      return arr[0].icon;
+    }
+    // If no icon property but value exists, try to construct icon path
+    if (arr[0]?.value) {
+      const value = arr[0].value.toLowerCase().replace(/\s+/g, '-');
+      return `/last_icons/${value}-icon.svg`;
+    }
+  }
+  // Default icon path for each type
+  return `/last_icons/default-icon.svg`;
 }
 
 function buildAllImages(listing) {

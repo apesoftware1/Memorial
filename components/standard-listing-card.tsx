@@ -47,6 +47,32 @@ export function StandardListingCard({
     return count;
   };
 
+  // Resolve category label for the card (maps to allowed categories)
+  const getCategoryLabel = () => {
+    const candidates = [
+      listing?.categoryTab,
+      listing?.categorytab,
+      listing?.category,
+      listing?.categoryName,
+      listing?.bodyType,
+      listing?.productType,
+      listing?.type,
+      listing?.productDetails?.bodyType?.[0]?.value,
+      listing?.productDetails?.bodyType,
+    ].filter(Boolean) as string[];
+
+    const raw = candidates.find((v) => typeof v === "string" && v.trim() !== "");
+    if (!raw) return "";
+    const s = raw.toUpperCase();
+    if (s.includes("SINGLE")) return "Single";
+    if (s.includes("DOUBLE")) return "Double";
+    if (s.includes("CHILD")) return "Child";
+    if (s.includes("HEAD")) return "Head"; // covers HEAD, HEADSTONE
+    if (s.includes("PLAQUE")) return "Plaques"; // PLAQUE 
+    if (s.includes("CREMATION")) return "Cremation";
+    return "";
+  };
+
   const productUrl = href || `/tombstones-for-sale/${listing.documentId}`;
 
   const handleClick = () => {
@@ -168,24 +194,25 @@ export function StandardListingCard({
           <div className="space-y-0.5 mb-2">
             {/* First line: Tombstone Type, Full Tombstone (bold if present), stoneType, style/theme, culture */}
             <div className="text-xs text-gray-700">
-              <strong>Full Tombstone</strong>
-              {listing.productDetails?.stoneType &&
-                Array.isArray(listing.productDetails.stoneType) &&
-                listing.productDetails.stoneType.length > 0 &&
-                listing.productDetails.stoneType[0]?.value && (
-                  <>| {listing.productDetails.stoneType[0].value}</>
-                )}
+                <strong>{listing.listing_category?.name || getCategoryLabel()}</strong>
+                {listing.productDetails?.stoneType &&
+                   Array.isArray(listing.productDetails.stoneType) &&
+                   listing.productDetails.stoneType.length > 0 &&
+                   listing.productDetails.stoneType[0]?.value && (
+                     <> | {listing.productDetails.stoneType[0].value}</>
+                   )}
+              
               {listing.productDetails?.style &&
                 Array.isArray(listing.productDetails.style) &&
                 listing.productDetails.style.length > 0 &&
                 listing.productDetails.style[0]?.value && (
-                  <>| {listing.productDetails.style[0].value}</>
+                  <> | {listing.productDetails.style[0].value}</>
                 )}
               {listing.productDetails?.culture &&
                 Array.isArray(listing.productDetails.culture) &&
                 listing.productDetails.culture.length > 0 &&
                 listing.productDetails.culture[0]?.value && (
-                  <>| {listing.productDetails.culture[0].value}</>
+                  <>  | {listing.productDetails.culture[0].value}</>
                 )}
             </div>
             {/* Second line: Customization, Color, Features */}
@@ -293,8 +320,8 @@ export function StandardListingCard({
                       ) &&
                       listing.additionalProductDetails.foundationOptions
                         .length > 0 &&
-                      listing.additionalProductDetails.foundationOptions[0]
-                        ?.value)
+                    listing.additionalProductDetails.foundationOptions[0]
+                      ?.value)
                       ? " | "
                       : ""}
                     {
@@ -402,24 +429,24 @@ export function StandardListingCard({
             <div className="space-y-0.5 mb-2">
               {/* First line: Tombstone Type, Full Tombstone (bold if present), stoneType, style/theme, culture */}
               <div className="text-xs text-gray-700">
-                <strong>Full Tombstone</strong>
+               <strong>{listing.listing_category?.name || getCategoryLabel()}</strong>
                 {listing.productDetails?.stoneType &&
                   Array.isArray(listing.productDetails.stoneType) &&
                   listing.productDetails.stoneType.length > 0 &&
                   listing.productDetails.stoneType[0]?.value && (
-                    <>| {listing.productDetails.stoneType[0].value}</>
+                    <> | {listing.productDetails.stoneType[0].value}</>
                   )}
                 {listing.productDetails?.style &&
                   Array.isArray(listing.productDetails.style) &&
                   listing.productDetails.style.length > 0 &&
                   listing.productDetails.style[0]?.value && (
-                    <>| {listing.productDetails.style[0].value}</>
+                    <> | {listing.productDetails.style[0].value}</>
                   )}
                 {listing.productDetails?.culture &&
                   Array.isArray(listing.productDetails.culture) &&
                   listing.productDetails.culture.length > 0 &&
                   listing.productDetails.culture[0]?.value && (
-                    <>| {listing.productDetails.culture[0].value}</>
+                    <> | {listing.productDetails.culture[0].value}</>
                   )}
               </div>
               {/* Second line: Customization, Color, Features */}
@@ -481,8 +508,7 @@ export function StandardListingCard({
                   Array.isArray(
                     listing.additionalProductDetails.foundationOptions
                   ) &&
-                  listing.additionalProductDetails.foundationOptions.length >
-                    0 &&
+                  listing.additionalProductDetails.foundationOptions.length > 0 &&
                   listing.additionalProductDetails.foundationOptions[0]
                     ?.value && (
                     <>
@@ -512,15 +538,15 @@ export function StandardListingCard({
                     0 &&
                   listing.additionalProductDetails.warrantyOrGuarantee[0]
                     ?.value && (
-                    <>
-                      {(listing.additionalProductDetails
-                        ?.transportAndInstallation &&
-                        Array.isArray(
-                          listing.additionalProductDetails
-                            .transportAndInstallation
-                        ) &&
+                  <>
+                    {(listing.additionalProductDetails
+                      ?.transportAndInstallation &&
+                      Array.isArray(
                         listing.additionalProductDetails
-                          .transportAndInstallation.length > 0 &&
+                          .transportAndInstallation
+                      ) &&
+                      listing.additionalProductDetails.transportAndInstallation
+                        .length > 0 &&
                       listing.additionalProductDetails
                         .transportAndInstallation[0]?.value) ||
                     (listing.additionalProductDetails?.foundationOptions &&

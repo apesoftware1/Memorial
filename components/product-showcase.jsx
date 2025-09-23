@@ -26,12 +26,37 @@ import CompanyInfoCard from "./CompanyInfoCard";
 import SocialShare from "./SocialShare";
 import RelatedProducts from "./RelatedProducts";
 import WhatsAppContactDrawer from "./WhatsAppContactDrawer";
+import { useSearchParams } from "next/navigation";
 
-export default function ProductShowcase({ listing, id }) {
+export default function ProductShowcase({ listing, id,}) {
   if (!listing) {
     return null;
   }
+  console.log("im here look at me",listing)
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileDropdown, setMobileDropdown] = useState(null);
+  const [selectedBranch, setSelectedBranch] = useState(null);
+  const searchParams = useSearchParams();
+  const branch = searchParams.get("branch"); // get the ?branch=xxx
+console.log("show meee",branch)
+  useEffect(() => {
+    if (listing.branches && listing.branches.length > 0) {
+      setSelectedBranch(
+        listing.branches.length <= 1
+          ? listing.branches[0]
+          : listing.branches.find((b) => b.name === (branch))
+      );
+    }
+  }, [listing, branch]);
+
+  const handleMobileMenuToggle = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const handleMobileDropdownToggle = (dropdown) => {
+    setMobileDropdown(mobileDropdown === dropdown ? null : dropdown);
+  };
 
   const {
     allImages,
@@ -56,7 +81,12 @@ export default function ProductShowcase({ listing, id }) {
 
   return (
     <>
-      <Header />
+      <Header 
+        mobileMenuOpen={mobileMenuOpen}
+        handleMobileMenuToggle={handleMobileMenuToggle}
+        mobileDropdown={mobileDropdown}
+        handleMobileDropdownToggle={handleMobileDropdownToggle}
+      />
       {/* Breadcrumbs (outside the main container) */}
       <nav className="text-sm text-gray-600 mb-4 max-w-6xl mx-auto px-4 md:px-0 pt-6">
         <Link
@@ -219,6 +249,11 @@ export default function ProductShowcase({ listing, id }) {
                       className="object-contain"
                     />
                   </div>
+                  {listing.selectedBranch && (
+                    <div className="text-sm font-semibold text-gray-800 mb-1">
+                      {listing.selectedBranch.name || listing.selectedBranch.title || listing.selectedBranch.branchName || "Branch"} Branch
+                    </div>
+                  )}
                   <div className="text-xs text-blue-500 mb-4">
                     Current Google Rating: {info.rating} out of 5
                   </div>
@@ -407,58 +442,7 @@ export default function ProductShowcase({ listing, id }) {
               </div>
             </div>
             {/* Share with Friends */}
-            <div className="flex flex-col items-center">
-              <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm w-full md:max-w-xs">
-                {/* Add to Favorites - moved to top */}
-                <div className="mb-4">
-                  <FavoriteButton product={listing} size="md" />
-                </div>
-                <hr className="my-4 border-gray-200" />
-                <h3 className="text-sm font-medium mb-2">Share with Friends</h3>
-                <div className="flex space-x-2">
-                  <Link href={listing.company?.socialLinks?.facebook || "#"}>
-                    <Image
-                      src="/new files/newIcons/Social Media Icons/Advert Set-Up-03.svg"
-                      alt="Facebook"
-                      width={40}
-                      height={40}
-                    />
-                  </Link>
-                  <Link href={listing.company?.socialLinks?.whatsapp || "#"}>
-                    <Image
-                      src="/new files/newIcons/Social Media Icons/Advert Set-Up-04.svg"
-                      alt="WhatsApp"
-                      width={40}
-                      height={40}
-                    />
-                  </Link>
-                  <Link href={listing.company?.socialLinks?.x || "#"}>
-                    <Image
-                      src="/new files/newIcons/Social Media Icons/Advert Set-Up-05.svg"
-                      alt="Twitter/X"
-                      width={40}
-                      height={40}
-                    />
-                  </Link>
-                  <Link href={listing.company?.socialLinks?.messenger || "#"}>
-                    <Image
-                      src="/new files/newIcons/Social Media Icons/Advert Set-Up-06.svg"
-                      alt="Messenger"
-                      width={40}
-                      height={40}
-                    />
-                  </Link>
-                  <Link href={listing.company?.socialLinks?.instagram || "#"}>
-                    <Image
-                      src="/new files/newIcons/Social Media Icons/Advert Set-Up-07.svg"
-                      alt="Instagram"
-                      width={40}
-                      height={40}
-                    />
-                  </Link>
-                </div>
-              </div>
-            </div>
+            <SocialShare product={listing} />
             {/* Combined Company Info, Business Hours, and More Tombstones */}
             <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
               {/* Company Info */}
@@ -473,6 +457,11 @@ export default function ProductShowcase({ listing, id }) {
                     />
                   </div>
                 </div>
+                {selectedBranch && (
+                  <div className="text-sm font-medium mb-1">
+                    {selectedBranch.name}
+                  </div>
+                )}
                 <div className="text-xs text-blue-500">
                   Current Google Rating: {info.rating} out of 5
                 </div>

@@ -7,6 +7,9 @@ export const GET_MANUFACTURERS = gql`
       bannerAd{
         url
       }
+        branches {
+        documentId
+      }
       documentId
       name
       googleRating

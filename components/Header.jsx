@@ -123,6 +123,12 @@ export default function Header({
                 <div className="absolute left-0 top-full min-w-max bg-white rounded-none overflow-hidden shadow-xl hidden group-hover:block animate-slide-in z-50 px-0 origin-top-left">
                   <div className="p-0">
                     <Link
+                      href="/blog"
+                      className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
+                    >
+                      MEMORIAL GUIDES & INSIGHTS
+                    </Link>
+                    <Link
                       href="/services/tombstone-finance"
                       className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
                     >
@@ -290,6 +296,9 @@ export default function Header({
           </button>
           {mobileDropdown === "services" && (
             <div className="pl-4 mt-2 space-y-2">
+              <Link href="/blog" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
+                MEMORIAL GUIDES & INSIGHTS
+              </Link>
               <Link href="#" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
                 LET US HANDLE EVERYTHING
               </Link>
