@@ -5,6 +5,11 @@ import { createBranch } from "@/graphql/mutations/createBranch";
 
 export default function CreateBranchModal({ documentId, isOpen = false, onClose }) {
   const [modalOpen, setModalOpen] = useState(isOpen);
+  
+  // Update modalOpen state when isOpen prop changes
+  useEffect(() => {
+    setModalOpen(isOpen);
+  }, [isOpen]);
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [latitude, setLatitude] = useState("");

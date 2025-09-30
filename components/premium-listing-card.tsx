@@ -39,7 +39,7 @@ export function PremiumListingCard({
   // const [distance, setDistance] = useState<number | null>(null);
   const { location, error, loading, calculateDistanceFrom } =
     useGuestLocation();
-    console.log(listing)
+ 
 
   // Calculate total image count using new Cloudinary fields
   const getImageCount = () => {
@@ -114,7 +114,8 @@ export function PremiumListingCard({
       const listingId = listing?.documentId || listing?.id;
       if (listingId && branchId) {
         e.preventDefault();
-        router.push(`/product-showcase/${listingId}?branch=${branchId}`);
+        // Fix the path to ensure proper routing to product showcase
+        router.push(`/product/${listingId}?branch=${branchId}`);
         return;
       }
     }
@@ -156,10 +157,15 @@ export function PremiumListingCard({
   // Get branches array
   const branches = Array.isArray(listing?.branches) ? listing.branches : [];
   const hasBranches = branches.length > 0;
-
+  
+  // Check if we're on the tombstones-for-sale page and not on the home page
+  const isTombstonesForSalePage = typeof window !== 'undefined' && 
+    window.location.pathname.includes('tombstones-for-sale') && 
+    !window.location.pathname.match(/^\/?$/); // Hide on home page
+  
   return (
     <div className="relative mt-7">
-      {hasBranches && (
+      {hasBranches && isTombstonesForSalePage && (
         <div className="absolute -top-7 right-0 z-10 bg-gray-800 text-white px-3 py-1 text-sm font-medium rounded-t-md">
           Available at {branches.length} {branches.length === 1 ? 'Branch' : 'Branches'}
         </div>
@@ -249,11 +255,11 @@ export function PremiumListingCard({
               >
                 {listing.adFlasher || "Unique Design"}
               </Badge>
-              {Array.isArray(listing?.branches) && listing.branches.length > 1 && (
+              {Array.isArray(listing?.branches) && listing.branches.length > 1 && isTombstonesForSalePage && (
                 <Badge
                   className={cn("bg-blue-600 text-white text-sm px-3 py-1 rounded")}
                 >
-                  {listing.branches.length} Branches
+                  Available at {listing.branches.length} Branches
                 </Badge>
               )}
             </div>

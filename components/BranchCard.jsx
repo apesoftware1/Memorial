@@ -224,7 +224,7 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
           {/* Branch Details */}
           <div className="space-y-0.5 mb-2">
             {/* First line: Branch Name */}
-            <div className="text-sm font-semibold text-gray-800">{name}</div>
+            <div className="text-sm font-semibold text-gray-800">{listing?.description || "No description available"}</div>
             {/* Second line: City | Province */}
             {(city || province) && (
               <div className="text-xs text-gray-700">{joinWithPipes([city, province])}</div>
@@ -238,7 +238,7 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
           {/* Location indicator */}
           <div className="flex items-center text-xs text-gray-500 mt-auto">
             <MapPin className="w-3 h-3 mr-1" />
-            <span>Branch Location</span>
+            <span>{name.toUpperCase()} branch</span>
           </div>
         </div>
       </div>

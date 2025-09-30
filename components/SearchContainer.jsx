@@ -617,7 +617,7 @@ const SearchContainer = ({
     const searching =
       isSearching !== undefined ? isSearching : internalIsSearching;
     if (searching) return "Searching...";
-    return searchButtonCount > 0 ? `Search (${searchButtonCount})` : "Search";
+    return searchButtonCount > 0 ? `Search ${searchButtonCount}` : "Search";
   }, [isSearching, internalIsSearching, searchButtonCount]);
 
   const renderSearchButtonContent = () => {
@@ -644,7 +644,8 @@ const SearchContainer = ({
         .filter(Boolean);
       const selectedCategoryObj = sortedCategories[activeTab];
       if (selectedCategoryObj) {
-        categoryLabel = selectedCategoryObj.name + " Tombstones";
+         //search button text
+        categoryLabel = selectedCategoryObj.name + " Results ";
       }
     }
     return `Search (${searchButtonCount})${

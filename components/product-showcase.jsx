@@ -32,14 +32,12 @@ export default function ProductShowcase({ listing, id,}) {
   if (!listing) {
     return null;
   }
-  console.log("im here look at me",listing)
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileDropdown, setMobileDropdown] = useState(null);
   const [selectedBranch, setSelectedBranch] = useState(null);
   const searchParams = useSearchParams();
-  const branch = searchParams.get("branch"); // get the ?branch=xxx
-console.log("show meee",branch)
+  const branch = searchParams.get("branch"); // Prioritize branchId prop
   useEffect(() => {
     if (listing.branches && listing.branches.length > 0) {
       setSelectedBranch(
@@ -100,7 +98,12 @@ console.log("show meee",branch)
           Tombstones on Special
         </Link>
         <span className="mx-1">&gt;</span>
-        <span>{listing.company?.location || "N/A"}</span>
+        <Link 
+          href={`/manufacturers/manufacturers-Profile-Page/${listing.company?.documentId || listing.companyId}${branch ? `?branch=${branch}` : ''}`}
+          className="text-blue-600 hover:text-blue-800 transition-colors"
+        >
+          {listing.company?.location || "N/A"}
+        </Link>
         <span className="mx-1">&gt;</span>
         <span className="text-gray-900 font-semibold">{listing.title}</span>
       </nav>
@@ -350,7 +353,7 @@ console.log("show meee",branch)
                 <WhatsAppContactDrawer
                   className="-mx-4 mt-3"
                   reps={
-                    listing?.company?.sales_reps || []
+                    (selectedBranch?.sales_reps?.length ? selectedBranch.sales_reps : listing?.company?.sales_reps) || []
                   }
                   listing_id={listing.documentId}
                 />
@@ -447,24 +450,35 @@ console.log("show meee",branch)
             <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
               {/* Company Info */}
               <div className="text-center mb-4">
-                <div className="flex justify-center mb-2">
-                  <div className="relative h-32 w-64">
-                    <Image
-                      src={info.logo}
-                      alt={listing.company?.name || "Manufacturer Logo"}
-                      fill
-                      className="object-contain"
-                    />
+                <Link 
+                  href={`/manufacturers/manufacturers-Profile-Page/${listing.company?.documentId || listing.companyId}${branch ? `?branch=${branch}` : ''}`}
+                  className="block hover:opacity-90 transition-opacity"
+                >
+                  <div className="flex justify-center mb-2">
+                    <div className="relative h-32 w-64">
+                      <Image
+                        src={info.logo}
+                        alt={listing.company?.name || "Manufacturer Logo"}
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
                   </div>
-                </div>
+                </Link>
                 {selectedBranch && (
-                  <div className="text-sm font-medium mb-1">
-                    {selectedBranch.name}
+                  <div className="text-bold-500 font-bold mb-1">
+                    <Link 
+                      href={`/manufacturers/manufacturers-Profile-Page/${listing.company?.documentId || listing.companyId}?branch=${selectedBranch.name}`}
+                      className="text-gray-600 hover:underline hover:blue"
+                    >
+                      {selectedBranch.name} Branch
+                    </Link>
                   </div>
                 )}
                 <div className="text-xs text-blue-500">
                   Current Google Rating: {info.rating} out of 5
                 </div>
+                
               </div>
               {/* Business Hours */}
               <div className="mb-4">
@@ -525,23 +539,24 @@ console.log("show meee",branch)
                     No similar products available.
                   </div>
                 )}
-                <div className="mt-3">
-                  <Link
-                    href="#"
-                    className="text-blue-500 hover:underline text-sm"
+               <div className="mt-2">
+                  <Link 
+                    href={`/manufacturers/manufacturers-Profile-Page/${listing.company?.documentId || listing.companyId}${branch ? `?branch=${branch}` : ''}`}
+                    className="text-sm text-blue-600 hover:underline"
                   >
-                    View all Tombstones
+                    View All Tombstones
                   </Link>
                 </div>
               </div>
             </div>
           </div>
         </div>
+       
         <MapModal
           isOpen={isMapOpen}
           onClose={() => setIsMapOpen(false)}
-          mapUrl={listing.company?.mapUrl}
-
+          mapUrl={selectedBranch?.location?.mapUrl || listing.company?.mapUrl}
+          
         />
       </div>
     </>

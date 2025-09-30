@@ -41,57 +41,57 @@ const faqData = [
   },
 ];
 
-export default function FaqSection() {
+export default function MobileFaqSection() {
   const [openIndex, setOpenIndex] = useState(null);
 
   return (
-    <div className="w-full bg-white -mx-[100vw] px-[100vw]">
-      <section className="w-full min-h-0 flex items-start justify-center pt-2 md:pt-6 pb-4 mb-0">
-        <div className="container max-w-screen-xl mx-auto pb-0 mb-4 ">
+    <div className="w-full bg-white overflow-x-hidden">
+      <section className="w-full min-h-0 flex items-start justify-center pt-2 pb-4 mb-0">
+        <div className="container mx-auto pb-0 mb-4">
           {/* Heading */}
-          <div className="mb-6">
-            <h2 className="text-[#D4AF37] font-bold uppercase text-base md:text-lg whitespace-normal md:whitespace-nowrap" style={{letterSpacing: "0.5px"}}>
+          <div className="mb-6 px-4">
+            <h2 className="text-[#D4AF37] font-bold uppercase text-base whitespace-normal break-words" style={{letterSpacing: "0.5px"}}>
               Do you have any questions about buying a tombstone for your loved one?
             </h2>
           </div>
-        {/* FAQ List */}
-        <div className="relative">
-          {/* Top border */}
-          <div className="h-px bg-[#e0e0e0] w-[900px]"></div>
-          {faqData.map((faq, idx) => (
-            <div key={idx} className="group relative">
-              <button
-                className={`w-[900px] flex items-center py-3 px-0 text-left focus:outline-none transition-colors relative ${openIndex === idx ? "bg-[#f9f9f9]" : ""}`}
-                onClick={() => setOpenIndex(openIndex === idx ? null : idx)}
-                aria-expanded={openIndex === idx}
-              >
-                <span className="font-bold text-[#0b4c5f] text-base uppercase tracking-tight whitespace-nowrap">
-                  {faq.question}
-                </span>
-                <span className="ml-auto flex-shrink-0 flex items-center">
-                  {openIndex === idx ? (
-                    <Minus className="w-5 h-5 text-[#0b4c5f]" />
-                  ) : (
-                    <Plus className="w-5 h-5 text-[#0b4c5f]" />
-                  )}
-                </span>
-              </button>
-              {openIndex === idx && (
-                <div className="py-2 px-0">
-                  <div className="bg-[#f9f9f9] rounded p-4 text-[#0b4c5f] text-base font-normal leading-relaxed w-[900px]">
-                    {faq.answer}
+          {/* FAQ List */}
+          <div className="relative w-full">
+            {/* Top border */}
+            <div className="h-px bg-[#e0e0e0] w-full"></div>
+            {faqData.map((faq, idx) => (
+              <div key={idx} className="group relative w-full">
+                <button
+                  className={`w-full flex items-center py-3 px-4 text-left focus:outline-none transition-colors relative ${openIndex === idx ? "bg-[#f9f9f9]" : ""}`}
+                  onClick={() => setOpenIndex(openIndex === idx ? null : idx)}
+                  aria-expanded={openIndex === idx}
+                >
+                  <span className="font-bold text-[#0b4c5f] text-base uppercase tracking-tight whitespace-normal break-words">
+                    {faq.question}
+                  </span>
+                  <span className="ml-auto flex-shrink-0 flex items-center">
+                    {openIndex === idx ? (
+                      <Minus className="w-5 h-5 text-[#0b4c5f]" />
+                    ) : (
+                      <Plus className="w-5 h-5 text-[#0b4c5f]" />
+                    )}
+                  </span>
+                </button>
+                {openIndex === idx && (
+                  <div className="py-2 px-4 w-full">
+                    <div className="bg-[#f9f9f9] rounded p-4 text-[#0b4c5f] text-base font-normal leading-relaxed w-full">
+                      {faq.answer}
+                    </div>
                   </div>
-                </div>
-              )}
-              {/* Divider under each question, except last */}
-              {idx < faqData.length - 1 && (
-                <div className="h-px bg-[#e0e0e0] w-[900px]"></div>
-              )}
-            </div>
-          ))}
-          {/* Bottom border */}
-          <div className="h-px bg-[#e0e0e0] w-[900px]"></div>
-        </div>
+                )}
+                {/* Divider under each question, except last */}
+                {idx < faqData.length - 1 && (
+                  <div className="h-px bg-[#e0e0e0] w-full"></div>
+                )}
+              </div>
+            ))}
+            {/* Bottom border */}
+            <div className="h-px bg-[#e0e0e0] w-full"></div>
+          </div>
         </div>
       </section>
     </div>

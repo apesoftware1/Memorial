@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useQuery } from "@apollo/client";
 import { GET_COMPANY_BY_ID } from '@/graphql/queries/getCompanyById';
 import ManufacturerProfileEditor from '../ManufacturerProfileEditor';
+import BranchButton from '@/components/BranchButton';
 
 export default function ManufacturerProfilePage() {
   const { slug: documentId } = useParams();
@@ -27,6 +28,12 @@ export default function ManufacturerProfilePage() {
   }
   const listings = company.listings || [];
 
-  // Render the profile page as a guest (no edit or modal buttons)
-  return <ManufacturerProfileEditor isOwner={false} company={company} listings={listings} />;
-} 
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px' }}>
+        <BranchButton company={company} />
+      </div>
+      <ManufacturerProfileEditor isOwner={false} company={company} listings={listings} />
+    </div>
+  );
+}

@@ -4,6 +4,15 @@ export const GET_COMPANY_BY_ID = gql`
   query Company($documentId: ID!) {
     companies(filters: { documentId: { eq: $documentId } }) {
       documentId
+       branches {
+        name
+        location {
+          address
+          latitude
+          longitude
+          mapUrl
+        }
+      }
       phone
       name
       googleRating

@@ -250,7 +250,7 @@ const IndexRender = ({
       </div>
 
       {/* 7. Premium Listings Section (Part 2) */}
-      <section className="mt-0 pt-4 pb-2 mb-0 bg-gray-50">
+      <section className="mt-0 pt-0 pb-2 mb-0 bg-gray-50">
         {premiumSecondHalf.length > 0
           ? premiumSecondHalf.map((item, idx) => (
               <div key={item.id || idx} className="mb-6">

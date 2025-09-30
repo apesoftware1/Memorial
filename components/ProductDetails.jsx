@@ -6,6 +6,12 @@ import PropTypes from "prop-types";
 export default function ProductDetails({ productDetails, icons, getFirstValue }) {
   const { stoneTypeIcon, headStyleIcon, slabStyleIcon, colourIcon, customIcon } = icons || {};
 
+  // Function to fix icon paths that might contain "last icons" instead of "last_icons"
+  const fixIconPath = (iconPath) => {
+    if (!iconPath) return null;
+    return iconPath.replace("/last icons/", "/last_icons/");
+  };
+
   // Map common color names to swatch colors
   const colorToHex = (name = "") => {
     const key = name.toLowerCase();
@@ -33,7 +39,7 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
           <div className="flex items-center border border-gray-300 rounded px-3 py-1.5 font-medium bg-white">
             <span>Head Style:</span>
             {icons?.headStyleIcon ? (
-              <Image src={icons.headStyleIcon} alt="Head Style Icon" width={16} height={16} className="mx-2" />
+              <Image src={fixIconPath(icons.headStyleIcon)} alt="HeadStyleIcon" width={16} height={16} className="mx-2" />
             ) : (
               <Cross size={16} className="text-gray-500 mx-2" />
             )}
@@ -46,7 +52,7 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
           <div className="flex items-center border border-gray-300 rounded px-3 py-1.5 font-medium bg-white">
             <span>Slab Style:</span>
             {icons?.slabStyleIcon ? (
-              <Image src={icons.slabStyleIcon} alt="Slab Style Icon" width={16} height={16} className="mx-2" />
+              <Image src={fixIconPath(icons.slabStyleIcon)} alt="SlabStyleIcon" width={16} height={16} className="mx-2" />
             ) : (
               <Gem size={16} className="text-gray-500 mx-2" />
             )}
@@ -59,7 +65,7 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
           <div className="flex items-center border border-gray-300 rounded px-3 py-1.5 font-medium bg-white">
             <span>Colour:</span>
             {icons?.colourIcon ? (
-              <Image src={icons.colourIcon} alt="Colour Icon" width={16} height={16} className="mx-2" />
+              <Image src={fixIconPath(icons.colourIcon)} alt="ColourIcon" width={16} height={16} className="mx-2" />
             ) : (
               <Gem size={16} className="text-gray-500 mx-2" />
             )}
@@ -72,7 +78,7 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
           <div className="flex items-center border border-gray-300 rounded px-3 py-1.5 font-medium bg-white">
             <span>Customisation:</span>
             {icons?.customIcon ? (
-              <Image src={icons.customIcon} alt="Customisation Icon" width={16} height={16} className="mx-2" />
+              <Image src={fixIconPath(icons.customIcon)} alt="CustomisationIcon" width={16} height={16} className="mx-2" />
             ) : (
               <Camera size={16} className="text-gray-500 mx-2" />
             )}
@@ -85,7 +91,7 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
           <div className="flex items-center border border-gray-300 rounded px-3 py-1.5 font-medium bg-white">
             <span>Stone Type:</span>
             {icons?.stoneTypeIcon ? (
-              <Image src={icons.stoneTypeIcon} alt="Stone Type Icon" width={16} height={16} className="mx-2" />
+              <Image src={fixIconPath(icons.stoneTypeIcon)} alt="StoneTypeIcon" width={16} height={16} className="mx-2" />
             ) : (
               <Gem size={16} className="text-gray-500 mx-2" />
             )}

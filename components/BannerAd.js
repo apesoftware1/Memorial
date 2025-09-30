@@ -72,7 +72,7 @@ const BannerAd = ({
         <div
           className={`block md:hidden relative bg-white flex items-center justify-center ${mobileContainerClasses}`}
           style={{
-            // Ensure height matches the image’s aspect ratio so it fills top and bottom with no cropping
+            // Ensure height matches the image's aspect ratio so it fills top and bottom with no cropping
             aspectRatio: mobileAR || 3.2, // fallback ~320x100
             height: 'auto' // override fixed h-24 from classes to respect aspect-ratio
           }}

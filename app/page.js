@@ -10,7 +10,7 @@ import { ProductCard } from "@/components/product-card"
 import { StandardListingCard } from "@/components/standard-listing-card"
 import SearchBox from "@/components/SearchBox"
 import CategoryTabs from "@/components/CategoryTabs.jsx"
-import FaqSection from "@/components/FaqSection"
+import ResponsiveFaqSection from "@/components/ResponsiveFaqSection"
 import LocationModal from "@/components/LocationModal"
 import LocationPermissionModal from "@/components/LocationPermissionModal"
 import LocationTrigger from "@/components/LocationTrigger"
@@ -318,9 +318,9 @@ useEffect(() => {
       </section>
       
       {/* 3. FAQ Section */}
-      <div className="container mx-auto px-4 mb-4">
-        <div className="max-w-4xl mx-auto">
-          <FaqSection />
+      <div className="md:container md:mx-auto md:px-4 w-full mb-4">
+        <div className="md:max-w-4xl md:mx-auto">
+          <ResponsiveFaqSection />
         </div>
       </div>
 

@@ -6,6 +6,15 @@ export const GET_LISTING_BY_ID = gql`
       documentId
       branches {
         name
+        sales_reps {
+          call
+          whatsapp
+          name
+
+          avatar {
+            url
+          }
+        }
         location {
           address
           latitude
