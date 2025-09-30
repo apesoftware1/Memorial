@@ -47,6 +47,32 @@ export function StandardListingCard({
     return count;
   };
 
+  // Resolve category label for the card (maps to allowed categories)
+  const getCategoryLabel = () => {
+    const candidates = [
+      listing?.categoryTab,
+      listing?.categorytab,
+      listing?.category,
+      listing?.categoryName,
+      listing?.bodyType,
+      listing?.productType,
+      listing?.type,
+      listing?.productDetails?.bodyType?.[0]?.value,
+      listing?.productDetails?.bodyType,
+    ].filter(Boolean) as string[];
+
+    const raw = candidates.find((v) => typeof v === "string" && v.trim() !== "");
+    if (!raw) return "";
+    const s = raw.toUpperCase();
+    if (s.includes("SINGLE")) return "Single";
+    if (s.includes("DOUBLE")) return "Double";
+    if (s.includes("CHILD")) return "Child";
+    if (s.includes("HEAD")) return "Head"; // covers HEAD, HEADSTONE
+    if (s.includes("PLAQUE")) return "Plaques"; // PLAQUE 
+    if (s.includes("CREMATION")) return "Cremation";
+    return "";
+  };
+
   const productUrl = href || `/tombstones-for-sale/${listing.documentId}`;
 
   const handleClick = () => {
@@ -80,7 +106,7 @@ export function StandardListingCard({
       {/* Mobile Layout (up to 768px) */}
       <div className="relative flex flex-col md:hidden">
         {/* Manufacturer Logo in its own box, bottom right corner (Mobile only) */}
-        <div className="absolute bottom-3 right-3 z-20 bg-gray-50 p-2 rounded-lg md:hidden">
+        <div className="absolute bottom-3 right-3 z-20 bg-white border border-white p-2 rounded-lg md:hidden">
           <a
             href={listing.company.name}
             className="manufacturer-link"
@@ -141,7 +167,7 @@ export function StandardListingCard({
           </div>
         </div>
         {/* Content (Mobile) */}
-        <div className="w-full px-4 pt-4 pb-2 bg-gray-50 flex flex-col">
+        <div className="w-full px-4 pt-4 pb-2 bg-white flex flex-col">
           {/* Price, Badge, and Heart (Mobile) */}
           <div className="flex flex-col items-start mb-3">
             <div className="text-2xl font-bold text-blue-600">
@@ -168,24 +194,25 @@ export function StandardListingCard({
           <div className="space-y-0.5 mb-2">
             {/* First line: Tombstone Type, Full Tombstone (bold if present), stoneType, style/theme, culture */}
             <div className="text-xs text-gray-700">
-              <strong>Full Tombstone</strong>
-              {listing.productDetails?.stoneType &&
-                Array.isArray(listing.productDetails.stoneType) &&
-                listing.productDetails.stoneType.length > 0 &&
-                listing.productDetails.stoneType[0]?.value && (
-                  <>| {listing.productDetails.stoneType[0].value}</>
-                )}
+                <strong>{listing.listing_category?.name || getCategoryLabel()}</strong>
+                {listing.productDetails?.stoneType &&
+                   Array.isArray(listing.productDetails.stoneType) &&
+                   listing.productDetails.stoneType.length > 0 &&
+                   listing.productDetails.stoneType[0]?.value && (
+                     <> | {listing.productDetails.stoneType[0].value}</>
+                   )}
+              
               {listing.productDetails?.style &&
                 Array.isArray(listing.productDetails.style) &&
                 listing.productDetails.style.length > 0 &&
                 listing.productDetails.style[0]?.value && (
-                  <>| {listing.productDetails.style[0].value}</>
+                  <> | {listing.productDetails.style[0].value}</>
                 )}
               {listing.productDetails?.culture &&
                 Array.isArray(listing.productDetails.culture) &&
                 listing.productDetails.culture.length > 0 &&
                 listing.productDetails.culture[0]?.value && (
-                  <>| {listing.productDetails.culture[0].value}</>
+                  <>  | {listing.productDetails.culture[0].value}</>
                 )}
             </div>
             {/* Second line: Customization, Color, Features */}
@@ -293,8 +320,8 @@ export function StandardListingCard({
                       ) &&
                       listing.additionalProductDetails.foundationOptions
                         .length > 0 &&
-                      listing.additionalProductDetails.foundationOptions[0]
-                        ?.value)
+                    listing.additionalProductDetails.foundationOptions[0]
+                      ?.value)
                       ? " | "
                       : ""}
                     {
@@ -317,21 +344,20 @@ export function StandardListingCard({
               onClick={(e) => e.stopPropagation()}
               aria-label={`View ${listing.manufacturer} profile`}
             >
-              {listing.manufacturer}
+              {listing.manufacturer || listing.company?.name}
             </a>
             <div className="space-y-1.5">
-              {listing.enquiries && (
+              {(listing.enquiries !== undefined || listing.inquiries_c?.length !== undefined) && (
                 <div className="flex items-center text-green-600">
                   <Check className="w-3.5 h-3.5 mr-1" />
                   <span className="text-xs">
-                    {listing.enquiries} enquiries to this Manufacturer
+                    {listing.enquiries || listing.inquiries_c?.length || 0} enquiries to this Manufacturer
                   </span>
                 </div>
               )}
               {/* Location display */}
               <div className="text-xs text-gray-600">
-                {listing.company.location &&
-                listing.company.location.trim() !== ""
+                {listing.company.location && listing.company.location.trim() !== ""
                   ? listing.company.location
                   : "location not set"}
               </div>
@@ -403,24 +429,24 @@ export function StandardListingCard({
             <div className="space-y-0.5 mb-2">
               {/* First line: Tombstone Type, Full Tombstone (bold if present), stoneType, style/theme, culture */}
               <div className="text-xs text-gray-700">
-                <strong>Full Tombstone</strong>
+               <strong>{listing.listing_category?.name || getCategoryLabel()}</strong>
                 {listing.productDetails?.stoneType &&
                   Array.isArray(listing.productDetails.stoneType) &&
                   listing.productDetails.stoneType.length > 0 &&
                   listing.productDetails.stoneType[0]?.value && (
-                    <>| {listing.productDetails.stoneType[0].value}</>
+                    <> | {listing.productDetails.stoneType[0].value}</>
                   )}
                 {listing.productDetails?.style &&
                   Array.isArray(listing.productDetails.style) &&
                   listing.productDetails.style.length > 0 &&
                   listing.productDetails.style[0]?.value && (
-                    <>| {listing.productDetails.style[0].value}</>
+                    <> | {listing.productDetails.style[0].value}</>
                   )}
                 {listing.productDetails?.culture &&
                   Array.isArray(listing.productDetails.culture) &&
                   listing.productDetails.culture.length > 0 &&
                   listing.productDetails.culture[0]?.value && (
-                    <>| {listing.productDetails.culture[0].value}</>
+                    <> | {listing.productDetails.culture[0].value}</>
                   )}
               </div>
               {/* Second line: Customization, Color, Features */}
@@ -482,8 +508,7 @@ export function StandardListingCard({
                   Array.isArray(
                     listing.additionalProductDetails.foundationOptions
                   ) &&
-                  listing.additionalProductDetails.foundationOptions.length >
-                    0 &&
+                  listing.additionalProductDetails.foundationOptions.length > 0 &&
                   listing.additionalProductDetails.foundationOptions[0]
                     ?.value && (
                     <>
@@ -495,16 +520,16 @@ export function StandardListingCard({
                       ) &&
                       listing.additionalProductDetails.transportAndInstallation
                         .length > 0 &&
-                      listing.additionalProductDetails
-                        .transportAndInstallation[0]?.value
-                        ? " | "
-                        : ""}
-                      {
-                        listing.additionalProductDetails.foundationOptions[0]
-                          .value
-                      }
-                    </>
-                  )}
+                    listing.additionalProductDetails
+                      .transportAndInstallation[0]?.value
+                      ? " | "
+                      : ""}
+                    {
+                      listing.additionalProductDetails.foundationOptions[0]
+                        .value
+                    }
+                  </>
+                )}
                 {listing.additionalProductDetails?.warrantyOrGuarantee &&
                   Array.isArray(
                     listing.additionalProductDetails.warrantyOrGuarantee
@@ -513,35 +538,35 @@ export function StandardListingCard({
                     0 &&
                   listing.additionalProductDetails.warrantyOrGuarantee[0]
                     ?.value && (
-                    <>
-                      {(listing.additionalProductDetails
-                        ?.transportAndInstallation &&
-                        Array.isArray(
-                          listing.additionalProductDetails
-                            .transportAndInstallation
-                        ) &&
+                  <>
+                    {(listing.additionalProductDetails
+                      ?.transportAndInstallation &&
+                      Array.isArray(
                         listing.additionalProductDetails
-                          .transportAndInstallation.length > 0 &&
-                        listing.additionalProductDetails
-                          .transportAndInstallation[0]?.value) ||
-                      (listing.additionalProductDetails?.foundationOptions &&
-                        Array.isArray(
-                          listing.additionalProductDetails.foundationOptions
-                        ) &&
+                          .transportAndInstallation
+                      ) &&
+                      listing.additionalProductDetails.transportAndInstallation
+                        .length > 0 &&
+                      listing.additionalProductDetails
+                        .transportAndInstallation[0]?.value) ||
+                    (listing.additionalProductDetails?.foundationOptions &&
+                      Array.isArray(
                         listing.additionalProductDetails.foundationOptions
-                          .length > 0 &&
-                        listing.additionalProductDetails.foundationOptions[0]
-                          ?.value)
-                        ? " | "
-                        : ""}
-                      {
-                        listing.additionalProductDetails.warrantyOrGuarantee[0]
-                          .value
-                      }
-                    </>
-                  )}
-              </div>
-              {/* Fourth line: Manufacturing time */}
+                      ) &&
+                      listing.additionalProductDetails.foundationOptions
+                        .length > 0 &&
+                    listing.additionalProductDetails.foundationOptions[0]
+                      ?.value)
+                      ? " | "
+                      : ""}
+                    {
+                      listing.additionalProductDetails.warrantyOrGuarantee[0]
+                        .value
+                    }
+                  </>
+                )}
+            </div>
+               
               <div className="text-xs text-gray-600">
                 {listing.manufacturingTimeframe || "3 weeks manufacturing time"}
               </div>

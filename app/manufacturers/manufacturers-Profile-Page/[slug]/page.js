@@ -4,10 +4,11 @@ import { useParams } from "next/navigation";
 import { useQuery } from "@apollo/client";
 import { GET_COMPANY_BY_ID } from '@/graphql/queries/getCompanyById';
 import ManufacturerProfileEditor from '../ManufacturerProfileEditor';
+import BranchButton from '@/components/BranchButton';
 
 export default function ManufacturerProfilePage() {
   const { slug: documentId } = useParams();
-  console.log(documentId, typeof documentId)
+  
   const { data, loading, error } = useQuery(GET_COMPANY_BY_ID, {
     variables: { documentId: documentId },
     skip: !documentId,
@@ -17,7 +18,7 @@ export default function ManufacturerProfilePage() {
   if (error) return <div>Error loading company data.</div>;
   const company = data?.companies[0];
   
-  console.log(company)
+ 
   if (!company) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: '#888' }}>
@@ -27,6 +28,12 @@ export default function ManufacturerProfilePage() {
   }
   const listings = company.listings || [];
 
-  // Render the profile page as a guest (no edit or modal buttons)
-  return <ManufacturerProfileEditor isOwner={false} company={company} listings={listings} />;
-} 
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px' }}>
+        <BranchButton company={company} />
+      </div>
+      <ManufacturerProfileEditor isOwner={false} company={company} listings={listings} />
+    </div>
+  );
+}

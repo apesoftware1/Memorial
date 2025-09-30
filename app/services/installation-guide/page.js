@@ -7,6 +7,17 @@ import Header from '@/components/Header'
 
 export default function InstallationGuidePage() {
   const router = useRouter()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [mobileDropdown, setMobileDropdown] = useState(null)
+
+  const handleMobileMenuToggle = () => {
+    setMobileMenuOpen(!mobileMenuOpen)
+  }
+
+  const handleMobileDropdownToggle = (dropdown) => {
+    setMobileDropdown(mobileDropdown === dropdown ? null : dropdown)
+  }
+  
   const [activeTab, setActiveTab] = useState('preparation')
 
   const installationSteps = [
@@ -80,7 +91,12 @@ export default function InstallationGuidePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header 
+        mobileMenuOpen={mobileMenuOpen}
+        handleMobileMenuToggle={handleMobileMenuToggle}
+        mobileDropdown={mobileDropdown}
+        handleMobileDropdownToggle={handleMobileDropdownToggle}
+      />
       
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-purple-600 to-purple-800 text-white py-16">
@@ -282,4 +298,4 @@ export default function InstallationGuidePage() {
       </section>
     </div>
   )
-} 
+}

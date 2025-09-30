@@ -4,13 +4,14 @@ import { useQuery } from '@apollo/client';
 import { GET_MANUFACTURERS } from '@/graphql/queries/getManufacturers';
 import ManufacturerCard from '../components/ManufacturerCard';
 import Header from "@/components/Header";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { ChevronDown, MapPin, Search } from "lucide-react";
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 
 export default function ManufacturersPage() {
   const { loading, error, data } = useQuery(GET_MANUFACTURERS);
+  const sortModalRef = useRef(null);
 
   // State for UI controls (for Header component)
   const [uiState, setUiState] = useState({
@@ -29,6 +30,22 @@ export default function ManufacturersPage() {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   // State for sort order
   const [sortOrder, setSortOrder] = useState("Default");
+  
+  // Handle click outside of sort modal
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (sortModalRef.current && !sortModalRef.current.contains(event.target)) {
+        setShowSortDropdown(false);
+      }
+    }
+    
+    if (showSortDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showSortDropdown]);
   // State for active province
   const [activeProvince, setActiveProvince] = useState(null);
   // State for active city

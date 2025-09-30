@@ -23,6 +23,7 @@ interface PremiumListingCardProps {
   href: string;
   isFirstCard?: boolean;
   isOwner?: boolean;
+  onPrimaryClick?: (listing: any) => boolean | void;
 }
 
 export function PremiumListingCard({
@@ -30,6 +31,7 @@ export function PremiumListingCard({
   href,
   isFirstCard = false,
   isOwner = false,
+  onPrimaryClick,
 }: PremiumListingCardProps): React.ReactElement {
   const router = useRouter();
   const [distanceInfo, setDistanceInfo] = useState<DistanceInfo | null>(null);
@@ -37,6 +39,7 @@ export function PremiumListingCard({
   // const [distance, setDistance] = useState<number | null>(null);
   const { location, error, loading, calculateDistanceFrom } =
     useGuestLocation();
+ 
 
   // Calculate total image count using new Cloudinary fields
   const getImageCount = () => {
@@ -48,6 +51,32 @@ export function PremiumListingCard({
     return count;
   };
 
+  // Resolve category label for the card (maps to category tab when available)
+  const getCategoryLabel = () => {
+    const candidates = [
+      listing?.categoryTab,
+      listing?.categorytab,
+      listing?.category,
+      listing?.bodyType,
+      listing?.productType,
+      listing?.type,
+      listing?.productDetails?.bodyType?.[0]?.value,
+      listing?.productDetails?.bodyType,
+    ].filter(Boolean) as string[];
+  
+    const raw = candidates.find((v) => typeof v === "string" && v.trim() !== "");
+    if (!raw) return "Full Tombstone";
+    const s = raw.toLowerCase();
+    if (s.includes("single")) return "Single Tombstone";
+    if (s.includes("double")) return "Double Tombstone";
+    if (s.includes("headstone") && !s.includes("double")) return "Headstone";
+    if (s.includes("full")) return "Full Tombstone";
+    if (s.includes("cremation")) return "Cremation Memorial";
+    if (s.includes("family")) return "Family Monument";
+    if (s.includes("child")) return "Child Memorial";
+    if (s.includes("custom")) return "Custom Design";
+    return raw.replace(/\b\w/g, (ch) => ch.toUpperCase());
+  };
   const defaultThumbnail = "/placeholder.svg?height=80&width=120";
   // Prepare thumbnails array using new Cloudinary fields
   const thumbnails = Array.isArray(listing.thumbnailUrls)
@@ -66,6 +95,39 @@ export function PremiumListingCard({
     // Prevent navigation if the click is on a manufacturer link
     const target = e.target as HTMLElement;
     if (target.closest(".manufacturer-link")) return;
+
+    // Get branches array
+    const branches = Array.isArray(listing?.branches) ? listing.branches : [];
+    
+    // If listing has more than one branch, prevent navigation and call ViewListingByBranchesModal
+    if (branches.length > 1) {
+      e.preventDefault();
+      // Use onPrimaryClick to open the modal
+      if (typeof onPrimaryClick === "function") {
+        onPrimaryClick(listing);
+        return;
+      }
+    } 
+    // If listing has exactly one branch, navigate directly to the product page
+    else if (branches.length === 1) {
+      const branchId = branches[0]?.id || branches[0]?.documentId;
+      const listingId = listing?.documentId || listing?.id;
+      if (listingId && branchId) {
+        e.preventDefault();
+        // Fix the path to ensure proper routing to product showcase
+        router.push(`/product/${listingId}?branch=${branchId}`);
+        return;
+      }
+    }
+    
+    // Keep existing onPrimaryClick logic intact for other cases
+    if (typeof onPrimaryClick === "function") {
+      const handled = onPrimaryClick(listing);
+      if (handled) return;
+    }
+
+    // Only navigate if not handled by any of the above
+    e.preventDefault(); // Prevent any default behavior
     router.push(productUrl);
   };
 
@@ -84,17 +146,41 @@ export function PremiumListingCard({
     };
     fetchDistance();
   }, [companyLocation.lat, companyLocation.lng, calculateDistanceFrom]);
+  // Handle keyboard navigation for accessibility
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleCardClick(e as unknown as React.MouseEvent);
+    }
+  };
+
+  // Get branches array
+  const branches = Array.isArray(listing?.branches) ? listing.branches : [];
+  const hasBranches = branches.length > 0;
+  
+  // Check if we're on the tombstones-for-sale page and not on the home page
+  const isTombstonesForSalePage = typeof window !== 'undefined' && 
+    window.location.pathname.includes('tombstones-for-sale') && 
+    !window.location.pathname.match(/^\/?$/); // Hide on home page
+  
   return (
-    <div
-      className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto transition-all duration-300 h-full flex flex-col hover:border-b-2 hover:border-[#0090e0] hover:shadow-lg hover:shadow-gray-400 cursor-pointer"
-      onClick={handleCardClick}
-      role="button"
-      tabIndex={0}
-    >
+    <div className="relative mt-7">
+      {hasBranches && isTombstonesForSalePage && (
+        <div className="absolute -top-7 right-0 z-10 bg-gray-800 text-white px-3 py-1 text-sm font-medium rounded-t-md">
+          Available at {branches.length} {branches.length === 1 ? 'Branch' : 'Branches'}
+        </div>
+      )}
+      <div
+        className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto transition-all duration-300 h-full flex flex-col hover:border-b-2 hover:border-[#0090e0] hover:shadow-lg hover:shadow-gray-400 cursor-pointer"
+        onClick={handleCardClick}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+      >
       {/* Mobile Layout (up to 768px) */}
       <div className="relative flex flex-col md:hidden">
         {/* Manufacturer Logo in its own box, bottom right corner (Mobile only) */}
-        <div className="absolute bottom-3 right-3 z-20 bg-gray-50 p-2 rounded-lg md:hidden">
+        <div className="absolute bottom-3 right-3 z-20 bg-white p-2 rounded-lg md:hidden">
           <div
             className="manufacturer-link"
             onClick={(e) => e.stopPropagation()}
@@ -156,19 +242,26 @@ export function PremiumListingCard({
           </div>
         </div>
         {/* Content (Mobile) */}
-        <div className="w-full px-4 pt-4 pb-2 bg-gray-50 flex flex-col">
+        <div className="w-full px-4 pt-4 pb-2 bg-white flex flex-col">
           {/* Price, Badge, and Heart (Mobile) */}
           <div className="flex flex-col items-start mb-3">
             <div className="text-2xl font-bold text-blue-600">
               {formatPrice(listing.price)}
             </div>
-            <div className="mt-1 mb-0">
+            <div className="mt-1 mb-0 flex gap-2">
               <Badge
                 className={cn("text-white text-sm px-3 py-1 rounded")}
                 style={{ backgroundColor: listing.adFlasherColor || "#DB2777" }}
               >
                 {listing.adFlasher || "Unique Design"}
               </Badge>
+              {Array.isArray(listing?.branches) && listing.branches.length > 1 && isTombstonesForSalePage && (
+                <Badge
+                  className={cn("bg-blue-600 text-white text-sm px-3 py-1 rounded")}
+                >
+                  Available at {listing.branches.length} Branches
+                </Badge>
+              )}
             </div>
             <div onClick={(e) => e.stopPropagation()}>
               {/* TODO: to be added to the backend-favorite button */}
@@ -183,26 +276,21 @@ export function PremiumListingCard({
           <div className="space-y-0.5 mb-2">
             {/* First line: Tombstone Type, Full Tombstone (bold if present), stoneType, style/theme, culture */}
             <div className="text-xs text-gray-700">
-              <strong>Full Tombstone</strong>
+              <strong>{listing.listing_category?.name || getCategoryLabel()}</strong>
               {listing.productDetails?.stoneType &&
                 Array.isArray(listing.productDetails.stoneType) &&
                 listing.productDetails.stoneType.length > 0 &&
                 listing.productDetails.stoneType[0]?.value && (
-                  <>| {listing.productDetails.stoneType[0].value}</>
+                  <> | {listing.productDetails.stoneType[0].value}</>
                 )}
               {listing.productDetails?.style &&
                 Array.isArray(listing.productDetails.style) &&
                 listing.productDetails.style.length > 0 &&
                 listing.productDetails.style[0]?.value && (
-                  <>| {listing.productDetails.style[0].value}</>
+                  <> | {listing.productDetails.style[0].value}</>
                 )}
-              {listing.productDetails?.culture &&
-                Array.isArray(listing.productDetails.culture) &&
-                listing.productDetails.culture.length > 0 &&
-                listing.productDetails.culture[0]?.value && (
-                  <>| {listing.productDetails.culture[0].value}</>
-                )}
-            </div>
+             
+             </div>
             {/* Second line: Customization, Color, Features */}
             <div className="text-xs text-gray-700">
               {listing.productDetails?.customization &&
@@ -321,7 +409,9 @@ export function PremiumListingCard({
             </div>
             {/* Fourth line: Manufacturing time */}
             <div className="text-xs text-gray-600">
-              {listing.manufacturingTimeframe || "3 weeks manufacturing time"}
+              {shouldShowDetail(listing.manufacturingTimeframe)
+                ? listing.manufacturingTimeframe
+                : (!listing.manufacturingTimeframe ? "3 weeks manufacturing time" : null)}
             </div>
           </div>
           {/* Manufacturer Information (Mobile) */}
@@ -421,25 +511,20 @@ export function PremiumListingCard({
             <div className="space-y-0.5 mb-2">
               {/* First line: Tombstone Type, Full Tombstone (bold if present), stoneType, style/theme, culture */}
               <div className="text-xs text-gray-700">
-                <strong>Full Tombstone</strong>
+                <strong>{listing.listing_category?.name || getCategoryLabel()}</strong>
                 {listing.productDetails?.stoneType &&
                   Array.isArray(listing.productDetails.stoneType) &&
                   listing.productDetails.stoneType.length > 0 &&
                   listing.productDetails.stoneType[0]?.value && (
-                    <>| {listing.productDetails.stoneType[0].value}</>
+                    <> | {listing.productDetails.stoneType[0].value}</>
                   )}
                 {listing.productDetails?.style &&
                   Array.isArray(listing.productDetails.style) &&
                   listing.productDetails.style.length > 0 &&
                   listing.productDetails.style[0]?.value && (
-                    <>| {listing.productDetails.style[0].value}</>
+                    <> | {listing.productDetails.style[0].value}</>
                   )}
-                {listing.productDetails?.culture &&
-                  Array.isArray(listing.productDetails.culture) &&
-                  listing.productDetails.culture.length > 0 &&
-                  listing.productDetails.culture[0]?.value && (
-                    <>| {listing.productDetails.culture[0].value}</>
-                  )}
+               
               </div>
               {/* Second line: Customization, Color, Features */}
               <div className="text-xs text-gray-700">
@@ -500,8 +585,7 @@ export function PremiumListingCard({
                   Array.isArray(
                     listing.additionalProductDetails.foundationOptions
                   ) &&
-                  listing.additionalProductDetails.foundationOptions.length >
-                    0 &&
+                  listing.additionalProductDetails.foundationOptions.length > 0 &&
                   listing.additionalProductDetails.foundationOptions[0]
                     ?.value && (
                     <>
@@ -561,7 +645,9 @@ export function PremiumListingCard({
               </div>
               {/* Fourth line: Manufacturing time */}
               <div className="text-xs text-gray-600">
-                {listing.manufacturingTimeframe || "3 weeks manufacturing time"}
+                {shouldShowDetail(listing.manufacturingTimeframe)
+                  ? listing.manufacturingTimeframe
+                  : (!listing.manufacturingTimeframe ? "3 weeks manufacturing time" : null)}
               </div>
             </div>
             {/* Manufacturer Information (Desktop) */}
@@ -661,5 +747,15 @@ export function PremiumListingCard({
         </div>
       </div>
     </div>
+    </div>
   );
 }
+
+// Helper to hide values that are only numbers (e.g., "6")
+const shouldShowDetail = (value: any) => {
+  if (value === null || value === undefined) return false;
+  const str = String(value).trim();
+  if (str === "") return false;
+  // show only if contains any non-digit character
+  return /[^\d]/.test(str);
+};

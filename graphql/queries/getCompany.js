@@ -4,6 +4,13 @@ export const GET_COMPANY_BY_USER = gql`
   query GetCompanyByUser($documentId: ID!) {
     companies(filters: { user: { documentId: { eq: $documentId } } }) {
       documentId
+      videoUrl
+      videoPublicId
+      profilePicUrl
+      profilePicPublicId
+      branches
+      {name 
+      documentId}
       phone
       name
       googleRating
@@ -41,7 +48,19 @@ export const GET_COMPANY_BY_USER = gql`
       }
         listings(pagination: { limit: -1 }) {
         createdAt
+         branches {
+        name
+        location {
+          address
+          latitude
+          longitude
+          mapUrl
+        }
+      }
         documentId
+          listing_category {
+      name
+    }
         title
         slug
         price

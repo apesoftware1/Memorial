@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { FavoriteButton } from "./favorite-button"
 import { useFavorites } from "@/context/favorites-context"
+import { formatPrice } from "@/lib/priceUtils"
 
 /**
  * @typedef {Object} ProductCardProps
@@ -21,11 +22,31 @@ import { useFavorites } from "@/context/favorites-context"
  */
 export function ProductCard({ id, name, price, material, image, tag, details }) {
   return (
-    <div>
-      {/* Basic Product Card Structure */}
-      <h3>{name}</h3>
-      <p>{price}</p>
-      {/* ... other basic elements if needed */}
+    <div className="bg-white rounded-lg shadow-md overflow-hidden transition-transform hover:shadow-lg">
+      <Link href={`/product/${id}`} className="block">
+        <div className="relative h-48 w-full">
+          <Image 
+            src={image || "/placeholder.jpg"} 
+            alt={name}
+            fill
+            className="object-cover"
+          />
+          {tag && (
+            <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
+              {tag}
+            </span>
+          )}
+        </div>
+        <div className="p-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-1">{name}</h3>
+          <p className="text-blue-600 font-bold mb-2">{formatPrice(price)}</p>
+          {material && <p className="text-sm text-gray-600 mb-2">{material}</p>}
+          {details && <p className="text-sm text-gray-500">{details}</p>}
+        </div>
+      </Link>
+      <div className="px-4 pb-3">
+        <FavoriteButton productId={id} />
+      </div>
     </div>
   )
 }

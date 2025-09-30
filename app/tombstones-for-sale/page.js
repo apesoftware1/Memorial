@@ -9,21 +9,24 @@ import Image from "next/image"
 import { useFavorites } from "@/context/favorites-context"
 import FeaturedListings from "@/components/FeaturedListings"
 import { PremiumListingCard } from "@/components/premium-listing-card"
+import { PremiumListingCardModal } from "@/components/premium-listing-card-modal"
 import TombstonesForSaleFilters from "@/components/TombstonesForSaleFilters"
 import FeaturedManufacturer from '@/components/FeaturedManufacturer';
 import BannerAd from '@/components/BannerAd';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { PageLoader, CardSkeleton } from "@/components/ui/loader";
 
 // Import GraphQL queries
 import { useQuery } from '@apollo/client';
 import { GET_LISTINGS } from '@/graphql/queries/getListings';
-import { useListingCategories } from "@/hooks/use-ListingCategories"
+import { useListingCategories } from "@/hooks/use-ListingCategories";
 
 export default function Home() {
   const{categories ,_laoding } = useListingCategories()
   // URL query params
   const searchParams = useSearchParams();
+  // Derive a stable key from search params to avoid re-running effects due to object identity changes
+  const searchParamsKey = searchParams ? searchParams.toString() : '';
   
   // GraphQL data
   const { data, loading, error } = useQuery(GET_LISTINGS);
@@ -31,7 +34,44 @@ export default function Home() {
   // State for featured listings pagination
   const [featuredActiveIndex, setFeaturedActiveIndex] = useState(0);
   const featuredScrollRef = useRef(null);
-
+  const router = useRouter();
+  
+  // Hide "2 Branches" text
+  useEffect(() => {
+    function hideSpecific2BranchesText() {
+      // Target only buttons or specific elements with exact "2 Branches" text
+      const elements = document.querySelectorAll('button, .bg-blue-500, .bg-blue-600, [class*="bg-blue-"]');
+      elements.forEach(el => {
+        if (el.textContent && el.textContent.trim() === '2 Branches') {
+          el.style.display = 'none';
+        }
+      });
+      
+      // Also target elements with exact "2 Branches" text
+      const textElements = document.querySelectorAll('span, div, p');
+      textElements.forEach(el => {
+        if (el.childNodes.length === 1 && el.textContent && el.textContent.trim() === '2 Branches') {
+          el.style.display = 'none';
+        }
+      });
+    }
+    
+    // Run immediately
+    hideSpecific2BranchesText();
+    
+    // Set up a MutationObserver to handle dynamically loaded content
+    const observer = new MutationObserver(() => {
+      hideSpecific2BranchesText();
+    });
+    
+    observer.observe(document.body, { 
+      childList: true, 
+      subtree: true 
+    });
+    
+    return () => observer.disconnect();
+  }, []);
+  
   // Function to handle featured listings scroll
   const handleFeaturedScroll = () => {
     if (featuredScrollRef.current) {
@@ -64,7 +104,10 @@ export default function Home() {
   }, []);
   
   // Use only backend data
-  const allListings = data?.listings || [];
+  // const allListings = data?.listings || [];
+  const allListings = useMemo(() => (
+    Array.isArray(data?.listings) ? data.listings : []
+  ), [data?.listings]);
   const featuredManufacturers = [];
   const seenManufacturers = new Set();
   if (data?.listings) {
@@ -97,6 +140,49 @@ export default function Home() {
   // State for filtered listings
   const [filteredListings, setFilteredListings] = useState([]);
 
+  // Branch selection modal state
+  const [showBranchesModal, setShowBranchesModal] = useState(false);
+  const [selectedListing, setSelectedListing] = useState(null);
+
+  // When user clicks a listing: if multiple branches -> open modal directly, if one -> go to product showcase
+  const handleListingPrimaryClick = (listing) => {
+    try {
+      const branches = Array.isArray(listing?.branches) ? listing.branches : [];
+      if (branches.length > 1) {
+        setSelectedListing(listing);
+        setShowBranchesModal(true);
+        return true; // handled here; prevent internal navigation
+      }
+      if (branches.length === 1) {
+        const branchId = branches[0]?.id || branches[0]?.documentId;
+        const listingId = listing?.documentId || listing?.id;
+        if (listingId && branchId) {
+          router.push(`/product/${listingId}?branch=${branchId}`);
+          return true; // handled
+        }
+      }
+    } catch (e) {
+      console.error('Failed handling primary click for listing', e);
+    }
+    return false; // not handled; allow default navigation
+  };
+
+  // When a branch is selected in the modal
+  const handleBranchSelect = (branch) => {
+    try {
+      const listingId = selectedListing?.documentId || selectedListing?.id;
+      const branchId = branch?.id || branch?.documentId;
+      if (listingId && branchId) {
+        setShowBranchesModal(false);
+        // Pass the full branch object as a serialized JSON string in the query
+        const branchData = encodeURIComponent(JSON.stringify(branch));
+        router.push(`/product/${listingId}?branch=${branchId}&branchData=${branchData}`);
+      }
+    } catch (e) {
+      console.error('Failed to navigate to product showcase from branch selection', e);
+    }
+  };
+  
   // Helper to get active category name
   const getActiveCategory = () => {
     if (!categories || !categories.length) return '';
@@ -191,11 +277,13 @@ export default function Home() {
 
     // Apply filters
     const filtered = filterListingsFrom(nextFilters);
-    setActiveFilters(nextFilters);
+    if (!filtersShallowEqual(activeFilters, nextFilters)) {
+      setActiveFilters(nextFilters);
+    }
     setFilteredListings(filtered);
-    setCurrentPage(1);
+    if (currentPage !== 1) setCurrentPage(1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, allListings]);
+  }, [searchParamsKey, allListings]);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -271,7 +359,7 @@ export default function Home() {
     flow.push(
       <div key="listings-1" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {listings.slice(idx, idx + 5).length > 0
-          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} />)
+          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} onPrimaryClick={(e) => handleListingPrimaryClick(listing, e)} />)
           : fallbackCard("listings")}
       </div>
     );
@@ -282,8 +370,15 @@ export default function Home() {
     flow.push(
       <div key="listings-2" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {listings.slice(idx, idx + 5).length > 0
-          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} />)
-          : fallbackCard("listings")}
+          ? listings.slice(idx, idx + 5).map((listing, i) => (
+              <PremiumListingCard
+                key={listing.id || i}
+                listing={listing}
+                href={`/tombstones-for-sale/${listing.documentId || listing.id}`}
+                onPrimaryClick={() => handleListingPrimaryClick(listing)}
+              />
+            ))
+           : fallbackCard("listings")}
       </div>
     );
     idx += 5;
@@ -308,8 +403,15 @@ export default function Home() {
     flow.push(
       <div key="listings-3" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {listings.slice(idx, idx + 5).length > 0
-          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} />)
-          : fallbackCard("listings")}
+          ? listings.slice(idx, idx + 5).map((listing, i) => (
+              <PremiumListingCard
+                key={listing.id || i}
+                listing={listing}
+                href={`/tombstones-for-sale/${listing.documentId || listing.id}`}
+                onPrimaryClick={() => handleListingPrimaryClick(listing)}
+              />
+            ))
+           : fallbackCard("listings")}
       </div>
     );
     idx += 5;
@@ -319,8 +421,15 @@ export default function Home() {
     flow.push(
       <div key="listings-4" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {listings.slice(idx, idx + 5).length > 0
-          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} />)
-          : fallbackCard("listings")}
+          ? listings.slice(idx, idx + 5).map((listing, i) => (
+              <PremiumListingCard
+                key={listing.id || i}
+                listing={listing}
+                href={`/tombstones-for-sale/${listing.documentId || listing.id}`}
+                onPrimaryClick={() => handleListingPrimaryClick(listing)}
+              />
+            ))
+           : fallbackCard("listings")}
       </div>
     );
     return flow;
@@ -411,6 +520,13 @@ export default function Home() {
           Refresh Page
         </button>
       </div>
+      {showBranchesModal && (
+        <PremiumListingCardModal
+          listing={selectedListing}
+          onClose={() => { setShowBranchesModal(false); setSelectedListing(null); }}
+          onBranchSelect={handleBranchSelect}
+        />
+      )}
     </div>
   );
 
@@ -499,6 +615,18 @@ export default function Home() {
         handleMobileDropdownToggle={handleMobileDropdownToggle}
         onMobileFilterClick={() => setMobileFilterOpen(true)}
       />
+      
+      {/* Branch selection modal - only show when a listing with multiple branches is clicked */}
+      {showBranchesModal && selectedListing && (
+        <PremiumListingCardModal
+          listing={selectedListing}
+          onClose={() => {
+            setShowBranchesModal(false);
+            setSelectedListing(null);
+          }}
+          onBranchSelect={handleBranchSelect}
+        />
+      )}
       {/* Overlay when mobile menu is open */}
       {mobileMenuOpen && (
         <div
@@ -653,11 +781,26 @@ export default function Home() {
                 {/* Mobile: Horizontal scrolling cards */}
                 <div className="md:hidden">
                   <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide" ref={featuredScrollRef}>
-                    {data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
-                      <div key={index} className="flex-shrink-0 w-80 snap-start">
-                        <FeaturedListings listing={product} />
-                      </div>
-                    ))}
+                    {data?.listings?.filter(l => l.isFeatured).length > 0
+                      ? data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
+                          Array.isArray(product.branches) && product.branches.length > 0 ? (
+                            // Map through branches if they exist
+                            product.branches.map((branch) => (
+                              <div key={`${product.documentId || product.id}-${branch.documentId || branch.id}`} className="flex-shrink-0 w-80 snap-start">
+                                <FeaturedListings listing={{...product, currentBranch: branch}} />
+                              </div>
+                            ))
+                          ) : (
+                            <div key={product.id || index} className="flex-shrink-0 w-80 snap-start">
+                              <FeaturedListings listing={product} />
+                            </div>
+                          )
+                        ))
+                      : (
+                        <div className="flex-shrink-0 w-80 snap-start flex justify-center">
+                          {fallbackCard("featured listings")}
+                        </div>
+                      )}
                   </div>
                   {/* Pagination Dots - Mobile only */}
                   <div className="flex justify-center mt-4 space-x-2">
@@ -676,9 +819,11 @@ export default function Home() {
 
                 {/* Desktop: Grid layout */}
                 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
-                    <FeaturedListings key={index} listing={product} />
-                  ))}
+                  {data?.listings?.filter(l => l.isFeatured).length > 0
+                    ? data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
+                        <FeaturedListings key={index} listing={product} />
+                      ))
+                    : fallbackCard("featured listings")}
                 </div>
               </div>
 
@@ -694,7 +839,7 @@ export default function Home() {
                         <div className="text-center text-gray-500 py-8">No tombstones found for your selected filters.</div>
                       ) : (
                         paginatedListings.map((listing) => (
-                          <PremiumListingCard key={listing.documentId} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} />
+                          <PremiumListingCard key={listing.documentId} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} onPrimaryClick={(e) => handleListingPrimaryClick(listing, e)} />
                         ))
                       )}
                     </div>
@@ -736,4 +881,13 @@ export default function Home() {
       </div>
     </div>
   )
+}
+
+// Shallow compare helper to avoid unnecessary filter state updates
+function filtersShallowEqual(a, b) {
+  const keys = ['category','colour','color','stoneType','style','custom','location','minPrice','maxPrice'];
+  for (const k of keys) {
+    if ((a?.[k] ?? null) !== (b?.[k] ?? null)) return false;
+  }
+  return true;
 }

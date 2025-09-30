@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 export const GET_LISTING_BY_SLUG = gql`
   query Listings($slug: String!) {
@@ -49,13 +49,22 @@ export const GET_LISTING_BY_SLUG = gql`
       }
       manufacturingTimeframe
       company {
+        sales_reps {
+          call
+          whatsapp
+          name
+
+          avatar {
+            url
+          }
+        }
         documentId
         phone
         name
         location
         googleRating
         logoUrl
-        logoUrlPublicId 
+        logoUrlPublicId
         operatingHours {
           id
           monToFri
@@ -75,7 +84,6 @@ export const GET_LISTING_BY_SLUG = gql`
           messenger
         }
         listings(pagination: { limit: -1 }) {
-          
           title
           price
           documentId
@@ -92,4 +100,4 @@ export const GET_LISTING_BY_SLUG = gql`
       }
     }
   }
-`; 
+`;

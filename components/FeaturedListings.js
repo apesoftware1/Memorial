@@ -2,6 +2,33 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/priceUtils';
 
+// Helper to map listing category fields to a user-friendly label
+function getCategoryLabel(listing) {
+  if (!listing) return 'Full Tombstone';
+  const candidates = [
+    listing.categoryTab,
+    listing.categorytab,
+    listing.category,
+    listing.bodyType,
+    listing.productType,
+    listing.type,
+    listing?.productDetails?.bodyType?.[0]?.value,
+    listing?.productDetails?.bodyType,
+  ].filter(Boolean);
+
+  const raw = candidates.find((v) => typeof v === 'string' && v.trim() !== '');
+  if (!raw) return 'Full Tombstone';
+  const s = raw.toLowerCase();
+  if (s.includes('single')) return 'Single Tombstone';
+  if (s.includes('double')) return 'Double Tombstone';
+  if (s.includes('headstone') && !s.includes('double')) return 'Headstone';
+  if (s.includes('full')) return 'Full Tombstone';
+  if (s.includes('cremation')) return 'Cremation Memorial';
+  if (s.includes('family')) return 'Family Monument';
+  if (s.includes('child')) return 'Child Memorial';
+  if (s.includes('custom')) return 'Custom Design';
+  return raw.replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
 
 const FeaturedListings = ({ listing }) => (
   <Link href={`/tombstones-for-sale/${listing.documentId}`} className="block group">
@@ -33,7 +60,7 @@ const FeaturedListings = ({ listing }) => (
         
         {/* Product Details */}
         <p className="text-xs text-gray-600">
-          <strong>Full Tombstone</strong>
+          <strong>{getCategoryLabel(listing)}</strong>
           {listing.productDetails?.stoneType && Array.isArray(listing.productDetails.stoneType) && listing.productDetails.stoneType.length > 0 && listing.productDetails.stoneType[0]?.value && (
             <> | {listing.productDetails.stoneType[0].value}</>
           )}

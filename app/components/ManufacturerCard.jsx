@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Star, MapPin } from "lucide-react";
-// Removed: import { getManufacturerSlug } from "@/lib/data";
+
 
 const ManufacturerCard = ({ manufacturer }) => {
 
@@ -12,12 +12,22 @@ const ManufacturerCard = ({ manufacturer }) => {
       
       <div className="relative flex-shrink-0 flex items-center justify-center w-full h-44 sm:w-56 sm:h-36 bg-white border border-gray-100 mb-2 sm:mb-0">
         <Link href={profileUrl} prefetch={false} aria-label={`View ${manufacturer.name} profile`}>
-          <Image
-            src={manufacturer.logoUrl}
-            alt={manufacturer.name}
-            fill
-            className="object-contain"
-          />
+          {typeof manufacturer.logoUrl === 'string' && manufacturer.logoUrl.trim() !== '' ? (
+            <Image
+              src={manufacturer.logoUrl}
+              alt={manufacturer.name || 'Manufacturer logo'}
+              fill
+              className="object-contain"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2" stroke="#d1d5db" strokeWidth="2" />
+                <path d="M7 15l3-3 2 2 4-4 3 3" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="8" cy="8" r="2" fill="#e5e7eb" />
+              </svg>
+            </div>
+          )}
         </Link>
       </div>
       {/* Content */}
@@ -30,7 +40,11 @@ const ManufacturerCard = ({ manufacturer }) => {
             <Star className="h-4 w-4 text-blue-400 mr-1" />
             <span className="font-semibold text-blue-500 mr-1">{manufacturer.rating}</span>
             <span className="text-gray-500">(15 reviews)</span>
+            
             <span className="ml-1 text-blue-400 cursor-pointer" title="More info">&#9432;</span>
+          </div>
+          <div>
+            <span className="text-gray-500">{manufacturer.branches.length} branches</span>
           </div>
         </div>
         <p className="text-xs sm:text-sm text-gray-700 mt-1 truncate">{manufacturer.description}</p>
@@ -48,4 +62,4 @@ const ManufacturerCard = ({ manufacturer }) => {
   );
 };
 
-export default ManufacturerCard; 
+export default ManufacturerCard;

@@ -151,10 +151,11 @@ const IndexRender = ({
     </div>
   );
 
+  // Inside the IndexRender component's return JSX
   return (
     <>
       {/* 4. Featured Listings Section */}
-      <section className="bg-gray-50 mb-8">
+      <section className="mt-0 bg-gray-50 pb-0 mb-0 pt-2">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center mb-0">
@@ -163,7 +164,7 @@ const IndexRender = ({
               <div className="flex-grow border-t border-gray-300"></div>
             </div>
             <div className="w-full flex justify-center">
-              <span className="text-xs text-gray-500 mt-0 font-bold mb-2" style={{marginTop: '-2px'}}>*Sponsored</span>
+              <span className="text-xs text-gray-500 mt-0 font-bold mb-6" style={{marginTop: '-2px'}}>*Sponsored</span>
             </div>
             
             {/* Mobile: Horizontal scrolling cards */}
@@ -211,9 +212,9 @@ const IndexRender = ({
           </div>
         </div>
       </section>
-
+.
       {/* 5. Premium Listings Section (Part 1) */}
-      <section className="mb-8">
+      <section className="w-full bg-gray-50 py-2 mb-0 pt-0">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center mb-0">
             <div className="flex-grow border-t border-gray-300"></div>
@@ -221,7 +222,7 @@ const IndexRender = ({
             <div className="flex-grow border-t border-gray-300"></div>
           </div>
           <div className="w-full flex justify-center">
-            <span className="text-xs text-gray-500 mt-0 font-bold mb-2" style={{marginTop: '-2px'}}>*Sponsored</span>
+            <span className="text-xs text-gray-500 mt-0 font-bold mb-6" style={{marginTop: '-2px'}}>*Sponsored</span>
           </div>
         </div>
         {premiumFirstHalf.length > 0
@@ -233,21 +234,23 @@ const IndexRender = ({
           : fallbackCard("premium listings")}
       </section>
 
-      {/* 6. Banner Advertisement */}
-      <div className="container mx-auto px-4 mb-8">
-        <div className="max-w-4xl mx-auto">
-          {selectedBanner && (
-            <BannerAd
-              bannerAd={selectedBanner}
-              mobileContainerClasses="w-full h-24"
-              desktopContainerClasses="max-w-4xl h-24"
-            />
-          )}
+      {/* 6. second Banner Advertisement */}
+      <div className="w-full bg-gray-50 py-4 mt-0 mb-0 pt-0">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            {selectedBanner && (
+              <BannerAd
+                bannerAd={selectedBanner}
+                mobileContainerClasses="w-full h-28"
+                desktopContainerClasses="max-w-4xl h-24"
+              />
+            )}
+          </div>
         </div>
       </div>
 
       {/* 7. Premium Listings Section (Part 2) */}
-      <section className="mb-8">
+      <section className="mt-0 pt-0 pb-2 mb-0 bg-gray-50">
         {premiumSecondHalf.length > 0
           ? premiumSecondHalf.map((item, idx) => (
               <div key={item.id || idx} className="mb-6">
@@ -258,7 +261,7 @@ const IndexRender = ({
       </section>
 
       {/* 8. Featured Manufacturer Section */}
-      <section className="mb-8">
+      <section className="mt-0 pt-2 bg-gray-50 mb-0 pb-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center mb-0">
             <div className="flex-grow border-t border-gray-300"></div>
@@ -266,7 +269,7 @@ const IndexRender = ({
             <div className="flex-grow border-t border-gray-300"></div>
           </div>
           <div className="w-full flex justify-center">
-            <span className="text-xs text-gray-500 mt-0 font-bold mb-2" style={{marginTop: '-2px'}}>*Sponsored</span>
+            <span className="text-xs text-gray-500 mt-0 font-bold mb-6" style={{marginTop: '-2px'}}>*Sponsored</span>
           </div>
           <div className="border border-gray-300 rounded bg-white p-4">
             {featuredManufacturer ? (
@@ -332,7 +335,7 @@ const IndexRender = ({
       </section>
 
       {/* 9. Standard Listings Section */}
-      <section className="mb-8">
+      <section className="mt-0 pt-2 bg-gray-50 mb-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center mb-0">
             <div className="flex-grow border-t border-gray-300"></div>
@@ -340,7 +343,7 @@ const IndexRender = ({
             <div className="flex-grow border-t border-gray-300"></div>
           </div>
           <div className="w-full flex justify-center">
-            <span className="text-xs text-gray-500 mt-0 font-bold mb-2" style={{marginTop: '-2px'}}>*Sponsored</span>
+            <span className="text-xs text-gray-500 mt-0 font-bold mb-6" style={{marginTop: '-2px'}}>*Sponsored</span>
           </div>
         </div>
         {standardToShow.length > 0 ? (

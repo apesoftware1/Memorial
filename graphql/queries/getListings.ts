@@ -3,6 +3,15 @@ export const GET_LISTINGS = gql`
 query GetListings {
   listings {
     documentId
+    branches {
+        name
+        location {
+          address
+          latitude
+          longitude
+          mapUrl
+        }
+      }
     title
     listing_category {
       name
@@ -50,6 +59,7 @@ query GetListings {
       location
       logoUrl
       logoUrlPublicId
+      
 
       latitude
       longitude

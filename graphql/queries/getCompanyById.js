@@ -4,6 +4,15 @@ export const GET_COMPANY_BY_ID = gql`
   query Company($documentId: ID!) {
     companies(filters: { documentId: { eq: $documentId } }) {
       documentId
+       branches {
+        name
+        location {
+          address
+          latitude
+          longitude
+          mapUrl
+        }
+      }
       phone
       name
       googleRating
@@ -42,6 +51,15 @@ export const GET_COMPANY_BY_ID = gql`
       }
         listings(pagination: { limit: -1 }) {
         createdAt
+        branches {
+        name
+        location {
+          address
+          latitude
+          longitude
+          mapUrl
+        }
+      }
         documentId
         title
         slug
@@ -70,7 +88,7 @@ export const GET_COMPANY_BY_ID = gql`
           foundationOptions { id value }
           warrantyOrGuarantee { id value }
         }
-        // Fetch read state so unread count persists after refresh
+      
         inquiries_c {
           documentId
           name

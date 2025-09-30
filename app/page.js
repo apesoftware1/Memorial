@@ -10,7 +10,7 @@ import { ProductCard } from "@/components/product-card"
 import { StandardListingCard } from "@/components/standard-listing-card"
 import SearchBox from "@/components/SearchBox"
 import CategoryTabs from "@/components/CategoryTabs.jsx"
-import FaqSection from "@/components/FaqSection"
+import ResponsiveFaqSection from "@/components/ResponsiveFaqSection"
 import LocationModal from "@/components/LocationModal"
 import LocationPermissionModal from "@/components/LocationPermissionModal"
 import LocationTrigger from "@/components/LocationTrigger"
@@ -34,11 +34,65 @@ import BannerAd from "@/components/BannerAd"
 import IndexRender from "./indexRender";
 import { useListingCategories } from "@/hooks/use-ListingCategories"
 
-
-
-
-
 export default function Home() {
+  // Add CSS to hide all "2 Branches" and "Available at 2 Branches" elements
+  useEffect(() => {
+    // Function to hide all instances of "2 Branches" and "Available at 2 Branches"
+    const hideBranchesElements = () => {
+      // Add CSS to hide blue buttons
+      const style = document.createElement('style');
+      style.textContent = `
+        /* Hide blue buttons with "2 Branches" text */
+        .bg-blue-500, .bg-blue-600, [class*="bg-blue-"] {
+          display: none !important;
+        }
+      `;
+      document.head.appendChild(style);
+      
+      // Find all elements that might contain the text
+      const allElements = document.querySelectorAll('*');
+      
+      allElements.forEach(el => {
+        // Check if element contains the target text
+        const text = el.textContent?.trim() || '';
+        
+        // If element contains exactly "2 Branches" text or "Available at 2 Branches", hide it
+        if (text === '2 Branches' || text === 'Available at 2 Branches') {
+          el.style.display = 'none';
+        }
+        
+        // Also check for elements containing the text as part of their content
+        if (el.childNodes.length === 1 && el.childNodes[0].nodeType === Node.TEXT_NODE) {
+          const nodeText = el.childNodes[0].textContent.trim();
+          if (nodeText === '2 Branches' || nodeText === 'Available at 2 Branches') {
+            el.style.display = 'none';
+            
+            // Also hide parent if it's likely just a wrapper
+            if (el.parentElement && el.parentElement.childElementCount <= 2) {
+              el.parentElement.style.display = 'none';
+            }
+          }
+        }
+      });
+    };
+
+    // Run the function on load
+    hideBranchesElements();
+
+    // Set up a mutation observer to handle dynamically added content
+    const observer = new MutationObserver(() => {
+      hideBranchesElements();
+    });
+
+    // Start observing the document with the configured parameters
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Clean up function
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+  
   const { categories, loading: _loading } = useListingCategories()
   const [activeTab, setActiveTab] = useState(0) // Default to SINGLE tab (first tab)
   const router = useRouter();
@@ -264,14 +318,14 @@ useEffect(() => {
       </section>
       
       {/* 3. FAQ Section */}
-      <div className="container mx-auto px-4 mb-4">
-        <div className="max-w-4xl mx-auto">
-          <FaqSection />
+      <div className="md:container md:mx-auto md:px-4 w-full mb-4">
+        <div className="md:max-w-4xl md:mx-auto">
+          <ResponsiveFaqSection />
         </div>
       </div>
 
       {/* Banner under FAQ (right before Featured Listings) */}
-      <div className="bg-gray-100 py-8">
+      <div className="bg-gray-50 py-4 ">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             {faqBanner && (

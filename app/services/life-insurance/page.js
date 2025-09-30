@@ -7,6 +7,17 @@ import Header from '@/components/Header'
 
 export default function LifeInsurancePage() {
   const router = useRouter()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [mobileDropdown, setMobileDropdown] = useState(null)
+
+  const handleMobileMenuToggle = () => {
+    setMobileMenuOpen(!mobileMenuOpen)
+  }
+
+  const handleMobileDropdownToggle = (dropdown) => {
+    setMobileDropdown(mobileDropdown === dropdown ? null : dropdown)
+  }
+  
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -65,7 +76,12 @@ export default function LifeInsurancePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header 
+        mobileMenuOpen={mobileMenuOpen}
+        handleMobileMenuToggle={handleMobileMenuToggle}
+        mobileDropdown={mobileDropdown}
+        handleMobileDropdownToggle={handleMobileDropdownToggle}
+      />
       
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-green-600 to-green-800 text-white py-16">
@@ -470,4 +486,4 @@ export default function LifeInsurancePage() {
       </section>
     </div>
   )
-} 
+}
