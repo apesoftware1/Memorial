@@ -19,15 +19,11 @@ import ManufacturerLocationModal from "@/components/ManufacturerLocationModal";
 import { updateCompanyField } from "@/graphql/mutations/updateCompany";
 import { toast } from "@/hooks/use-toast";
 import { uploadToCloudinary } from "@/lib/cloudinary";
-import { useApolloClient } from "@apollo/client";
-import { GET_LISTING_BY_ID } from "@/graphql/queries/getListingById";
-import { GET_LISTING_CATEGORY } from "@/graphql/queries/getListingCategory";
-import CreateBranchModal from "@/components/CreatebranchModal";
-import BranchDropdown from "@/components/BranchDropdown";
-import BranchSelector from "@/components/BranchSelector";
-import { addListingToBranch } from "@/lib/addListingToBranch";
-import { findBranchByName } from "@/lib/helper";
-import CompanyMediaUpload from "@/components/CompanyMediaUpload";
+import { useApolloClient } from '@apollo/client';
+import { GET_LISTING_BY_ID } from '@/graphql/queries/getListingById';
+import { GET_LISTING_CATEGORY } from '@/graphql/queries/getListingCategory';
+import CreateBranchModal from "@/components/CreateBranchModal";
+
 
 // SVG Settings (gear) icon component
 const SettingsIcon = (props) => (
