@@ -214,7 +214,7 @@ const IndexRender = ({
       </section>
 .
       {/* 5. Premium Listings Section (Part 1) */}
-      <section className="w-full bg-gray-50 py-2 mb-0 pt-0">
+      <section className="w-full bg-gray-50 py-2 mb-0 mt-0 pt-0">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center mb-0">
             <div className="flex-grow border-t border-gray-300"></div>
