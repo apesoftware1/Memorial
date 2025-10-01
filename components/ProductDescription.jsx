@@ -16,7 +16,7 @@ export default function ProductDescription({ description, additionalDetails, get
         <div className="space-y-0 text-sm text-gray-800">
           {getAllValues(additionalDetails.transportAndInstallation).length > 0 && (
             <div>
-              <div className="flex items-center gap-3 font-bold text-gray-700">
+              <div className="flex items-center gap-3 font-bold text-gray-700 mb-0">
                 <Image
                   src="/last_icons/Addional_ProductInfo_Icons/Additional_Icons_Transport.svg"
                   alt="Transport & Installation"
