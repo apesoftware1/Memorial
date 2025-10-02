@@ -59,6 +59,7 @@ query GetListings {
       location
       logoUrl
       logoUrlPublicId
+      hideStandardCompanyLogo
       
 
       latitude

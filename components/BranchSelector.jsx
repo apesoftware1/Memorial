@@ -21,7 +21,7 @@ import BranchDropdown from "@/components/BranchDropdown";
 export default function BranchSelector({
   companyId,
   branches = [],
-  paramKey = "Branch",
+  paramKey = "branch",
   basePath = "/manufacturers/manufacturers-Profile-Page",
   onBranchSelect,
   styles = {},

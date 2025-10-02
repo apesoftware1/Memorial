@@ -357,8 +357,8 @@ useEffect(() => {
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
               <h4 className="text-lg font-semibold mb-4">About TombstonesFinder.co.za</h4>
-              <p className="text-gray-600">
-                TombstonesFinder.co.za connects you with trusted tombstone manufacturers and suppliers across South Africa.
+              <p className="text-yellow-500">
+                TombstonesFinder.co.za helps you honour your loved one by finding the perfect tombstone. Search trusted local manufacturers, compare designs, materials, budgets, and custom options — all in one place.
               </p>
             </div>
             <div>
@@ -369,7 +369,7 @@ useEffect(() => {
                   { name: "Find a Tombstone", href: "/tombstones-for-sale" },
                   { name: "Find a Manufacturer", href: "/manufacturers" },
                   { name: "Services", href: "/services/tombstone-finance" },
-                  { name: "Contact Us", href: "#" }
+                  { name: "Contact Us", href: "/contact" }
                 ].map((link, index) => (
                   <li key={index}>
                     <Link href={link.href} className="text-gray-300 hover:text-white transition-colors text-sm">

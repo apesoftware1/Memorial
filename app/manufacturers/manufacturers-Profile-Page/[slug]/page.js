@@ -2,12 +2,15 @@
 
 import { useParams } from "next/navigation";
 import { useQuery } from "@apollo/client";
+import { useState } from "react";
 import { GET_COMPANY_BY_ID } from '@/graphql/queries/getCompanyById';
 import ManufacturerProfileEditor from '../ManufacturerProfileEditor';
 import BranchButton from '@/components/BranchButton';
+import VideoModal from '@/components/VideoModal';
 
 export default function ManufacturerProfilePage() {
   const { slug: documentId } = useParams();
+  const [showVideoModal, setShowVideoModal] = useState(false);
   
   const { data, loading, error } = useQuery(GET_COMPANY_BY_ID, {
     variables: { documentId: documentId },
@@ -28,12 +31,31 @@ export default function ManufacturerProfilePage() {
   }
   const listings = company.listings || [];
 
+  // Function to handle video click
+  const handleVideoClick = () => {
+    setShowVideoModal(true);
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px' }}>
         <BranchButton company={company} />
       </div>
-      <ManufacturerProfileEditor isOwner={false} company={company} listings={listings} />
+      
+      {/* Pass the click handler to the profile editor */}
+      <ManufacturerProfileEditor 
+        isOwner={false} 
+        company={company} 
+        listings={listings} 
+        onVideoClick={handleVideoClick}
+      />
+      
+      {/* Video Modal */}
+      <VideoModal 
+        isOpen={showVideoModal} 
+        onClose={() => setShowVideoModal(false)} 
+        videoUrl={company?.videoUrl} 
+      />
     </div>
   );
 }
