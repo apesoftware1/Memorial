@@ -222,7 +222,7 @@ const IndexRender = ({
             <div className="flex-grow border-t border-gray-300"></div>
           </div>
           <div className="w-full flex justify-center">
-            <span className="text-xs text-gray-500 mt-0 font-bold mb-6" style={{marginTop: '-2px'}}>*Sponsored</span>
+            <span className="text-xs text-gray-500 mt-0 font-bold mb-0" style={{marginTop: '-2px'}}>*Sponsored</span>
           </div>
         </div>
         {premiumFirstHalf.length > 0

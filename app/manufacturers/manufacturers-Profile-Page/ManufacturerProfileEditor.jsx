@@ -23,6 +23,16 @@ import { useApolloClient } from '@apollo/client';
 import { GET_LISTING_BY_ID } from '@/graphql/queries/getListingById';
 import { GET_LISTING_CATEGORY } from '@/graphql/queries/getListingCategory';
 import CreateBranchModal from "@/components/CreatebranchModal";
+import BranchSelector from "@/components/BranchSelector";
+import CompanyMediaUpload from "@/components/CompanyMediaUpload";
+import BranchDropdown from "@/components/BranchDropdown";
+import BranchSelectionModal from "@/components/BranchSelectionModal";
+
+// Helper function to find a branch by name
+const findBranchByName = (branchName, branches) => {
+  if (!branchName || !branches || !branches.length) return null;
+  return branches.find(branch => branch.name === branchName) || null;
+};
 
 
 // SVG Settings (gear) icon component
@@ -135,6 +145,7 @@ export default function ManufacturerProfileEditor({
   isOwner,
   company: initialCompany,
   listings,
+  onVideoClick,
 }) {
   const router = useRouter();
   const [mobile, setMobile] = useState(false);
@@ -188,6 +199,8 @@ export default function ManufacturerProfileEditor({
   const [isAddingToBranch, setIsAddingToBranch] = useState(false);
   const [selectedBranchId, setSelectedBranchId] = useState("");
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
+  const [showBranchSelectionModal, setShowBranchSelectionModal] = useState(false);
+  const [selectedListingForBranch, setSelectedListingForBranch] = useState(null);
 
   // Company state management
   const [company, setCompany] = useState(initialCompany);
@@ -2223,16 +2236,21 @@ export default function ManufacturerProfileEditor({
                   <CompanyMediaUpload company={company} type="video" />
                 ) : (
                   company.videoUrl ? (
-                    <video
-                      src={company.videoUrl}
-                      controls
-                      style={{ 
-                        width: "100%", 
-                        height: "100%", 
+                    <div 
+                      onClick={onVideoClick}
+                      style={{ cursor: "pointer", width: "100%", height: "100%" }}
+                    >
+                      <video
+                        src={company.videoUrl}
+                        controls
+                        style={{ 
+                          width: "100%", 
+                          height: "100%", 
                         maxHeight: "100px", 
-                        borderRadius: 6 
-                      }}
-                    />
+                         borderRadius: 6 
+                       }}
+                     />
+                    </div>
                   ) : (
                     <div
                       style={{
@@ -2853,13 +2871,13 @@ export default function ManufacturerProfileEditor({
                           Create Special
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onMouseEnter={() => {
+                          onClick={() => {
                             if (company.branches?.length > 0) {
-                              setShowBranchDropdown(true);
+                              setSelectedListingForBranch(listing);
+                              setShowBranchSelectionModal(true);
                             }
                           }}
                           style={{
-                            position: "relative",
                             display: "flex",
                             justifyContent: "space-between",
                             alignItems: "center",
@@ -3142,6 +3160,22 @@ export default function ManufacturerProfileEditor({
             {deleteMessage}
           </div>
         )}
+
+        {/* Branch Selection Modal */}
+        <BranchSelectionModal
+          isOpen={showBranchSelectionModal}
+          onClose={() => setShowBranchSelectionModal(false)}
+          branches={company.branches || []}
+          listingId={selectedListingForBranch?.documentId}
+          onSuccess={(branch) => {
+            setIsAddingToBranch(false);
+            toast({
+              title: "Success",
+              description: `Listing added to ${branch.name} branch`,
+              status: "success",
+            });
+          }}
+        />
       </div>
     </>
   );

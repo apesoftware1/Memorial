@@ -4,6 +4,10 @@ export const GET_COMPANY_BY_ID = gql`
   query Company($documentId: ID!) {
     companies(filters: { documentId: { eq: $documentId } }) {
       documentId
+         videoUrl
+          videoPublicId
+          profilePicUrl
+          profilePicPublicId
        branches {
         name
         location {
@@ -11,6 +15,7 @@ export const GET_COMPANY_BY_ID = gql`
           latitude
           longitude
           mapUrl
+       
         }
       }
       phone

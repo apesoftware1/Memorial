@@ -105,23 +105,26 @@ export function StandardListingCard({
     >
       {/* Mobile Layout (up to 768px) */}
       <div className="relative flex flex-col md:hidden">
-        {/* Manufacturer Logo in its own box, bottom right corner (Mobile only) */}
-        <div className="absolute bottom-3 right-3 z-20 bg-white border border-white p-2 rounded-lg md:hidden">
-          <a
-            href={listing.company.name}
-            className="manufacturer-link"
-            onClick={(e) => e.stopPropagation()}
-            aria-label={`View ${listing.manufacturer} profile`}
-          >
-            <Image
-              src={listing.company.logoUrl}
-              alt={`${listing.manufacturer} Logo`}
-              width={96}
-              height={96}
-              className="object-contain"
-            />
-          </a>
-        </div>
+        
+
+        {!listing.company.hideStandardCompanyLogo && (
+          <div className="absolute bottom-3 right-3 z-20 bg-white border border-white p-2 rounded-lg md:hidden">
+            <a
+              href={listing.company.name}
+              className="manufacturer-link"
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`View ${listing.manufacturer} profile`}
+            >
+              <Image
+                src={listing.company.logoUrl}
+                alt={`${listing.manufacturer} Logo`}
+                width={96}
+                height={96}
+                className="object-contain"
+              />
+            </a>
+          </div>
+        )}
         {/* Main Image Container */}
         <div className="bg-white px-3 py-3">
           <div className="relative h-[350px] w-full rounded-lg overflow-hidden border border-gray-200">

@@ -120,6 +120,7 @@ export default function CompanyMediaUpload({ company, type = "video" }) {
           {type === "video" ? (
             <video
               src={previewUrl}
+              controls
               style={{
                 objectFit: "cover",
                 width: "100%",
