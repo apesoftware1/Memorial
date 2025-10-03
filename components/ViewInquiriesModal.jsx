@@ -49,18 +49,7 @@ export default function ViewInquiriesModal({ open, onClose, listings, onInquirie
   const unreadCount = allInquiries.filter(inq => !inq.isRead).length;
   const newCount = allInquiries.filter(inq => inq.isNew).length;
   
-  console.log('ViewInquiriesModal - Inquiry counts:', {
-    total: allInquiries.length,
-    unread: unreadCount,
-    new: newCount,
-    inquiries: allInquiries.map(inq => ({
-      id: inq.id,
-      documentId: inq.documentId,
-      isRead: inq.isRead,
-      isNew: inq.isNew,
-      name: inq.name
-    }))
-  });
+  
 
   // Handle opening inquiry detail
   const handleOpenInquiry = async (inquiry) => {
@@ -101,19 +90,14 @@ export default function ViewInquiriesModal({ open, onClose, listings, onInquirie
                            (inq.documentId === inquiry.id) || (inq.id === inquiry.documentId);
           
           if (matchesId) {
-            console.log('Updating inquiry in local state:', inq.id || inq.documentId);
+           
             // Ensure it is marked read AND not new locally so the UI updates immediately
             return { ...inq, isRead: true, isNew: false };
           }
           return inq;
         });
         
-        console.log('Updated inquiries:', updatedInquiries);
-        console.log('Inquiry counts after update:', {
-          total: updatedInquiries.length,
-          unread: updatedInquiries.filter(inq => !inq.isRead).length,
-          new: updatedInquiries.filter(inq => inq.isNew).length
-        });
+     
         
         if (onInquiriesRead) {
           onInquiriesRead(updatedInquiries);

@@ -147,15 +147,7 @@ export default function TombstonesOnSpecial() {
 
 // Debug logging for special filtering
 
-  console.log(
-    'First few listings special status:',
-    allListings.slice(0, 5).map(listing => ({
-      id: listing.documentId,
-      title: listing.title,
-      specialsType: Array.isArray(listing.specials) ? 'array' : typeof listing.specials,
-      specials: listing.specials
-    }))
-  );
+  
 
   // Filter where specials is an array AND every special is active
   const specialListings = allListings.filter(listing => {
@@ -166,18 +158,6 @@ export default function TombstonesOnSpecial() {
       listing.specials.every(special => special.active === true)
     );
   });
-
-
-console.log(
-  'Special listings:',
-  specialListings.map(listing => ({
-    id: listing.documentId,
-    title: listing.title,
-    specials: listing.specials
-  }))
-);
-
-
 
   // Subsets from specials only
   const premiumSpecials = specialListings.filter(listing => listing?.isPremium === true);

@@ -94,7 +94,7 @@ const IndexRender = ({
   const totalStandardPages = Math.max(1, Math.ceil(stdListings.length / standardPerPage));
   const totalPages = Math.max(totalPremiumPages, totalStandardPages);
   
-  console.log(stdListings.length)
+
   // Featured Manufacturer (pick first from premium listings)
   const featuredManufacturer = premiumToShow[0]?.company || null;
   const manufacturerListings = premListings
@@ -133,9 +133,6 @@ const IndexRender = ({
 
   if (loading) return <PageLoader text="Loading listings..." />;
   if (error) {
-    console.log("GraphQL Errors:", error.graphQLErrors);  // Errors returned by the server
-    console.log("Network Error:", error.networkError);     // E.g. CORS or connection failure
-    console.log("Extra Info:", error.extraInfo);           // Sometimes available
   }
   if (error) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

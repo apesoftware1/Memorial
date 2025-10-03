@@ -1066,7 +1066,7 @@ export default function CreateListingForm() {
                       }}
                       onClick={() => {
                         if (idx <= 5) {
-                          console.log(`Thumbnail ${idx} click triggered`);
+                        
                           const input = document.getElementById(`img-upload-${idx}`);
                           if (input) {
                             input.click();

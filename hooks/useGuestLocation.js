@@ -64,16 +64,7 @@ export const useGuestLocation = () => {
       }
 
       try {
-        console.log("Sending coordinates to API:", {
-          userLat: location.lat,
-          userLng: location.lng,
-          destLat,
-          destLng,
-          userLatParsed: parseFloat(location.lat),
-          userLngParsed: parseFloat(location.lng),
-          destLatParsed: parseFloat(destLat),
-          destLngParsed: parseFloat(destLng),
-        });
+       
         const res = await fetch("/api/distance", {
           method: "POST",
           headers: {

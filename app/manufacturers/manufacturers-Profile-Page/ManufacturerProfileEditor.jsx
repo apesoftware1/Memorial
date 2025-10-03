@@ -1181,7 +1181,7 @@ export default function ManufacturerProfileEditor({
 
       // Upload to Cloudinary using shared util (with folder by company)
       const uploadedImage = await uploadToCloudinary(file, company?.name);
-      console.log(uploadedImage);
+
       // Update company with new logo information
       const logoUpdate = {
         logoUrl: uploadedImage.secure_url,
