@@ -168,16 +168,14 @@ export default function Home() {
     
     // Add filters if any are set
     if (filters) {
-      console.log('=== NAVIGATION DEBUG ===');
-      console.log('Filters being added to URL:', filters);
+   
       Object.entries(filters).forEach(([key, value]) => {
         if (value && value !== 'Min Price' && value !== 'Max Price') {
-          console.log(`Adding URL param: ${key} = ${value}`);
+     
           params.append(key, value);
         }
       });
-      console.log('Final URL params:', params.toString());
-      console.log('=== END NAVIGATION DEBUG ===');
+
     }
     
     // Navigate to tombstones-for-sale with parameters
@@ -219,8 +217,7 @@ const strapiListings = useMemo(() => data?.listings || [], [data]);
 useEffect(() => {
   if (!Array.isArray(strapiListings) || loading || error) return;
 
-  console.log('All listings from Strapi:', strapiListings);
-  console.log('Total listings count:', strapiListings.length);
+  
 
   const premium = strapiListings.filter(l => l.isPremium);
   const featured = strapiListings.filter(l => l.isFeatured);
@@ -230,10 +227,6 @@ useEffect(() => {
       : !l.isPremium && !l.isFeatured
   );
 
-  console.log('Premium listings:', premium.length);
-  console.log('Featured listings:', featured.length);
-  console.log('Standard listings:', standard.length);
-  console.log('Standard listings details:', standard.map(l => ({ id: l.documentId, title: l.title, isStandard: l.isStandard, isPremium: l.isPremium, isFeatured: l.isFeatured })));
 
   setPremListings(premium);
   setFeaturedListings(featured);

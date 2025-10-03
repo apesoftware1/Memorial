@@ -77,7 +77,7 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
     try {
       //  (fetch/axios to backend)
       sendInquiryRest(payload)
-      console.log("Sending inquiry:", payload);
+    
     } catch (err) {
       console.error("Inquiry submission failed:", err);
     }

@@ -51,7 +51,7 @@ export default function CreateBranchModal({ documentId, isOpen = false, onClose 
 
     try {
       const result = await createBranch(payload);
-      console.log("Branch created:", result);
+   
       setModalOpen(false);
       if (onClose) onClose();
       setName("");

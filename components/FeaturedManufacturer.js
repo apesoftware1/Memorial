@@ -30,7 +30,7 @@ const FeaturedManufacturer = ({ manufacturer }) => {
       </button>
     </div>
   );
-{console.log(data)}
+
   const products = data?.listings || [];
 
   // Create an array of featured listings (where isFeatured is true)

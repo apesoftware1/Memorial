@@ -12,18 +12,12 @@ export default function BranchSelectionModal({
   const handleBranchSelect = async (branch) => {
     try {
       // Log the values for testing
-      console.log('Branch documentId:', branch.documentId);
-      console.log('Listing ID:', listingId);
+      
       
       // Call the addListingToBranch function with branch.documentId and listingId
       await addListingToBranch(branch.documentId, listingId);
       
       // Log success message
-      console.log('Successfully added listing to branch:', {
-        branchId: branch.documentId,
-        branchName: branch.name,
-        listingId: listingId
-      });
       
       // Call onSuccess callback if provided
       if (onSuccess) {
