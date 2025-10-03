@@ -459,14 +459,63 @@ const SearchContainer = ({
 
   // Calculate filtered count for search button using the shared filter logic
   const searchButtonCount = useMemo(() => {
-    return filterListingsFrom(allListings, filters).length;
-  }, [allListings, filters, filterListingsFrom]);
+    const filteredListings = filterListingsFrom(allListings, filters);
+    
+    // If a category is selected, only count listings in that category
+    if (selectedCategory) {
+      return filteredListings.filter(listing => 
+        listing.category?.toUpperCase() === selectedCategory
+      ).length;
+    } else if (activeTab !== undefined) {
+      // If we're on a specific category tab, filter by that category
+      const desiredOrder = [
+        "SINGLE",
+        "DOUBLE",
+        "CHILD",
+        "HEAD",
+        "PLAQUES",
+        "CREMATION"
+      ];
+      const categoryName = categories?.[activeTab]?.name;
+      if (categoryName) {
+        return filteredListings.filter(listing => 
+          listing.listing_category?.name === categoryName
+        ).length;
+      }
+    }
+    
+    return filteredListings.length;
+  }, [allListings, filters, filterListingsFrom, selectedCategory, activeTab, categories]);
 
   // Calculate filtered count based on current filters and category (for actual filtering)
   const filteredCount = useMemo(() => {
     if (!allListings.length) return 0;
 
     let filtered = [...allListings];
+    
+    // First filter by current category if we're on a specific category page
+    if (activeTab !== undefined && categories && categories.length > 0) {
+      const desiredOrder = [
+        "SINGLE",
+        "DOUBLE",
+        "CHILD",
+        "HEAD",
+        "PLAQUES",
+        "CREMATION",
+      ];
+      const sortedCategories = desiredOrder
+        .map((name) =>
+          categories.find((cat) => cat.name && cat.name.toUpperCase() === name)
+        )
+        .filter(Boolean);
+        
+      if (sortedCategories[activeTab]) {
+        const categoryName = sortedCategories[activeTab].name;
+        filtered = filtered.filter(listing => 
+          listing.category?.toUpperCase() === categoryName.toUpperCase()
+        );
+      }
+    }
 
     // Filter by search (add this before other filters)
     if (filters?.search && filters.search !== "") {
@@ -626,6 +675,32 @@ const SearchContainer = ({
     if (searching) {
       return <SearchLoader />;
     }
+    
+    // If we have a search term, show "Found X abstracts"
+    if (filters?.search && filters.search !== "") {
+      // If we're on a specific category tab, show that category's results
+      if (categories && categories.length > 0 && activeTab !== undefined) {
+        const desiredOrder = [
+          "SINGLE",
+          "DOUBLE",
+          "CHILD",
+          "HEAD",
+          "PLAQUES",
+          "CREMATION",
+        ];
+        const sortedCategories = desiredOrder
+          .map((name) =>
+            categories.find((cat) => cat.name && cat.name.toUpperCase() === name)
+          )
+          .filter(Boolean);
+        const selectedCategoryObj = sortedCategories[activeTab];
+        if (selectedCategoryObj) {
+          return `Found ${searchButtonCount} ${selectedCategoryObj.name} abstracts`;
+        }
+      }
+      return `Found ${searchButtonCount} results`;
+    }
+    
     // Always show count and category, even if 0
     let categoryLabel = "";
     if (categories && categories.length > 0) {
@@ -644,7 +719,6 @@ const SearchContainer = ({
         .filter(Boolean);
       const selectedCategoryObj = sortedCategories[activeTab];
       if (selectedCategoryObj) {
-         //search button text
         categoryLabel = selectedCategoryObj.name + " Results ";
       }
     }

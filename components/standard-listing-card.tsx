@@ -23,12 +23,14 @@ interface StandardListingCardProps {
   listing: any;
   href: string;
   isOwner?: boolean;
+  hideCompanyLogo?: boolean;
 }
 
 export function StandardListingCard({
   listing,
   href,
   isOwner = false,
+  hideCompanyLogo = false,
 }: StandardListingCardProps): React.ReactElement {
   const router = useRouter();
   // Remove the useEffect and replace with direct calculation
@@ -107,10 +109,10 @@ export function StandardListingCard({
       <div className="relative flex flex-col md:hidden">
         
 
-        {!listing.company.hideStandardCompanyLogo && (
+        {listing.company.hideStandardCompanyLogo !== true &&  (
           <div className="absolute bottom-3 right-3 z-20 bg-white border border-white p-2 rounded-lg md:hidden">
             <a
-              href={listing.company.name}
+              href={`/manufacturers/manufacturers-Profile-Page/${listing.company.documentId}`}
               className="manufacturer-link"
               onClick={(e) => e.stopPropagation()}
               aria-label={`View ${listing.manufacturer} profile`}
@@ -142,8 +144,8 @@ export function StandardListingCard({
             </div>
           </div>
         </div>
-        {/* Thumbnails Row Below Main Image (Mobile) */}
-        <div className="bg-white px-3 pb-3">
+        {/* Thumbnails Row Below Main Image (Hidden on Mobile, Visible on Desktop) */}
+        <div className="hidden md:block bg-white px-3 pb-3">
           <div className="relative">
             <div className="flex flex-row gap-1">
               {Array.isArray(listing.thumbnailUrls)
@@ -615,15 +617,17 @@ export function StandardListingCard({
               </div>
             </div>
             {/* Right column: logo (desktop only) */}
-            <div className="w-1/3 flex-shrink-0 flex flex-col items-end justify-end hidden md:flex">
-              <Image
-                src={listing.company.logoUrl || "/placeholder-logo.svg"}
-                alt={listing.company.name + " Logo"}
-                width={150}
-                height={100}
-                className="object-contain mt-auto mb-2"
-              />
-            </div>
+            {listing.company.hideStandardCompanyLogo !== true && hideCompanyLogo !== true && (
+              <div className="w-1/3 flex-shrink-0 flex flex-col items-end justify-end hidden md:flex">
+                <Image
+                  src={listing.company.logoUrl || "/placeholder-logo.svg"}
+                  alt={listing.company.name + " Logo"}
+                  width={150}
+                  height={100}
+                  className="object-contain mt-auto mb-2"
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

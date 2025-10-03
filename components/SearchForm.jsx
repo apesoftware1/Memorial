@@ -26,7 +26,18 @@ const SearchForm = ({ onSearch, onSearchSubmit }) => {
     "cremation memorial", "grave design", "headstone shop", "tombstone supplier",
     "buy tombstone", "headstone prices", "tombstone catalogue", "gravestone near me",
     "headstone for child", "veteran headstone", "memorial design", "online tombstone",
-    "tombstone for sale", "cemetery headstone"
+    "tombstone for sale", "cemetery headstone", "mausoleum"
+  ];
+
+  // Search filter criteria
+  const filterCriteria = [
+    { name: "title", label: "Listing Title" },
+    { name: "company", label: "Company Name" },
+    { name: "style", label: "Style" },
+    { name: "slabStyle", label: "Slab Style" },
+    { name: "stoneType", label: "Stone Type" },
+    { name: "color", label: "Colour" },
+    { name: "customization", label: "Customisation" }
   ];
 
   // Function to handle search input changes
@@ -35,7 +46,8 @@ const SearchForm = ({ onSearch, onSearchSubmit }) => {
     
     // Update search filter in real-time as user types
     if (onSearch) {
-      onSearch(value);
+      // Pass search value, filter criteria, and immediate flag for real-time updates
+      onSearch(value, filterCriteria.map(c => c.name), true);
     }
     
     if (value.trim()) {
@@ -48,37 +60,55 @@ const SearchForm = ({ onSearch, onSearchSubmit }) => {
       setFilteredSuggestions([]);
       setShowSuggestions(false);
     }
-  }, [onSearch]);
+  }, [onSearch, filterCriteria]);
 
   // Function to handle suggestion selection
   const handleSuggestionSelect = useCallback((suggestion) => {
     setSearchInput(suggestion);
     setShowSuggestions(false);
     if (onSearch) {
-      onSearch(suggestion);
+      // Pass selected suggestion and filter criteria
+      onSearch(suggestion, filterCriteria.map(c => c.name), true); // true for immediate search
     }
-  }, [onSearch]);
+    
+    // Also trigger the search submission
+    if (onSearchSubmit) {
+      onSearchSubmit(suggestion, filterCriteria.map(c => c.name));
+    }
+  }, [onSearch, onSearchSubmit, filterCriteria]);
 
   // Function to handle search form submission
   const handleSearchSubmit = useCallback(() => {
     if (searchInput.trim() && onSearchSubmit) {
-      onSearchSubmit(searchInput.trim());
+      // Pass search input and filter criteria for comprehensive search
+      onSearchSubmit(searchInput.trim(), filterCriteria.map(c => c.name));
     }
-  }, [searchInput, onSearchSubmit]);
+  }, [searchInput, onSearchSubmit, filterCriteria]);
 
   // Function to handle search button click
   const handleSearchButtonClick = useCallback(() => {
     if (searchInput.trim() && onSearchSubmit) {
-      onSearchSubmit(searchInput.trim());
+      // Pass search input and filter criteria for comprehensive search
+      onSearchSubmit(searchInput.trim(), filterCriteria.map(c => c.name));
+      
+      // Trigger immediate search without waiting for debounce
+      if (onSearch) {
+        onSearch(searchInput.trim(), filterCriteria.map(c => c.name), true); // true indicates immediate search
+      }
     }
-  }, [searchInput, onSearchSubmit]);
+  }, [searchInput, onSearchSubmit, onSearch, filterCriteria]);
 
   // Function to clear search
   const handleClearSearch = useCallback(() => {
     setSearchInput("");
     setFilteredSuggestions([]);
     setShowSuggestions(false);
-  }, []);
+    
+    // Clear search results by passing empty string
+    if (onSearch) {
+      onSearch("", []);
+    }
+  }, [onSearch]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -137,4 +167,4 @@ const SearchForm = ({ onSearch, onSearchSubmit }) => {
   );
 };
 
-export default SearchForm; 
+export default SearchForm;
