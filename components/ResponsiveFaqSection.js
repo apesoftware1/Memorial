@@ -64,10 +64,13 @@ export default function ResponsiveFaqSection() {
   // Render mobile or desktop version based on screen size
   return (
     <div className={`w-full bg-white ${isMobile ? 'overflow-x-hidden max-w-[100vw]' : '-mx-[100vw] px-[100vw]'}`}>
+      {/* Empty div for spacing - reduced height */}
+      <div className="h-2"></div>
+      
       <section className="w-full min-h-0 flex items-start justify-center pt-2 pb-4 mb-0">
-        <div className={`${isMobile ? 'w-full' : 'container mx-auto'} pb-0 mb-4`}>
+        <div className={`${isMobile ? 'w-full' : 'container mx-auto'} pb-0 mb-4 mt-2`}>
           {/* Heading */}
-          <div className={`mb-6 ${isMobile ? 'px-4' : ''}`}>
+          <div className={`mb-6 mt-2 ${isMobile ? 'px-4' : ''}`}>
             <h2 className={`text-[#D4AF37] font-bold uppercase text-base ${isMobile ? 'whitespace-normal break-words' : 'whitespace-nowrap'}`} style={{letterSpacing: "0.5px"}}>
               Do you have any questions about buying a tombstone for your loved one?
             </h2>

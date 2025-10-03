@@ -38,16 +38,13 @@ export default function ManufacturerProfilePage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px' }}>
-        <BranchButton company={company} />
-      </div>
-      
       {/* Pass the click handler to the profile editor */}
       <ManufacturerProfileEditor 
         isOwner={false} 
         company={company} 
         listings={listings} 
         onVideoClick={handleVideoClick}
+        branchButton={<BranchButton company={company} />}
       />
       
       {/* Video Modal */}

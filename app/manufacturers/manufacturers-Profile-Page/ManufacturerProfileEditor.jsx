@@ -146,6 +146,7 @@ export default function ManufacturerProfileEditor({
   company: initialCompany,
   listings,
   onVideoClick,
+  branchButton,
 }) {
   const router = useRouter();
   const [mobile, setMobile] = useState(false);
@@ -1241,6 +1242,21 @@ export default function ManufacturerProfileEditor({
   return (
     <>
       <Header showLogout={isOwner} />
+      
+      {/* Branch Button Container - Positioned directly beneath header */}
+      {branchButton && (
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            padding: "16px 16px 0 16px",
+            display: "flex",
+            justifyContent: "flex-end",
+          }}
+        >
+          {branchButton}
+        </div>
+      )}
       <div
         style={{
           fontFamily: "Arial, sans-serif",
