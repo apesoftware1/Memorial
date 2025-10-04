@@ -10,6 +10,7 @@ import { useApolloClient } from '@apollo/client'
 import { GET_LISTINGS } from '@/graphql/queries/getListings'
 import { useListingCategories } from '@/hooks/use-ListingCategories'
 import { desiredOrder } from '@/lib/categories'
+import { AlertTriangle } from 'lucide-react'
 
 const colorOptions = [
   'Black',
@@ -114,6 +115,28 @@ export default function CreateListingForm() {
   const client = useApolloClient();
   const [company, setCompany] = useState(null);
   const { categories, loading: categoriesLoading, error: categoriesError } = useListingCategories();
+  
+  // Mobile warning state
+  const [isMobileSmall, setIsMobileSmall] = useState(false);
+  const [showMobileWarning, setShowMobileWarning] = useState(false);
+  
+  // Check if screen is small mobile on mount and resize
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const isSmall = window.innerWidth < 640;
+      setIsMobileSmall(isSmall);
+      setShowMobileWarning(isSmall);
+    };
+    
+    // Check on mount
+    checkScreenSize();
+    
+    // Add resize listener
+    window.addEventListener('resize', checkScreenSize);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
   
   const sortedCategories = Array.isArray(categories)
       ? desiredOrder
@@ -818,6 +841,57 @@ export default function CreateListingForm() {
       fontFamily: "Arial, sans-serif",
       color: "#333",
     }}>
+      {/* Mobile Warning Message */}
+      {showMobileWarning && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0, 0, 0, 0.8)",
+          zIndex: 9999,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: 20
+        }}>
+          <div style={{
+            backgroundColor: "white",
+            borderRadius: 12,
+            padding: 24,
+            maxWidth: "90%",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 16
+          }}>
+            <AlertTriangle size={48} color="#ff9800" />
+            <h2 style={{ fontSize: 20, fontWeight: "bold", color: "#333" }}>Small Screen Detected</h2>
+            <p style={{ fontSize: 16, color: "#555", marginBottom: 16 }}>
+              This page is not optimized for small screens. For the best experience, please use a tablet or desktop device.
+            </p>
+            <button
+              onClick={() => setShowMobileWarning(false)}
+              style={{
+                backgroundColor: "#005bac",
+                color: "white",
+                border: "none",
+                borderRadius: 8,
+                padding: "12px 24px",
+                fontSize: 16,
+                fontWeight: "bold",
+                cursor: "pointer"
+              }}
+            >
+              Continue Anyway
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Return Link */}
       <div style={{ maxWidth: 1000, margin: "0 auto 8px auto", paddingLeft: 4 }}>
         <a href="/manufacturers/manufacturers-Profile-Page" style={{ color: "#005bac", fontSize: 13, textDecoration: "underline", display: "inline-flex", alignItems: "center" }}>

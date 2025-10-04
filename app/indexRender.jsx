@@ -180,13 +180,13 @@ const IndexRender = ({
                 )}
               </div>
               {/* Pagination Dots - Mobile only */}
-              <div className="flex justify-center mt-4 space-x-2">
+              <div className="flex justify-center mt-4 space-x-4 mb-4">
                 {[0, 1, 2].map((index) => (
                   <button
                     key={index}
                     onClick={() => scrollToFeaturedCard(index)}
-                    className={`w-3 h-3 rounded-full transition-colors duration-200 ${
-                      featuredActiveIndex === index ? 'bg-blue-500' : 'bg-gray-300 hover:bg-gray-400'
+                    className={`w-5 h-5 rounded-full transition-colors duration-200 shadow-md ${
+                      featuredActiveIndex === index ? 'bg-blue-700 ring-4 ring-blue-300' : 'bg-gray-400 hover:bg-blue-500'
                     }`}
                     aria-label={`Go to card ${index + 1}`}
                   ></button>
@@ -224,7 +224,7 @@ const IndexRender = ({
         </div>
         {premiumFirstHalf.length > 0
           ? premiumFirstHalf.map((item, idx) => (
-              <div key={item.id || idx} className="mb-6">
+              <div key={item.id || idx} className={`${idx === 0 ? 'mb-4 -mt-2' : idx === 1 ? 'mb-6 mt-2' : 'mb-6'}`}>
                 <PremiumListingCard listing={item} />
               </div>
             ))
@@ -250,7 +250,10 @@ const IndexRender = ({
       <section className="mt-0 pt-0 pb-2 mb-0 bg-gray-50">
         {premiumSecondHalf.length > 0
           ? premiumSecondHalf.map((item, idx) => (
-              <div key={item.id || idx} className="mb-6">
+              <div 
+                key={item.id || idx} 
+                className={idx === 0 ? "mb-4 -mt-2" : idx === 1 ? "mb-6 mt-2" : "mb-6"}
+              >
                 <PremiumListingCard listing={item} />
               </div>
             ))

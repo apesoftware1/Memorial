@@ -60,7 +60,7 @@ const FeaturedListings = ({ listing }) => (
         
         {/* Product Details */}
         <p className="text-xs text-gray-600">
-          <strong>{getCategoryLabel(listing)}</strong>
+          <strong>{listing.listing_category?.name || getCategoryLabel()}</strong>
           {listing.productDetails?.stoneType && Array.isArray(listing.productDetails.stoneType) && listing.productDetails.stoneType.length > 0 && listing.productDetails.stoneType[0]?.value && (
             <> | {listing.productDetails.stoneType[0].value}</>
           )}

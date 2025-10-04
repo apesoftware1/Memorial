@@ -544,7 +544,7 @@ export default function ProductShowcase({ listing, id,}) {
                     href={`/manufacturers/manufacturers-Profile-Page/${listing.company?.documentId || listing.companyId}${branch ? `?branch=${branch}` : ''}`}
                     className="text-sm text-blue-600 hover:underline"
                   >
-                    View All Tombstones
+                    View All Tombstones From This Manufacturer
                   </Link>
                 </div>
               </div>

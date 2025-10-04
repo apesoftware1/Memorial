@@ -8,9 +8,25 @@ import Image from "next/image"
 const fixIconPath = (path) => {
   if (!path) return path;
   // Replace any instances of spaces or incorrect formatting in paths
-  return path.replace('/last icons/', '/last_icons/')
-             .replace('%20', '')
-             .replace('/public/', '/');
+  let fixedPath = path;
+  
+  // Remove port number if present (like :3000)
+  fixedPath = fixedPath.replace(/:\d+\//, '/');
+  
+  // Ensure path starts with a slash
+  if (!fixedPath.startsWith('/')) {
+    fixedPath = '/' + fixedPath;
+  }
+  
+  // Fix common path issues
+  fixedPath = fixedPath
+    .replace('/last icons/', '/last_icons/')
+    .replace('/Adv_vpe_Icon_', '/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_')
+    .replace('%20', '')
+    .replace('/public/', '/')
+    .replace('//', '/');
+    
+  return fixedPath;
 }
 
 const bodyTypeIcons = {
@@ -25,24 +41,23 @@ const bodyTypeIcons = {
 
 // Icons: Head Style (pre-encoded paths for consistent rendering)
 const headStyleIcons = {
-  "Abstract": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Abstract.svg",
-  "Angel": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Angel.svg",
-  "Bible": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bible.svg",
-  "Bike": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bike.svg",
-  "Butterfly": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Butterfly.svg",
-  "Car": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Car.svg",
   "Christian Cross": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_ChristianCross.svg",
-  "Glass": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Glass.svg",
   "Heart": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Heart.svg",
-  "Mausoleum": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Mausolean.svg",
-  "Obelisk": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Obelisk.svg",
+  "Bible": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bible.svg",
   "Pillars": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Pillars.svg",
-  "Plain": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg",
+  "Traditional African": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TraditionalAfrican.svg",
+  "Abstract": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Abstract.svg",
   "Praying Hands": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_PrayingHands.svg",
   "Scroll": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Scroll.svg",
-  "Sports": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Sport.svg",
+  "Angel": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Angel.svg",
+  "Mausoleum": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Mausolean.svg",
+  "Obelisk": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Obelisk.svg",
+  "Plain": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg",
   "Teddy Bear": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TeddyBear.svg",
-  "Traditional African": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TraditionalAfrican.svg",
+  "Butterfly": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Butterfly.svg",
+  "Car": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Car.svg",
+  "Bike": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bike.svg",
+  "Sports": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Sport.svg"
 }
 
 // Icons: Slab Style (pre-encoded paths for consistent rendering)
@@ -162,16 +177,24 @@ export default function FilterDropdown({
                   className="px-3 py-2 text-sm text-gray-300 hover:bg-[#111111] hover:text-[#D4AF37] transition-colors flex justify-between items-center cursor-pointer"
                   role="menuitem"
                 >
-                  <div className="flex items-center gap-2">
-                    {iconSrc && (
-                      <Image
-                        src={iconSrc}
-                        alt={`${option} icon`}
-                        width={16}
-                        height={16}
-                        className="h-4 w-4"
-                      />
-                    )}
+                  <div className="flex items-center gap-3">
+                    <div className="h-4 w-4 flex items-center justify-center">
+                      {iconSrc && (
+                        <img
+                          src={iconSrc}
+                          alt={`${option} icon`}
+                          width={16}
+                          height={16}
+                          className="h-4 w-4 object-contain"
+                          style={{ display: 'block' }}
+                          onError={(e) => {
+                            console.log(`Failed to load icon: ${iconSrc}`);
+                            // Keep the image visible even if it fails to load
+                            e.currentTarget.src = '/placeholder.svg';
+                          }}
+                        />
+                      )}
+                    </div>
                     <span>{option}</span>
                   </div>
                   {filters[name] === option && <Check className="h-4 w-4 text-green-500" />}

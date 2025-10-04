@@ -295,6 +295,7 @@ export default function ManufacturerProfileEditor({
       toast({
         title: "Success",
         description: "Listing added to branch successfully.",
+        className: "bg-green-500 text-white border-green-600",
         variant: "default",
       });
     } catch (error) {

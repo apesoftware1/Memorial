@@ -8,7 +8,7 @@ import SessionWrapper from "./components/SessionWrapper";
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "MemorialHub - Find a Tombstone",
+  title: "TombstoneFinder - Find a Tombstone",
   description: "Find a fitting Tribute for your Loved One",
 }
 
