@@ -2466,7 +2466,7 @@ export default function ManufacturerProfileEditor({
                 color: "#888",
                 fontWeight: 700,
                 marginBottom: 2,
-                marginLeft: mobile ? 0 : 80,
+                marginLeft: 140,
                 textAlign: "left",
               }}
             >
@@ -2567,7 +2567,7 @@ export default function ManufacturerProfileEditor({
                     alignItems: "flex-start",
                     gap: 4,
                     width: "100%",
-                    marginLeft: mobile ? 0 : 80,
+                    marginLeft: 140,
                     paddingLeft: 0,
                   }}
                 >
@@ -2635,7 +2635,7 @@ export default function ManufacturerProfileEditor({
                     style={{
                       background: "none",
                       border: "none",
-                      marginLeft: mobile ? 0 : 82,
+                      marginLeft: 0,
                       marginTop: 4,
                       cursor: "pointer",
                     }}
