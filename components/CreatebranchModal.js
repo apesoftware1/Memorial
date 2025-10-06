@@ -58,6 +58,9 @@ export default function CreateBranchModal({ documentId, isOpen = false, onClose 
       setAddress("");
       setLatitude("");
       setLongitude("");
+      
+      // Reload the page after successful branch creation
+      window.location.reload();
     } catch (err) {
       console.error("Failed to create branch:", err);
       alert("Failed to create branch. Check console for details.");

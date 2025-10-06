@@ -26,7 +26,12 @@ export default function CategoryTabs({ categories, activeTab, setActiveTab }) {
             <div className="flex flex-col items-center justify-center h-full w-full">
               <div className="flex flex-col items-center justify-center h-[32px] w-full">
                 <Image
-                  src={item.name === 'SINGLE' ? '/final-icons/single.svg' : item.icon}
+                  src={
+                    item.name === 'SINGLE' ? '/final-icons/single.svg' : 
+                    item.name === 'DOUBLE' ? '/last_icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_2_Double.svg' :
+                    item.name === 'PLAQUES' ? '/last_icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_5-Plaques.svg' :
+                    item.icon
+                  }
                   alt={`${item.name} icon`}
                   width={item.name === 'SINGLE' ? 44 : 32}
                   height={24}

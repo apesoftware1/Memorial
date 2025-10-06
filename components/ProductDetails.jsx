@@ -32,11 +32,11 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
   };
 
   return (
-    <div className="border-y border-gray-200 py-2 mb-4">
+    <div className="border-y border-gray-200 py-2 mb-4 px-2">
       <div className="flex flex-wrap gap-2 text-sm text-gray-700">
         {/* Head Style */}
         {getFirstValue(productDetails.style) && (
-          <div className="flex items-center border border-gray-300 rounded px-3 py-1.5 font-medium bg-white">
+          <div className="flex items-center border border-gray-300 rounded px-2 py-1.5 font-medium bg-white ">
             <span>Head Style:</span>
             {icons?.headStyleIcon ? (
               <Image src={fixIconPath(icons.headStyleIcon)} alt="HeadStyleIcon" width={16} height={16} className="mx-2" />
@@ -49,7 +49,7 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
 
         {/* Slab Style */}
         {Array.isArray(productDetails.slabStyle) && productDetails.slabStyle.length > 0 && (
-          <div className="flex items-center border border-gray-300 rounded px-3 py-1.5 font-medium bg-white">
+          <div className="flex items-center border border-gray-300 rounded px-2 py-1.5 font-medium bg-white ">
             <span>Slab Style:</span>
             {icons?.slabStyleIcon ? (
               <Image src={fixIconPath(icons.slabStyleIcon)} alt="SlabStyleIcon" width={16} height={16} className="mx-2" />
@@ -62,7 +62,7 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
 
         {/* Colour */}
         {getFirstValue(productDetails.color) && (
-          <div className="flex items-center border border-gray-300 rounded px-3 py-1.5 font-medium bg-white">
+          <div className="flex items-center border border-gray-300 rounded px-2 py-1.5 font-medium bg-white ">
             <span>Colour:</span>
             {icons?.colourIcon ? (
               <Image src={fixIconPath(icons.colourIcon)} alt="ColourIcon" width={16} height={16} className="mx-2" />
@@ -75,7 +75,7 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
 
         {/* Customisation */}
         {getFirstValue(productDetails.customization) && (
-          <div className="flex items-center border border-gray-300 rounded px-3 py-1.5 font-medium bg-white">
+          <div className="flex items-center border border-gray-300 rounded px-2 py-1.5 font-medium bg-white ">
             <span>Customisation:</span>
             {icons?.customIcon ? (
               <Image src={fixIconPath(icons.customIcon)} alt="CustomisationIcon" width={16} height={16} className="mx-2" />
@@ -88,7 +88,7 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
 
         {/* Stone Type (if used) */}
         {getFirstValue(productDetails.stoneType) && (
-          <div className="flex items-center border border-gray-300 rounded px-3 py-1.5 font-medium bg-white">
+          <div className="flex items-center border border-gray-300 rounded px-2 py-1.5 font-medium bg-white ">
             <span>Stone Type:</span>
             {icons?.stoneTypeIcon ? (
               <Image src={fixIconPath(icons.stoneTypeIcon)} alt="StoneTypeIcon" width={16} height={16} className="mx-2" />

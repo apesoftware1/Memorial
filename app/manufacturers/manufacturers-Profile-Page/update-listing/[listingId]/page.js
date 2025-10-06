@@ -9,6 +9,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { uploadToCloudinary } from "@/lib/cloudinary"; // moved from bottom to top
 import pricingAdFlasher from '../../../../../pricingAdFlasher.json';
+import { useToast } from "../../../../../hooks/use-toast";
 
 function isMobile() {
   if (typeof window === 'undefined') return false;
@@ -19,6 +20,12 @@ export default function UpdateListingPage() {
   const { listingId } = useParams();
   const { data: session, status } = useSession();
   const router = useRouter();
+  
+  // State for custom toast notification
+  const [showMessage, setShowMessage] = useState(false);
+  const [message, setMessage] = useState("");
+  const [isSuccess, setIsSuccess] = useState(true);
+  
   const { data, loading, error } = useQuery(GET_LISTING_BY_ID, {
     variables: { documentID: listingId },
     skip: !listingId,
@@ -119,7 +126,6 @@ export default function UpdateListingPage() {
   // Loading and success states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
-  const [showMessage, setShowMessage] = useState(false);
 
   // Moved these two hooks up here (unconditional)
   const [imageFiles, setImageFiles] = useState(Array(11).fill(null));
@@ -280,15 +286,35 @@ export default function UpdateListingPage() {
       }
 
       const result = await response.json();
-      setSubmitMessage("Listing updated successfully!");
+      
+      // Show success message
+      setMessage("Listing updated successfully!");
+      setIsSuccess(true);
       setShowMessage(true);
+      
+      setSubmitMessage("Listing updated successfully!");
+      
+      // Auto-close the message after 5 seconds
+      setTimeout(() => {
+        setShowMessage(false);
+      }, 5000);
+      
       setTimeout(() => {
         router.push('/manufacturers/manufacturers-Profile-Page');
       }, 2000);
 
     } catch (error) {
-      setSubmitMessage(`Error updating listing: ${error.message}`);
+      // Show error message
+      setMessage(`Error updating listing: ${error.message}`);
+      setIsSuccess(false);
       setShowMessage(true);
+      
+      setSubmitMessage(`Error updating listing: ${error.message}`);
+      
+      // Auto-hide error message after 5 seconds
+      setTimeout(() => {
+        setShowMessage(false);
+      }, 5000);
     } finally {
       setIsSubmitting(false);
     }
@@ -410,7 +436,45 @@ export default function UpdateListingPage() {
       borderRadius: 16,
       fontFamily: "Arial, sans-serif",
       color: "#333",
+      position: "relative",
     }}>
+      {/* Custom Toast Notification */}
+      {showMessage && (
+        <div 
+          style={{
+            position: "fixed",
+            top: "20px",
+            right: "20px",
+            zIndex: 1000,
+            padding: "12px 16px",
+            borderRadius: "4px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            minWidth: "300px",
+            backgroundColor: isSuccess ? "#4CAF50" : "#F44336",
+            color: "white",
+          }}
+        >
+          <div>
+            <p style={{ margin: 0, fontWeight: "500" }}>{message}</p>
+          </div>
+          <button 
+            onClick={() => setShowMessage(false)}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "white",
+              fontSize: "20px",
+              cursor: "pointer",
+              marginLeft: "12px",
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
       {/* Return Link */}
       <div style={{ maxWidth: 1000, margin: "0 auto 8px auto", paddingLeft: 4 }}>
         <a href="/manufacturers/manufacturers-Profile-Page" style={{ color: "#005bac", fontSize: 13, textDecoration: "underline", display: "inline-flex", alignItems: "center" }}>
@@ -1006,12 +1070,12 @@ export default function UpdateListingPage() {
 
 // Icon maps copied from Advert Creator
 const COLOR_ICON_MAP = {
-  Black: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Black.svg",
-  Blue: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Blue.svg",
+  Black: "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Black.svg",
+  Blue: "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Blue.svg",
   Green: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Green.svg",
-  "Grey-Dark": "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Dark.svg",
-  "Grey-Light": "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Light.svg",
-  Maroon: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Maroon.svg",
+  "Grey-Dark": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey_Dark.svg",
+  "Grey-Light": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey_Light.svg",
+  Maroon: "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Maroon.svg",
   Pearl: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Pearl.svg",
   Red: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Red.svg",
   White: "/last icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_White.svg",

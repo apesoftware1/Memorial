@@ -319,7 +319,7 @@ useEffect(() => {
 
       {/* Banner under FAQ (right before Featured Listings) */}
       <div className="bg-gray-50 py-4 ">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 mb-4">
           <div className="max-w-4xl mx-auto">
             {faqBanner && (
               <BannerAd
@@ -350,7 +350,7 @@ useEffect(() => {
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
               <h4 className="text-lg font-semibold mb-4">About TombstonesFinder.co.za</h4>
-              <p className="text-yellow-500">
+              <p className="text-yellow-500 text-sm opacity-50">
                 TombstonesFinder.co.za helps you honour your loved one by finding the perfect tombstone. Search trusted local manufacturers, compare designs, materials, budgets, and custom options — all in one place.
               </p>
             </div>

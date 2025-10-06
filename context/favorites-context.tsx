@@ -67,8 +67,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Skip if already initialized or not in browser
     if (isInitialized || typeof window === "undefined") return
-
-    const storedFavorites = safeGetItem("memorialHubFavorites")
+    
+    const storedFavorites = safeGetItem("tombstoneFinderFavorites")
     if (storedFavorites) {
       try {
         const parsedFavorites = JSON.parse(storedFavorites)
@@ -88,7 +88,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     // Only save if initialized and in browser
     if (!isInitialized || typeof window === "undefined") return
 
-    safeSetItem("memorialHubFavorites", JSON.stringify(favorites))
+    safeSetItem("tombstoneFinderFavorites", JSON.stringify(favorites))
   }, [favorites, isInitialized])
 
   const addFavorite = (product: FavoriteProduct) => {
