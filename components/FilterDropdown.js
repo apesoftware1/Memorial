@@ -25,6 +25,30 @@ const fixIconPath = (path) => {
     .replace('%20', '')
     .replace('/public/', '/')
     .replace('//', '/');
+  
+  // Fix nested directory structure issues
+  if (fixedPath.includes('/AdvertCreator_StoneType_Icons/')) {
+    fixedPath = fixedPath.replace('/AdvertCreator_StoneType_Icons/', '/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/');
+  }
+  
+  if (fixedPath.includes('/AdvertCreator_Head_Style_Icons/')) {
+    fixedPath = fixedPath.replace('/AdvertCreator_Head_Style_Icons/', '/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/');
+  }
+  
+  if (fixedPath.includes('/AdvertCreator_SlabStyle_Icons/')) {
+    fixedPath = fixedPath.replace('/AdvertCreator_SlabStyle_Icons/', '/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/');
+  }
+  
+  if (fixedPath.includes('/AdvertCreator_Icons_Customisation_Icons/')) {
+    fixedPath = fixedPath.replace('/AdvertCreator_Icons_Customisation_Icons/', '/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/');
+  }
+  
+  if (fixedPath.includes('/AdvertCreator_Colour_Icons/')) {
+    // Make sure color icons always point to the correct subdirectory
+    if (!fixedPath.includes('/6_Colour_Icons/')) {
+      fixedPath = fixedPath.replace('/AdvertCreator_Colour_Icons/', '/AdvertCreator_Colour_Icons/6_Colour_Icons/');
+    }
+  }
     
   return fixedPath;
 }
@@ -94,7 +118,7 @@ const stoneTypeIcons = {
   "Wood": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Wood.svg",
 }
 
-// Icons: Colour (kept as-is because it's already working)
+// Icons: Colour
 const colourIcons = {
   "Black": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Black.svg",
   "Blue": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Blue.svg",
@@ -105,11 +129,12 @@ const colourIcons = {
   "Pearl": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Pearl.svg",
   "Red": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Red.svg",
   "White": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_White.svg",
+  "Mixed": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Mixed.svg"
 }
 
 // Icons: Customisation (pre-encoded paths for consistent rendering)
 const customIcons = {
-  "Bronze/Stainless Plaques": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_BronzeStainless_Plaque.svg",
+  "Bronze_Stainless Plaques": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_Bronze_Stainless_Plaque.svg",
   "Ceramic Photo Plaques": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_CeramicPhotoPlaque.svg",
   "Flower Vases": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_FlowerVase.svg",
   "Gold Lettering": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_GoldLettering.svg",
@@ -144,7 +169,12 @@ export default function FilterDropdown({
     if (menuName === "colour" && colourIcons[option]) iconPath = colourIcons[option];
     
     // Apply path fixing to ensure correct format
-    return iconPath ? fixIconPath(iconPath) : null;
+    const fixedPath = iconPath ? fixIconPath(iconPath) : null;
+    
+    // Debug log to verify path
+    console.log("ICON SOURCE:", option, fixedPath);
+    
+    return fixedPath;
   };
 
   return (
@@ -178,22 +208,54 @@ export default function FilterDropdown({
                   role="menuitem"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-4 w-4 flex items-center justify-center">
-                      {iconSrc && (
-                        <img
-                          src={iconSrc}
-                          alt={`${option} icon`}
-                          width={16}
-                          height={16}
-                          className="h-4 w-4 object-contain"
-                          style={{ display: 'block' }}
-                          onError={(e) => {
-                            console.log(`Failed to load icon: ${iconSrc}`);
-                            // Keep the image visible even if it fails to load
-                            e.currentTarget.src = '/placeholder.svg';
-                          }}
-                        />
-                      )}
+                    <div className="h-5 w-5 flex items-center justify-center">
+                      <img
+                        src={iconSrc || '/placeholder.svg'}
+                        alt={`${option} icon`}
+                        width={20}
+                        height={20}
+                        className="h-5 w-5 object-contain inline-block visible opacity-100"
+                        style={{ 
+                          display: 'block',
+                          filter: name === 'colour' ? 'none' : 'brightness(0) invert(0.9)'
+                        }}
+                        onError={(e) => {
+                          console.log(`Failed to load icon: ${iconSrc}`);
+                          
+                          // Special handling for color icons
+                          if (name === 'colour') {
+                            const colorPath = `/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_${option}.svg`;
+                            console.log(`Trying color fallback: ${colorPath}`);
+                            
+                            const testImg = new Image();
+                            testImg.onload = () => {
+                              e.currentTarget.src = colorPath;
+                            };
+                            testImg.onerror = () => {
+                              e.currentTarget.src = '/placeholder.svg';
+                            };
+                            testImg.src = colorPath;
+                          } else {
+                            // Try direct path as fallback for other icon types
+                            const directPath = `/last_icons/${name === 'style' ? 'AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons' : 
+                                               name === 'slabStyle' ? 'AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons' : 
+                                               name === 'stoneType' ? 'AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons' : 
+                                               name === 'custom' ? 'AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons' : 
+                                               ''}/AdvertCreator_${name === 'style' ? 'HeadStyle' : name === 'slabStyle' ? 'SlabStyle' : name === 'stoneType' ? 'StoneType' : 'Customisation'}_Icon_${option.replace(/\s+/g, '')}.svg`;
+                            
+                            // Try the direct path first
+                            const testImg = new Image();
+                            testImg.onload = () => {
+                              e.currentTarget.src = directPath;
+                            };
+                            testImg.onerror = () => {
+                              e.currentTarget.src = '/placeholder.svg';
+                            };
+                            testImg.src = directPath;
+                          }
+                        }}
+                        key={`${name}-${option}-${Math.random()}`}
+                      />
                     </div>
                     <span>{option}</span>
                   </div>

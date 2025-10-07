@@ -110,7 +110,6 @@ const defaultFilterOptions = {
     "Child Memorial",
     "Custom Design",
   ],
-  culture: ["Christian", "Jewish", "Muslim", "Hindu", "Traditional African"],
 };
 
 const SearchContainer = ({
@@ -979,9 +978,9 @@ const SearchContainer = ({
               {!isDesktop && uiState.showAllOptions && (
                 <>
                   <FilterDropdown
-                    name="stoneType"
-                    label="Material"
-                    options={filterOptions.stoneType}
+                    name="slabStyle"
+                    label="Slab Style"
+                    options={filterOptions.slabStyle}
                     openDropdown={uiState.openDropdown}
                     toggleDropdown={toggleDropdown}
                     selectOption={selectOption}
@@ -989,9 +988,9 @@ const SearchContainer = ({
                     dropdownRefs={dropdownRefs}
                   />
                   <FilterDropdown
-                    name="custom"
-                    label="Customisation"
-                    options={filterOptions.custom}
+                    name="stoneType"
+                    label="Stone Type"
+                    options={filterOptions.stoneType}
                     openDropdown={uiState.openDropdown}
                     toggleDropdown={toggleDropdown}
                     selectOption={selectOption}
@@ -1009,9 +1008,9 @@ const SearchContainer = ({
                     dropdownRefs={dropdownRefs}
                   />
                   <FilterDropdown
-                    name="slabStyle"
-                    label="Slab Style"
-                    options={filterOptions.slabStyle}
+                    name="custom"
+                    label="Customisation"
+                    options={filterOptions.custom}
                     openDropdown={uiState.openDropdown}
                     toggleDropdown={toggleDropdown}
                     selectOption={selectOption}

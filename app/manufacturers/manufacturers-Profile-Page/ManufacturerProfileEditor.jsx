@@ -1793,7 +1793,7 @@ export default function ManufacturerProfileEditor({
                     fontWeight: 700,
                   }}
                 >
-                  Profile Picture
+                  
                 </div>
                 {isOwner ? (
                   <CompanyMediaUpload company={company} type="image" />
@@ -1846,7 +1846,7 @@ export default function ManufacturerProfileEditor({
                     fontWeight: 700,
                   }}
                 >
-                  Promo Video
+              
                 </div>
                 {isOwner ? (
                   <CompanyMediaUpload company={company} type="video" />

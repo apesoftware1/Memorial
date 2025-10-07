@@ -651,7 +651,6 @@ export function PremiumListingCard({
               </div>
             </div>
             {/* Manufacturer Information (Desktop) */}
-            {/** UI pattern as per user code and screenshot **/}
             {(() => {
               const profileUrl = `/manufacturers/${
                 listing.company?.slug || listing.company?.name || ""
