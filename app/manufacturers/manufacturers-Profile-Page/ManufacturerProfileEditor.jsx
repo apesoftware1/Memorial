@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Star, MapPin, Edit2, Upload, Lock } from "lucide-react";
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PremiumListingCard } from "@/components/premium-listing-card";
 import Header from "@/components/Header";
@@ -27,6 +27,7 @@ import BranchSelector from "@/components/BranchSelector";
 import CompanyMediaUpload from "@/components/CompanyMediaUpload";
 import BranchDropdown from "@/components/BranchDropdown";
 import BranchSelectionModal from "@/components/BranchSelectionModal";
+import OperatingHoursModal from "@/components/OperatingHoursModal";
 
 // Helper function to find a branch by name
 const findBranchByName = (branchName, branches) => {
@@ -149,6 +150,7 @@ export default function ManufacturerProfileEditor({
   branchButton,
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mobile, setMobile] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const sortModalRef = useRef();
@@ -156,8 +158,10 @@ export default function ManufacturerProfileEditor({
   const [modalOpen, setModalOpen] = useState(false);
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState("");
-  const [editingOperatingHours, setEditingOperatingHours] = useState({});
+  
   const [selectedBranch, setSelectedBranch] = useState(null);
+  const [branchFromUrl, setBranchFromUrl] = useState(null);
+  const [filteredListings, setFilteredListings] = useState(listings);
   // Single-step Operating Hours editor state
   const OPERATING_DAY_ORDER = [
     "monToFri",
@@ -202,58 +206,94 @@ export default function ManufacturerProfileEditor({
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
   const [showBranchSelectionModal, setShowBranchSelectionModal] = useState(false);
   const [selectedListingForBranch, setSelectedListingForBranch] = useState(null);
+  const [showOperatingHoursModal, setShowOperatingHoursModal] = useState(false);
 
   // Company state management
   const [company, setCompany] = useState(initialCompany);
-
-  // New per-day Operating Hours editor state
-  const defaultDailyHours = {
-    sunday: { open: false, openTime: "09:00 AM", closeTime: "05:00 PM" },
-    monday: { open: true, openTime: "09:00 AM", closeTime: "05:00 PM" },
-    tuesday: { open: true, openTime: "09:00 AM", closeTime: "05:00 PM" },
-    wednesday: { open: true, openTime: "09:00 AM", closeTime: "05:00 PM" },
-    thursday: { open: true, openTime: "09:00 AM", closeTime: "05:00 PM" },
-    friday: { open: true, openTime: "09:00 AM", closeTime: "05:00 PM" },
-    saturday: { open: false, openTime: "09:00 AM", closeTime: "05:00 PM" },
-    publicHoliday: { open: false, openTime: "09:00 AM", closeTime: "02:00 PM" },
-  };
-
-  const [dailyHours, setDailyHours] = useState(() => {
-    // Prefer company.operatingHoursDaily if present, otherwise derive sensible defaults
-    const saved = initialCompany?.operatingHoursDaily;
-    if (saved && typeof saved === "object") {
-      return { ...defaultDailyHours, ...saved };
+  
+  // Handle saving operating hours
+  const handleSaveOperatingHours = async ({ operatingHours }) => {
+    if (!company?.documentId) {
+      console.error("Company ID not found");
+      return;
     }
-    return defaultDailyHours;
-  });
-
-  // Keep local state in sync when company changes
-  useEffect(() => {
-    const saved = initialCompany?.operatingHoursDaily;
-    if (saved && typeof saved === "object") {
-      setDailyHours((prev) => ({ ...prev, ...saved }));
-    }
-  }, [initialCompany]);
-
-  // Time options in 30-minute increments (12-hour format)
-  const timeOptions = (() => {
-    const times = [];
-    let h = 6; // 6 AM
-    let m = 0;
-    while (h < 21 || (h === 20 && m === 30)) {
-      // up to 8:30 PM
-      const hour12 = ((h + 11) % 12) + 1;
-      const ampm = h < 12 ? "AM" : "PM";
-      const mm = m.toString().padStart(2, "0");
-      times.push(`${hour12}:${mm} ${ampm}`);
-      m += 30;
-      if (m >= 60) {
-        m = 0;
-        h += 1;
+    
+    try {
+      // Create the payload with the exact structure required by the backend
+      const updatePayload = {
+        operatingHours: {
+          monToFri: operatingHours.monToFri || "",
+          saturday: operatingHours.saturday || "",
+          sunday: operatingHours.sunday || "",
+          publicHoliday: operatingHours.publicHoliday || ""
+        }
+      };
+      
+      console.log("Updating operating hours with payload:", updatePayload);
+      
+      // Call the updateCompanyField function
+      const result = await updateCompanyField(company.documentId, updatePayload);
+      
+      if (result) {
+        // Update local state with the new operating hours
+        setCompany(prev => ({
+          ...prev,
+          operatingHours: updatePayload.operatingHours
+        }));
+        
+        return result;
+      } else {
+        throw new Error("Failed to update operating hours");
       }
+    } catch (error) {
+      console.error("Error updating operating hours:", error);
+      throw error;
     }
-    return times;
-  })();
+  };
+  
+  // Extract branch parameter from URL and filter listings
+  useEffect(() => {
+    const branchParam = searchParams.get('branch');
+    if (branchParam && company?.branches?.length) {
+      const branch = company.branches.find(b => b.name === branchParam || b.documentId === branchParam);
+      if (branch) {
+        setBranchFromUrl(branch);
+        // Filter listings to show only those associated with this branch
+        const branchListings = listings.filter(listing => 
+          listing.branches?.some(b => b.documentId === branch.documentId)
+        );
+        setFilteredListings(branchListings);
+        setSelectedBranch(branch);
+      } else {
+        setFilteredListings(listings);
+      }
+    } else {
+      setFilteredListings(listings);
+    }
+  }, [searchParams, company, listings]);
+  
+  // Branch location display component
+  const BranchLocationInfo = () => {
+    if (!branchFromUrl) return null;
+    
+    return (
+      <div className="bg-white rounded-lg shadow-md p-4 mb-2">
+        <h3 className="text-lg font-semibold flex items-center">
+          <MapPin className="w-5 h-5 mr-2 text-primary" />
+          {branchFromUrl.location.address} 
+        </h3>
+        
+        {branchFromUrl.location?.coordinates && (
+          <div className="mt-2 flex items-center text-primary-600">
+            <span className="text-sm">
+              Lat: {branchFromUrl.location.coordinates.latitude}, 
+              Long: {branchFromUrl.location.coordinates.longitude}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const client = useApolloClient();
   const [isDuplicating, setIsDuplicating] = useState(false);
@@ -632,35 +672,7 @@ export default function ManufacturerProfileEditor({
     return `${o} - ${c}`;
   };
 
-  // Derive legacy summary (monToFri/saturday/sunday/publicHoliday)
-  const deriveLegacyOperatingHours = (dh) => {
-    const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"];
-    const weekdayOpen = weekdays.every((d) => dh[d].open);
-    const sameTimes =
-      new Set(weekdays.map((d) => `${dh[d].openTime}__${dh[d].closeTime}`))
-        .size === 1;
 
-    const monToFri =
-      weekdayOpen && sameTimes
-        ? range24(dh.monday.openTime, dh.monday.closeTime)
-        : weekdayOpen
-        ? "Varies"
-        : "Closed";
-
-    const saturday = dh.saturday.open
-      ? range24(dh.saturday.openTime, dh.saturday.closeTime)
-      : "Closed";
-
-    const sunday = dh.sunday.open
-      ? range24(dh.sunday.openTime, dh.sunday.closeTime)
-      : "Closed";
-
-    const publicHoliday = dh.publicHoliday.open
-      ? range24(dh.publicHoliday.openTime, dh.publicHoliday.closeTime)
-      : "Closed";
-
-    return { monToFri, saturday, sunday, publicHoliday };
-  };
 
   // Add CSS animation for slideIn effect
   useEffect(() => {
@@ -752,94 +764,6 @@ export default function ManufacturerProfileEditor({
   }, [showSortDropdown]);
 
   if (!company) return <div>No company data found.</div>;
-
-  // Convert operating hours from GraphQL structure to display format with field mapping
-  const operatingHours = company.operatingHours
-    ? [
-        {
-          day: "Monday to Friday",
-          time: company.operatingHours.monToFri || "09:00 - 16:00",
-          field: "monToFri",
-        },
-        {
-          day: "Saturdays",
-          time: company.operatingHours.saturday || "08:30 - 14:00",
-          field: "saturday",
-        },
-        {
-          day: "Sundays",
-          time: company.operatingHours.sunday || "Closed",
-          field: "sunday",
-        },
-        {
-          day: "Public Holidays",
-          time: company.operatingHours.publicHoliday || "08:30 - 14:00",
-          field: "publicHoliday",
-        },
-      ]
-    : [];
-
-  // Time slot options for selection (30-minute increments)
-  const TIME_SLOTS = [
-    "06:00",
-    "06:30",
-    "07:00",
-    "07:30",
-    "08:00",
-    "08:30",
-    "09:00",
-    "09:30",
-    "10:00",
-    "10:30",
-    "11:00",
-    "11:30",
-    "12:00",
-    "12:30",
-    "13:00",
-    "13:30",
-    "14:00",
-    "14:30",
-    "15:00",
-    "15:30",
-    "16:00",
-    "16:30",
-    "17:00",
-    "17:30",
-    "18:00",
-    "18:30",
-    "19:00",
-    "19:30",
-    "20:00",
-  ];
-
-  const DEFAULT_RANGE = "09:00 - 16:00";
-
-  function minutesFromStr(t) {
-    if (!t) return 0;
-    const [hh, mm] = String(t).split(":").map(Number);
-    return (hh || 0) * 60 + (mm || 0);
-  }
-
-  function isAfter(a, b) {
-    if (!a || !b) return false;
-    return minutesFromStr(a) > minutesFromStr(b);
-  }
-
-  // Helpers to parse and format hour ranges
-  function splitRange(val) {
-    if (!val) return { open: "", close: "", closed: false };
-    const lower = String(val).toLowerCase();
-    if (lower === "closed") return { open: "", close: "", closed: true };
-    const m = String(val).match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
-    if (m) return { open: m[1], close: m[2], closed: false };
-    return { open: "", close: "", closed: false };
-  }
-
-  function formatRange(open, close, closed) {
-    if (closed) return "Closed";
-    if (open && close) return `${open} - ${close}`;
-    return ""; // empty until both are chosen
-  }
 
   // Convert social links from GraphQL structure to display format - always show all platforms
   const socialLinks = [
@@ -1085,39 +1009,7 @@ export default function ManufacturerProfileEditor({
     }
   };
 
-  // Function to handle saving all operating hours changes
-  const handleSaveAllOperatingHours = async () => {
-    try {
-      // Prepare both detailed daily structure and legacy summary
-      const legacy = deriveLegacyOperatingHours(dailyHours);
 
-      const operatingHoursUpdate = {
-        operatingHoursDaily: dailyHours,
-        operatingHours: legacy,
-      };
-
-      const updatedData = await updateCompanyField(
-        company.documentId,
-        operatingHoursUpdate
-      );
-
-      if (updatedData) {
-        setCompany((prevCompany) => ({
-          ...prevCompany,
-          operatingHoursDaily: dailyHours,
-          operatingHours: legacy,
-        }));
-
-        // Close edit mode if you're using editingField pattern
-        setEditingField(null);
-        setEditingOperatingHours({});
-      } else {
-        alert("Failed to update operating hours. Please try again.");
-      }
-    } catch (error) {
-      alert("Error updating operating hours. Please try again.");
-    }
-  };
 
   // Function to handle saving social links changes
   const handleSaveSocialLinks = async (socialLinksData) => {
@@ -1678,362 +1570,69 @@ export default function ManufacturerProfileEditor({
                 color: "#888",
                 fontWeight: 700,
                 marginBottom: 2,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between"
               }}
             >
-              Operating Hours
+              <span>Operating Hours</span>
+              {isOwner && (
+                <button
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => setShowOperatingHoursModal(true)}
+                  title="Edit operating hours"
+                >
+                  <Edit2 style={{ width: 16, height: 16, color: "#888" }} />
+                </button>
+              )}
             </div>
 
-            {/* Horizontal time slots row (owner-only) */}
-            {isOwner && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "stretch",
-                  gap: 12,
-                  overflowX: "auto",
-                  padding: "8px 4px",
-                  marginBottom: 8,
-                }}
-              >
-                <div style={{ display: "flex", gap: 12 }}>
-                  {operatingHours.map((h) => (
-                    <div
-                      key={h.field}
-                      style={{
-                        padding: "10px 14px",
-                        borderRadius: 9999,
-                        background: "#ffffff",
-                        border: "1px solid #eee",
-                        boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
-                        fontWeight: 700,
-                        fontSize: 14,
-                        color: "#222",
-                        whiteSpace: "nowrap",
-                        minWidth: 72,
-                        textAlign: "center",
-                        userSelect: "none",
-                      }}
-                    >
-                      {h.time}
+            {/* Operating hours display */}
+            <div
+              style={{
+                padding: "12px",
+                background: "#ffffff",
+                border: "1px solid #eee",
+                borderRadius: "8px",
+                boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+                marginBottom: 16,
+              }}
+            >
+              {company.operatingHours && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <div style={{ fontWeight: "600" }}>Monday to Friday</div>
+                    <div style={{ color: company.operatingHours.monToFri === "closed" ? "#e53e3e" : "#3182ce" }}>
+                      {company.operatingHours.monToFri || "Not specified"}
                     </div>
-                  ))}
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <div style={{ fontWeight: "600" }}>Saturdays</div>
+                    <div style={{ color: company.operatingHours.saturday === "closed" ? "#e53e3e" : "#3182ce" }}>
+                      {company.operatingHours.saturday || "Not specified"}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <div style={{ fontWeight: "600" }}>Sundays</div>
+                    <div style={{ color: company.operatingHours.sunday === "closed" ? "#e53e3e" : "#3182ce" }}>
+                      {company.operatingHours.sunday || "Not specified"}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <div style={{ fontWeight: "600" }}>Public Holidays</div>
+                    <div style={{ color: company.operatingHours.publicHoliday === "closed" ? "#e53e3e" : "#3182ce" }}>
+                      {company.operatingHours.publicHoliday || "Not specified"}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {editingField === "operatingHours" ? (
-              <div className="mt-3">
-                {(() => {
-                  const currentKey =
-                    OPERATING_DAY_ORDER[
-                      Math.min(
-                        operatingDayIndex,
-                        OPERATING_DAY_ORDER.length - 1
-                      )
-                    ];
-                  const currentMeta =
-                    operatingHours.find((h) => h.field === currentKey) || {};
-                  const currentValue =
-                    editingOperatingHours[currentKey] ?? currentMeta.time;
-                  const current = splitRange(currentValue);
 
-                  const chipBase = {
-                    padding: "10px 14px",
-                    borderRadius: 9999,
-                    background: "#ffffff",
-                    border: "1px solid #eee",
-                    boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
-                    fontWeight: 700,
-                    fontSize: 14,
-                    color: "#222",
-                    whiteSpace: "nowrap",
-                    userSelect: "none",
-                    cursor: "pointer",
-                    marginRight: 8,
-                    marginBottom: 8,
-                  };
-
-                  const renderChip = (id, label, selected, onClick) => (
-                    <div
-                      key={id}
-                      onClick={onClick}
-                      style={{
-                        ...chipBase,
-                        background: selected ? "#2f55d4" : "#ffffff",
-                        color: selected ? "#ffffff" : "#222222",
-                        border: selected
-                          ? "1px solid #2f55d4"
-                          : "1px solid #eee",
-                      }}
-                      role="button"
-                      aria-pressed={selected}
-                      tabIndex={0}
-                      onKeyDown={(e) =>
-                        (e.key === "Enter" || e.key === " ") && onClick()
-                      }
-                    >
-                      {label}
-                    </div>
-                  );
-
-                  const advanceToNextDay = () => {
-                    if (operatingDayIndex < OPERATING_DAY_ORDER.length - 1) {
-                      setOperatingDayIndex(operatingDayIndex + 1);
-                      setTempOpenTime(null);
-                      setOperatingPhase("open");
-                    } else {
-                      setOperatingPhase("review");
-                      setTempOpenTime(null);
-                    }
-                  };
-
-                  const handlePickOpen = (t) => {
-                    setTempOpenTime(t);
-                    setOperatingPhase("close");
-                  };
-
-                  const handlePickClose = (t) => {
-                    const open = tempOpenTime || current.open || TIME_SLOTS[0];
-                    setEditingOperatingHours((prev) => ({
-                      ...prev,
-                      [currentKey]: formatRange(open, t, false),
-                    }));
-                    setTempOpenTime(null);
-                    setOperatingPhase("open");
-                    advanceToNextDay();
-                  };
-
-                  const handleMarkClosed = () => {
-                    setEditingOperatingHours((prev) => ({
-                      ...prev,
-                      [currentKey]: "Closed",
-                    }));
-                    advanceToNextDay();
-                  };
-
-                  return (
-                    <div
-                      style={{
-                        borderRadius: 8,
-                        border: "1px solid #e5e7eb",
-                        background: "#fff",
-                        color: "#111827",
-                        padding: 12,
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          marginBottom: 8,
-                        }}
-                      >
-                        <div style={{ fontSize: 14, fontWeight: 600 }}>
-                          {operatingPhase === "review"
-                            ? "Review & Save Operating Hours"
-                            : `Set ${currentMeta.day || "Operating Hours"}`}
-                        </div>
-                        <div style={{ fontSize: 12, color: "#6b7280" }}>
-                          {operatingPhase === "review"
-                            ? "All days set"
-                            : `Step ${operatingDayIndex + 1} of ${
-                                OPERATING_DAY_ORDER.length
-                              }`}
-                        </div>
-                      </div>
-
-                      {operatingPhase !== "review" ? (
-                        <div>
-                          {operatingPhase === "open" ? (
-                            <>
-                              <div
-                                style={{
-                                  fontSize: 12,
-                                  color: "#6b7280",
-                                  marginBottom: 8,
-                                }}
-                              >
-                                Pick open time or mark Closed
-                              </div>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  flexWrap: "wrap",
-                                }}
-                              >
-                                {renderChip(
-                                  "closed-chip",
-                                  "Closed",
-                                  current.closed === true,
-                                  handleMarkClosed
-                                )}
-                                {TIME_SLOTS.map((t) =>
-                                  renderChip(
-                                    `open-${t}`,
-                                    t,
-                                    t === current.open,
-                                    () => handlePickOpen(t)
-                                  )
-                                )}
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <div
-                                style={{
-                                  fontSize: 12,
-                                  color: "#6b7280",
-                                  marginBottom: 8,
-                                }}
-                              >
-                                Pick close time
-                              </div>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  flexWrap: "wrap",
-                                }}
-                              >
-                                {(tempOpenTime
-                                  ? TIME_SLOTS.filter((t) =>
-                                      isAfter(t, tempOpenTime)
-                                    )
-                                  : TIME_SLOTS
-                                ).map((t) =>
-                                  renderChip(
-                                    `close-${t}`,
-                                    t,
-                                    t === current.close,
-                                    () => handlePickClose(t)
-                                  )
-                                )}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      ) : (
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 6,
-                          }}
-                        >
-                          {operatingHours.map((h) => (
-                            <div
-                              key={h.field}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                fontSize: 14,
-                              }}
-                            >
-                              <span style={{ color: "#6b7280" }}>{h.day}</span>
-                              <span style={{ fontWeight: 600 }}>
-                                {editingOperatingHours[h.field] ?? h.time}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingOperatingHours({});
-                            setOperatingPhase("idle");
-                            setTempOpenTime(null);
-                            setOperatingDayIndex(0);
-                            setEditingField(null);
-                          }}
-                          style={{
-                            padding: "6px 12px",
-                            border: "1px solid #e5e7eb",
-                            borderRadius: 8,
-                            background: "#f3f4f6",
-                            color: "#111827",
-                            fontSize: 14,
-                            cursor: "pointer",
-                          }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleSaveAllOperatingHours}
-                          style={{
-                            padding: "6px 12px",
-                            border: "1px solid #e5e7eb",
-                            borderRadius: 8,
-                            background: "#2563eb",
-                            color: "#fff",
-                            fontSize: 14,
-                            cursor: "pointer",
-                          }}
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            ) : (
-              <>
-                <div
-                  style={{
-                    fontSize: 15,
-                    margin: "0 0 8px 0",
-                    display: "grid",
-                    gridTemplateColumns: "auto auto",
-                    rowGap: 2,
-                    columnGap: 16,
-                  }}
-                >
-                  {operatingHours.map((h) => (
-                    <React.Fragment key={h.field}>
-                      <div style={{ fontWeight: 700 }}>{h.day}</div>
-                      <div>{h.time}</div>
-                    </React.Fragment>
-                  ))}
-                </div>
-                {isOwner && (
-                  <button
-                    style={{
-                      background: "none",
-                      border: "none",
-                      marginLeft: 2,
-                      cursor: "pointer",
-                    }}
-                    onClick={() => {
-                      setEditingField("operatingHours");
-                      // Initialize editing state with current values
-                      setEditingOperatingHours({
-                        monToFri:
-                          company.operatingHours?.monToFri || "09:00 - 16:00",
-                        saturday:
-                          company.operatingHours?.saturday || "08:30 - 14:00",
-                        sunday: company.operatingHours?.sunday || "Closed",
-                        publicHoliday:
-                          company.operatingHours?.publicHoliday ||
-                          "08:30 - 14:00",
-                      });
-                      setOperatingDayIndex(0);
-                      setOperatingPhase("open");
-                      setTempOpenTime(null);
-                      setSelectedDayFilters([]); // start with "All"
-                    }}
-                  >
-                    <Edit2 style={{ width: 16, height: 16, color: "#888" }} />
-                  </button>
-                )}
-              </>
-            )}
             {/* Company Profile Label */}
             <div
               style={{
@@ -2134,7 +1733,7 @@ export default function ManufacturerProfileEditor({
                 marginBottom: 6,
               }}
             >
-              Profile Photo & Promo Video
+              Profile Photo 
             </div>
            
             {/* CreateBranchModal is conditionally rendered based on state */}
@@ -2567,7 +2166,7 @@ export default function ManufacturerProfileEditor({
                     alignItems: "flex-start",
                     gap: 4,
                     width: "100%",
-                    marginLeft: 140,
+                    marginLeft: mobile ? 0 : 140,
                     paddingLeft: 0,
                   }}
                 >
@@ -2785,7 +2384,19 @@ export default function ManufacturerProfileEditor({
             alignItems: "stretch",
           }}
         >
-          {[...companyListings]
+          {/* Display branch information if filtering by branch */}
+          {branchFromUrl && <BranchLocationInfo />}
+          
+          {/* Display exact count of listings for the branch */}
+          {branchFromUrl && (
+            <div className="col-span-full mb-4">
+              <p className="text-gray-600">
+                Showing {filteredListings.length} listing{filteredListings.length !== 1 ? 's' : ''} for {branchFromUrl.name} branch
+              </p>
+            </div>
+          )}
+          
+          {[...(branchFromUrl ? filteredListings : companyListings)]
             .sort((a, b) => {
               if (sortBy === "Price") {
                 return parsePrice(a.price) - parsePrice(b.price);
@@ -2796,7 +2407,6 @@ export default function ManufacturerProfileEditor({
               }
               return 0;
             })
-            .slice(0, visibleCount)
             .map((listing, idx) => (
               <div
                 key={listing.documentId || listing.id}
@@ -3192,6 +2802,19 @@ export default function ManufacturerProfileEditor({
               status: "success",
             });
           }}
+        />
+
+        {/* Operating Hours Modal */}
+        <OperatingHoursModal
+          isOpen={showOperatingHoursModal}
+          onClose={() => setShowOperatingHoursModal(false)}
+          initialData={company?.operatingHours || {
+            monToFri: "",
+            saturday: "",
+            sunday: "",
+            publicHoliday: ""
+          }}
+          onSave={handleSaveOperatingHours}
         />
       </div>
     </>

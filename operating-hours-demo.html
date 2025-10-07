@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operating Hours Input Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #f5f5f5;
+        }
+        .invalid-input {
+            border-color: #ef4444;
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="container mx-auto py-8 px-4 max-w-4xl">
+        <h1 class="text-2xl font-bold mb-6">Operating Hours Input</h1>
+        
+        <div class="bg-white rounded-lg shadow p-4 md:p-6">
+            <h2 class="text-xl font-semibold mb-4">Business Hours</h2>
+            
+            <div class="grid gap-4" id="hours-container">
+                <!-- Days will be inserted here by JavaScript -->
+            </div>
+            
+            <div class="mt-4 text-sm text-gray-500">
+                <p>Enter times in 24-hour format (e.g., 08:00, 17:30)</p>
+                <p>Leave fields empty for closed days</p>
+            </div>
+        </div>
+        
+        <div class="mt-8 p-4 bg-gray-100 rounded-lg">
+            <h2 class="text-lg font-semibold mb-2">Current Values:</h2>
+            <pre id="output" class="whitespace-pre-wrap bg-white p-4 rounded border"></pre>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const daysOfWeek = [
+                'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+            ];
+            
+            const hoursContainer = document.getElementById('hours-container');
+            const output = document.getElementById('output');
+            
+            // Initialize hours object
+            const hours = {};
+            daysOfWeek.forEach(day => {
+                hours[day] = { open: '', close: '' };
+            });
+            
+            // Update output display
+            function updateOutput() {
+                output.textContent = JSON.stringify(hours, null, 2);
+            }
+            
+            // Validate time format
+            function validateTimeFormat(time) {
+                if (time === '') return true;
+                return /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time);
+            }
+            
+            // Create UI for each day
+            daysOfWeek.forEach(day => {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'grid grid-cols-1 md:grid-cols-3 gap-2 items-center border-b pb-3 last:border-b-0 last:pb-0';
+                
+                dayElement.innerHTML = `
+                    <div class="font-medium text-gray-700">${day}</div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm text-gray-500">Open</label>
+                        <input
+                            type="text"
+                            class="border rounded p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="08:00"
+                            data-day="${day}"
+                            data-type="open"
+                            aria-label="${day} opening time"
+                        />
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm text-gray-500">Close</label>
+                        <input
+                            type="text"
+                            class="border rounded p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="17:00"
+                            data-day="${day}"
+                            data-type="close"
+                            aria-label="${day} closing time"
+                        />
+                    </div>
+                `;
+                
+                hoursContainer.appendChild(dayElement);
+            });
+            
+            // Add event listeners to all inputs
+            document.querySelectorAll('input[data-day]').forEach(input => {
+                input.addEventListener('input', function(e) {
+                    const day = this.dataset.day;
+                    const type = this.dataset.type;
+                    const value = this.value;
+                    
+                    if (validateTimeFormat(value)) {
+                        hours[day][type] = value;
+                        this.classList.remove('invalid-input');
+                    } else {
+                        this.classList.add('invalid-input');
+                    }
+                    
+                    updateOutput();
+                });
+                
+                input.addEventListener('blur', function(e) {
+                    if (this.value !== '' && !validateTimeFormat(this.value)) {
+                        alert(`Invalid time format for ${this.dataset.day} ${this.dataset.type}. Please use HH:MM format (e.g., 08:00)`);
+                    }
+                });
+            });
+            
+            // Initialize output
+            updateOutput();
+        });
+    </script>
+</body>
+</html>

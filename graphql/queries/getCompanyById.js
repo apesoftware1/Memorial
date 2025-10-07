@@ -8,14 +8,14 @@ export const GET_COMPANY_BY_ID = gql`
           videoPublicId
           profilePicUrl
           profilePicPublicId
-       branches {
-        name
+      branches {
+         documentId
+          name
         location {
           address
           latitude
           longitude
           mapUrl
-       
         }
       }
       phone
@@ -56,8 +56,9 @@ export const GET_COMPANY_BY_ID = gql`
       }
         listings(pagination: { limit: -1 }) {
         createdAt
-        branches {
-        name
+       branches {
+         documentId
+          name
         location {
           address
           latitude
