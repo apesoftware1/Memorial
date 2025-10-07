@@ -28,7 +28,7 @@ import RelatedProducts from "./RelatedProducts";
 import WhatsAppContactDrawer from "./WhatsAppContactDrawer";
 import { useSearchParams } from "next/navigation";
 
-export default function ProductShowcase({ listing, id,}) {
+export default function ProductShowcase({ listing, id, allListings = [], currentIndex = 0, onNavigate }) {
   if (!listing) {
     return null;
   }
@@ -36,8 +36,40 @@ export default function ProductShowcase({ listing, id,}) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileDropdown, setMobileDropdown] = useState(null);
   const [selectedBranch, setSelectedBranch] = useState(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const searchParams = useSearchParams();
   const branch = searchParams.get("branch"); // Prioritize branchId prop
+  
+  // Navigation functions for Next/Previous
+  const handlePrevious = () => {
+    if (onNavigate && typeof onNavigate === 'function') {
+      setIsTransitioning(true);
+      onNavigate('prev');
+      setTimeout(() => setIsTransitioning(false), 300);
+    } else if (allListings.length > 0) {
+      setIsTransitioning(true);
+      const prevIndex = (currentIndex - 1 + allListings.length) % allListings.length;
+      const prevListing = allListings[prevIndex];
+      if (prevListing && prevListing.id) {
+        window.location.href = `/product/${prevListing.id}${branch ? `?branch=${branch}` : ''}`;
+      }
+    }
+  };
+  
+  const handleNext = () => {
+    if (onNavigate && typeof onNavigate === 'function') {
+      setIsTransitioning(true);
+      onNavigate('next');
+      setTimeout(() => setIsTransitioning(false), 300);
+    } else if (allListings.length > 0) {
+      setIsTransitioning(true);
+      const nextIndex = (currentIndex + 1) % allListings.length;
+      const nextListing = allListings[nextIndex];
+      if (nextListing && nextListing.id) {
+        window.location.href = `/product/${nextListing.id}${branch ? `?branch=${branch}` : ''}`;
+      }
+    }
+  };
   useEffect(() => {
     if (listing.branches && listing.branches.length > 0) {
       setSelectedBranch(
@@ -107,7 +139,7 @@ export default function ProductShowcase({ listing, id,}) {
         <span className="mx-1">&gt;</span>
         <span className="text-gray-900 font-semibold">{listing.title}</span>
       </nav>
-      <div className="bg-white rounded shadow max-w-6xl mx-auto px-0 mt-2">
+      <div className={`bg-white rounded shadow max-w-6xl mx-auto px-0 mt-2 transition-opacity duration-300 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
         {/* Product Header */}
         <div className="px-4">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 mt-4">
@@ -127,8 +159,8 @@ export default function ProductShowcase({ listing, id,}) {
                 </span>
               </div>
               {/* Location and navigation links on the same horizontal line */}
-              <div className="flex flex-row items-center justify-between w-full mb-1">
-                <p className="text-sm text-gray-700 mt-2">
+              <div className="flex flex-row items-center justify-between w-full mb-1 flex-wrap">
+                <p className="text-sm text-gray-700 mt-2 w-full sm:w-auto">
                   {listing.company?.location || "N/A"} |
                   <>
                     {distanceInfo?.distance?.text ? (
@@ -156,14 +188,20 @@ export default function ProductShowcase({ listing, id,}) {
                     )}
                   </>
                 </p>
-                <div className="text-sm text-gray-600 flex items-center gap-2 mt-2">
-                  <Link href="#" className="hover:underline">
+                <div className="text-sm text-gray-600 flex items-center gap-2 mt-2 w-full sm:w-auto justify-end">
+                  <button 
+                    onClick={handlePrevious} 
+                    className="hover:underline cursor-pointer"
+                  >
                     &lt; Prev
-                  </Link>
+                  </button>
                   <span className="mx-1">|</span>
-                  <Link href="#" className="hover:underline">
+                  <button 
+                    onClick={handleNext} 
+                    className="hover:underline cursor-pointer"
+                  >
                     Next &gt;
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>

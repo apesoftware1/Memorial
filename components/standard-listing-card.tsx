@@ -345,13 +345,13 @@ export function StandardListingCard({
           <div className="flex flex-col mt-0">
             <a
               href={listing.company.name}
-              className="manufacturer-link font-medium text-gray-900 text-base mb-2"
+              className="manufacturer-link font-medium text-gray-900 text-base mb-1"
               onClick={(e) => e.stopPropagation()}
               aria-label={`View ${listing.manufacturer} profile`}
             >
               {listing.manufacturer || listing.company?.name}
             </a>
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               {(listing.enquiries !== undefined || listing.inquiries_c?.length !== undefined) && (
                 <div className="flex items-center text-green-600">
                   <Check className="w-3.5 h-3.5 mr-1" />

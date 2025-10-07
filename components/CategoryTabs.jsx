@@ -36,6 +36,11 @@ export default function CategoryTabs({ categories, activeTab, setActiveTab }) {
                   width={item.name === 'SINGLE' ? 44 : 32}
                   height={24}
                   className={`object-contain ${item.name === 'SINGLE' ? 'mb-0' : 'mb-[-6px]'} mx-auto`}
+                  style={
+                    item.name === 'DOUBLE' || item.name === 'PLAQUES' 
+                    ? { filter: 'brightness(0) invert(0.9)' } 
+                    : {}
+                  }
                 />
               </div>
               <span
