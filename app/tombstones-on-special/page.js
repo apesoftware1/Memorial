@@ -10,10 +10,12 @@ import Header from "@/components/Header"
 // Import the useFavorites hook and our new components
 import { useFavorites } from "@/context/favorites-context"
 import { FavoriteButton } from "@/components/favorite-button"
+import BranchSelectionModal from "@/components/BranchSelectionModal"
 
 // Import Apollo Client for data fetching
 import { useQuery } from "@apollo/client"
 import { GET_LISTINGS } from "@/graphql/queries/getListings"
+import { useRouter } from "next/navigation"
 
 export default function TombstonesOnSpecial() {
   // State for UI controls (for Header component)
@@ -21,6 +23,51 @@ export default function TombstonesOnSpecial() {
     mobileMenuOpen: false,
     mobileDropdown: null,
   });
+  
+  const router = useRouter();
+  
+  // Branch selection modal state
+  const [showBranchesModal, setShowBranchesModal] = useState(false);
+  const [selectedListing, setSelectedListing] = useState(null);
+
+  // When user clicks a listing: if multiple branches -> open modal directly, if one -> go to product showcase
+  const handleListingPrimaryClick = (listing) => {
+    try {
+      const branches = Array.isArray(listing?.branches) ? listing.branches : [];
+      if (branches.length > 1) {
+        setSelectedListing(listing);
+        setShowBranchesModal(true);
+        return true; // handled here; prevent internal navigation
+      }
+      if (branches.length === 1) {
+        const branchId = branches[0]?.id || branches[0]?.documentId;
+        const listingId = listing?.documentId || listing?.id;
+        if (listingId && branchId) {
+          router.push(`/product/${listingId}?branch=${branchId}`);
+          return true; // handled
+        }
+      }
+    } catch (e) {
+      console.error('Failed handling primary click for listing', e);
+    }
+    return false; // not handled; allow default navigation
+  };
+
+  // When a branch is selected in the modal
+  const handleBranchSelect = (branch) => {
+    try {
+      const listingId = selectedListing?.documentId || selectedListing?.id;
+      const branchId = branch?.id || branch?.documentId;
+      if (listingId && branchId) {
+        setShowBranchesModal(false);
+        // Pass the full branch object as a serialized JSON string in the query
+        const branchData = encodeURIComponent(JSON.stringify(branch));
+        router.push(`/product/${listingId}?branch=${branchId}&branchData=${branchData}`);
+      }
+    } catch (e) {
+      console.error('Failed to navigate to product showcase from branch selection', e);
+    }
+  };
 
   // State for filter visibility on mobile
   const [showFilters, setShowFilters] = useState(false)
@@ -299,12 +346,23 @@ export default function TombstonesOnSpecial() {
           
           {/* View Details Link */}
           <div>
-            <Link
-              href={`/tombstones-on-special/${product.id}`}
-              className="text-blue-600 hover:text-blue-800 text-sm hover:underline"
+            <a
+              onClick={(e) => {
+                e.preventDefault();
+                // Get the original listing from the raw data
+                const originalListing = allListings.find(l => l.documentId === product.id || l.id === product.id);
+                if (originalListing && handleListingPrimaryClick(originalListing)) {
+                  // If handled by branch logic, don't follow the link
+                  return;
+                }
+                // Otherwise, follow the default link
+                router.push(`/tombstones-on-special/${product.id}`);
+              }}
+              className="text-blue-600 hover:text-blue-800 text-sm hover:underline cursor-pointer"
             >
-              View Details
-            </Link>
+                  View Details {product.branches && product.branches.length > 1 && 
+                    `(Available at ${product.branches.length} branches)`}
+            </a>
           </div>
         </div>
       </div>
@@ -389,12 +447,22 @@ export default function TombstonesOnSpecial() {
               <CountdownTimer endDate={product.endDate} compact={true} />
             </div>
             <div className="mt-2">
-              <Link
-                href={`/tombstones-on-special/${product.id}`}
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  const listing = specialListings.find(l => l.documentId === product.id);
+                  if (listing && listing.branches && listing.branches.length > 1) {
+                    handleListingPrimaryClick(listing);
+                  } else {
+                    router.push(`/product/${product.id}`);
+                  }
+                }}
                 className="text-blue-600 hover:text-blue-800 text-sm hover:underline"
               >
-                View Details
-              </Link>
+                View Details {product.branches && product.branches.length > 1 && 
+                  `(Available at ${product.branches.length} branches)`}
+              </a>
             </div>
           </div>
         </div>
@@ -438,12 +506,21 @@ export default function TombstonesOnSpecial() {
                 <p className="font-semibold text-gray-800">{product.manufacturer}</p>
                 <p className="text-sm text-gray-600">{product.location}</p>
               </div>
-              <Link
-                href={`/tombstones-on-special/${product.id}`}
-                className="mt-2 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm transition-colors"
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  const listing = specialListings.find(l => l.documentId === product.id);
+                  if (listing && listing.branches && listing.branches.length > 1) {
+                    handleListingPrimaryClick(listing);
+                  } else {
+                    router.push(`/product/${product.id}`);
+                  }
+                }}
+                className="mt-2 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm transition-colors cursor-pointer"
               >
                 View Details
-              </Link>
+              </a>
               </div>
             </div>
           </div>
@@ -714,6 +791,14 @@ export default function TombstonesOnSpecial() {
           </div>
         </div>
       </div>
-    </div>
-  )
-}
+    
+    {/* Branch Selection Modal */}
+    {showBranchesModal && selectedListing && (
+      <BranchSelectionModal
+        listing={selectedListing}
+        onClose={() => setShowBranchesModal(false)}
+        onBranchSelect={handleBranchSelect}
+      />
+    )}
+  </div>
+)}

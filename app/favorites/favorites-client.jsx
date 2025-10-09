@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { ChevronLeft, ChevronRight, Facebook, Twitter, Linkedin, Mail } from "lucide-react"
 import { useFavorites } from "@/context/favorites-context"
-import { ProductCard } from "@/components/product-card"
+import { ProductCard } from "@/components/product-card.jsx"
 
 export function FavoritesClientContent() {
   const { favorites, totalFavorites } = useFavorites()
@@ -85,7 +85,16 @@ export function FavoritesClientContent() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-8">
         {currentFavorites.map((product) => (
-          <ProductCard key={product.id} product={product} />
+          <ProductCard 
+            key={product.id || ""}
+            id={product.id || ""}
+            name={product.title || ""}
+            price={product.price || ""}
+            material={product.manufacturer || ""}
+            image={product.image || "/placeholder.jpg"}
+            tag={product.tag || ""}
+            details={product.details || ""}
+          />
         ))}
       </div>
 

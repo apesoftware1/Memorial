@@ -22,6 +22,7 @@ const IndexRender = ({
   // State for featured listings pagination
   const [featuredActiveIndex, setFeaturedActiveIndex] = useState(0);
   const featuredScrollRef = useRef(null);
+  const listingsSectionRef = useRef(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -64,11 +65,18 @@ const IndexRender = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount
 
-  // Helper to change page without reloading the page or scrolling
+  // Helper to change page and scroll to top of listings section
   const goToPage = (nextPage) => {
     const clamped = Math.max(1, nextPage); // allow moving beyond local dataset; parent can fetch
     setCurrentPage(clamped);
-    // No scrolling behavior - keep user's current scroll position
+    
+    // Scroll to the top of the listings section using the ref
+    if (listingsSectionRef.current) {
+      listingsSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      // Fallback to scrolling to top of page
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // PAGINATION LOGIC (all from strapiListings)
@@ -152,7 +160,7 @@ const IndexRender = ({
   return (
     <>
       {/* 4. Featured Listings Section */}
-      <section className="mt-0 bg-gray-50 pb-0 mb-0 pt-2">
+      <section ref={listingsSectionRef} className="mt-0 bg-gray-50 pb-0 mb-0 pt-2">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center mb-0">

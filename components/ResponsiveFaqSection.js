@@ -82,7 +82,7 @@ export default function ResponsiveFaqSection() {
             {faqData.map((faq, idx) => (
               <div key={idx} className="group relative w-full">
                 <button
-                  className={`${isMobile ? 'w-full' : 'md:w-[900px]'} flex items-center py-3 ${isMobile ? 'px-4' : 'md:px-0'} text-left focus:outline-none transition-colors relative ${openIndex === idx ? "bg-[#f9f9f9]" : ""}`}
+                  className={`${isMobile ? 'w-full' : 'md:w-[900px]'} flex items-center py-3 ${isMobile ? 'px-4' : 'md:px-0'} text-left focus:outline-none transition-colors relative ${openIndex === idx ? "bg-[#f9f9f9]" : "hover:bg-[#f9f9f9]"}`}
                   onClick={() => setOpenIndex(openIndex === idx ? null : idx)}
                   aria-expanded={openIndex === idx}
                 >

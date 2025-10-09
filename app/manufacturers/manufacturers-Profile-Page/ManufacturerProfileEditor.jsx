@@ -1412,7 +1412,7 @@ export default function ManufacturerProfileEditor({
                 </div>
                 <div
                   style={{
-                    border: "2px solid #00baff",
+                    border: isOwner ? "2px solid #00baff" : " #e0e0e0",
                     borderRadius: 8,
                     background: "#fff",
                     padding: 8,
@@ -1596,9 +1596,9 @@ export default function ManufacturerProfileEditor({
               style={{
                 padding: "12px",
                 background: "#ffffff",
-                border: "1px solid #eee",
+                border: "#e0e0e0",
                 borderRadius: "8px",
-                boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+               
                 marginBottom: 16,
               }}
             >
@@ -1654,7 +1654,7 @@ export default function ManufacturerProfileEditor({
                     minHeight: "120px",
                     padding: "12px",
                     borderRadius: 8,
-                    border: "1px solid #ccc",
+                    border: "#e0e0e0",
                     fontSize: 15,
                     fontFamily: "Arial, sans-serif",
                     resize: "vertical",
@@ -1694,9 +1694,9 @@ export default function ManufacturerProfileEditor({
               <>
                 <div
                   style={{
-                    border: "1px solid #e0e0e0",
+                    border: "#e0e0e0",
                     borderRadius: 8,
-                    background: "#fafbfc",
+                    background: "#fff",
                     padding: 14,
                     fontSize: 15,
                     marginBottom: 8,
@@ -1772,16 +1772,16 @@ export default function ManufacturerProfileEditor({
             >
               {/* Profile Picture Box */}
               <div
-                style={{
-                  border: "2px solid #00baff",
-                  borderRadius: 8,
-                  background: "#fff",
-                  padding: 8,
-                  position: "relative",
-                  minWidth: 240,
-                  minHeight: 120,
-                  flex: "1 1 280px",
-                }}
+                  style={{
+                    border: isOwner ? "2px solid #00baff" : " #e0e0e0",
+                    borderRadius: 8,
+                    background: "#fff",
+                    padding: 8,
+                    position: "relative",
+                    minWidth: 240,
+                    minHeight: 120,
+                    flex: "1 1 280px",
+                  }}
               >
                 <div
                   style={{
@@ -1826,7 +1826,7 @@ export default function ManufacturerProfileEditor({
               {/* Promo Video Box - Locked */}
               <div
                 style={{
-                  border: "2px solid #00baff",
+                  border: isOwner ? "2px solid #00baff" : " #e0e0e0",
                   borderRadius: 8,
                   background: "#fff",
                   padding: 8,
@@ -1989,7 +1989,7 @@ export default function ManufacturerProfileEditor({
             </div>
             <div
               style={{
-                border: "2px solid #00baff",
+                border: isOwner ? "2px solid #00baff" : "#e0e0e0",
                 borderRadius: 8,
                 background: "#fff",
                 padding: 8,

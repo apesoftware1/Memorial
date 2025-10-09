@@ -61,7 +61,7 @@ export default function MobileFaqSection() {
             {faqData.map((faq, idx) => (
               <div key={idx} className="group relative w-full">
                 <button
-                  className={`w-full flex items-center py-3 px-4 text-left focus:outline-none transition-colors relative ${openIndex === idx ? "bg-[#f9f9f9]" : ""}`}
+                  className={`w-full flex items-center py-3 px-4 text-left focus:outline-none transition-colors relative ${openIndex === idx ? "bg-[#f9f9f9]" : "hover:bg-[#f9f9f9] w-[900px]"}`}
                   onClick={() => setOpenIndex(openIndex === idx ? null : idx)}
                   aria-expanded={openIndex === idx}
                 >
