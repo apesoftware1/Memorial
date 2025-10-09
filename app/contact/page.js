@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
+import { submitContactEnquiry } from '../../graphql/mutations/SubmitContactEnquiry';
 
 export default function ContactPage() {
   const { toast } = useToast();
@@ -43,8 +44,9 @@ export default function ContactPage() {
     setIsSubmitting(true);
     
     try {
-      // Here you would typically send the form data to your backend
-      // For now, we'll just simulate a successful submission
+      await submitContactEnquiry(formData);
+      alert("✅ Inquiry sent successfully!");
+
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       toast({
