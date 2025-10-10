@@ -22,6 +22,7 @@ const IndexRender = ({
   // State for featured listings pagination
   const [featuredActiveIndex, setFeaturedActiveIndex] = useState(0);
   const featuredScrollRef = useRef(null);
+  const listingsSectionRef = useRef(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -64,11 +65,23 @@ const IndexRender = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount
 
-  // Helper to change page without reloading the page or scrolling
+  // Helper to change page and scroll to top of listings section
   const goToPage = (nextPage) => {
     const clamped = Math.max(1, nextPage); // allow moving beyond local dataset; parent can fetch
     setCurrentPage(clamped);
-    // No scrolling behavior - keep user's current scroll position
+    
+    // Update URL with page parameter without full navigation
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', clamped.toString());
+    window.history.pushState({}, '', url.toString());
+    
+    // Scroll to the top of the listings section using the ref
+    if (listingsSectionRef.current) {
+      listingsSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      // Fallback to scrolling to top of page
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // PAGINATION LOGIC (all from strapiListings)
@@ -76,6 +89,9 @@ const IndexRender = ({
   const standardPerPage = 5;
   const featuredPerPage = 3;
 
+  
+  // Featured listings are always shown on all pages (not paginated)
+  const featuredToShow = featuredListings.slice(0, featuredPerPage);
   
   // Premium Listings (paginated)
   const premiumStart = (currentPage - 1) * premiumPerPage;
@@ -152,7 +168,7 @@ const IndexRender = ({
   return (
     <>
       {/* 4. Featured Listings Section */}
-      <section className="mt-0 bg-gray-50 pb-0 mb-0 pt-2">
+      <section ref={listingsSectionRef} className="mt-0 bg-gray-50 pb-0 mb-0 pt-2">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center mb-0">
@@ -368,24 +384,97 @@ const IndexRender = ({
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage === 1}
             className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed"
+            aria-label="Previous page"
           >
             Previous
           </button>
-          {[...Array(totalPages)].map((_, idx) => (
-            <button
-              key={idx + 1}
-              onClick={() => goToPage(idx + 1)}
-              className={`py-2 px-4 border border-gray-300 bg-white text-sm font-medium ${
-                currentPage === idx + 1 ? "text-blue-600 font-bold bg-blue-50" : "text-gray-500 hover:text-blue-600"
-              }`}
-            >
-              {idx + 1}
-            </button>
-          ))}
+          {totalPages <= 5 ? (
+            // Show all page numbers if 5 or fewer pages
+            [...Array(totalPages)].map((_, idx) => (
+              <button
+                key={idx + 1}
+                onClick={() => goToPage(idx + 1)}
+                className={`py-2 px-4 border border-gray-300 bg-white text-sm font-medium ${
+                  currentPage === idx + 1 ? "text-blue-600 font-bold bg-blue-50" : "text-gray-500 hover:text-blue-600"
+                }`}
+                aria-label={`Page ${idx + 1}`}
+                aria-current={currentPage === idx + 1 ? "page" : undefined}
+              >
+                {idx + 1}
+              </button>
+            ))
+          ) : (
+            // Show limited page numbers with ellipsis for more than 5 pages
+            <>
+              {/* First page always shown */}
+              <button
+                onClick={() => goToPage(1)}
+                className={`py-2 px-4 border border-gray-300 bg-white text-sm font-medium ${
+                  currentPage === 1 ? "text-blue-600 font-bold bg-blue-50" : "text-gray-500 hover:text-blue-600"
+                }`}
+                aria-label="Page 1"
+                aria-current={currentPage === 1 ? "page" : undefined}
+              >
+                1
+              </button>
+              
+              {/* Show ellipsis if not near the start */}
+              {currentPage > 3 && (
+                <span className="py-2 px-4 border border-gray-300 bg-white text-sm text-gray-500">
+                  ...
+                </span>
+              )}
+              
+              {/* Pages around current page */}
+              {[...Array(totalPages)].map((_, idx) => {
+                const pageNum = idx + 1;
+                // Show current page and one page before/after
+                if (
+                  (pageNum > 1 && pageNum < totalPages) && // Not first or last page
+                  (Math.abs(pageNum - currentPage) <= 1) // Within 1 of current page
+                ) {
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => goToPage(pageNum)}
+                      className={`py-2 px-4 border border-gray-300 bg-white text-sm font-medium ${
+                        currentPage === pageNum ? "text-blue-600 font-bold bg-blue-50" : "text-gray-500 hover:text-blue-600"
+                      }`}
+                      aria-label={`Page ${pageNum}`}
+                      aria-current={currentPage === pageNum ? "page" : undefined}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                }
+                return null;
+              })}
+              
+              {/* Show ellipsis if not near the end */}
+              {currentPage < totalPages - 2 && (
+                <span className="py-2 px-4 border border-gray-300 bg-white text-sm text-gray-500">
+                  ...
+                </span>
+              )}
+              
+              {/* Last page always shown */}
+              <button
+                onClick={() => goToPage(totalPages)}
+                className={`py-2 px-4 border border-gray-300 bg-white text-sm font-medium ${
+                  currentPage === totalPages ? "text-blue-600 font-bold bg-blue-50" : "text-gray-500 hover:text-blue-600"
+                }`}
+                aria-label={`Page ${totalPages}`}
+                aria-current={currentPage === totalPages ? "page" : undefined}
+              >
+                {totalPages}
+              </button>
+            </>
+          )}
           <button
             onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage >= totalPages}
             className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed"
+            aria-label="Next page"
           >
             Next
           </button>

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { FavoritesClientContent } from "./favorites-client"
+import { FavoritesClientContent } from "./favorites-client.jsx"
 
 export const metadata = {
   title: "Your Favorites | MemorialHub",

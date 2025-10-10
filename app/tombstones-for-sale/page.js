@@ -105,9 +105,16 @@ export default function Home() {
   
   // Use only backend data
   // const allListings = data?.listings || [];
-  const allListings = useMemo(() => (
-    Array.isArray(data?.listings) ? data.listings : []
-  ), [data?.listings]);
+  const allListings = useMemo(() => {
+    // Filter out listings where specials.active is true
+    return Array.isArray(data?.listings) 
+      ? data.listings.filter(listing => {
+          // Check if listing has specials array and if any special is active
+          return !(listing.specials && Array.isArray(listing.specials) && 
+                  listing.specials.some(special => special.active === true));
+        })
+      : [];
+  }, [data?.listings]);
   const featuredManufacturers = [];
   const seenManufacturers = new Set();
   if (data?.listings) {

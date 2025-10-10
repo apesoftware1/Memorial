@@ -17,10 +17,27 @@ export default function ProductGallery({
           src={images[selectedIndex] || "/placeholder.svg"}
           alt={productTitle}
           fill
-          className="object-cover"
+          className="object-contain"
+          sizes="(max-width: 768px) 100vw, 700px"
         />
         <div className="absolute top-3 right-3 z-10">
-          <FavoriteButton product={favoriteProduct} size="md" />
+          {favoriteProduct && (
+            <FavoriteButton 
+              product={{
+                id: favoriteProduct.id || favoriteProduct.documentId || "",
+                title: favoriteProduct.title || "",
+                price: favoriteProduct.price || "",
+                description: favoriteProduct.description || "",
+                image: images[0] || "/placeholder.jpg",
+                company: {
+                  name: favoriteProduct.company?.name || "",
+                  location: favoriteProduct.company?.location || ""
+                },
+                badge: favoriteProduct.badge || ""
+              }}
+              size="md"
+            />
+          )}
         </div>
       </div>
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-1 mb-4 px-2 sm:px-0">

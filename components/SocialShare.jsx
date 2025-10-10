@@ -86,7 +86,23 @@ export default function SocialShare({ socialLinks, product }) {
     <div className="flex flex-col items-center">
       <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm w-full md:max-w-xs">
         <div className="mb-4">
-          <FavoriteButton product={product} size="md" />
+          {product && (
+            <FavoriteButton 
+              product={{
+                id: product.id || product.documentId || "",
+                title: product.title || product.name || "",
+                price: product.price || "",
+                description: product.description || "",
+                image: product.mainImageUrl || product.image || "/placeholder.jpg",
+                company: {
+                  name: product.company?.name || "",
+                  location: product.company?.location || ""
+                },
+                badge: product.badge || ""
+              }}
+              size="md"
+            />
+          )}
         </div>
         <hr className="my-4 border-gray-200" />
         <h3 className="text-sm font-medium mb-2">Share with Friends</h3>

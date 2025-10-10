@@ -45,7 +45,16 @@ export function ProductCard({ id, name, price, material, image, tag, details }) 
         </div>
       </Link>
       <div className="px-4 pb-3">
-        <FavoriteButton productId={id} />
+        <FavoriteButton 
+          productId={id}
+          title={name}
+          price={price}
+          details={details || ""}
+          image={image || "/placeholder.jpg"}
+          manufacturer={material} 
+          location=""
+          tag={tag}
+        />
       </div>
     </div>
   )

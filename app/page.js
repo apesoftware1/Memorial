@@ -217,16 +217,22 @@ const strapiListings = useMemo(() => data?.listings || [], [data]);
 useEffect(() => {
   if (!Array.isArray(strapiListings) || loading || error) return;
 
-  
+  // Filter out listings with active specials
+  const nonSpecialListings = strapiListings.filter(listing => {
+    // Check if listing has specials array and if any special is active
+    return !(listing.specials && 
+             Array.isArray(listing.specials) && 
+             listing.specials.length > 0 && 
+             listing.specials.some(special => special?.active));
+  });
 
-  const premium = strapiListings.filter(l => l.isPremium);
-  const featured = strapiListings.filter(l => l.isFeatured);
-  const standard = strapiListings.filter(l =>
+  const premium = nonSpecialListings.filter(l => l.isPremium);
+  const featured = nonSpecialListings.filter(l => l.isFeatured);
+  const standard = nonSpecialListings.filter(l =>
     typeof l.isStandard === 'boolean'
       ? l.isStandard
       : !l.isPremium && !l.isFeatured
   );
-
 
   setPremListings(premium);
   setFeaturedListings(featured);
@@ -350,7 +356,7 @@ useEffect(() => {
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
               <h4 className="text-lg font-semibold mb-4">About TombstonesFinder.co.za</h4>
-              <p className="text-yellow-500 text-sm opacity-50">
+              <p className="text-yellow-500 text-sm">
                 TombstonesFinder.co.za helps you honour your loved one by finding the perfect tombstone. Search trusted local manufacturers, compare designs, materials, budgets, and custom options — all in one place.
               </p>
             </div>
