@@ -207,6 +207,7 @@ export function PremiumListingCard({
               className="object-cover"
               sizes="(max-width: 768px) 100vw"
             />
+          
             {/* Camera icon and counter overlay for main image */}
             <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/80 text-white px-2 py-0.5 rounded text-xs font-medium z-10">
               <Camera className="w-4 h-4" />
@@ -248,6 +249,18 @@ export function PremiumListingCard({
             <div className="text-2xl font-bold text-blue-600">
               {formatPrice(listing.price)}
             </div>
+              {/* Special badge overlay */}
+            {typeof window !== 'undefined' && window.location.pathname.includes('tombstones-on-special') && (
+              <div className="absolute top-0 left-0 z-20">
+                <Image
+                  src="/special badge/Specials_Badge.svg"
+                  alt="Special Offer"
+                  width={80}
+                  height={80}
+                  className="object-contain"
+                />
+              </div>
+            )}
             <div className="mt-1 mb-0 flex gap-2">
               <Badge
                 className={cn("text-white text-sm px-3 py-1 rounded")}
@@ -467,6 +480,18 @@ export function PremiumListingCard({
               className="object-cover"
               priority
             />
+            {/* Special badge overlay for desktop */}
+            {typeof window !== 'undefined' && window.location.pathname.includes('tombstones-on-special') && (
+              <div className="absolute top-0 left-0 z-20">
+                <Image
+                  src="/special badge/Specials_Badge.svg"
+                  alt="Special Offer"
+                  width={100}
+                  height={100}
+                  className="object-contain"
+                />
+              </div>
+            )}
             <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-black/70 text-white px-2 py-1 rounded text-sm">
               <Camera className="w-4 h-4" />
               <span>{getImageCount()}</span>

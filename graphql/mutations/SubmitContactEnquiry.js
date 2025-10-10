@@ -1,10 +1,13 @@
 export async function submitContactEnquiry(payload) {
   try {
-    const response = await fetch(`${process.env.STRAPI_API_URL}/enquiries`, {
+    // Use the public Next.js environment variable
+    const apiUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonefinder.co.za';
+    
+    const response = await fetch(`${apiUrl}/enquiries`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // If you’re sending from frontend and it’s public, no token needed.
+        // If you're sending from frontend and it's public, no token needed.
         // If authenticated route, include Bearer token.
       },
       body: JSON.stringify({ data: payload }),

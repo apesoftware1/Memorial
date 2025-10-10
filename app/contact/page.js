@@ -4,9 +4,11 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { submitContactEnquiry } from '../../graphql/mutations/SubmitContactEnquiry';
+import { useRouter } from 'next/navigation';
 
 export default function ContactPage() {
   const { toast } = useToast();
+  const router = useRouter();
   const [formData, setFormData] = useState({
     inquiryType: '',
     firstName: '',
@@ -16,8 +18,7 @@ export default function ContactPage() {
     companyName: '',
     province: '',
     cityOrTown: '',
-    message: '',
-    agreeToTerms: false
+    message: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -31,15 +32,6 @@ export default function ContactPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!formData.agreeToTerms) {
-      toast({
-        title: "Error",
-        description: "You must agree to the terms and conditions",
-        variant: "destructive"
-      });
-      return;
-    }
     
     setIsSubmitting(true);
     
@@ -55,6 +47,9 @@ export default function ContactPage() {
         variant: "default"
       });
       
+      // Navigate to home page
+      router.push('/');
+      
       // Reset form
       setFormData({
         inquiryType: '',
@@ -66,7 +61,7 @@ export default function ContactPage() {
         province: '',
         cityOrTown: '',
         message: '',
-        agreeToTerms: false
+        // agreeToTerms: false
       });
     } catch (error) {
       toast({
@@ -271,21 +266,7 @@ export default function ContactPage() {
               ></textarea>
             </div>
 
-            <div className="mb-6">
-              <div className="flex items-start">
-                <input
-                  type="checkbox"
-                  name="agreeToTerms"
-                  checked={formData.agreeToTerms}
-                  onChange={handleChange}
-                  className="mt-1 mr-2"
-                  required
-                />
-                <label className="text-sm text-gray-600">
-                  I agree to the use or processing of my personal information by TombstonesFinder.co.za for the purpose of handling this request and in accordance with TombstonesFinder.co.za's Privacy Statement.
-                </label>
-              </div>
-            </div>
+
 
             <div className="text-center">
               <button
