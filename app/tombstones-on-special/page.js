@@ -6,16 +6,21 @@ import Link from "next/link"
 import { ChevronDown, Search, ChevronRight, Camera } from "lucide-react"
 import CountdownTimer from "@/components/countdown-timer"
 import Header from "@/components/Header"
+import { useRouter } from "next/navigation"
 
 // Import the useFavorites hook and our new components
 import { useFavorites } from "@/context/favorites-context"
 import { FavoriteButton } from "@/components/favorite-button"
+import { PremiumListingCardModal } from "@/components/premium-listing-card-modal"
 
 // Import Apollo Client for data fetching
 import { useQuery } from "@apollo/client"
 import { GET_LISTINGS } from "@/graphql/queries/getListings"
 
 export default function TombstonesOnSpecial() {
+  // Initialize router
+  const router = useRouter();
+  
   // State for UI controls (for Header component)
   const [uiState, setUiState] = useState({
     mobileMenuOpen: false,
@@ -42,6 +47,10 @@ export default function TombstonesOnSpecial() {
 
   // Add the useFavorites hook to the component
   const { totalFavorites } = useFavorites()
+  
+  // Branch selection modal state
+  const [showBranchesModal, setShowBranchesModal] = useState(false);
+  const [selectedListing, setSelectedListing] = useState(null);
 
   // State for mobile sort dropdown
   const [showSortDropdown, setShowSortDropdown] = useState(false);
@@ -68,6 +77,43 @@ export default function TombstonesOnSpecial() {
   const handleMobileDropdownToggle = useCallback((section) => {
     setUiState(prev => ({ ...prev, mobileDropdown: prev.mobileDropdown === section ? null : section }))
   }, []);
+  
+  // When user clicks a listing: if multiple branches -> open modal directly, if one -> go to product showcase
+  const handleListingPrimaryClick = (listing) => {
+    try {
+      const branches = Array.isArray(listing?.branches) ? listing.branches : [];
+      if (branches.length > 1) {
+        setSelectedListing(listing);
+        setShowBranchesModal(true);
+        return true; // handled here; prevent internal navigation
+      }
+      if (branches.length === 1) {
+        const branchName = branches[0]?.name;
+        const listingId = listing?.documentId || listing?.id;
+        if (listingId && branchName) {
+          router.push(`/tombstones-on-special/${listingId}?branch=${branchName}`);
+          return true; // handled
+        }
+      }
+    } catch (e) {
+      console.error('Failed handling primary click for listing', e);
+    }
+    return false; // not handled; allow default navigation
+  };
+
+  // When a branch is selected in the modal
+  const handleBranchSelect = (branch) => {
+    try {
+      const listingId = selectedListing?.documentId || selectedListing?.id;
+      const branchName = branch?.name;
+      if (listingId && branchName) {
+        setShowBranchesModal(false);
+        router.push(`/tombstones-on-special/${listingId}?branch=${branchName}`);
+      }
+    } catch (e) {
+      console.error('Failed to navigate to product showcase from branch selection', e);
+    }
+  };
 
   // Map a raw listing from GraphQL to the format expected by our card components
   const mapListingToProduct = useCallback((listing) => {
@@ -501,6 +547,15 @@ export default function TombstonesOnSpecial() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+      
+      {/* Branch Selection Modal */}
+      {showBranchesModal && selectedListing && (
+        <PremiumListingCardModal
+          listing={selectedListing}
+          onClose={() => setShowBranchesModal(false)}
+          onBranchSelect={handleBranchSelect}
+        />
+      )}
 
       {/* Search Bar */}
       <div className="bg-[#00647A] py-4">

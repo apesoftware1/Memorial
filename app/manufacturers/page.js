@@ -5,13 +5,15 @@ import { GET_MANUFACTURERS } from '@/graphql/queries/getManufacturers';
 import ManufacturerCard from '../components/ManufacturerCard';
 import Header from "@/components/Header";
 import { useState, useCallback, useRef, useEffect } from "react";
-import { ChevronDown, MapPin, Search } from "lucide-react";
+import { ChevronDown, MapPin, Search, Check } from "lucide-react";
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
+import locationsData from '@/sa_locations_expanded.json';
 
 export default function ManufacturersPage() {
   const { loading, error, data } = useQuery(GET_MANUFACTURERS);
   const sortModalRef = useRef(null);
+  const locationDropdownRef = useRef(null);
 
   // State for UI controls (for Header component)
   const [uiState, setUiState] = useState({
@@ -25,11 +27,31 @@ export default function ManufacturersPage() {
     stoneType: "",
     location: "",
   });
+  
+  // State for suggestions
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
+  const suggestionsRef = useRef(null);
 
   // State for sort dropdown visibility
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   // State for sort order
   const [sortOrder, setSortOrder] = useState("Default");
+  
+  // State for filtered manufacturers
+  const [filteredManufacturers, setFilteredManufacturers] = useState([]);
+  const [isFiltered, setIsFiltered] = useState(false);
+  
+  // State for location dropdown
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  // State for expanded provinces and cities in dropdown
+  const [expandedProvinces, setExpandedProvinces] = useState({});
+  const [expandedCities, setExpandedCities] = useState({});
+  // State for selected location items
+  const [selectedProvince, setSelectedProvince] = useState(null);
+  const [selectedCity, setSelectedCity] = useState(null);
+  const [selectedTown, setSelectedTown] = useState(null);
   
   // Handle click outside of sort modal
   useEffect(() => {
@@ -37,22 +59,95 @@ export default function ManufacturersPage() {
       if (sortModalRef.current && !sortModalRef.current.contains(event.target)) {
         setShowSortDropdown(false);
       }
+      
+      if (locationDropdownRef.current && !locationDropdownRef.current.contains(event.target)) {
+        setShowLocationDropdown(false);
+      }
+      
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
     }
     
-    if (showSortDropdown) {
+    if (showSortDropdown || showLocationDropdown || showSuggestions) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showSortDropdown]);
+  }, [showSortDropdown, showLocationDropdown, showSuggestions]);
+  
+  // Filter suggestions based on input
+  const handleSearchInputChange = (e) => {
+    const userInput = e.target.value;
+    setSearchFilters({ ...searchFilters, manufacturerName: userInput });
+    
+    if (!data?.companies || !Array.isArray(data.companies)) {
+      setFilteredSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    
+    // Filter companies based on input
+    if (userInput.trim() === '') {
+      setFilteredSuggestions([]);
+      setShowSuggestions(false);
+    } else {
+      const filteredOptions = data.companies
+        .filter(company => 
+          company.name.toLowerCase().includes(userInput.toLowerCase())
+        )
+        .slice(0, 10); // Limit to 10 suggestions
+      
+      setFilteredSuggestions(filteredOptions);
+      setShowSuggestions(true);
+      setActiveSuggestionIndex(0);
+    }
+  };
+  
+  // Handle keyboard navigation
+  const handleKeyDown = (e) => {
+    // If no suggestions or not showing suggestions, return
+    if (!showSuggestions || filteredSuggestions.length === 0) return;
+    
+    // Arrow Up
+    if (e.keyCode === 38) {
+      if (activeSuggestionIndex === 0) {
+        return;
+      }
+      setActiveSuggestionIndex(activeSuggestionIndex - 1);
+    }
+    // Arrow Down
+    else if (e.keyCode === 40) {
+      if (activeSuggestionIndex === filteredSuggestions.length - 1) {
+        return;
+      }
+      setActiveSuggestionIndex(activeSuggestionIndex + 1);
+    }
+    // Enter
+    else if (e.keyCode === 13) {
+      e.preventDefault();
+      setSearchFilters({ 
+        ...searchFilters, 
+        manufacturerName: filteredSuggestions[activeSuggestionIndex].name 
+      });
+      setShowSuggestions(false);
+    }
+  };
+  
+  // Handle suggestion click
+  const handleSuggestionClick = (suggestion) => {
+    setSearchFilters({ ...searchFilters, manufacturerName: suggestion.name });
+    setShowSuggestions(false);
+  };
+  
   // State for active province
   const [activeProvince, setActiveProvince] = useState(null);
   // State for active city
   const [activeCity, setActiveCity] = useState(null);
 
-  // Provinces data
-  const provinces = [];
+  // Provinces data from imported JSON
+  const provinces = locationsData.provinces || [];
 
   // Manufacturer groups for sidebar
   const manufacturerGroups = [
@@ -62,6 +157,84 @@ export default function ManufacturersPage() {
     "Premium Memorials",
     "Family Monuments",
   ];
+  
+  // Toggle province expansion in dropdown
+  const toggleProvince = (provinceName) => {
+    setExpandedProvinces(prev => ({
+      ...prev,
+      [provinceName]: !prev[provinceName]
+    }));
+  };
+  
+  // Toggle city expansion in dropdown
+  const toggleCity = (cityName, provinceName) => {
+    setExpandedCities(prev => ({
+      ...prev,
+      [`${provinceName}-${cityName}`]: !prev[`${provinceName}-${cityName}`]
+    }));
+  };
+  
+  // Filter manufacturers based on search criteria
+  const filterManufacturers = () => {
+    if (!data?.companies || !Array.isArray(data.companies)) {
+      return;
+    }
+    
+    const nameFilter = searchFilters.manufacturerName.toLowerCase().trim();
+    const locationFilter = searchFilters.location.toLowerCase().trim();
+    
+    const filtered = data.companies.filter(company => {
+      const nameMatch = nameFilter === '' || 
+        (company.name && company.name.toLowerCase().includes(nameFilter));
+      
+      const locationMatch = locationFilter === '' || 
+        (company.location && company.location.toLowerCase().includes(locationFilter));
+      
+      return nameMatch && locationMatch;
+    });
+    
+    setFilteredManufacturers(filtered);
+    setIsFiltered(true);
+  };
+  
+  // Handle search button click
+  const handleSearchClick = () => {
+    filterManufacturers();
+  };
+  
+  // Handle selection of province, city, or town
+  const handleProvinceSelect = (province) => {
+    setSelectedProvince(province);
+    setSelectedCity(null);
+    setSelectedTown(null);
+    setSearchFilters(prev => ({
+      ...prev,
+      location: province.name
+    }));
+    setShowLocationDropdown(false);
+  };
+  
+  const handleCitySelect = (city, province) => {
+    setSelectedProvince(province);
+    setSelectedCity(city);
+    setSelectedTown(null);
+    setSearchFilters(prev => ({
+      ...prev,
+      location: `${province.name}, ${city.name}`
+    }));
+    setShowLocationDropdown(false);
+  };
+  
+  const handleTownSelect = (town, city, province) => {
+    setSelectedProvince(province);
+    setSelectedCity(city);
+    setSelectedTown(town);
+    setSearchFilters(prev => ({
+      ...prev,
+      location: `${province.name}, ${city.name}, ${town}`
+    }));
+    setShowLocationDropdown(false);
+  };
 
   // Handlers for province and city selection
   const handleProvinceClick = (provinceName) => {
@@ -118,7 +291,13 @@ export default function ManufacturersPage() {
                   placeholder="Manufacturer Name"
                   className="w-full p-2 pl-10 pr-8 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   value={searchFilters.manufacturerName}
-                  onChange={(e) => setSearchFilters({ ...searchFilters, manufacturerName: e.target.value })}
+                  onChange={handleSearchInputChange}
+                  onKeyDown={handleKeyDown}
+                  onClick={() => {
+                    if (searchFilters.manufacturerName && data?.companies) {
+                      handleSearchInputChange({ target: { value: searchFilters.manufacturerName } });
+                    }
+                  }}
                 />
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                   <Search className="h-4 w-4 text-gray-400" />
@@ -126,45 +305,30 @@ export default function ManufacturersPage() {
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                   <ChevronDown className="h-4 w-4 text-gray-400" />
                 </div>
-              </div>
-            </div>
-            <div className="relative flex-grow">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search Stone Type"
-                  className="w-full p-2 pl-10 pr-8 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  value={searchFilters.stoneType}
-                  onChange={(e) => setSearchFilters({ ...searchFilters, stoneType: e.target.value })}
-                />
-                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                  <svg
-                    className="h-4 w-4 text-gray-400"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
+                {showSuggestions && filteredSuggestions.length > 0 && (
+                  <div 
+                    ref={suggestionsRef}
+                    className="absolute z-50 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-y-auto"
                   >
-                    <path
-                      d="M20 11H4C3.44772 11 3 11.4477 3 12V20C3 20.5523 3.44772 21 4 21H20C20.5523 21 21 20.5523 21 20V12C21 11.4477 20.5523 11 20 11Z"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M7 11V7C7 5.93913 7.42143 4.92172 8.17157 4.17157C8.92172 3.42143 9.93913 3 11 3H13C14.0609 3 15.0783 3.42143 15.8284 4.17157C16.5786 4.92172 17 5.93913 17 7V11"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                  <ChevronDown className="h-4 w-4 text-gray-400" />
-                </div>
+                    <ul className="py-1">
+                      {filteredSuggestions.map((suggestion, index) => (
+                        <li
+                          key={suggestion.id || index}
+                          className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${
+                            index === activeSuggestionIndex ? 'bg-amber-50 text-amber-700' : ''
+                          }`}
+                          onClick={() => handleSuggestionClick(suggestion)}
+                        >
+                          {suggestion.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
+     
+              
             <div className="relative flex-grow">
               <div className="relative">
                 <input
@@ -173,7 +337,7 @@ export default function ManufacturersPage() {
                   className="w-full p-2 pl-10 pr-8 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent cursor-pointer bg-white"
                   value={searchFilters.location}
                   readOnly
-                  // onClick={() => setLocationModalOpen(true)}
+                  onClick={() => setShowLocationDropdown(!showLocationDropdown)}
                 />
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                   <MapPin className="h-4 w-4 text-gray-400" />
@@ -181,24 +345,111 @@ export default function ManufacturersPage() {
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                   <ChevronDown className="h-4 w-4 text-gray-400" />
                 </div>
-                {/*
-                {locationModalOpen && isClient &&
-                  createPortal(
-                    <LocationModal
-                      isOpen={locationModalOpen}
-                      onClose={() => setLocationModalOpen(false)}
-                      locationsData={locationsData}
-                      onSelectLocation={(loc) => {
-                        setSearchFilters({ ...searchFilters, location: typeof loc === 'string' ? loc : 'Near me' });
-                        setLocationModalOpen(false);
-                      }}
-                    />, document.body
-                  )
-                }
-                */}
+                
+                {/* Hierarchical Location Dropdown */}
+                {showLocationDropdown && (
+                  <div 
+                    ref={locationDropdownRef}
+                    className="absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-96 overflow-y-auto"
+                  >
+                    {/* Provinces */}
+                    {provinces.map((province) => (
+                      <div key={province.name} className="border-b border-gray-100 last:border-b-0">
+                        <div 
+                          className="flex items-center justify-between p-3 hover:bg-gray-50 cursor-pointer"
+                          onClick={() => toggleProvince(province.name)}
+                        >
+                          <div 
+                            className="flex items-center"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleProvinceSelect(province);
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              className="mr-2 h-4 w-4"
+                              checked={selectedProvince?.name === province.name}
+                              onChange={() => {}}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <span className="font-medium">{province.name}</span>
+                            {selectedProvince?.name === province.name && !selectedCity && (
+                              <span className="ml-2 text-xs text-blue-600">({province.cities.length} cities)</span>
+                            )}
+                          </div>
+                          <ChevronDown 
+                            className={`h-4 w-4 text-gray-400 transition-transform ${expandedProvinces[province.name] ? 'rotate-180' : ''}`} 
+                          />
+                        </div>
+                        
+                        {/* Cities */}
+                        {expandedProvinces[province.name] && (
+                          <div className="pl-4 border-t border-gray-100">
+                            {province.cities.map((city) => (
+                              <div key={city.name} className="border-b border-gray-100 last:border-b-0">
+                                <div 
+                                  className="flex items-center justify-between p-2 hover:bg-gray-50 cursor-pointer"
+                                  onClick={() => toggleCity(city.name, province.name)}
+                                >
+                                  <div 
+                                    className="flex items-center"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCitySelect(city, province);
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      className="mr-2 h-4 w-4"
+                                      checked={selectedCity?.name === city.name && selectedProvince?.name === province.name}
+                                      onChange={() => {}}
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <span>{city.name}</span>
+                                    {selectedCity?.name === city.name && selectedProvince?.name === province.name && !selectedTown && (
+                                      <span className="ml-2 text-xs text-blue-600">({city.towns.length} towns)</span>
+                                    )}
+                                  </div>
+                                  <ChevronDown 
+                                    className={`h-4 w-4 text-gray-400 transition-transform ${expandedCities[`${province.name}-${city.name}`] ? 'rotate-180' : ''}`} 
+                                  />
+                                </div>
+                                
+                                {/* Towns */}
+                                {expandedCities[`${province.name}-${city.name}`] && (
+                                  <div className="pl-4 border-t border-gray-100">
+                                    {city.towns.map((town) => (
+                                      <div 
+                                        key={town}
+                                        className="flex items-center p-2 hover:bg-gray-50 cursor-pointer"
+                                        onClick={() => handleTownSelect(town, city, province)}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          className="mr-2 h-4 w-4"
+                                          checked={selectedTown === town && selectedCity?.name === city.name && selectedProvince?.name === province.name}
+                                          onChange={() => {}}
+                                          onClick={(e) => e.stopPropagation()}
+                                        />
+                                        <span className="text-sm">{town}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-            <button className="bg-amber-500 hover:bg-amber-600 text-white h-10 px-4 py-0 text-sm rounded transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400 whitespace-nowrap">
+            <button 
+              onClick={handleSearchClick}
+              className="bg-amber-500 hover:bg-amber-600 text-white h-10 px-4 py-0 text-sm rounded transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400 whitespace-nowrap">
               <Search className="h-4 w-4" />
               <span className="truncate">Search for Manufacturers</span>
             </button>
@@ -250,7 +501,7 @@ export default function ManufacturersPage() {
       {/* Results Header and columns in same max-width container */}
       <div className="container mx-auto px-0 w-full max-w-4xl">
         <div className="flex justify-between items-center mb-4 w-full bg-gray-100 px-4 py-2 pr-0 rounded">
-          <span className="font-bold text-lg text-gray-800">{resultsCount}</span>
+          <span className="font-bold text-lg text-gray-800">{isFiltered ? filteredManufacturers.length : resultsCount}</span>
           <span className="text-gray-600 ml-2">Results</span>
           <div className="flex items-center w-full max-w-xs justify-end">
             {/* Mobile Sort Button */}
@@ -300,16 +551,17 @@ export default function ManufacturersPage() {
         <div className="flex flex-col md:flex-row gap-0 w-auto">
           {/* Left: Manufacturers List and Pagination */}
           <div className="w-auto md:w-4/5 flex flex-col space-y-4 items-start">
-            {Array.isArray(data?.companies) && data.companies.map((company) => (
-          <ManufacturerCard
-            key={company.documentId}
-            manufacturer={{
-              ...company,
-              logo: company.logoUrl || '',
-              rating: company.googleRating,
-            }}
-          />
-        ))}
+            {Array.isArray(isFiltered ? filteredManufacturers : data?.companies) && 
+              (isFiltered ? filteredManufacturers : data?.companies).map((company) => (
+                <ManufacturerCard
+                  key={company.documentId}
+                  manufacturer={{
+                    ...company,
+                    logo: company.logoUrl || '',
+                    rating: company.googleRating,
+                  }}
+                />
+              ))}
             {resultsCount > 5 && (
               <div className="mt-8 flex justify-start w-auto">
                 <nav className="inline-flex rounded-md shadow">

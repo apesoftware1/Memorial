@@ -148,12 +148,17 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(1);
 
   // Navigation function for search results
-  const handleNavigateToResults = useCallback(() => {
+  const handleNavigateToResults = useCallback((categoryParam = "") => {
     // Build query parameters from current filters and category
     const params = new URLSearchParams();
     
-    // Add category - activeTab corresponds directly to category index
-    if (categories && categories.length > 0) {
+    // Check if a category parameter was passed from the search modal
+    if (categoryParam && categoryParam.includes('category=')) {
+      const categoryValue = categoryParam.split('category=')[1].split('&')[0];
+      params.append('category', decodeURIComponent(categoryValue));
+    } 
+    // Otherwise use the active tab category
+    else if (categories && categories.length > 0) {
       // Use the same sorting logic as CategoryTabs
       const desiredOrder = ["SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"];
       const sortedCategories = desiredOrder

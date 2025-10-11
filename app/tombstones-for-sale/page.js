@@ -201,6 +201,65 @@ export default function Home() {
   const filterListingsFrom = (filtersObj) => {
     let filtered = [...allListings];
     const f = filtersObj || activeFilters;
+    
+    // Search parameter (against comprehensive product details)
+    if (f.search && f.search !== '') {
+      const searchQuery = f.search.toLowerCase();
+      filtered = filtered.filter(listing => {
+        // Basic listing information
+        const title = (listing?.title || '').toLowerCase();
+        const description = (listing?.description || '').toLowerCase();
+        const companyName = (listing?.company?.name || '').toLowerCase();
+        const companyLocation = (listing?.company?.location || '').toLowerCase();
+        
+        // Product details from productDetails object
+        const stoneType = ((listing?.productDetails?.stoneType || [])
+          .map(item => item?.value || '')
+          .join(' ')).toLowerCase();
+        
+        const color = ((listing?.productDetails?.color || [])
+          .map(item => item?.value || '')
+          .join(' ')).toLowerCase();
+          
+        const style = ((listing?.productDetails?.style || [])
+          .map(item => item?.value || '')
+          .join(' ')).toLowerCase();
+          
+        const slabStyle = ((listing?.productDetails?.slabStyle || [])
+          .map(item => item?.value || '')
+          .join(' ')).toLowerCase();
+          
+        const customization = ((listing?.productDetails?.customization || [])
+          .map(item => item?.value || '')
+          .join(' ')).toLowerCase();
+          
+        // Additional details that might be present
+        const dimensions = ((listing?.productDetails?.dimensions || [])
+          .map(item => item?.value || '')
+          .join(' ')).toLowerCase();
+          
+        const material = ((listing?.productDetails?.material || [])
+          .map(item => item?.value || '')
+          .join(' ')).toLowerCase();
+          
+        const category = (listing?.listing_category?.name || '').toLowerCase();
+        
+        // Check if search query matches any of the fields
+        return title.includes(searchQuery) || 
+               description.includes(searchQuery) || 
+               companyName.includes(searchQuery) || 
+               companyLocation.includes(searchQuery) || 
+               stoneType.includes(searchQuery) || 
+               color.includes(searchQuery) || 
+               style.includes(searchQuery) || 
+               slabStyle.includes(searchQuery) || 
+               customization.includes(searchQuery) || 
+               dimensions.includes(searchQuery) || 
+               material.includes(searchQuery) || 
+               category.includes(searchQuery);
+      });
+    }
+    
     // Category (exact)
     if (f.category) {
       filtered = filtered.filter(listing => (listing.listing_category?.name || '').toLowerCase() === f.category.toLowerCase());
@@ -264,6 +323,8 @@ export default function Home() {
     if (!searchParams) return;
     const nextFilters = { ...activeFilters };
     // Map URL params to our filter keys (support multiple synonyms)
+    const query = searchParams.get('query');
+    const search = searchParams.get('search');
     const cat = searchParams.get('category');
     const colour = searchParams.get('colour') || searchParams.get('color');
     const mat = searchParams.get('material') || searchParams.get('stoneType');
@@ -273,6 +334,10 @@ export default function Home() {
     const minP = searchParams.get('minPrice');
     const maxP = searchParams.get('maxPrice');
 
+    // Use search parameter if present, otherwise fall back to query parameter
+    if (search) nextFilters.search = search;
+    else if (query) nextFilters.search = query;
+    
     if (cat) nextFilters.category = cat;
     if (colour) { nextFilters.colour = colour; nextFilters.color = colour; }
     if (mat) nextFilters.stoneType = mat;
