@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
-import { ChevronDown, X } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { ChevronDown, X, Search } from "lucide-react";
 import SearchForm from "@/components/SearchForm";
 import FilterDropdown from "@/components/FilterDropdown";
 import LocationModal from "@/components/LocationModal";
 import CategoryTabs from "@/components/CategoryTabs.jsx";
 import { SearchLoader } from "@/components/ui/loader";
+import { AnimatePresence, motion } from "framer-motion";
 
 // Default filter options with updated price ranges
 const defaultFilterOptions = {
@@ -133,6 +134,11 @@ const SearchContainer = ({
   onNavigateToResults = null, // Add navigation callback
   allListings = [], // Add all listings for filtering
 }) => {
+  const router = useRouter();
+  const [currentQuery, setCurrentQuery] = useState("");
+  const [isSearchFormFocused, setIsSearchFormFocused] = useState(false);
+  const [showFullScreenModal, setShowFullScreenModal] = useState(false);
+  const searchFormRef = useRef(null);
   // State for UI controls
   const [uiState, setUiState] = useState({
     openDropdown: null,
@@ -655,11 +661,37 @@ const SearchContainer = ({
     const next = filterListingsFrom(allListings, filters);
     setFilteredListings(next);
     setTimeout(() => setInternalIsSearching(false), 300);
-    // Navigate to results page if callback provided
+    
+    // Navigate to results page with category parameter
     if (onNavigateToResults) {
-      onNavigateToResults();
+      // Get the current category if available
+      let categoryParam = "";
+      if (selectedCategory) {
+        categoryParam = `&category=${encodeURIComponent(selectedCategory)}`;
+      } else if (categories && categories.length > 0 && activeTab !== undefined) {
+        const desiredOrder = [
+          "SINGLE",
+          "DOUBLE",
+          "CHILD",
+          "HEAD",
+          "PLAQUES",
+          "CREMATION",
+        ];
+        const sortedCategories = desiredOrder
+          .map((name) =>
+            categories.find((cat) => cat?.name && cat.name.toUpperCase() === name)
+          )
+          .filter(Boolean);
+        const selectedCategoryObj = sortedCategories[activeTab];
+        if (selectedCategoryObj) {
+          categoryParam = `&category=${encodeURIComponent(selectedCategoryObj.name)}`;
+        }
+      }
+      
+      // Include the category parameter in the navigation
+      onNavigateToResults(categoryParam);
     }
-  }, [onNavigateToResults, filterListingsFrom, allListings, filters]);
+  }, [onNavigateToResults, filterListingsFrom, allListings, filters, selectedCategory, categories, activeTab]);
 
   const defaultGetSearchButtonText = useCallback(() => {
     const searching =
@@ -822,56 +854,242 @@ const SearchContainer = ({
             </h2>
 
             {/* Search Form */}
-            <SearchForm
-              onSearch={(searchTerm) => {
-                const searchTermLower = searchTerm.toLowerCase();
+            <div 
+              ref={searchFormRef}
+              className="relative w-full"
+              onClick={() => setShowFullScreenModal(true)}
+            >
+              <SearchForm
+                onSearch={(searchTerm) => {
+                  const searchTermLower = searchTerm.toLowerCase();
+                  setCurrentQuery(searchTerm);
+                  setIsSearchFormFocused(true);
 
-                // Update search filter in real-time as user types
-                if (setFilters) {
-                  setFilters((prev) => ({ ...prev, search: searchTerm }));
-                }
-
-                if (setSelectedCategory) {
-                  if (searchTermLower.includes("premium")) {
-                    setSelectedCategory("PREMIUM");
-                  } else if (searchTermLower.includes("family")) {
-                    setSelectedCategory("FAMILY");
-                  } else if (searchTermLower.includes("child")) {
-                    setSelectedCategory("CHILD");
-                  } else if (searchTermLower.includes("head")) {
-                    setSelectedCategory("HEAD");
-                  } else if (searchTermLower.includes("cremation")) {
-                    setSelectedCategory("CREMATION");
-                  }
-                }
-
-                if (setFilters) {
-                  const newFilters = { ...filters };
-
-                  if (
-                    searchTermLower.includes("cheap") ||
-                    searchTermLower.includes("affordable")
-                  ) {
-                    newFilters.minPrice = "R 5,001";
-                    newFilters.maxPrice = "R 15,000";
+                  // Update search filter in real-time as user types
+                  if (setFilters) {
+                    setFilters((prev) => ({ ...prev, search: searchTerm }));
                   }
 
-                  if (searchTermLower.includes("granite")) {
-                    newFilters.stoneType = "Granite";
-                  } else if (searchTermLower.includes("marble")) {
-                    newFilters.stoneType = "Marble";
+                  if (setSelectedCategory) {
+                    if (searchTermLower.includes("premium")) {
+                      setSelectedCategory("PREMIUM");
+                    } else if (searchTermLower.includes("family")) {
+                      setSelectedCategory("FAMILY");
+                    } else if (searchTermLower.includes("child")) {
+                      setSelectedCategory("CHILD");
+                    } else if (searchTermLower.includes("head")) {
+                      setSelectedCategory("HEAD");
+                    } else if (searchTermLower.includes("cremation")) {
+                      setSelectedCategory("CREMATION");
+                    }
                   }
 
-                  setFilters(newFilters);
-                }
-              }}
-              onSearchSubmit={(searchContent) => {
-                // Add search content to filters for URL params and immediate filtering
-                if (setFilters) {
-                  setFilters((prev) => ({ ...prev, search: searchContent }));
-                }
-              }}
-            />
+                  if (setFilters) {
+                    const newFilters = { ...filters };
+
+                    if (
+                      searchTermLower.includes("cheap") ||
+                      searchTermLower.includes("affordable")
+                    ) {
+                      newFilters.minPrice = "R 5,001";
+                      newFilters.maxPrice = "R 15,000";
+                    }
+
+                    if (searchTermLower.includes("granite")) {
+                      newFilters.stoneType = "Granite";
+                    } else if (searchTermLower.includes("marble")) {
+                      newFilters.stoneType = "Marble";
+                    }
+
+                    setFilters(newFilters);
+                  }
+                }}
+                onSearchSubmit={(searchContent) => {
+                  // Add search content to filters for URL params and immediate filtering
+                  if (setFilters) {
+                    setFilters((prev) => ({ ...prev, search: searchContent }));
+                  }
+                }}
+              />
+              <button
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-primary text-white p-2 rounded-full hover:bg-primary/90 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (currentQuery.trim()) {
+                    router.push(`/search?query=${encodeURIComponent(currentQuery)}`);
+                  }
+                }}
+              >
+                <Search size={18} />
+              </button>
+            </div>
+            
+            {/* Full Screen Modal */}
+            <AnimatePresence>
+              {showFullScreenModal && (
+                <motion.div 
+                  className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowFullScreenModal(false)}
+                >
+                  <motion.div 
+                    className="w-full max-w-2xl p-6"
+                    initial={{ 
+                      scale: 0.5,
+                      opacity: 0,
+                      y: 100
+                    }}
+                    animate={{ 
+                      scale: 1,
+                      opacity: 1,
+                      y: 0
+                    }}
+                    exit={{ 
+                      scale: 0.5,
+                      opacity: 0,
+                      y: 100
+                    }}
+                    transition={{
+                      type: "spring",
+                      damping: 25,
+                      stiffness: 300
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="relative w-full">
+                      <SearchForm
+                onSearch={(searchTerm) => {
+                  const searchTermLower = searchTerm.toLowerCase();
+                  setCurrentQuery(searchTerm);
+
+                  // Update search filter in real-time as user types
+                  if (setFilters) {
+                    setFilters((prev) => ({ ...prev, search: searchTerm }));
+                  }
+
+                  if (setSelectedCategory) {
+                    if (searchTermLower.includes("premium")) {
+                      setSelectedCategory("PREMIUM");
+                    } else if (searchTermLower.includes("family")) {
+                      setSelectedCategory("FAMILY");
+                    } else if (searchTermLower.includes("child")) {
+                      setSelectedCategory("CHILD");
+                    } else if (searchTermLower.includes("head")) {
+                      setSelectedCategory("HEAD");
+                    } else if (searchTermLower.includes("cremation")) {
+                      setSelectedCategory("CREMATION");
+                    }
+                  }
+
+                  if (setFilters) {
+                    const newFilters = { ...filters };
+
+                    if (
+                      searchTermLower.includes("cheap") ||
+                      searchTermLower.includes("affordable")
+                    ) {
+                      newFilters.minPrice = "R 5,001";
+                      newFilters.maxPrice = "R 15,000";
+                    }
+
+                    if (searchTermLower.includes("granite")) {
+                      newFilters.stoneType = "Granite";
+                    } else if (searchTermLower.includes("marble")) {
+                      newFilters.stoneType = "Marble";
+                    }
+
+                    setFilters(newFilters);
+                  }
+                }}
+                onSubmit={(searchContent) => {
+                  // Add search content to filters for URL params and immediate filtering
+                  if (setFilters) {
+                    setFilters((prev) => ({ ...prev, search: searchContent }));
+                  }
+                  
+                  // Navigate to search page with query and category
+                  if (router && searchContent.trim()) {
+                    let searchUrl = `/tombstones-for-sale?search=${encodeURIComponent(searchContent)}`;
+                    
+                    // Add category parameter if available
+                    if (selectedCategory) {
+                      searchUrl += `&category=${encodeURIComponent(selectedCategory)}`;
+                    } else if (categories && categories.length > 0 && activeTab !== undefined) {
+                      const desiredOrder = [
+                        "SINGLE",
+                        "DOUBLE",
+                        "CHILD",
+                        "HEAD",
+                        "PLAQUES",
+                        "CREMATION"
+                      ];
+                      const sortedCategories = desiredOrder
+                        .map((name) =>
+                          categories.find((cat) => cat?.name && cat.name.toUpperCase() === name)
+                        )
+                        .filter(Boolean);
+                      const selectedCategoryObj = sortedCategories[activeTab];
+                      if (selectedCategoryObj) {
+                        searchUrl += `&category=${encodeURIComponent(selectedCategoryObj.name)}`;
+                      }
+                    }
+                    
+                    router.push(searchUrl);
+                    setShowFullScreenModal(false);
+                  }
+                }}
+                autoFocus={true}
+              />
+                      <button
+                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-primary text-white p-2 rounded-full hover:bg-primary/90 transition-colors"
+                        onClick={() => {
+                          if (currentQuery.trim()) {
+                            // Include category in URL if selected
+                            let searchUrl = `/tombstones-for-sale?search=${encodeURIComponent(currentQuery)}`;
+                            
+                            // Add category parameter if available
+                            if (selectedCategory) {
+                              searchUrl += `&category=${encodeURIComponent(selectedCategory)}`;
+                            } else if (categories && categories.length > 0 && activeTab !== undefined) {
+                              const desiredOrder = [
+                                "SINGLE",
+                                "DOUBLE",
+                                "CHILD",
+                                "HEAD",
+                                "PLAQUES",
+                                "CREMATION"
+                              ];
+                              const sortedCategories = desiredOrder
+                                .map((name) =>
+                                  categories.find((cat) => cat?.name && cat.name.toUpperCase() === name)
+                                )
+                                .filter(Boolean);
+                              const selectedCategoryObj = sortedCategories[activeTab];
+                              if (selectedCategoryObj) {
+                                searchUrl += `&category=${encodeURIComponent(selectedCategoryObj.name)}`;
+                              }
+                            }
+                            
+                            router.push(searchUrl);
+                            setShowFullScreenModal(false);
+                          }
+                        }}
+                      >
+                        <Search size={18} />
+                      </button>
+                    </div>
+                    <button 
+                      className="absolute top-4 right-4 text-white bg-black/20 p-2 rounded-full hover:bg-black/40 transition-colors"
+                      onClick={() => setShowFullScreenModal(false)}
+                    >
+                      <X size={24} />
+                    </button>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Reset Link */}
             <div className="flex justify-end mb-0">

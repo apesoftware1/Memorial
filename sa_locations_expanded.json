@@ -1,0 +1,736 @@
+{
+  "provinces": [
+    {
+      "name": "Gauteng",
+      "cities": [
+        {
+          "name": "Johannesburg",
+          "towns": [
+            "Alexandra",
+            "Randburg",
+            "Roodepoort",
+            "Sandton",
+            "Soweto",
+            "Midrand",
+            "Fourways",
+            "Bryanston",
+            "Rosebank",
+            "Melville",
+            "Norwood",
+            "Orange Grove",
+            "Parktown",
+            "Houghton",
+            "Greenside",
+            "Parkhurst",
+            "Craighall",
+            "Ferndale",
+            "Northcliff",
+            "Florida",
+            "Lenasia",
+            "Eldorado Park",
+            "Diepkloof",
+            "Meadowlands",
+            "Dobsonville",
+            "Protea",
+            "Kliptown",
+            "Pimville",
+            "Orlando",
+            "Moroka",
+            "Chiawelo"
+          ]
+        },
+        {
+          "name": "Pretoria",
+          "towns": [
+            "Centurion",
+            "Akasia",
+            "Mamelodi",
+            "Soshanguve",
+            "Atteridgeville",
+            "Mabopane",
+            "Ga-Rankuwa",
+            "Hammanskraal",
+            "Cullinan",
+            "Eersterust",
+            "Laudium",
+            "Silverton",
+            "Menlyn",
+            "Hatfield",
+            "Brooklyn",
+            "Waterkloof",
+            "Arcadia",
+            "Sunnyside",
+            "Wonderboom",
+            "Montana",
+            "Sinoville"
+          ]
+        },
+        {
+          "name": "Ekurhuleni",
+          "towns": [
+            "Alberton",
+            "Germiston",
+            "Benoni",
+            "Boksburg",
+            "Brakpan",
+            "Springs",
+            "Kempton Park",
+            "Edenvale",
+            "Nigel",
+            "Daveyton",
+            "KwaThema",
+            "Tembisa",
+            "Tsakane",
+            "Duduza",
+            "Vosloorus",
+            "Katlehong",
+            "Wattville",
+            "Thokoza"
+          ]
+        },
+        {
+          "name": "Sedibeng",
+          "towns": [
+            "Vanderbijlpark",
+            "Vereeniging",
+            "Heidelberg",
+            "Meyerton",
+            "Sasolburg",
+            "Evaton",
+            "Sebokeng",
+            "Sharpeville",
+            "Boipatong",
+            "Bophelong"
+          ]
+        },
+        {
+          "name": "West Rand",
+          "towns": [
+            "Carletonville",
+            "Krugersdorp",
+            "Magaliesburg",
+            "Kagiso",
+            "Muldersdrift",
+            "Randfontein",
+            "Westonaria",
+            "Fochville",
+            "Bekkersdal",
+            "Khutsong",
+            "Mohlakeng"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "KwaZulu-Natal",
+      "cities": [
+        {
+          "name": "Durban",
+          "towns": [
+            "Chatsworth",
+            "Hillcrest",
+            "Westville",
+            "Inanda",
+            "Umhlali",
+            "Phoenix",
+            "Pinetown",
+            "Umlazi",
+            "KwaMashu",
+            "Ntuzuma",
+            "Newlands",
+            "Verulam",
+            "Tongaat",
+            "Umhlanga",
+            "La Mercy",
+            "Cato Ridge",
+            "Kloof",
+            "Queensburgh",
+            "Reservoir Hills",
+            "Overport",
+            "Montclair",
+            "Bluff",
+            "Isipingo",
+            "Amanzimtoti",
+            "Kingsburgh",
+            "Warner Beach"
+          ]
+        },
+        {
+          "name": "Pietermaritzburg",
+          "towns": [
+            "Howick",
+            "Merrivale",
+            "New Hanover",
+            "Wartburg",
+            "Richmond",
+            "Edendale",
+            "Imbali",
+            "Ashburton",
+            "Scottsville",
+            "Northdale",
+            "Mkondeni"
+          ]
+        },
+        {
+          "name": "Ugu",
+          "towns": [
+            "Margate",
+            "Port Edward",
+            "Scottburgh",
+            "Umzumbe",
+            "Shelly Beach",
+            "Port Shepstone",
+            "Ramsgate",
+            "Hibberdene",
+            "Pennington",
+            "Uvongo",
+            "Southbroom",
+            "San Lameer",
+            "Trafalgar"
+          ]
+        },
+        {
+          "name": "Zululand",
+          "towns": [
+            "Ulundi",
+            "Nongoma",
+            "Pongola",
+            "Vryheid",
+            "Mahlabatini",
+            "Empangeni",
+            "Richards Bay",
+            "Eshowe",
+            "Mtubatuba",
+            "St Lucia",
+            "Hluhluwe",
+            "Melmoth"
+          ]
+        },
+        {
+          "name": "uMgungundlovu",
+          "towns": [
+            "Mooi River",
+            "Hilton",
+            "Balgowan",
+            "Boston",
+            "Lidgetton",
+            "Mpophomeni",
+            "Thornville"
+          ]
+        },
+        {
+          "name": "Newcastle",
+          "towns": [
+            "Madadeni",
+            "Osizweni",
+            "Utrecht",
+            "Dannhauser",
+            "Charlestown"
+          ]
+        },
+        {
+          "name": "Ladysmith",
+          "towns": [
+            "Ezakheni",
+            "Colenso",
+            "Winterton",
+            "Bergville",
+            "Estcourt"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Eastern Cape",
+      "cities": [
+        {
+          "name": "Gqeberha",
+          "towns": [
+            "Despatch",
+            "Uitenhage",
+            "Kariega",
+            "New Brighton",
+            "KwaMagxaki",
+            "Motherwell",
+            "KwaZakhele",
+            "Zwide",
+            "Bethelsdorp",
+            "Walmer",
+            "Humewood",
+            "Summerstrand",
+            "Bluewater Bay",
+            "Kabega Park"
+          ]
+        },
+        {
+          "name": "East London",
+          "towns": [
+            "Mdantsane",
+            "Berlin",
+            "King William's Town",
+            "Duncan Village",
+            "Gonubie",
+            "Beacon Bay",
+            "Nahoon",
+            "Vincent",
+            "Cambridge",
+            "Bisho",
+            "Zwelitsha"
+          ]
+        },
+        {
+          "name": "Mthatha",
+          "towns": [
+            "Qumbu",
+            "Libode",
+            "Flagstaff",
+            "Mqanduli",
+            "Ngcobo",
+            "Idutywa",
+            "Elliotdale"
+          ]
+        },
+        {
+          "name": "Grahamstown",
+          "towns": [
+            "Makana",
+            "Riebeek East",
+            "Alicedale",
+            "Alexandria",
+            "Bathurst"
+          ]
+        },
+        {
+          "name": "Queenstown",
+          "towns": [
+            "Whittlesea",
+            "Komani",
+            "Ezibeleni",
+            "Sada",
+            "Tylden"
+          ]
+        },
+        {
+          "name": "Graaff-Reinet",
+          "towns": [
+            "Middelburg",
+            "Cradock",
+            "Somerset East",
+            "Pearston",
+            "Nieu-Bethesda"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Western Cape",
+      "cities": [
+        {
+          "name": "Cape Town",
+          "towns": [
+            "Milnerton",
+            "Claremont",
+            "Kalk Bay",
+            "Muizenberg",
+            "Bellville",
+            "Parow",
+            "Durbanville",
+            "Brackenfell",
+            "Kuils River",
+            "Goodwood",
+            "Mitchells Plain",
+            "Khayelitsha",
+            "Gugulethu",
+            "Langa",
+            "Nyanga",
+            "Philippi",
+            "Manenberg",
+            "Hanover Park",
+            "Athlone",
+            "Grassy Park",
+            "Retreat",
+            "Steenberg",
+            "Hout Bay",
+            "Camps Bay",
+            "Constantia",
+            "Wynberg",
+            "Rondebosch",
+            "Observatory",
+            "Woodstock",
+            "Salt River",
+            "Mowbray",
+            "Pinelands",
+            "Table View",
+            "Bloubergstrand",
+            "Strand",
+            "Somerset West",
+            "Gordon's Bay",
+            "Melkbosstrand",
+            "Atlantis",
+            "Mamre"
+          ]
+        },
+        {
+          "name": "Stellenbosch",
+          "towns": [
+            "Paarl",
+            "Wellington",
+            "Franschhoek",
+            "Cloetesville",
+            "Kayamandi",
+            "Kylemore",
+            "Jamestown",
+            "Simondium",
+            "Mbekweni"
+          ]
+        },
+        {
+          "name": "George",
+          "towns": [
+            "Mossel Bay",
+            "Wilderness",
+            "Knysna",
+            "Plettenberg Bay",
+            "Sedgefield",
+            "Oudtshoorn",
+            "Uniondale",
+            "Pacaltsdorp",
+            "Thembalethu",
+            "Conville"
+          ]
+        },
+        {
+          "name": "Worcester",
+          "towns": [
+            "Tulbagh",
+            "Ceres",
+            "Robertson",
+            "Montagu",
+            "Bonnievale",
+            "Ashton",
+            "McGregor",
+            "Zwelethemba"
+          ]
+        },
+        {
+          "name": "Swellendam",
+          "towns": [
+            "Bredasdorp",
+            "Struisbaai",
+            "Arniston",
+            "Napier",
+            "Suurbraak"
+          ]
+        },
+        {
+          "name": "Saldanha",
+          "towns": [
+            "Langebaan",
+            "Vredenburg",
+            "Paternoster",
+            "St Helena Bay",
+            "Hopefield"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Free State",
+      "cities": [
+        {
+          "name": "Bloemfontein",
+          "towns": [
+            "Mangaung",
+            "Botshabelo",
+            "Thaba Nchu",
+            "Heidedal",
+            "Rocklands",
+            "Batho",
+            "Phahameng",
+            "Kagisanong"
+          ]
+        },
+        {
+          "name": "Welkom",
+          "towns": [
+            "Hennenman",
+            "Ventersburg",
+            "Thabong",
+            "Bronville",
+            "Virginia",
+            "Odendaalsrus",
+            "Allanridge"
+          ]
+        },
+        {
+          "name": "Sasolburg",
+          "towns": [
+            "Zamdela",
+            "Deneysville",
+            "Oranjeville"
+          ]
+        },
+        {
+          "name": "Kroonstad",
+          "towns": [
+            "Maokeng",
+            "Viljoenskroon",
+            "Bothaville",
+            "Wesselsbron"
+          ]
+        },
+        {
+          "name": "Bethlehem",
+          "towns": [
+            "Bohlokong",
+            "Clarens",
+            "Fouriesburg",
+            "Paul Roux",
+            "Kestell"
+          ]
+        },
+        {
+          "name": "Harrismith",
+          "towns": [
+            "Intabazwe",
+            "Phuthaditjhaba",
+            "Kestell",
+            "Swinburne"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Limpopo",
+      "cities": [
+        {
+          "name": "Polokwane",
+          "towns": [
+            "Seshego",
+            "Mankweng",
+            "Bendor",
+            "Flora Park",
+            "Westenburg",
+            "Ivy Park",
+            "Nirvana"
+          ]
+        },
+        {
+          "name": "Thohoyandou",
+          "towns": [
+            "Sibasa",
+            "Malamulele",
+            "Mutale",
+            "Tshilamba",
+            "Makwarela"
+          ]
+        },
+        {
+          "name": "Tzaneen",
+          "towns": [
+            "Hluene",
+            "Letsitele",
+            "Nkowankowa",
+            "Lenyenye",
+            "Duiwelskloof",
+            "Haenertsburg"
+          ]
+        },
+        {
+          "name": "Mokopane",
+          "towns": [
+            "Mahwelereng",
+            "Naboomspruit",
+            "Mookgophong"
+          ]
+        },
+        {
+          "name": "Musina",
+          "towns": [
+            "Nancefield",
+            "Messina",
+            "Beitbridge"
+          ]
+        },
+        {
+          "name": "Lebowakgomo",
+          "towns": [
+            "Ga-Kgapane",
+            "Mahwelereng",
+            "Praktiseer"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mpumalanga",
+      "cities": [
+        {
+          "name": "Mbombela",
+          "towns": [
+            "White River",
+            "Hazyview",
+            "Graskop",
+            "Sabie",
+            "Barberton",
+            "Pienaar",
+            "KaNyamazane",
+            "Msogwaba"
+          ]
+        },
+        {
+          "name": "Emalahleni",
+          "towns": [
+            "Kerkdorp",
+            "Ga-Nala",
+            "eMbalenhle",
+            "Ogies",
+            "Kriel",
+            "Phola",
+            "Clewer"
+          ]
+        },
+        {
+          "name": "Secunda",
+          "towns": [
+            "Trichardt",
+            "Middelburg",
+            "eMbalenhle",
+            "Bethal",
+            "Kinross"
+          ]
+        },
+        {
+          "name": "Standerton",
+          "towns": [
+            "Sakhile",
+            "Volksrust",
+            "Amersfoort",
+            "Wakkerstroom"
+          ]
+        },
+        {
+          "name": "Carolina",
+          "towns": [
+            "Silobela",
+            "Badplaas",
+            "Waterval Boven",
+            "Machadodorp"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "North West",
+      "cities": [
+        {
+          "name": "Mahikeng",
+          "towns": [
+            "Mmabatho",
+            "Ramatlabama",
+            "Lichtenburg",
+            "Zeerust",
+            "Madikwe",
+            "Ganyesa"
+          ]
+        },
+        {
+          "name": "Rustenburg",
+          "towns": [
+            "Brits",
+            "Phokeng",
+            "Tlhabane",
+            "Boitekong",
+            "Mooinooi",
+            "Buffelspoort",
+            "Marikana",
+            "Boshoek"
+          ]
+        },
+        {
+          "name": "Klerksdorp",
+          "towns": [
+            "Orkney",
+            "Matlosana",
+            "Jouberton",
+            "Kanana",
+            "Alabama",
+            "Stilfontein",
+            "Hartbeesfontein"
+          ]
+        },
+        {
+          "name": "Potchefstroom",
+          "towns": [
+            "Ikageng",
+            "Ventersdorp",
+            "Parys",
+            "Fochville"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Northern Cape",
+      "cities": [
+        {
+          "name": "Kimberley",
+          "towns": [
+            "Ritchie",
+            "Galeshewe",
+            "Royldene",
+            "Greenpoint",
+            "New Park"
+          ]
+        },
+        {
+          "name": "Upington",
+          "towns": [
+            "Keimoes",
+            "Groblershoop",
+            "Kakamas",
+            "Paballelo",
+            "Louisvale"
+          ]
+        },
+        {
+          "name": "Colesberg",
+          "towns": [
+            "Arlington",
+            "Norvalspont",
+            "Philippolis",
+            "Trompsburg"
+          ]
+        },
+        {
+          "name": "Springbok",
+          "towns": [
+            "Kleinzee",
+            "Okiep",
+            "Nababeep",
+            "Port Nolloth",
+            "Alexander Bay"
+          ]
+        },
+        {
+          "name": "De Aar",
+          "towns": [
+            "Britstown",
+            "Hanover",
+            "Carnarvon",
+            "Victoria West"
+          ]
+        },
+        {
+          "name": "Kuruman",
+          "towns": [
+            "Mothibistad",
+            "Daniëlskuil",
+            "Postmasburg",
+            "Kathu"
+          ]
+        }
+      ]
+    }
+  ]
+}

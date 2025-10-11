@@ -1,88 +1,86 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from 'react'
-import { Search } from 'lucide-react'
+import { useState, useEffect } from "react";
+import { Search } from "lucide-react";
 
-export default function SearchForm({ onSearchResults }) {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState([])
-  const [isSearching, setIsSearching] = useState(false)
+export default function SearchForm({ onQueryChange, onSearchResults, onSubmit }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // Define filter criteria for search
+  // Filter criteria for mock search
   const filterCriteria = [
-    "title", "company", "style", "slabStyle", 
-    "stoneType", "color", "customization"
-  ]
+    "title",
+    "company",
+    "style",
+    "slabStyle",
+    "stoneType",
+    "color",
+    "customization",
+  ];
 
-  // Mock data for demonstration - in a real app, this would come from an API
-  const mockListings = Array(30).fill().map((_, i) => ({
-    id: i + 1,
-    title: i % 5 === 0 ? `Mausoleum Design ${i+1}` : `Tombstone Design ${i+1}`,
-    company: {
-      name: `Company ${Math.floor(i/3) + 1}`
-    },
-    style: i % 3 === 0 ? 'Modern' : i % 3 === 1 ? 'Traditional' : 'Contemporary',
-    slabStyle: i % 4 === 0 ? 'Flat' : i % 4 === 1 ? 'Slant' : i % 4 === 2 ? 'Upright' : 'Bevel',
-    stoneType: i % 3 === 0 ? 'Granite' : i % 3 === 1 ? 'Marble' : 'Bronze',
-    color: i % 5 === 0 ? 'Black' : i % 5 === 1 ? 'Gray' : i % 5 === 2 ? 'White' : i % 5 === 3 ? 'Blue' : 'Red',
-    customization: i % 2 === 0 ? 'Available' : 'Limited'
-  }))
+  // Mock listings (replace with real API later)
+  const mockListings = Array(30)
+    .fill()
+    .map((_, i) => ({
+      id: i + 1,
+      title: i % 5 === 0 ? `Mausoleum Design ${i + 1}` : `Tombstone Design ${i + 1}`,
+      company: { name: `Company ${Math.floor(i / 3) + 1}` },
+      style: i % 3 === 0 ? "Modern" : i % 3 === 1 ? "Traditional" : "Contemporary",
+      slabStyle: i % 4 === 0 ? "Flat" : i % 4 === 1 ? "Slant" : i % 4 === 2 ? "Upright" : "Bevel",
+      stoneType: i % 3 === 0 ? "Granite" : i % 3 === 1 ? "Marble" : "Bronze",
+      color: i % 5 === 0 ? "Black" : i % 5 === 1 ? "Gray" : i % 5 === 2 ? "White" : i % 5 === 3 ? "Blue" : "Red",
+      customization: i % 2 === 0 ? "Available" : "Limited",
+    }));
 
-  // Function to filter listings based on search query and criteria
+  // Filter listings based on query
   const filterListings = (query) => {
-    if (!query.trim()) {
-      return mockListings
-    }
+    if (!query.trim()) return mockListings;
 
-    const lowercaseQuery = query.toLowerCase()
-    
-    return mockListings.filter(listing => {
-      // Check if any of the filter criteria match the query
-      return filterCriteria.some(criteria => {
-        if (criteria === 'company') {
-          return listing.company.name.toLowerCase().includes(lowercaseQuery)
-        } else if (listing[criteria]) {
-          return listing[criteria].toLowerCase().includes(lowercaseQuery)
-        }
-        return false
+    const lowerQuery = query.toLowerCase();
+
+    return mockListings.filter((listing) =>
+      filterCriteria.some((criteria) => {
+        if (criteria === "company") return listing.company.name.toLowerCase().includes(lowerQuery);
+        return listing[criteria] && listing[criteria].toLowerCase().includes(lowerQuery);
       })
-    })
-  }
-
-  // Handle search submission
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    performSearch(searchQuery)
-  }
+    );
+  };
 
   // Perform search and update results
   const performSearch = (query) => {
-    setIsSearching(true)
-    
-    // Simulate API call with setTimeout
-    setTimeout(() => {
-      const filteredResults = filterListings(query)
-      // Limit to 19 results as per requirements
-      const limitedResults = filteredResults.slice(0, 19)
-      setSearchResults(limitedResults)
-      
-      // Pass results to parent component if callback exists
-      if (onSearchResults) {
-        onSearchResults(limitedResults)
-      }
-      
-      setIsSearching(false)
-    }, 300)
-  }
+    setIsSearching(true);
 
-  // Real-time search as user types (with debounce)
+    setTimeout(() => {
+      const filtered = filterListings(query).slice(0, 19); // limit to 19 results
+      setSearchResults(filtered);
+
+      if (onSearchResults) onSearchResults(filtered);
+      setIsSearching(false);
+    }, 300);
+  };
+
+  // Handle form submission (Enter key)
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (onQueryChange) onQueryChange(searchQuery); // update parent with current query
+    performSearch(searchQuery);
+    
+    // Call onSubmit handler if provided (for navigation)
+    if (onSubmit) {
+      onSubmit(searchQuery);
+    }
+  };
+
+  // Live search as user types (debounced)
   useEffect(() => {
     const timer = setTimeout(() => {
-      performSearch(searchQuery)
-    }, 500)
-    
-    return () => clearTimeout(timer)
-  }, [searchQuery])
+      performSearch(searchQuery);
+      if (onQueryChange) onQueryChange(searchQuery); // notify parent of current query
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto">
@@ -102,18 +100,16 @@ export default function SearchForm({ onSearchResults }) {
           <Search className="w-5 h-5" />
         </button>
       </div>
-      
-      {/* Search status indicator */}
-      {isSearching && (
-        <div className="mt-2 text-sm text-gray-500">Searching...</div>
-      )}
-      
+
+      {/* Searching status */}
+      {isSearching && <div className="mt-2 text-sm text-gray-500">Searching...</div>}
+
       {/* Search results count */}
       {!isSearching && searchQuery.trim() && (
-        <div className="mt-2 text-sm text-gray-600">
+        <div className="mt-2 text-sm text-[#333]">
           Found {searchResults.length} results for "{searchQuery}"
         </div>
       )}
     </form>
-  )
+  );
 }
