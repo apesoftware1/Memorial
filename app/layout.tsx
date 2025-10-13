@@ -4,6 +4,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import ApolloWrapper from "./ApolloWrapper";
 import SessionWrapper from "./components/SessionWrapper";
+import { FavoritesProvider } from "@/context/favorites-context.jsx";
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -19,7 +20,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Localize theme handling to regan-dashboard pages only */}
         <SessionWrapper>
           <ApolloWrapper>
-            {children}
+            <FavoritesProvider>
+              {children}
+            </FavoritesProvider>
           </ApolloWrapper>
         </SessionWrapper>
       </body>

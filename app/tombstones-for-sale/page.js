@@ -6,7 +6,7 @@ import { ChevronDown, Search, ChevronRight, Menu, X } from "lucide-react"
 import Header from "@/components/Header"
 import Image from "next/image"
 // Import the useFavorites hook and our new components
-import { useFavorites } from "@/context/favorites-context"
+import { useFavorites } from "@/context/favorites-context.jsx"
 import FeaturedListings from "@/components/FeaturedListings"
 import { PremiumListingCard } from "@/components/premium-listing-card"
 import { PremiumListingCardModal } from "@/components/premium-listing-card-modal"

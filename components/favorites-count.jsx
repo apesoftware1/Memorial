@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Heart } from "lucide-react"
 import Link from "next/link"
-import { useFavorites } from "@/context/favorites-context"
+import { useFavorites } from "@/context/favorites-context.jsx"
 
 export function FavoritesCount() {
   const { totalFavorites } = useFavorites()

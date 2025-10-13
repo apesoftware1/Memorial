@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { Heart, MapPin, Camera, Check, User2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { FavoriteProduct } from "@/context/favorites-context";
+import type { FavoriteProduct } from "@/context/favorites-context.jsx";
 import { FavoriteButton } from "./favorite-button";
 import LocationTrigger from "./LocationTrigger";
 import { useGuestLocation } from "@/hooks/useGuestLocation";

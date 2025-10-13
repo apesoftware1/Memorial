@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Heart } from "lucide-react"
-import { useFavorites, type FavoriteProduct } from "@/context/favorites-context"
+import { useFavorites, type FavoriteProduct } from "@/context/favorites-context.jsx"
 
 type FavoriteButtonProps = {
   product: FavoriteProduct

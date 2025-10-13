@@ -4,7 +4,7 @@ import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ChevronDown, X } from "lucide-react"
-import { useFavorites } from "@/context/favorites-context"
+import { useFavorites } from "@/context/favorites-context.jsx"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
