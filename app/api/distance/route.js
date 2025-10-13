@@ -21,10 +21,10 @@ export async function POST(req) {
         },
         body: JSON.stringify({
           origin: {
-            location: { latLng: { latitude: parseFloat(userLat), longitude: parseFloat(userLng) } },
+            location: { latLng: { latitude: userLat, longitude: userLng } },
           },
           destination: {
-            location: { latLng: { latitude: parseFloat(destLat), longitude: parseFloat(destLng) } },
+            location: { latLng: { latitude: destLat, longitude: destLng } },
           },
           travelMode: "DRIVE",
         }),
