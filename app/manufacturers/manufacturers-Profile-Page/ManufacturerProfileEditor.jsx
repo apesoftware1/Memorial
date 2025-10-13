@@ -1400,16 +1400,18 @@ export default function ManufacturerProfileEditor({
             {/* MOBILE-ONLY: Logo directly under Company Name */}
             {mobile && (
               <div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: "#888",
-                    fontWeight: 700,
-                    marginBottom: 6,
-                  }}
-                >
-                  Company Logo
-                </div>
+                {isOwner && (
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "#888",
+                      fontWeight: 700,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Company Logo
+                  </div>
+                )}
                 <div
                   style={{
                     border: isOwner ? "2px solid #00baff" : " #e0e0e0",
@@ -1634,16 +1636,18 @@ export default function ManufacturerProfileEditor({
 
 
             {/* Company Profile Label */}
-            <div
-              style={{
-                fontSize: 11,
-                color: "#888",
-                fontWeight: 700,
-                marginBottom: 2,
-              }}
-            >
-              Company Profile
-            </div>
+            {isOwner && (
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#888",
+                  fontWeight: 700,
+                  marginBottom: 2,
+                }}
+              >
+                Company Profile
+              </div>
+            )}
             {editingField === "description" ? (
               <div style={{ marginBottom: 8 }}>
                 <textarea
@@ -1725,16 +1729,18 @@ export default function ManufacturerProfileEditor({
               </>
             )}
             {/* Profile Photo & Promo Video (replacing old promo section) */}
-            <div
-              style={{
-                fontSize: 11,
-                color: "#888",
-                fontWeight: 700,
-                marginBottom: 6,
-              }}
-            >
-              Profile Photo 
-            </div>
+            {isOwner && (
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#888",
+                  fontWeight: 700,
+                  marginBottom: 6,
+                }}
+              >
+                Profile Photo 
+              </div>
+            )}
            
             {/* CreateBranchModal is conditionally rendered based on state */}
             <CreateBranchModal
@@ -1974,19 +1980,21 @@ export default function ManufacturerProfileEditor({
               order: mobile ? 1 : 1,
             }}
           >
-            <div
-              style={{
-                fontSize: 11,
-                color: "#888",
-                fontWeight: 700,
-                marginBottom: 6,
-                textAlign: "center",
-                width: "100%",
-                display: mobile ? "none" : "block",
-              }}
-            >
-              Company Logo
-            </div>
+            {isOwner && (
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#888",
+                  fontWeight: 700,
+                  marginBottom: 6,
+                  textAlign: "center",
+                  width: "100%",
+                  display: mobile ? "none" : "block",
+                }}
+              >
+                Company Logo
+              </div>
+            )}
             <div
               style={{
                 border: isOwner ? "2px solid #00baff" : "#e0e0e0",
