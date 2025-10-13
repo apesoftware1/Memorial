@@ -1315,16 +1315,18 @@ export default function ManufacturerProfileEditor({
           {/* Left Column */}
           <div style={{ flex: 2, minWidth: 0, order: mobile ? 0 : 0 }}>
             {/* Company Name Label */}
-            <div
-              style={{
-                fontSize: 11,
-                color: "#888",
-                fontWeight: 700,
-                marginBottom: 2,
-              }}
-            >
-              Company Name
-            </div>
+            {isOwner && (
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#888",
+                  fontWeight: 700,
+                  marginBottom: 2,
+                }}
+              >
+                Company Name
+              </div>
+            )}
             <div
               style={{
                 display: "flex",
