@@ -6,8 +6,8 @@ import Image from 'next/image'
 
 export default function ManufacturerLocationModal({ isOpen, onClose, company, onLocationUpdate }) {
   const [location, setLocation] = useState('')
-  const [latitude, setLatitude] = useState('')
-  const [longitude, setLongitude] = useState('')
+  const [latitude, setLatitude] = useState(null)
+  const [longitude, setLongitude] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [isGeolocationSupported, setIsGeolocationSupported] = useState(false)
@@ -89,8 +89,8 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords
-        setLatitude(latitude.toString())
-        setLongitude(longitude.toString())
+        setLatitude(latitude)
+        setLongitude(longitude)
         
         // Reverse geocode to get readable address
         await reverseGeocode(latitude, longitude)
@@ -126,9 +126,40 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
       return
     }
 
+    if (latitude === null || longitude === null) {
+      setError('Please provide both latitude and longitude coordinates')
+      return
+    }
+
+    if (isNaN(latitude) || isNaN(longitude)) {
+      setError('Latitude and longitude must be valid numbers')
+      return
+    }
+
     setIsLoading(true)
     setError('')
-   
+
+    // Convert to numbers and add console.log for testing
+    const numLatitude = Number(latitude)
+    const numLongitude = Number(longitude)
+    
+    console.log('=== ManufacturerLocationModal Debug ===')
+    console.log('Original latitude:', latitude, 'Type:', typeof latitude)
+    console.log('Original longitude:', longitude, 'Type:', typeof longitude)
+    console.log('Converted latitude:', numLatitude, 'Type:', typeof numLatitude)
+    console.log('Converted longitude:', numLongitude, 'Type:', typeof numLongitude)
+    console.log('Location string:', location.trim())
+    console.log('Company documentId:', company.documentId)
+    
+    const requestData = {
+      data: {
+        location: location.trim(),
+        latitude: numLatitude,
+        longitude: numLongitude
+      }
+    }
+    
+    console.log('Request payload:', JSON.stringify(requestData, null, 2))
     
     try {
       const response = await fetch(
@@ -138,27 +169,24 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            data: {
-              location: location.trim(),
-              latitude: latitude ? latitude.toString() : null,
-              longitude: longitude ? longitude.toString() : null
-            }
-          })
+          body: JSON.stringify(requestData)
         }
       )
 
       if (!response.ok) {
         const errorData = await response.json()
+        console.log('Error response:', errorData)
         throw new Error(errorData.error?.message || 'Failed to update company location')
       }
 
       const result = await response.json()
+      console.log('Success response:', result)
+      
       const updatedCompany = {
         ...company,
         location: location.trim(),
-        latitude: latitude ? latitude.toString() : null,
-        longitude: longitude ? longitude.toString() : null
+        latitude: numLatitude,
+        longitude: numLongitude
       }
 
       // Call the callback to update the parent component
@@ -231,28 +259,30 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Latitude (optional)
+                Latitude <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
                 step="any"
                 placeholder="e.g., -26.2041"
-                value={latitude}
-                onChange={(e) => setLatitude(e.target.value)}
+                value={latitude || ''}
+                onChange={(e) => setLatitude(e.target.value ? parseFloat(e.target.value) : null)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Longitude (optional)
+                Longitude <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
                 step="any"
                 placeholder="e.g., 28.0473"
-                value={longitude}
-                onChange={(e) => setLongitude(e.target.value)}
+                value={longitude || ''}
+                onChange={(e) => setLongitude(e.target.value ? parseFloat(e.target.value) : null)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
               />
             </div>
           </div>
@@ -281,7 +311,7 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
 
             <button
               onClick={handleSaveLocation}
-              disabled={isLoading || !location.trim()}
+              disabled={isLoading || !location.trim() || latitude === null || longitude === null}
               className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               {isLoading ? (

@@ -71,10 +71,10 @@ export const useGuestLocation = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            userLat: parseFloat(location.lat),
-            userLng: parseFloat(location.lng),
-            destLat: parseFloat(destLat.lat),
-            destLng: parseFloat(destLat.lng),
+            userLat: location.lat,
+            userLng: location.lng,
+            destLat: destLat.lat,
+            destLng: destLat.lng,
           }),
         });
 
