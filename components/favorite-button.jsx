@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Heart } from "lucide-react"
-import { useFavorites } from "@/context/favorites-context"
+import { useFavorites } from "@/context/favorites-context.jsx"
 
 /**
  * @typedef {Object} FavoriteButtonProps
@@ -52,6 +52,7 @@ export function FavoriteButton({
         price, 
         details, 
         image,
+        mainImageUrl: image, // Save as mainImageUrl for consistency with product structure
         manufacturer,
         location,
         tag,

@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { FavoriteButton } from "./favorite-button"
-import { useFavorites } from "@/context/favorites-context"
+import { useFavorites } from "@/context/favorites-context.jsx"
 import { formatPrice } from "@/lib/priceUtils"
 
 /**
@@ -18,9 +18,19 @@ import { formatPrice } from "@/lib/priceUtils"
  */
 
 /**
- * @param {ProductCardProps} props
+ * @param {ProductCardProps | {product: ProductCardProps}} props
  */
-export function ProductCard({ id, name, price, material, image, tag, details }) {
+export function ProductCard(props) {
+  // Handle both individual props and product object
+  const product = props.product || props;
+  const { id, name, price, material, image, tag, details } = product;
+
+  // Ensure we have required fields
+  if (!id || !name) {
+    console.warn('ProductCard: Missing required fields (id, name)', product);
+    return null;
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden transition-transform hover:shadow-lg">
       <Link href={`/product/${id}`} className="block">
@@ -46,14 +56,7 @@ export function ProductCard({ id, name, price, material, image, tag, details }) 
       </Link>
       <div className="px-4 pb-3">
         <FavoriteButton 
-          productId={id}
-          title={name}
-          price={price}
-          details={details || ""}
-          image={image || "/placeholder.jpg"}
-          manufacturer={material} 
-          location=""
-          tag={tag}
+          product={product}
         />
       </div>
     </div>

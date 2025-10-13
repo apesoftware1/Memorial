@@ -9,7 +9,7 @@ import Header from "@/components/Header"
 import { useRouter } from "next/navigation"
 
 // Import the useFavorites hook and our new components
-import { useFavorites } from "@/context/favorites-context"
+import { useFavorites } from "@/context/favorites-context.jsx"
 import { FavoriteButton } from "@/components/favorite-button"
 import { PremiumListingCardModal } from "@/components/premium-listing-card-modal"
 
