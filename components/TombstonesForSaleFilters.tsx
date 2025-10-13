@@ -110,7 +110,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
       <div className="border-t border-gray-200 my-2"></div>
       <FilterDropdown name="location" label="Location" options={mergedOptions.location} />
       <div className="border-t border-gray-200 my-2"></div>
-      <FilterDropdown name="style" label="Style" options={mergedOptions.style} />
+      <FilterDropdown name="style" label="Head Style" options={mergedOptions.style} />
       <div className="border-t border-gray-200 my-2"></div>
       <FilterDropdown name="stoneType" label="Material" options={mergedOptions.stoneType} />
       <div className="border-t border-gray-200 my-2"></div>
@@ -119,4 +119,4 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
       <FilterDropdown name="colour" label="Colour" options={mergedOptions.colour} />
     </div>
   )
-} 
+}

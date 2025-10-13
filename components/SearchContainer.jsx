@@ -1138,7 +1138,7 @@ const SearchContainer = ({
               />
               <FilterDropdown
                 name="style"
-                label="Style"
+                label="Head Style"
                 options={filterOptions.style}
                 openDropdown={uiState.openDropdown}
                 toggleDropdown={toggleDropdown}
