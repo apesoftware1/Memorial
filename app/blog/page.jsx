@@ -180,7 +180,7 @@ function BlogContent() {
         <div className="container mx-auto px-4 max-w-4xl py-6 sm:py-8">
           <header className="text-center mb-6 sm:mb-10">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-700">
-              Memorial Insights & Guidance
+               Insights , Guides & blogs
             </h1>
             <p className="mt-2 text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
               Helpful guides on choosing tombstones, understanding costs, and creating a meaningful memorial.

@@ -667,9 +667,9 @@ export default function ManufacturersPage() {
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <h4 className="text-lg font-semibold mb-4">About MemorialHub</h4>
+              <h4 className="text-lg font-semibold mb-4">About TombstonesFinder</h4>
               <p className="text-gray-300 text-sm">
-                MemorialHub connects you with trusted tombstone manufacturers and suppliers across South Africa.
+                TombstonesFinder connects you with trusted tombstone manufacturers and suppliers across South Africa.
               </p>
             </div>
             <div>
@@ -687,14 +687,14 @@ export default function ManufacturersPage() {
             <div>
               <h4 className="text-lg font-semibold mb-4">Contact</h4>
               <address className="text-gray-300 text-sm not-italic">
-                <p>Email: info@memorialhub.co.za</p>
+                <p>Email: info@tombstonesfinder.co.za</p>
                 <p>Phone: +27 12 345 6789</p>
-                <p>Address: 123 Memorial Street, Pretoria, South Africa</p>
+                <p>Address: 123 Tombstone Street, Pretoria, South Africa</p>
               </address>
             </div>
           </div>
           <div className="border-t border-gray-700 mt-8 pt-4 text-center text-gray-400 text-sm">
-            <p>&copy; {new Date().getFullYear()} MemorialHub. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} TombstonesFinder. All rights reserved.</p>
           </div>
         </div>
       </footer>

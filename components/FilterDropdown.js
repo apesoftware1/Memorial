@@ -155,7 +155,12 @@ export default function FilterDropdown({
 }) {
   const SORTED_MENUS = new Set(["style", "slabStyle", "stoneType", "colour", "custom"]);
   const displayOptions = SORTED_MENUS.has(name)
-    ? [...options].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+    ? [...options].sort((a, b) => {
+        // Always keep "Any" at the top
+        if (a === "Any") return -1;
+        if (b === "Any") return 1;
+        return a.localeCompare(b, undefined, { sensitivity: "base" });
+      })
     : options;
 
   // Get icon src from pre-encoded paths
@@ -217,7 +222,7 @@ export default function FilterDropdown({
                         className="h-5 w-5 object-contain inline-block visible opacity-100"
                         style={{ 
                           display: 'block',
-                          filter: name === 'colour' ? 'none' : 'brightness(0) invert(0.9)'
+                          filter: name === 'colour' || name === 'slabStyle' ? 'none' : 'brightness(0) invert(0.9)'
                         }}
                         onError={(e) => {
                           console.log(`Failed to load icon: ${iconSrc}`);

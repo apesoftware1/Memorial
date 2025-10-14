@@ -28,13 +28,20 @@ const defaultFilterOptions = {
     "R 200,000+",
   ],
   location: [
+    "Any",
     "Gauteng",
     "Western Cape",
     "KwaZulu-Natal",
     "Eastern Cape",
     "Free State",
+    "Limpopo",
+    "Northern Cape",
+    "Mpumalanga",
+    "North west"
+
   ],
   style: [
+    "Any",
     "Christian Cross",
     "Heart",
     "Bible",
@@ -54,6 +61,7 @@ const defaultFilterOptions = {
     "Sports",
   ],
   slabStyle: [
+    "Any",
     "Curved Slab",
     "Frame with Infill",
     "Full Slab",
@@ -63,6 +71,7 @@ const defaultFilterOptions = {
     "Tiled Slab",
   ],
   stoneType: [
+    "Any",
     "Biodegradable",
     "Brass",
     "Ceramic/Porcelain",
@@ -83,6 +92,7 @@ const defaultFilterOptions = {
     "Wood",
   ],
   custom: [
+    "Any",
     "Bronze/Stainless Plaques",
     "Ceramic Photo Plaques",
     "Flower Vases",
@@ -92,6 +102,7 @@ const defaultFilterOptions = {
     "QR Code",
   ],
   colour: [
+    "Any",
     "Black",
     "Blue",
     "Green",
@@ -1138,7 +1149,7 @@ const SearchContainer = ({
               />
               <FilterDropdown
                 name="style"
-                label="Style"
+                label="Head Style"
                 options={filterOptions.style}
                 openDropdown={uiState.openDropdown}
                 toggleDropdown={toggleDropdown}

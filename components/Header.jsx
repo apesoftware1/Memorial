@@ -126,7 +126,7 @@ export default function Header({
                       href="/blog"
                       className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
                     >
-                      MEMORIAL GUIDES & INSIGHTS
+                      INSIGHTS , GUIDES & BLOGS
                     </Link>
                     <Link
                       href="/services/tombstone-finance"
