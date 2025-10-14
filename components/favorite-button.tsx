@@ -61,6 +61,7 @@ export function FavoriteButton({ product, className = "", size = "md" }: Favorit
     >
       <Heart
         className={`${sizeClasses[size]} transition-colors ${isFav ? "text-red-500 fill-red-500" : "text-gray-400"}`}
+        strokeWidth={3}
       />
     </button>
   )

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { MapPin, Camera, Check, User2, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/priceUtils";
+import { FavoriteButton } from "./favorite-button";
 
 export default function BranchCard({ branch, listing, onSelect, hideAvailableBranches = true }) {
   if (!branch) return null;
@@ -15,6 +16,19 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
   const phone = branch.phone || branch.telephone || branch.contactNumber || "";
 
   const joinWithPipes = (parts) => parts.filter(Boolean).join(" | ");
+
+  // Create product object for FavoriteButton
+  const favoriteProduct = {
+    id: listing?.id || listing?.documentId,
+    title: listing?.title,
+    price: listing?.price,
+    image: listing?.mainImageUrl,
+    details: listing?.productDetails,
+    manufacturer: listing?.company?.name,
+    location: `${name} branch - ${joinWithPipes([city, province])}`,
+    tag: listing?.adFlasher,
+    tagColor: listing?.adFlasherColor
+  };
 
   const handleClick = () => {
     if (typeof onSelect === "function") {
@@ -245,8 +259,11 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
       
       {/* Heart icon at bottom right */}
       <div className="absolute bottom-2 right-2 z-40 md:block hidden">
-        <div className="bg-white rounded-full p-2 shadow-sm hover:shadow-md transition-all">
-          <Heart className="w-5 h-5 text-gray-400 hover:text-pink-500 hover:fill-pink-500 transition-colors" />
+        <div 
+          className="bg-white rounded-full p-2 shadow-sm hover:shadow-md transition-all"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <FavoriteButton product={favoriteProduct} size="sm" />
         </div>
       </div>
     </div>
