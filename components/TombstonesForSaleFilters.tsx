@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Search } from "lucide-react"
 import { useListingCategories } from "@/hooks/use-ListingCategories"
 
 interface TombstonesForSaleFiltersProps {
@@ -8,6 +8,9 @@ interface TombstonesForSaleFiltersProps {
   showFilters: any;
   setShowFilters: (show: any) => void;
   filterOptions: any;
+  filteredListings?: any[];
+  handleSearch?: () => void;
+  getActiveCategory?: () => string;
 }
 
 // Use the same filter options as SearchContainer
@@ -18,12 +21,21 @@ const defaultFilterOptions = {
   style: [
     "Christian Cross", "Heart", "Bible", "Pillars", "Traditional African", "Abstract", "Praying Hands", "Scroll", "Angel", "Mausoleum", "Obelisk", "Plain", "Teddy Bear", "Butterfly", "Car", "Bike", "Sports"
   ],
-  stoneType: ["Granite", "Marble", "Sandstone", "Limestone", "Bronze"],
-  custom: ["Engraving", "Photo", "Gold Leaf", "Special Shape", "Lighting"],
-  colour: ["Black", "White", "Grey", "Brown", "Blue Pearl", "Red"],
+  slabStyle: [
+    "Curved Slab", "Frame with Infill", "Full Slab", "Glass Slab", "Half Slab", "Stepped Slab", "Tiled Slab"
+  ],
+  stoneType: [
+    "Biodegradable", "Brass", "Ceramic/Porcelain", "Composite", "Concrete", "Copper", "Glass", "Granite", "Limestone", "Marble", "Perspex", "Quartzite", "Sandstone", "Slate", "Steel", "Stone", "Tile", "Wood"
+  ],
+  custom: [
+    "Bronze/Stainless Plaques", "Ceramic Photo Plaques", "Flower Vases", "Gold Lettering", "Inlaid Glass", "Photo Laser-Edging", "QR Code"
+  ],
+  colour: [
+    "Black", "Blue", "Green", "Grey-Dark", "Grey-Light", "Maroon", "Pearl", "Red", "White"
+  ],
 };
 
-export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions }: TombstonesForSaleFiltersProps) {
+export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions, filteredListings, handleSearch, getActiveCategory }: TombstonesForSaleFiltersProps) {
   const [showMore, setShowMore] = useState(false);
   const { categories, loading } = useListingCategories();
   const mergedOptions = { ...defaultFilterOptions, ...filterOptions };
@@ -58,7 +70,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
         />
       </button>
       {showFilters === name && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-full bg-[#2E2E30] rounded-md shadow-lg border border-gray-700 animate-slide-in">
+        <div className="absolute left-0 top-full z-[100] mt-1 w-full bg-[#2E2E30] rounded-md shadow-lg border border-gray-700 animate-slide-in">
           <ul className="py-1 max-h-60 overflow-auto" role="menu" aria-orientation="vertical">
             {options.map((option: string) => (
               <li
@@ -123,11 +135,26 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
       <div className="border-t border-gray-200 my-2"></div>
       <FilterDropdown name="style" label="Head Style" options={mergedOptions.style} />
       <div className="border-t border-gray-200 my-2"></div>
-      <FilterDropdown name="stoneType" label="Material" options={mergedOptions.stoneType} />
+      <FilterDropdown name="slabStyle" label="Slab Style" options={mergedOptions.slabStyle} />
       <div className="border-t border-gray-200 my-2"></div>
-      <FilterDropdown name="custom" label="Customisation" options={mergedOptions.custom} />
+      <FilterDropdown name="stoneType" label="Stone Type" options={mergedOptions.stoneType} />
       <div className="border-t border-gray-200 my-2"></div>
       <FilterDropdown name="colour" label="Colour" options={mergedOptions.colour} />
+      <div className="border-t border-gray-200 my-2"></div>
+      <FilterDropdown name="custom" label="Customisation" options={mergedOptions.custom} />
+      
+      {/* Duplicate Search Button */}
+      {handleSearch && filteredListings && getActiveCategory && (
+        <div className="mt-4 px-2 sm:px-0">
+          <button 
+            className="w-full bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white p-3 px-4 rounded transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm font-medium min-h-[44px] touch-manipulation"
+            onClick={handleSearch}
+          >
+            <Search className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">{`Search (${filteredListings.length}) ${getActiveCategory()} Tombstones`}</span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }

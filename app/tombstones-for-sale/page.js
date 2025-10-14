@@ -281,6 +281,10 @@ export default function Home() {
     if (f.style && f.style !== 'All' && f.style !== '') {
       filtered = filtered.filter(listing => ((listing.productDetails?.style?.[0]?.value || '').toLowerCase().includes(f.style.toLowerCase())));
     }
+    // Slab Style (partial)
+    if (f.slabStyle && f.slabStyle !== 'All' && f.slabStyle !== '') {
+      filtered = filtered.filter(listing => ((listing.productDetails?.slabStyle?.[0]?.value || '').toLowerCase().includes(f.slabStyle.toLowerCase())));
+    }
     // Custom (partial)
     if (f.custom && f.custom !== 'All' && f.custom !== '') {
       filtered = filtered.filter(listing => ((listing.productDetails?.customization?.[0]?.value || '').toLowerCase().includes(f.custom.toLowerCase())));
@@ -532,11 +536,24 @@ export default function Home() {
   // Filter options
   const filterOptions = {
     location: ["Gauteng", "Western Cape", "KwaZulu-Natal", "Eastern Cape", "Free State"],
-    stoneType: ["Granite", "Marble", "Sandstone", "Limestone", "Bronze"],
+    stoneType: [
+      "Biodegradable", "Brass", "Ceramic/Porcelain", "Composite", "Concrete", "Copper", "Glass", "Granite", "Limestone", "Marble", "Perspex", "Quartzite", "Sandstone", "Slate", "Steel", "Stone", "Tile", "Wood"
+    ],
+    slabStyle: [
+      "Curved Slab", "Frame with Infill", "Full Slab", "Glass Slab", "Half Slab", "Stepped Slab", "Tiled Slab"
+    ],
+    style: [
+      "Christian Cross", "Heart", "Bible", "Pillars", "Traditional African", "Abstract", "Praying Hands", "Scroll", "Angel", "Mausoleum", "Obelisk", "Plain", "Teddy Bear", "Butterfly", "Car", "Bike", "Sports"
+    ],
+    custom: [
+      "Bronze/Stainless Plaques", "Ceramic Photo Plaques", "Flower Vases", "Gold Lettering", "Inlaid Glass", "Photo Laser-Edging", "QR Code"
+    ],
+    colour: [
+      "Black", "Blue", "Green", "Grey-Dark", "Grey-Light", "Maroon", "Pearl", "Red", "White"
+    ],
     color: ["Black", "White", "Grey", "Brown", "Blue Pearl", "Red"],
     culture: ["Christian", "Jewish", "Muslim", "Hindu", "Traditional African"],
     designTheme: ["Cross", "Angel", "Heart", "Book", "Traditional", "Modern", "Custom"],
-    custom: ["Engraving", "Photo", "Gold Leaf", "Special Shape", "Lighting"],
   }
 
   // State for mobile filter drawer
@@ -717,23 +734,26 @@ export default function Home() {
       {/* Mobile Filter Drawer Overlay */}
       {mobileFilterOpen && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col sm:hidden">
-          <div className="flex justify-between items-center p-4 border-b border-gray-200">
+          <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
             <span className="font-bold text-lg">Filters</span>
             <button
-              className="p-2 rounded-full hover:bg-gray-100"
+              className="p-2 rounded-full hover:bg-gray-100 touch-manipulation"
               onClick={() => setMobileFilterOpen(false)}
               aria-label="Close Filters"
             >
               <X className="h-6 w-6 text-gray-700" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto p-4 pb-6">
             <TombstonesForSaleFilters
               activeFilters={activeFilters}
               setActiveFilters={setActiveFilters}
               showFilters={showFilters}
               setShowFilters={setShowFilters}
               filterOptions={filterOptions}
+              filteredListings={filteredListings}
+              handleSearch={handleSearch}
+              getActiveCategory={getActiveCategory}
             />
           </div>
         </div>
@@ -796,6 +816,9 @@ export default function Home() {
                 showFilters={showFilters}
                 setShowFilters={setShowFilters}
                 filterOptions={filterOptions}
+                filteredListings={filteredListings}
+                handleSearch={handleSearch}
+                getActiveCategory={getActiveCategory}
               />
             </div>
 
@@ -965,7 +988,7 @@ export default function Home() {
 
 // Shallow compare helper to avoid unnecessary filter state updates
 function filtersShallowEqual(a, b) {
-  const keys = ['category','colour','color','stoneType','style','custom','location','minPrice','maxPrice'];
+  const keys = ['category','colour','color','stoneType','style','slabStyle','custom','location','minPrice','maxPrice'];
   for (const k of keys) {
     if ((a?.[k] ?? null) !== (b?.[k] ?? null)) return false;
   }

@@ -154,8 +154,8 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
     const requestData = {
       data: {
         location: location.trim(),
-        latitude: numLatitude,
-        longitude: numLongitude
+        latitude: numLatitude.toString(),
+        longitude: numLongitude.toString()
       }
     }
     
@@ -175,18 +175,15 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
 
       if (!response.ok) {
         const errorData = await response.json()
-        console.log('Error response:', errorData)
         throw new Error(errorData.error?.message || 'Failed to update company location')
       }
 
       const result = await response.json()
-      console.log('Success response:', result)
-      
       const updatedCompany = {
         ...company,
         location: location.trim(),
-        latitude: numLatitude,
-        longitude: numLongitude
+        latitude: latitude,
+        longitude: longitude
       }
 
       // Call the callback to update the parent component
