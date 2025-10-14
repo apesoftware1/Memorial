@@ -194,6 +194,20 @@ export default function ManufacturerProfileEditor({
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [listingToDelete, setListingToDelete] = useState(null);
 
+  // Mobile menu state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileDropdown, setMobileDropdown] = useState(null);
+
+  // Mobile menu toggle function
+  const handleMobileMenuToggle = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  // Mobile dropdown toggle function
+  const handleMobileDropdownToggle = (dropdown) => {
+    setMobileDropdown(mobileDropdown === dropdown ? null : dropdown);
+  };
+
   // Logo upload state
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
@@ -1174,7 +1188,13 @@ export default function ManufacturerProfileEditor({
   };
   return (
     <>
-      <Header showLogout={isOwner} />
+      <Header 
+        showLogout={isOwner} 
+        mobileMenuOpen={mobileMenuOpen}
+        handleMobileMenuToggle={handleMobileMenuToggle}
+        mobileDropdown={mobileDropdown}
+        handleMobileDropdownToggle={handleMobileDropdownToggle}
+      />
       
       {/* Branch Button Container - Positioned directly beneath header */}
       {branchButton && (

@@ -49,6 +49,18 @@ export function StandardListingCard({
     return count;
   };
 
+  // Create product object for FavoriteButton
+  const favoriteProduct: FavoriteProduct = {
+    id: listing.id || listing.documentId,
+    title: listing.title,
+    price: listing.price,
+    image: listing.mainImageUrl,
+    details: listing.productDetails,
+    manufacturer: listing.company?.name,
+    location: listing.location,
+    tag: listing.adFlasher,
+    tagColor: listing.adFlasherColor
+  };
   // Resolve category label for the card (maps to allowed categories)
   const getCategoryLabel = () => {
     const candidates = [
@@ -137,6 +149,10 @@ export function StandardListingCard({
               className="object-cover"
               sizes="(max-width: 768px) 100vw"
             />
+            {/* Heart icon overlay - top right corner */}
+            <div className="absolute top-3 right-2 z-20" onClick={(e) => e.stopPropagation()}>
+              <FavoriteButton product={favoriteProduct} size="md" />
+            </div>
             {/* Camera icon and counter overlay for main image */}
             <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/80 text-white px-2 py-0.5 rounded text-xs font-medium z-10">
               <Camera className="w-4 h-4" />
@@ -185,10 +201,6 @@ export function StandardListingCard({
               >
                 {listing.adFlasher || "Unique Design"}
               </Badge>
-            </div>
-            <div onClick={(e) => e.stopPropagation()}>
-              {/* TODO: to be added to the backend-favorite button */}
-              {/* <FavoriteButton product={product} size="md" /> */}
             </div>
           </div>
           {/* Title, Details, Features (Mobile) */}
@@ -396,6 +408,10 @@ export function StandardListingCard({
               className="object-cover"
               sizes="(min-width: 768px) 50vw"
             />
+            {/* Heart icon overlay - top right corner */}
+            <div className="absolute top-3 right-2 z-20" onClick={(e) => e.stopPropagation()}>
+              <FavoriteButton product={favoriteProduct} size="md" />
+            </div>
             {/* Camera icon and counter overlay */}
             <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/80 text-white px-2 py-0.5 rounded text-xs font-medium z-10">
               <Camera className="w-4 h-4" />
@@ -419,10 +435,6 @@ export function StandardListingCard({
                 {listing.adFlasher || "Unique Design"}
               </Badge>
               </div>
-            </div>
-            <div onClick={(e) => e.stopPropagation()}>
-              {/* TODO: to be added to the backend-favorite button */}
-              {/* <FavoriteButton product={product} size="md" /> */}
             </div>
           </div>
           {/* Middle section: title and details */}
@@ -520,8 +532,7 @@ export function StandardListingCard({
                       {listing.additionalProductDetails
                         ?.transportAndInstallation &&
                       Array.isArray(
-                        listing.additionalProductDetails
-                          .transportAndInstallation
+                        listing.additionalProductDetails.transportAndInstallation
                       ) &&
                       listing.additionalProductDetails.transportAndInstallation
                         .length > 0 &&

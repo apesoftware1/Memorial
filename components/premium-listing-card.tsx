@@ -90,6 +90,19 @@ export function PremiumListingCard({
 
   const productUrl = href || `/tombstones-for-sale/${listing.documentId}`;
 
+  // Create product object for FavoriteButton
+  const favoriteProduct: FavoriteProduct = {
+    id: listing.id || listing.documentId,
+    title: listing.title,
+    price: listing.price,
+    image: listing.mainImageUrl,
+    details: listing.productDetails,
+    manufacturer: listing.company?.name,
+    location: listing.location,
+    tag: listing.adFlasher,
+    tagColor: listing.adFlasherColor
+  };
+
   // Handler to navigate to product showcase
   const handleCardClick = (e: React.MouseEvent) => {
     // Prevent navigation if the click is on a manufacturer link
@@ -207,7 +220,10 @@ export function PremiumListingCard({
               className="object-cover"
               sizes="(max-width: 768px) 100vw"
             />
-          
+            {/* Heart icon overlay - top right corner */}
+            <div className="absolute top-4 right-2 z-20" onClick={(e) => e.stopPropagation()}>
+              <FavoriteButton product={favoriteProduct} size="md" />
+            </div>
             {/* Camera icon and counter overlay for main image */}
             <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/80 text-white px-2 py-0.5 rounded text-xs font-medium z-10">
               <Camera className="w-4 h-4" />
@@ -275,10 +291,6 @@ export function PremiumListingCard({
                   Available at {listing.branches.length} Branches
                 </Badge>
               )}
-            </div>
-            <div onClick={(e) => e.stopPropagation()}>
-              {/* TODO: to be added to the backend-favorite button */}
-              {/* <FavoriteButton product={product} size="md" /> */}
             </div>
           </div>
           {/* Title, Details, Features (Mobile) */}
@@ -480,6 +492,10 @@ export function PremiumListingCard({
               className="object-cover"
               priority
             />
+            {/* Heart icon overlay - top right corner */}
+            <div className="absolute top-4 right-2 z-20" onClick={(e) => e.stopPropagation()}>
+              <FavoriteButton product={favoriteProduct} size="md" />
+            </div>
             {/* Special badge overlay for desktop */}
             {typeof window !== 'undefined' && window.location.pathname.includes('tombstones-on-special') && (
               <div className="absolute top-0 left-0 z-20">
@@ -506,7 +522,7 @@ export function PremiumListingCard({
               <div className="text-2xl font-bold text-blue-600">
                 {formatPrice(listing.price)}
               </div>
-              <div className="mt-1 mb-0">
+              <div className="mt-1 mb-0 flex gap-2">
                 <Badge
                   className={cn("text-white text-sm px-3 py-1 rounded")}
                   style={{ backgroundColor: listing.adFlasherColor || "#DB2777" }}

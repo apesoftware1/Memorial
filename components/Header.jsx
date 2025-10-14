@@ -338,6 +338,17 @@ export default function Header({
               />
             )}
           </button>
+          {mobileDropdown === "favourites" && (
+            <div className="pl-4 mt-2">
+              <Link
+                href="/favorites"
+                className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
+                onClick={handleMobileMenuToggle}
+              >
+                MY FAVORITES ({totalFavorites})
+              </Link>
+            </div>
+          )}
         </div>
       </nav>
     </header>

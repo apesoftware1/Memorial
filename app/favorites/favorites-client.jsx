@@ -272,7 +272,12 @@ export function FavoritesClientContent() {
                     
                     {favorite.details && (
                       <p className="text-sm text-gray-600 bg-gray-50 px-2 py-1 rounded-full inline-block">
-                        {favorite.details}
+                        {typeof favorite.details === 'string' 
+                          ? favorite.details 
+                          : favorite.details.value || 
+                            (favorite.details.color?.value || favorite.details.style?.value || favorite.details.stoneType?.value || favorite.details.customization?.value) ||
+                            'Product Details'
+                        }
                       </p>
                     )}
                     

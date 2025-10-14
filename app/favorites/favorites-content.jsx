@@ -48,7 +48,12 @@ export function FavoritesContent() {
               
               {/* Product Details */}
               <p className="text-xs text-gray-600">
-                {product.details}
+                {typeof product.details === 'string' 
+                  ? product.details 
+                  : product.details?.value || 
+                    (product.details?.color?.value || product.details?.style?.value || product.details?.stoneType?.value || product.details?.customization?.value) ||
+                    'Product Details'
+                }
               </p>
             </div>
           </Link>
