@@ -300,6 +300,16 @@ export default function ManufacturerProfileEditor({
       }
       setFilteredListings(filteredByCategory);
     }
+    
+    // Also update companyListings with category filter for consistency
+    let filteredCompanyListings = listings || [];
+    if (categoryFilter !== "All Categories") {
+      filteredCompanyListings = filteredCompanyListings.filter(listing => {
+        const categoryName = listing.listing_category?.name;
+        return categoryName === categoryFilter;
+      });
+    }
+    setCompanyListings(filteredCompanyListings);
   }, [searchParams, company, listings, categoryFilter]);
   
   // Branch location display component

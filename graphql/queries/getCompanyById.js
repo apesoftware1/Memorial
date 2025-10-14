@@ -56,6 +56,9 @@ export const GET_COMPANY_BY_ID = gql`
       }
         listings(pagination: { limit: -1 }) {
         createdAt
+         listing_category {
+      name
+    }
        branches {
          documentId
           name

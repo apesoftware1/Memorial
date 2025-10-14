@@ -143,14 +143,6 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
     const numLatitude = Number(latitude)
     const numLongitude = Number(longitude)
     
-    console.log('=== ManufacturerLocationModal Debug ===')
-    console.log('Original latitude:', latitude, 'Type:', typeof latitude)
-    console.log('Original longitude:', longitude, 'Type:', typeof longitude)
-    console.log('Converted latitude:', numLatitude, 'Type:', typeof numLatitude)
-    console.log('Converted longitude:', numLongitude, 'Type:', typeof numLongitude)
-    console.log('Location string:', location.trim())
-    console.log('Company documentId:', company.documentId)
-    
     const requestData = {
       data: {
         location: location.trim(),
@@ -158,8 +150,6 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
         longitude: numLongitude.toString()
       }
     }
-    
-    console.log('Request payload:', JSON.stringify(requestData, null, 2))
     
     try {
       const response = await fetch(
