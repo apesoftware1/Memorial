@@ -193,8 +193,8 @@ export default function Home() {
   // Helper to get active category name
   const getActiveCategory = () => {
     if (!categories || !categories.length) return '';
-    if (activeFilters.category) return activeFilters.category;
-    return categories[0]?.name || '';
+    if (activeFilters.category && activeFilters.category !== 'All Categories') return activeFilters.category;
+    return '';
   };
 
   // Generic filter function that accepts a filters object
@@ -261,7 +261,7 @@ export default function Home() {
     }
     
     // Category (exact)
-    if (f.category) {
+    if (f.category && f.category !== 'All Categories' && f.category !== '') {
       filtered = filtered.filter(listing => (listing.listing_category?.name || '').toLowerCase() === f.category.toLowerCase());
     }
     // Location (partial)
@@ -356,6 +356,14 @@ export default function Home() {
     if (currentPage !== 1) setCurrentPage(1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParamsKey, allListings]);
+
+  // Update filtered listings live when activeFilters change (for live search count)
+  useEffect(() => {
+    if (allListings && allListings.length > 0) {
+      const filtered = filterListingsFrom(activeFilters);
+      setFilteredListings(filtered);
+    }
+  }, [activeFilters, allListings]);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);

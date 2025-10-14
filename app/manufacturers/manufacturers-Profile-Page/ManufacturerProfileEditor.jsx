@@ -155,6 +155,8 @@ export default function ManufacturerProfileEditor({
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const sortModalRef = useRef();
   const [sortBy, setSortBy] = useState("Price");
+  const [categoryFilter, setCategoryFilter] = useState("All Categories");
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState("");
@@ -259,18 +261,46 @@ export default function ManufacturerProfileEditor({
       if (branch) {
         setBranchFromUrl(branch);
         // Filter listings to show only those associated with this branch
-        const branchListings = listings.filter(listing => 
+        let branchListings = listings.filter(listing => 
           listing.branches?.some(b => b.documentId === branch.documentId)
         );
+        
+        // Apply category filter
+        if (categoryFilter !== "All Categories") {
+          branchListings = branchListings.filter(listing => {
+            // Try multiple possible category field structures
+            const categoryName = listing.listing_category?.name
+            return categoryName === categoryFilter;
+          });
+        }
+        
         setFilteredListings(branchListings);
         setSelectedBranch(branch);
       } else {
-        setFilteredListings(listings);
+        let filteredByCategory = listings;
+        if (categoryFilter !== "All Categories") {
+          filteredByCategory = listings.filter(listing => {
+            // Try multiple possible category field structures
+            const categoryName =  listing.listing_category?.name
+
+            return categoryName === categoryFilter;
+          });
+        }
+        setFilteredListings(filteredByCategory);
       }
     } else {
-      setFilteredListings(listings);
+      let filteredByCategory = listings;
+      if (categoryFilter !== "All Categories") {
+        filteredByCategory = listings.filter(listing => {
+          // Try multiple possible category field structures
+          const categoryName = listing.listing_category?.name
+            
+          return categoryName === categoryFilter;
+        });
+      }
+      setFilteredListings(filteredByCategory);
     }
-  }, [searchParams, company, listings]);
+  }, [searchParams, company, listings, categoryFilter]);
   
   // Branch location display component
   const BranchLocationInfo = () => {
@@ -2322,6 +2352,22 @@ export default function ManufacturerProfileEditor({
                 />
               </svg>
             </div>
+            {/* Mobile Category Filter Button */}
+            <div
+              className="sm:hidden flex items-center text-green-600 font-semibold cursor-pointer select-none"
+              onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+            >
+              <span className="mr-1">Filter</span>
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                <path
+                  d="M3 6h18M7 12h10M11 18h2"
+                  stroke="#10b981"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
             {/* Mobile Sort Modal */}
             {showSortDropdown && (
               <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-40 sm:hidden">
@@ -2363,6 +2409,46 @@ export default function ManufacturerProfileEditor({
                 </div>
               </div>
             )}
+            {/* Mobile Category Filter Modal */}
+            {showCategoryDropdown && (
+              <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-40 sm:hidden">
+                <div
+                  className="w-full max-w-md mx-auto rounded-t-2xl bg-[#232323] p-4 pb-8 animate-slide-in-up"
+                >
+                  {["All Categories", "SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"].map((option) => (
+                    <div
+                      key={option}
+                      className={`flex items-center justify-between px-2 py-4 text-lg border-b border-[#333] last:border-b-0 cursor-pointer ${
+                        categoryFilter === option
+                          ? "text-white font-bold"
+                          : "text-gray-200"
+                      }`}
+                      onClick={() => {
+                        setCategoryFilter(option);
+                        setShowCategoryDropdown(false);
+                      }}
+                    >
+                      <span>{option}</span>
+                      <span
+                        className={`ml-2 w-6 h-6 flex items-center justify-center rounded-full border-2 ${
+                          categoryFilter === option
+                            ? "border-green-500"
+                            : "border-gray-500"
+                        }`}
+                        style={{
+                          background:
+                            categoryFilter === option ? "#10b981" : "transparent",
+                        }}
+                      >
+                        {categoryFilter === option && (
+                          <span className="block w-3 h-3 bg-white rounded-full"></span>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Desktop Sort Dropdown */}
             <div className="hidden sm:flex items-center">
               <span style={{ fontSize: 13, color: "#888" }}>Sort by:</span>
@@ -2379,6 +2465,28 @@ export default function ManufacturerProfileEditor({
                 <option value="Price">Price</option>
                 <option value="Listing Date">Listing Date</option>
               </select>
+            </div>
+            {/* Desktop Category Filter Dropdown */}
+            <div className="hidden sm:flex items-center ml-4">
+              <span style={{ fontSize: 13, color: "#888" }}>Filter by:</span>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                style={{
+                  fontSize: 13,
+                  border: "1px solid #e0e0e0",
+                  borderRadius: 4,
+                  padding: "2px 8px",
+                }}
+              >
+                 <option value="All Categories">All Categories</option>
+                 <option value="SINGLE">SINGLE</option>
+                 <option value="DOUBLE">DOUBLE</option>
+                 <option value="CHILD">CHILD</option>
+                 <option value="HEAD">HEAD</option>
+                 <option value="PLAQUES">PLAQUES</option>
+                 <option value="CREMATION">CREMATION</option>
+               </select>
             </div>
           </div>
         </div>

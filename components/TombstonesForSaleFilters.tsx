@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { ChevronDown } from "lucide-react"
+import { useListingCategories } from "@/hooks/use-ListingCategories"
 
 interface TombstonesForSaleFiltersProps {
   activeFilters: any;
@@ -24,6 +25,7 @@ const defaultFilterOptions = {
 
 export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions }: TombstonesForSaleFiltersProps) {
   const [showMore, setShowMore] = useState(false);
+  const { categories, loading } = useListingCategories();
   const mergedOptions = { ...defaultFilterOptions, ...filterOptions };
 
   // Toggle filter dropdown
@@ -108,6 +110,15 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
         </div>
       </div>
       <div className="border-t border-gray-200 my-2"></div>
+      
+      {/* Category Filter */}
+      <FilterDropdown 
+        name="category" 
+        label="Category" 
+        options={loading ? ["Loading..."] : ["All Categories", ...categories.map((cat: any) => cat.name)]} 
+      />
+      <div className="border-t border-gray-200 my-2"></div>
+      
       <FilterDropdown name="location" label="Location" options={mergedOptions.location} />
       <div className="border-t border-gray-200 my-2"></div>
       <FilterDropdown name="style" label="Head Style" options={mergedOptions.style} />
