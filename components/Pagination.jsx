@@ -4,14 +4,17 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   const handlePageChange = (page) => {
     onPageChange(page);
     
-    // Scroll to Featured Listings section with smooth behavior
-    const featuredSection = document.getElementById('featured-listings');
-    if (featuredSection) {
-      featuredSection.scrollIntoView({ 
-        behavior: 'smooth',
-        block: 'start'
-      });
-    }
+    // Add a small delay to ensure DOM has updated with new page content before scrolling
+    setTimeout(() => {
+      // Scroll to Featured Listings section with smooth behavior
+      const featuredSection = document.getElementById('featured-listings');
+      if (featuredSection) {
+        featuredSection.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    }, 100);
   };
 
   return (

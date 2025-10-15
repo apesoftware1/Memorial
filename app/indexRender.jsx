@@ -75,13 +75,16 @@ const IndexRender = ({
     url.searchParams.set('page', clamped.toString());
     window.history.pushState({}, '', url.toString());
     
-    // Scroll to the top of the listings section using the ref
-    if (listingsSectionRef.current) {
-      listingsSectionRef.current.scrollIntoView({ behavior: 'smooth' });
-    } else {
-      // Fallback to scrolling to top of page
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    // Delay scroll to ensure DOM has updated with new page content
+    setTimeout(() => {
+      // Scroll to the top of the listings section using the ref
+      if (listingsSectionRef.current) {
+        listingsSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        // Fallback to scrolling to top of page
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 100); // Small delay to ensure DOM updates
   };
 
   // PAGINATION LOGIC (all from strapiListings)
