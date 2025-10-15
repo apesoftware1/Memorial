@@ -3,8 +3,9 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Facebook, Twitter, Linkedin, Mail, Loader2, AlertCircle, RefreshCw, Trash2 } from "lucide-react"
+import { Facebook, Twitter, Linkedin, Mail, Loader2, AlertCircle, RefreshCw, Trash2, MessageCircle, Instagram } from "lucide-react"
 import { useFavorites } from "@/context/favorites-context.jsx"
+import { ConfirmationModal } from "@/components/ConfirmationModal.jsx"
 
 // Constants for pagination
 const ITEMS_PER_PAGE = 12
@@ -25,6 +26,7 @@ export function FavoritesClientContent() {
   const [currentPage, setCurrentPage] = useState(1)
   const [sortOrder, setSortOrder] = useState('newest') // 'newest', 'oldest', 'name'
   const [isMobile, setIsMobile] = useState(false)
+  const [showClearConfirmation, setShowClearConfirmation] = useState(false)
 
   // Detect mobile screen size
   useEffect(() => {
@@ -111,9 +113,13 @@ export function FavoritesClientContent() {
 
   // Handle clear all favorites
   const handleClearAll = useCallback(() => {
-    if (window.confirm('Are you sure you want to clear all favorites? This action cannot be undone.')) {
-      clearAllFavorites()
-    }
+    setShowClearConfirmation(true)
+  }, [])
+
+  // Handle confirm clear all
+  const handleConfirmClearAll = useCallback(() => {
+    clearAllFavorites()
+    setShowClearConfirmation(false)
   }, [clearAllFavorites])
 
   // Handle refresh cache
@@ -380,42 +386,65 @@ export function FavoritesClientContent() {
         <div className="text-center">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Share Your Favorites</h3>
           <p className="text-gray-600 mb-6">Let others know about the tombstones you've selected</p>
-          <div className="flex justify-center space-x-4">
+          <div className="flex justify-center flex-wrap gap-2">
             <button 
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+              className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
               onClick={() => {
                 const url = window.location.href;
                 const text = `Check out my favorite tombstones on TombstonesFinder`;
                 window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`, '_blank');
               }}
             >
-              <Facebook className="h-4 w-4" />
+              <Facebook className="h-3 w-3" />
               Facebook
             </button>
             <button 
-              className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors shadow-sm"
+              className="flex items-center gap-1 px-3 py-1.5 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors text-sm"
               onClick={() => {
                 const url = window.location.href;
                 const text = `Check out my favorite tombstones on TombstonesFinder`;
                 window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank');
               }}
             >
-              <Twitter className="h-4 w-4" />
+              <Twitter className="h-3 w-3" />
               Twitter
             </button>
             <button 
-              className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors shadow-sm"
+              className="flex items-center gap-1 px-3 py-1.5 bg-blue-700 text-white rounded-md hover:bg-blue-800 transition-colors text-sm"
               onClick={() => {
                 const url = window.location.href;
                 const text = `Check out my favorite tombstones on TombstonesFinder`;
                 window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank');
               }}
             >
-              <Linkedin className="h-4 w-4" />
+              <Linkedin className="h-3 w-3" />
               LinkedIn
             </button>
             <button 
-              className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm"
+              className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors text-sm"
+              onClick={() => {
+                const url = window.location.href;
+                const text = `Check out my favorite tombstones on TombstonesFinder`;
+                window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
+              }}
+            >
+              <MessageCircle className="h-3 w-3" />
+              WhatsApp
+            </button>
+            <button 
+              className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-md hover:from-purple-600 hover:to-pink-600 transition-colors text-sm"
+              onClick={() => {
+                const url = window.location.href;
+                const text = `Check out my favorite tombstones on TombstonesFinder ${url}`;
+                navigator.clipboard.writeText(text);
+                alert('Link copied to clipboard! You can now paste it in your Instagram story or post.');
+              }}
+            >
+              <Instagram className="h-3 w-3" />
+              Instagram
+            </button>
+            <button 
+              className="flex items-center gap-1 px-3 py-1.5 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm"
               onClick={() => {
                 const url = window.location.href;
                 const subject = 'My Favorite Tombstones';
@@ -423,12 +452,24 @@ export function FavoritesClientContent() {
                 window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
               }}
             >
-              <Mail className="h-4 w-4" />
+              <Mail className="h-3 w-3" />
               Email
             </button>
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showClearConfirmation}
+        onClose={() => setShowClearConfirmation(false)}
+        onConfirm={handleConfirmClearAll}
+        title="Clear All Favorites"
+        message="Are you sure you want to clear all favorites? This action cannot be undone."
+        confirmText="Clear All"
+        cancelText="Cancel"
+        type="danger"
+      />
     </>
   )
 }
