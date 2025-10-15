@@ -2,11 +2,25 @@
 
 import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-export default function SearchForm({ onQueryChange, onSearchResults, onSubmit }) {
+export default function SearchForm({ 
+  onQueryChange, 
+  onSearchResults, 
+  onSubmit,
+  router: passedRouter,
+  selectedCategory,
+  categories,
+  activeTab,
+  currentQuery: passedCurrentQuery
+}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const router = useRouter();
+
+  // Use passed currentQuery if available, otherwise use local state
+  const currentQuery = passedCurrentQuery || searchQuery;
 
   // Filter criteria for mock search
   const filterCriteria = [
@@ -96,6 +110,38 @@ export default function SearchForm({ onQueryChange, onSearchResults, onSubmit })
           type="submit"
           className="absolute right-2 p-2 bg-white rounded-lg text-gray-700 hover:text-gray-900 transition-colors"
           disabled={isSearching}
+          onClick={(e) => {
+            e.preventDefault();
+            if (currentQuery.trim()) {
+              // Include category in URL if selected
+              let searchUrl = `/tombstones-for-sale?search=${encodeURIComponent(currentQuery)}`;
+              
+              // Add category parameter if available
+              if (selectedCategory) {
+                searchUrl += `&category=${encodeURIComponent(selectedCategory)}`;
+              } else if (categories && categories.length > 0 && activeTab !== undefined) {
+                const desiredOrder = [
+                  "SINGLE",
+                  "DOUBLE",
+                  "CHILD",
+                  "HEAD",
+                  "PLAQUES",
+                  "CREMATION"
+                ];
+                const sortedCategories = desiredOrder
+                  .map((name) =>
+                    categories.find((cat) => cat?.name && cat.name.toUpperCase() === name)
+                  )
+                  .filter(Boolean);
+                const selectedCategoryObj = sortedCategories[activeTab];
+                if (selectedCategoryObj) {
+                  searchUrl += `&category=${encodeURIComponent(selectedCategoryObj.name)}`;
+                }
+              }
+              
+              router.push(searchUrl);
+            }
+          }}
         >
           <Search className="w-5 h-5" />
         </button>

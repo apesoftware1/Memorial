@@ -1,112 +1,130 @@
 "use client"
 
-import { ChevronLeft, ChevronRight } from "lucide-react"
-
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
+  const handlePageChange = (page) => {
+    onPageChange(page);
     
-    if (totalPages <= maxVisiblePages) {
-      // Show all pages if total pages is less than max visible
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
+    // Add a small delay to ensure DOM has updated with new page content before scrolling
+    setTimeout(() => {
+      // Scroll to Featured Listings section with smooth behavior
+      const featuredSection = document.getElementById('featured-listings');
+      if (featuredSection) {
+        featuredSection.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'start'
+        });
       }
-    } else {
-      // Always show first page
-      pages.push(1);
-      
-      // Calculate start and end of visible pages
-      let start = Math.max(2, currentPage - 1);
-      let end = Math.min(totalPages - 1, currentPage + 1);
-      
-      // Adjust if at the start
-      if (currentPage <= 2) {
-        end = 4;
-      }
-      // Adjust if at the end
-      if (currentPage >= totalPages - 1) {
-        start = totalPages - 3;
-      }
-      
-      // Add ellipsis if needed
-      if (start > 2) {
-        pages.push('...');
-      }
-      
-      // Add middle pages
-      for (let i = start; i <= end; i++) {
-        pages.push(i);
-      }
-      
-      // Add ellipsis if needed
-      if (end < totalPages - 1) {
-        pages.push('...');
-      }
-      
-      // Always show last page
-      pages.push(totalPages);
-    }
-    
-    return pages;
+    }, 100);
   };
 
   return (
-    <div className="flex items-center justify-center space-x-2 mt-8">
-      {/* Previous button */}
-      <button
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-        className={`p-2 rounded-md border ${
-          currentPage === 1
-            ? 'border-gray-200 text-gray-400 cursor-not-allowed'
-            : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors'
-        }`}
-        aria-label="Previous page"
-      >
-        <ChevronLeft className="h-5 w-5" />
-      </button>
-
-      {/* Page numbers */}
-      <div className="flex items-center space-x-1">
-        {getPageNumbers().map((page, index) => (
-          page === '...' ? (
-            <span key={`ellipsis-${index}`} className="px-2 text-gray-500">
-              ...
-            </span>
-          ) : (
-            <button
-              key={page}
-              onClick={() => onPageChange(page)}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${
-                currentPage === page
-                  ? 'bg-[#D4AF37] text-white'
-                  : 'text-gray-700 hover:bg-gray-50 hover:text-[#D4AF37] transition-colors'
-              }`}
-              aria-label={`Page ${page}`}
-              aria-current={currentPage === page ? 'page' : undefined}
-            >
-              {page}
-            </button>
-          )
-        ))}
+    <div className="flex flex-col items-center my-8">
+      {/* Page indicator */}
+      <div className="mb-4 text-sm text-gray-600">
+        Page {currentPage} of {totalPages}
       </div>
-
-      {/* Next button */}
-      <button
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className={`p-2 rounded-md border ${
-          currentPage === totalPages
-            ? 'border-gray-200 text-gray-400 cursor-not-allowed'
-            : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors'
-        }`}
-        aria-label="Next page"
-      >
-        <ChevronRight className="h-5 w-5" />
-      </button>
+      <nav className="inline-flex rounded-md shadow">
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed"
+          aria-label="Previous page"
+        >
+          Previous
+        </button>
+        {totalPages <= 5 ? (
+          // Show all page numbers if 5 or fewer pages
+          [...Array(totalPages)].map((_, idx) => (
+            <button
+              key={idx + 1}
+              onClick={() => handlePageChange(idx + 1)}
+              className={`py-2 px-4 border border-gray-300 bg-white text-sm font-medium ${
+                currentPage === idx + 1 ? "text-blue-600 font-bold bg-blue-50" : "text-gray-500 hover:text-blue-600"
+              }`}
+              aria-label={`Page ${idx + 1}`}
+              aria-current={currentPage === idx + 1 ? "page" : undefined}
+            >
+              {idx + 1}
+            </button>
+          ))
+        ) : (
+          // Show limited page numbers with ellipsis for more than 5 pages
+          <>
+            {/* First page always shown */}
+            <button
+              onClick={() => handlePageChange(1)}
+              className={`py-2 px-4 border border-gray-300 bg-white text-sm font-medium ${
+                currentPage === 1 ? "text-blue-600 font-bold bg-blue-50" : "text-gray-500 hover:text-blue-600"
+              }`}
+              aria-label="Page 1"
+              aria-current={currentPage === 1 ? "page" : undefined}
+            >
+              1
+            </button>
+            
+            {/* Show ellipsis if not near the start */}
+            {currentPage > 3 && (
+              <span className="py-2 px-4 border border-gray-300 bg-white text-sm text-gray-500">
+                ...
+              </span>
+            )}
+            
+            {/* Pages around current page */}
+            {[...Array(totalPages)].map((_, idx) => {
+              const pageNum = idx + 1;
+              // Show current page and one page before/after
+              if (
+                (pageNum > 1 && pageNum < totalPages) && // Not first or last page
+                (Math.abs(pageNum - currentPage) <= 1) // Within 1 of current page
+              ) {
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    className={`py-2 px-4 border border-gray-300 bg-white text-sm font-medium ${
+                      currentPage === pageNum ? "text-blue-600 font-bold bg-blue-50" : "text-gray-500 hover:text-blue-600"
+                    }`}
+                    aria-label={`Page ${pageNum}`}
+                    aria-current={currentPage === pageNum ? "page" : undefined}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              }
+              return null;
+            })}
+            
+            {/* Show ellipsis if not near the end */}
+            {currentPage < totalPages - 2 && (
+              <span className="py-2 px-4 border border-gray-300 bg-white text-sm text-gray-500">
+                ...
+              </span>
+            )}
+            
+            {/* Last page always shown */}
+            <button
+              onClick={() => handlePageChange(totalPages)}
+              className={`py-2 px-4 border border-gray-300 bg-white text-sm font-medium ${
+                currentPage === totalPages ? "text-blue-600 font-bold bg-blue-50" : "text-gray-500 hover:text-blue-600"
+              }`}
+              aria-label={`Page ${totalPages}`}
+              aria-current={currentPage === totalPages ? "page" : undefined}
+            >
+              {totalPages}
+            </button>
+          </>
+        )}
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage >= totalPages}
+          className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed"
+          aria-label="Next page"
+        >
+          Next
+        </button>
+      </nav>
     </div>
   );
 };
 
-export default Pagination; 
+export default Pagination;

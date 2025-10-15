@@ -297,7 +297,7 @@ export default function Header({
           {mobileDropdown === "services" && (
             <div className="pl-4 mt-2 space-y-2">
               <Link href="/blog" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
-                MEMORIAL GUIDES & INSIGHTS
+                Insights, Guides & blogs
               </Link>
               <Link href="#" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
                 LET US HANDLE EVERYTHING
