@@ -176,17 +176,27 @@ function BlogContent() {
         mobileDropdown={mobileDropdown}
         handleMobileDropdownToggle={handleMobileDropdownToggle}
       />
-      <div className="bg-gray-50 min-h-screen">
-        <div className="container mx-auto px-4 max-w-4xl py-6 sm:py-8">
-          <header className="text-center mb-6 sm:mb-10">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-700">
-               Insights , Guides & blogs
-            </h1>
-            <p className="mt-2 text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
+      
+      {/* Background Image Section */}
+      <div 
+        className="h-64 bg-cover bg-center bg-no-repeat relative"
+        style={{
+          backgroundImage: "url('/2560(w)x400px(h)_Banner_OldYoungCouple.jpg')"
+        }}
+      >
+        <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+        <div className="relative z-10 flex items-center justify-center h-full">
+          <div className="text-center text-white">
+            <h1 className="text-5xl font-bold mb-4">Insights, Guides & Blogs</h1>
+            <p className="text-xl max-w-2xl mx-auto">
               Helpful guides on choosing tombstones, understanding costs, and creating a meaningful memorial.
             </p>
-          </header>
-
+          </div>
+        </div>
+      </div>
+      
+      <div className="bg-gray-50 min-h-screen">
+        <div className="container mx-auto px-4 max-w-4xl py-6 sm:py-8">
           {/* Error state */}
           {error && <ErrorDisplay message={error.message} />}
 

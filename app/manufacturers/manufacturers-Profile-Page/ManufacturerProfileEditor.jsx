@@ -1935,22 +1935,7 @@ export default function ManufacturerProfileEditor({
                        }}
                      />
                     </div>
-                  ) : (
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#888",
-                      }}
-                    >
-                      <span style={{ fontWeight: 700 }}>
-                        No video available
-                      </span>
-                    </div>
-                  )
+                  ) : null
                 )}
               </div>
             </div>
@@ -2128,19 +2113,21 @@ export default function ManufacturerProfileEditor({
               </div>
             )}
 
-            {/* Socials label */}
-            <div
-              style={{
-                fontSize: 11,
-                color: "#888",
-                fontWeight: 700,
-                marginBottom: 2,
-                marginLeft: 140,
-                textAlign: "left",
-              }}
-            >
-              Website & Social Media Links
-            </div>
+            {/* Socials label - conditionally show */}
+            {(isOwner || socialLinks.some(social => social.url && social.url !== "#")) && (
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#888",
+                  fontWeight: 700,
+                  marginBottom: 2,
+                  marginLeft: 140,
+                  textAlign: "left",
+                }}
+              >
+                Website & Social Media Links
+              </div>
+            )}
             {editingField === "socialLinks" ? (
               <div style={{ marginLeft: mobile ? 0 : 80, marginBottom: 8 }}>
                 {socialLinks.map((social) => (
@@ -2228,7 +2215,7 @@ export default function ManufacturerProfileEditor({
               </div>
             ) : (
               <>
-                {/* Socials vertical list with icons - always show all platforms */}
+                {/* Socials vertical list with icons - conditionally show platforms */}
                 <div
                   style={{
                     display: "flex",
@@ -2240,7 +2227,14 @@ export default function ManufacturerProfileEditor({
                     paddingLeft: 0,
                   }}
                 >
-                  {socialLinks.map((social, i) => (
+                  {socialLinks
+                    .filter((social) => {
+                      // If user is owner, show all platforms (including not set ones)
+                      if (isOwner) return true;
+                      // If user is not owner, only show platforms that have URLs set
+                      return social.url && social.url !== "#";
+                    })
+                    .map((social, i) => (
                     <div
                       key={i}
                       style={{

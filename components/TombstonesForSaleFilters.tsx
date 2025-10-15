@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { ChevronDown, Search } from "lucide-react"
 import { useListingCategories } from "@/hooks/use-ListingCategories"
+import Image from "next/image"
 
 interface TombstonesForSaleFiltersProps {
   activeFilters: any;
@@ -33,6 +34,119 @@ const defaultFilterOptions = {
   colour: [
     "Black", "Blue", "Green", "Grey-Dark", "Grey-Light", "Maroon", "Pearl", "Red", "White"
   ],
+};
+
+// Icon mappings for filter options
+// Category icons for tombstone types
+const categoryIcons = {
+  "Single": "/last_icons/MainCatergories_Icons_X6/MainCatergories_Icons_X6/MainCatergories_Icons_1_Single.svg",
+  "Double": "/last_icons/MainCatergories_Icons_X6/MainCatergories_Icons_X6/MainCatergories_Icons_2_Double.svg",
+  "Child": "/last_icons/MainCatergories_Icons_X6/MainCatergories_Icons_X6/MainCatergories_Icons_3_Child.svg",
+  "Head": "/last_icons/MainCatergories_Icons_X6/MainCatergories_Icons_X6/MainCatergories_Icons_4_Head.svg",
+  "Plaque": "/last_icons/MainCatergories_Icons_X6/MainCatergories_Icons_X6/MainCatergories_Icons_5_Plaque.svg",
+  "Cremation": "/last_icons/MainCatergories_Icons_X6/MainCatergories_Icons_X6/MainCatergories_Icons_6_Cremation.svg"
+};
+
+// Location icons - using a generic location pin for all provinces
+const locationIcons = {
+  "Gauteng": "/last_icons/Marble_Icon_TEST.svg", // Using available icon as placeholder
+  "Western Cape": "/last_icons/Marble_Icon_TEST.svg",
+  "KwaZulu-Natal": "/last_icons/Marble_Icon_TEST.svg",
+  "Eastern Cape": "/last_icons/Marble_Icon_TEST.svg",
+  "Free State": "/last_icons/Marble_Icon_TEST.svg"
+};
+
+const headStyleIcons = {
+  "Christian Cross": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_ChristianCross.svg",
+  "Heart": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Heart.svg",
+  "Bible": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bible.svg",
+  "Pillars": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Pillars.svg",
+  "Traditional African": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TraditionalAfrican.svg",
+  "Abstract": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Abstract.svg",
+  "Praying Hands": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_PrayingHands.svg",
+  "Scroll": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Scroll.svg",
+  "Angel": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Angel.svg",
+  "Mausoleum": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Mausolean.svg",
+  "Obelisk": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Obelisk.svg",
+  "Plain": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg",
+  "Teddy Bear": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TeddyBear.svg",
+  "Butterfly": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Butterfly.svg",
+  "Car": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Car.svg",
+  "Bike": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bike.svg",
+  "Sports": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Sport.svg"
+};
+
+const slabStyleIcons = {
+  "Curved Slab": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_CurvedSlab.svg",
+  "Frame with Infill": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_FramewithInfill.svg",
+  "Full Slab": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_FullSlab.svg",
+  "Glass Slab": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_GlassSlab.svg",
+  "Half Slab": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_HalfSlab.svg",
+  "Stepped Slab": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Stepped.svg",
+  "Tiled Slab": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Tiled.svg"
+};
+
+const stoneTypeIcons = {
+  "Biodegradable": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Biodegradable.svg",
+  "Brass": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Brass.svg",
+  "Ceramic/Porcelain": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Ceramic_Porcelain.svg",
+  "Composite": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Composite.svg",
+  "Concrete": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Concrete.svg",
+  "Copper": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Copper.svg",
+  "Glass": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Glass.svg",
+  "Granite": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Granite.svg",
+  "Limestone": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Limestone.svg",
+  "Marble": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Marble.svg",
+  "Perspex": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Perspex.svg",
+  "Quartzite": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Quartzite.svg",
+  "Sandstone": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Sandstone.svg",
+  "Slate": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Slate.svg",
+  "Steel": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Steel.svg",
+  "Stone": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg",
+  "Tile": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Tile.svg",
+  "Wood": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Wood.svg"
+};
+
+const colourIcons = {
+  "Black": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Black.svg",
+  "Blue": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Blue.svg",
+  "Green": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Green.svg",
+  "Grey-Dark": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Dark.svg",
+  "Grey-Light": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Light.svg",
+  "Maroon": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Maroon.svg",
+  "Pearl": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Pearl.svg",
+  "Red": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Red.svg",
+  "White": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_White.svg"
+};
+
+const customIcons = {
+  "Bronze/Stainless Plaques": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_Bronze_Stainless_Plaque.svg",
+  "Ceramic Photo Plaques": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_CeramicPhotoPlaque.svg",
+  "Flower Vases": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_FlowerVase.svg",
+  "Gold Lettering": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_GoldLettering.svg",
+  "Inlaid Glass": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_InlaidGlass.svg",
+  "Photo Laser-Edging": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_PhotoLaserEdginhg.svg",
+  "QR Code": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_QRCode.svg"
+};
+
+// Helper function to get icon for a filter option
+const getIconForOption = (filterName: string, option: string) => {
+  switch (filterName) {
+    case 'location':
+      return locationIcons[option as keyof typeof locationIcons];
+    case 'style':
+      return headStyleIcons[option as keyof typeof headStyleIcons];
+    case 'slabStyle':
+      return slabStyleIcons[option as keyof typeof slabStyleIcons];
+    case 'stoneType':
+      return stoneTypeIcons[option as keyof typeof stoneTypeIcons];
+    case 'colour':
+      return colourIcons[option as keyof typeof colourIcons];
+    case 'custom':
+      return customIcons[option as keyof typeof customIcons];
+    default:
+      return null;
+  }
 };
 
 export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions, filteredListings, handleSearch, getActiveCategory }: TombstonesForSaleFiltersProps) {
@@ -72,21 +186,41 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
       {showFilters === name && (
         <div className="absolute left-0 top-full z-[100] mt-1 w-full bg-[#2E2E30] rounded-md shadow-lg border border-gray-700 animate-slide-in">
           <ul className="py-1 max-h-60 overflow-auto" role="menu" aria-orientation="vertical">
-            {options.map((option: string) => (
-              <li
-                key={option}
-                onClick={() => setFilter(name, option)}
-                className="px-3 py-2 text-sm text-gray-300 hover:bg-[#3E3E40] flex justify-between items-center cursor-pointer"
-                role="menuitem"
-              >
-                {option}
-                {activeFilters[name] === option && (
-                  <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </li>
-            ))}
+            {options.map((option: string) => {
+              const iconPath = getIconForOption(name, option);
+              return (
+                <li
+                  key={option}
+                  onClick={() => setFilter(name, option)}
+                  className="px-3 py-2 text-sm text-gray-300 hover:bg-[#3E3E40] flex items-center cursor-pointer"
+                  role="menuitem"
+                >
+                  <div className="flex items-center flex-1">
+                    {iconPath && (
+                      <div className="w-6 h-6 mr-3 flex-shrink-0">
+                        <Image
+                          src={iconPath}
+                          alt={`${option} icon`}
+                          width={24}
+                          height={24}
+                          className={`w-full h-full object-contain ${
+                            name !== 'slabStyle' && name !== 'colour' 
+                              ? 'filter brightness-0 invert opacity-80' 
+                              : ''
+                          }`}
+                        />
+                      </div>
+                    )}
+                    <span>{option}</span>
+                  </div>
+                  {activeFilters[name] === option && (
+                    <svg className="h-4 w-4 text-green-500 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

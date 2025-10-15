@@ -228,9 +228,9 @@ export function FavoritesClientContent() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
         {paginationData.items.map((favorite) => (
           <div key={favorite.id} className="group">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
               {/* Product Image */}
-              <div className="relative aspect-square bg-gray-50">
+              <div className="relative w-full h-48 bg-gray-50">
                 <Image
                   src={favorite.mainImageUrl || favorite.image || "/placeholder.svg"}
                   alt={favorite.title || favorite.name || "Product"}
@@ -251,39 +251,43 @@ export function FavoritesClientContent() {
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
-                
-                {/* Added date badge */}
-                <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/70 backdrop-blur-sm text-white text-xs rounded-full">
-                  Added {new Date(favorite.addedAt).toLocaleDateString()}
-                </div>
               </div>
               
               {/* Product Info */}
               <Link href={`/tombstones-for-sale/${favorite.id}`} className="block">
                 <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 text-lg mb-2 line-clamp-2 group-hover:text-amber-600 transition-colors">
+                  <h3 className="font-bold text-gray-900 text-lg mb-3 group-hover:text-amber-600 transition-colors uppercase">
                     {favorite.title || favorite.name || "Untitled Product"}
                   </h3>
                   
                   <div className="space-y-2">
-                    <p className="text-2xl font-bold text-amber-600">
-                      {favorite.price?.toLocaleString() || 'Price on request'}
-                    </p>
+                    <div className="flex items-center justify-between gap-2 w-full">
+                      <p className="text-xl font-bold text-blue-600 flex-shrink-0">
+                        R {favorite.price?.toLocaleString() || 'Price on request'}
+                      </p>
+                      {favorite.adFlasher && (
+                        <span 
+                          className="inline-block px-2 py-1 text-xs font-bold rounded-full text-white whitespace-nowrap flex-shrink-0 ml-auto"
+                          style={{ backgroundColor: favorite.adFlasherColor || '#005bac' }}
+                        >
+                          {favorite.adFlasher}
+                        </span>
+                      )}
+                    </div>
                     
                     {favorite.details && (
-                      <p className="text-sm text-gray-600 bg-gray-50 px-2 py-1 rounded-full inline-block">
+                      <p className="text-sm text-gray-600">
                         {typeof favorite.details === 'string' 
                           ? favorite.details 
                           : favorite.details.value || 
-                            (favorite.details.color?.value || favorite.details.style?.value || favorite.details.stoneType?.value || favorite.details.customization?.value) ||
-                            'Product Details'
+                            (favorite.details.color?.value || favorite.details.style?.value || favorite.details.stoneType?.value || favorite.details.customization?.value) 
                         }
                       </p>
                     )}
                     
                     {favorite.manufacturer && (
                       <p className="text-sm text-gray-500">
-                        by {favorite.manufacturer}
+                        made by: {favorite.manufacturer}
                       </p>
                     )}
                     

@@ -13,6 +13,7 @@ import { PremiumListingCardModal } from "@/components/premium-listing-card-modal
 import TombstonesForSaleFilters from "@/components/TombstonesForSaleFilters"
 import FeaturedManufacturer from '@/components/FeaturedManufacturer';
 import BannerAd from '@/components/BannerAd';
+import Pagination from '@/components/Pagination';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { PageLoader, CardSkeleton } from "@/components/ui/loader";
 
@@ -877,7 +878,7 @@ export default function Home() {
               </div>
 
               {/* Featured Listings */}
-              <div className="mb-8">
+              <div id="featured-listings" className="mb-8">
                 <h2 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">FEATURED LISTINGS</h2>
                 <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
 
@@ -952,32 +953,12 @@ export default function Home() {
 
                 {/* Pagination */}
                 <div className="mt-8 flex justify-center">
-                  <nav className="inline-flex rounded-md shadow">
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                    disabled={currentPage === 1}
-                    >
-                      Previous
-                  </button>
-                  {[...Array(totalPages)].map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentPage(i + 1)}
-                      className={`py-2 px-4 border border-gray-300 bg-white text-sm font-medium ${currentPage === i + 1 ? 'text-blue-600' : 'text-gray-500'} hover:bg-blue-50`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                    disabled={currentPage === totalPages}
-                    >
-                      Next
-                  </button>
-                  </nav>
-              </div>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
             </div>
           </div>
         </div>
