@@ -266,7 +266,32 @@ export default function ManufacturersPage() {
   if (error) return <div>Error loading manufacturers{console.error("GraphQL Error:", error)}</div>;
 
   // Prepare sorted manufacturers and results count
-  const sortedManufacturers = Array.isArray(data?.companies) ? [...data.companies] : [];
+  let sortedManufacturers = Array.isArray(data?.companies) ? [...data.companies] : [];
+  
+  // Apply sorting logic based on sortOrder
+  if (sortOrder === "Alphabetical: A-Z") {
+    sortedManufacturers.sort((a, b) => {
+      const nameA = a.name ? a.name.toLowerCase() : '';
+      const nameB = b.name ? b.name.toLowerCase() : '';
+      return nameA.localeCompare(nameB);
+    });
+  } else if (sortOrder === "Rating: High to Low") {
+    sortedManufacturers.sort((a, b) => {
+      const ratingA = a.googleRating ? parseFloat(a.googleRating) : 0;
+      const ratingB = b.googleRating ? parseFloat(b.googleRating) : 0;
+      return ratingB - ratingA;
+    });
+  } else if (sortOrder === "Listings: Most to Least") {
+    sortedManufacturers.sort((a, b) => {
+      const listingsA = a.listings ? a.listings.length : 0;
+      const listingsB = b.listings ? b.listings.length : 0;
+      return listingsB - listingsA;
+    });
+  } else if (sortOrder === "Distance: Nearest First") {
+    // For now, keep default order as we don't have distance calculation
+    // This could be implemented later with geolocation
+  }
+  
   const resultsCount = sortedManufacturers.length;
 
   return (
