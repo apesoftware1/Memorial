@@ -98,8 +98,8 @@ export default function ContactPage() {
       {/* Hero Section with Banner Image */}
       <div className="relative h-64 md:h-80 bg-gray-800">
         <Image 
-          src="/banner/Generic Banner AD.jpg" 
-          alt="Contact Us Banner"
+          src="/banner/Contact Page bg photo.jpg" 
+          alt="Contact Page Background"
           fill
           className="object-cover opacity-70"
           priority
