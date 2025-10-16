@@ -98,8 +98,8 @@ export default function ProductContactForm({ documentId, className = " ", listin
           <Input className="w-full" name="mobile" required />
         </div>
         <div>
-          <label className="text-sm text-gray-600 mb-1 block">Email</label>
-          <Input className="w-full" name="email" value={form.email} onChange={handleChange} type="email" />
+          <label className="text-sm text-gray-600 mb-1 block">Email *</label>
+          <Input className="w-full" name="email" value={form.email} onChange={handleChange} type="email" required />
         </div>
         <div>
           <label className="text-sm text-gray-600 mb-1 block">Message *</label>
