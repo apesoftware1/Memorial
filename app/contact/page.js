@@ -37,15 +37,13 @@ export default function ContactPage() {
     
     try {
       await submitContactEnquiry(formData);
-      alert("✅ Inquiry sent successfully!");
+      toast({
+        title: "✅ Inquiry sent successfully!",
+        description: "Your message has been sent. We'll get back to you soon!",
+        variant: "success",
+      });
 
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast({
-        title: "Success",
-        description: "Your message has been sent. We'll get back to you soon!",
-        variant: "default"
-      });
       
       // Navigate to home page
       router.push('/');
