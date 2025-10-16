@@ -295,7 +295,7 @@ const IndexRender = ({
               <>
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0 mb-4">
                   <div>
-                    <h4 className="font-bold text-gray-800 text-xl mb-1">{featuredManufacturer.name}</h4>
+                    <h4 className="font-bold text-gray-800 text-xl mb-1 leading-tight">{featuredManufacturer.name}</h4>
                   </div>
                   <div>
                     <img

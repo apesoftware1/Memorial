@@ -357,7 +357,7 @@ export function StandardListingCard({
           <div className="flex flex-col mt-0">
             <a
               href={listing.company.name}
-              className="manufacturer-link font-medium text-gray-900 text-base mb-1"
+              className="manufacturer-link font-medium text-gray-900 text-base mb-1 leading-tight"
               onClick={(e) => e.stopPropagation()}
               aria-label={`View ${listing.manufacturer} profile`}
             >
@@ -592,7 +592,7 @@ export function StandardListingCard({
           <div className="flex justify-between items-end mt-2">
             <div className="flex flex-col mt-2 flex-1">
               <div>
-                <div className="font-medium text-gray-900 text-base mb-2">
+                <div className="font-medium text-gray-900 text-base mb-2 leading-tight">
                   {listing.company.name}
                 </div>
                 <div className="flex items-center text-green-600 mb-1">

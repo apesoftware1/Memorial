@@ -428,7 +428,7 @@ export default function TombstonesOnSpecial() {
             </div>
             {/* Manufacturer Information (Mobile) */}
             <div className="flex flex-col mt-0">
-              <div className="font-medium text-gray-900 text-base mb-2">{product.manufacturer}</div>
+              <div className="font-medium text-gray-900 text-base mb-2 leading-tight">{product.manufacturer}</div>
               <div className="text-xs text-gray-600 mb-1 mt-2">{product.location}</div>
             </div>
             <div className="mt-3 mb-3">

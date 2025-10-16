@@ -216,7 +216,7 @@ export default function ProvinceManufacturersPage({ params }) {
         </div>
         <div className="md:col-span-3">
           <div className="flex justify-between items-start">
-            <h3 className="font-bold text-gray-800 text-xl">{manufacturer.name}</h3>
+            <h3 className="font-bold text-gray-800 text-xl leading-tight">{manufacturer.name}</h3>
             <div className="flex items-center">
               <div className="text-sm text-gray-600 mr-1">Current Google Rating:</div>
               <div className="flex items-center">

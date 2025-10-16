@@ -93,7 +93,7 @@ export function PremiumListingCard({
   // Create product object for FavoriteButton
   const favoriteProduct: FavoriteProduct = {
     id: listing.id || listing.documentId,
-    title: listing.title,
+    name: listing.title,
     price: listing.price,
     image: listing.mainImageUrl,
     details: listing.productDetails,
@@ -441,7 +441,7 @@ export function PremiumListingCard({
           </div>
           {/* Manufacturer Information (Mobile) */}
           <div className="flex flex-col mt-0">
-            <div className="font-medium text-gray-900 text-base mb-2">
+            <div className="font-medium text-gray-900 text-base mb-1 leading-tight">
               {listing.manufacturer || listing.company?.name}
             </div>
             <div className="space-y-1.5">
@@ -704,7 +704,7 @@ export function PremiumListingCard({
                 <div className="flex justify-between items-stretch space-x-4 mt-2">
                   {/* Left Column for text details */}
                   <div className="flex-1 space-y-1.5">
-                    <div className="font-bold text-lg text-gray-900">
+                    <div className="font-bold text-lg text-gray-900 leading-tight">
                       {manufacturerName}
                     </div>
                     <div className="flex items-center text-green-600">

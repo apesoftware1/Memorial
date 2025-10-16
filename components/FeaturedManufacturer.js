@@ -78,7 +78,7 @@ const FeaturedManufacturer = ({ manufacturer }) => {
           <div className="border border-gray-300 rounded bg-white p-4 mb-4 hover:shadow-md transition-shadow">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0">
               <div>
-                <h4 className="font-bold text-gray-800 text-xl mb-1">{manufacturer.name}</h4>
+                <h4 className="font-bold text-gray-800 text-xl mb-1 leading-tight">{manufacturer.name}</h4>
               </div>
               <div>
                 <Image
