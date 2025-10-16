@@ -370,6 +370,28 @@ export default function Home() {
     }
   }, [activeFilters, allListings]);
 
+  // State for sort order
+  const [sortOrder, setSortOrder] = useState("Default");
+
+  // --- SORTING LOGIC ---
+  let sortedListings = [...filteredListings];
+  if (sortOrder === "Price: Low to High") {
+    sortedListings.sort((a, b) => {
+      const priceA = a.price ? parsePrice(a.price) : 0;
+      const priceB = b.price ? parsePrice(b.price) : 0;
+      return priceA - priceB;
+    });
+  } else if (sortOrder === "Price: High to Low") {
+    sortedListings.sort((a, b) => {
+      const priceA = a.price ? parsePrice(a.price) : 0;
+      const priceB = b.price ? parsePrice(b.price) : 0;
+      return priceB - priceA;
+    });
+  } else if (sortOrder === "Newest First") {
+    // If you have a date field, use it. Otherwise, sort by id descending as a fallback.
+    sortedListings.sort((a, b) => (b.id > a.id ? 1 : -1));
+  }
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const listingsPerPage = 20;
@@ -381,7 +403,7 @@ export default function Home() {
     return listings.slice(start, end);
   }
 
-  const paginatedListings = getPageListings(filteredListings, currentPage);
+  const paginatedListings = getPageListings(sortedListings, currentPage);
 
   // Fallback card generator
   const fallbackCard = (type = "listing") => (
@@ -523,12 +545,9 @@ export default function Home() {
   const customFlow = getCustomFlow(paginatedListings);
 
   // Pagination controls
-  const totalPages = Math.ceil(filteredListings.length / listingsPerPage);
+  const totalPages = Math.ceil(sortedListings.length / listingsPerPage);
   
   // Remove useEffect that sets activeFilters on mount (was causing update depth error)
-
-  // State for sort order
-  const [sortOrder, setSortOrder] = useState("Default")
 
   // Add the useFavorites hook to the component
   // Add this near the top of the component, with the other useState declarations:
@@ -669,25 +688,6 @@ export default function Home() {
     }
     return true;
   });
-
-  // --- SORTING LOGIC ---
-  let sortedPremiumListings = [...filteredPremiumListings];
-  if (sortOrder === "Price: Low to High") {
-    sortedPremiumListings.sort((a, b) => {
-      const priceA = a.price ? parsePrice(a.price) : 0;
-      const priceB = b.price ? parsePrice(b.price) : 0;
-      return priceA - priceB;
-    });
-  } else if (sortOrder === "Price: High to Low") {
-    sortedPremiumListings.sort((a, b) => {
-      const priceA = a.price ? parsePrice(a.price) : 0;
-      const priceB = b.price ? parsePrice(b.price) : 0;
-      return priceB - priceA;
-    });
-  } else if (sortOrder === "Newest First") {
-    // If you have a date field, use it. Otherwise, sort by id descending as a fallback.
-    sortedPremiumListings.sort((a, b) => (b.id > a.id ? 1 : -1));
-  }
 
   // --- RESET FILTERS ---
   function handleResetFilters() {

@@ -93,7 +93,7 @@ export function PremiumListingCard({
   // Create product object for FavoriteButton
   const favoriteProduct: FavoriteProduct = {
     id: listing.id || listing.documentId,
-    title: listing.title,
+    name: listing.title,
     price: listing.price,
     image: listing.mainImageUrl,
     details: listing.productDetails,
