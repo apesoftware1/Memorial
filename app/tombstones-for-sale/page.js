@@ -810,7 +810,7 @@ export default function Home() {
 
           <div className="flex flex-col md:flex-row gap-6">
             {/* Filters - Left Side */}
-            <div className="w-full md:w-1/4 hidden sm:block">
+            <div className="w-full md:w-1/4 hidden sm:block md:sticky md:top-20 md:self-start">
               <TombstonesForSaleFilters
                 activeFilters={activeFilters}
                 setActiveFilters={setActiveFilters}

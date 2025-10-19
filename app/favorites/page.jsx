@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { FavoritesClientContent } from "./favorites-client.jsx"
-import Header from "@/components/Header"
+import HeaderClient from "./header-client.jsx"
 
 export const metadata = {
   title: "Your Favorites | TombstonesFinder",
@@ -11,7 +11,7 @@ export default function FavoritesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header Component */}
-      <Header />
+      <HeaderClient />
       
       {/* Background Image Section */}
       <div 

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { sendInquiryRest } from "@/graphql/queries/sendInquiry";
+import { formatPhoneNumber } from "@/lib/formatPhoneNumber";
 
 export default function WhatsAppContactDrawer({listing_id ,reps = [], className = "" }) {
   const [open, setOpen] = useState(false);
@@ -98,7 +99,7 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
       trackAnalyticsEvent("whatsapp_tracker", listing_id);
 
       // Open WhatsApp chat
-      const link = `https://wa.me/${waNumber}?text=${encodeURIComponent(buildMessage())}`;
+      const link = `https://wa.me/${formatPhoneNumber(waNumber)}?text=${encodeURIComponent(buildMessage())}`;
       if (typeof window !== "undefined") {
         window.open(link, "_blank", "noopener");
       }
