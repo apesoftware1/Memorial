@@ -1930,7 +1930,6 @@ export default function ManufacturerProfileEditor({
                         style={{ 
                           width: "100%", 
                           height: "100%", 
-                        maxHeight: "100px", 
                          borderRadius: 6 
                        }}
                      />
