@@ -49,7 +49,56 @@ export default function SocialShare({ socialLinks, product }) {
         openInNewTab(`https://www.facebook.com/sharer/sharer.php?u=${enc}`);
         break;
       case "whatsapp":
-        openInNewTab(`https://api.whatsapp.com/send?text=${encodeURIComponent(`${shareText} ${freshUrl}`)}`);
+        // Prefer device-aware deep links; attempt native app first
+        const mobileUA = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+        const msg = encodeURIComponent(`${shareText} ${freshUrl}`);
+        const shareCandidates = mobileUA
+          ? [
+              `whatsapp://send?text=${msg}`,
+              `https://wa.me/?text=${msg}`,
+              `https://api.whatsapp.com/send?text=${msg}`,
+            ]
+          : [
+              `whatsapp://send?text=${msg}`,
+              `https://web.whatsapp.com/send?text=${msg}`,
+              `https://wa.me/?text=${msg}`,
+              `https://api.whatsapp.com/send?text=${msg}`,
+            ];
+        // Open in a new tab; detect whether the custom scheme failed and fall back
+        const w = window.open("about:blank", "_blank", "noopener,noreferrer");
+        if (!w) {
+          // If blocked, fall back to same-tab chain
+          let si = 0;
+          const tryNextShareSame = () => {
+            const u = shareCandidates[si++];
+            if (!u) return;
+            window.location.assign(u);
+            setTimeout(() => {
+              if (document.visibilityState === "visible") {
+                tryNextShareSame();
+              }
+            }, 1000);
+          };
+          tryNextShareSame();
+          break;
+        }
+        let si = 0;
+        const tryNextShare = () => {
+          const u = shareCandidates[si++];
+          if (!u) return;
+          w.location.href = u;
+          setTimeout(() => {
+            try {
+              // If still about:blank, custom scheme didn't trigger; continue.
+              if (w.location.href === "about:blank") {
+                tryNextShare();
+              }
+            } catch (e) {
+              // Cross-origin indicates navigation to web.whatsapp.com (success); stop.
+            }
+          }, 1000);
+        };
+        tryNextShare();
         break;
       case "twitter":
         openInNewTab(`https://twitter.com/intent/tweet?url=${enc}&text=${tenc}`);

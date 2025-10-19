@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronDown, Check } from "lucide-react"
+import { ChevronDown, Check, Square } from "lucide-react"
 import { useRef } from "react"
 import Image from "next/image"
 
@@ -214,53 +214,57 @@ export default function FilterDropdown({
                 >
                   <div className="flex items-center gap-3">
                     <div className="h-5 w-5 flex items-center justify-center">
-                      <img
-                        src={iconSrc || '/placeholder.svg'}
-                        alt={`${option} icon`}
-                        width={20}
-                        height={20}
-                        className="h-5 w-5 object-contain inline-block visible opacity-100"
-                        style={{ 
-                          display: 'block',
-                          filter: name === 'colour' || name === 'slabStyle' ? 'none' : 'brightness(0) invert(0.9)'
-                        }}
-                        onError={(e) => {
-                          console.log(`Failed to load icon: ${iconSrc}`);
-                          
-                          // Special handling for color icons
-                          if (name === 'colour') {
-                            const colorPath = `/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_${option}.svg`;
-                            console.log(`Trying color fallback: ${colorPath}`);
+                      {option === 'Any' ? (
+                        <Square className="h-5 w-5 text-gray-300" aria-hidden="true" />
+                      ) : (
+                        <img
+                          src={iconSrc || '/placeholder.svg'}
+                          alt={`${option} icon`}
+                          width={20}
+                          height={20}
+                          className="h-5 w-5 object-contain inline-block visible opacity-100"
+                          style={{ 
+                            display: 'block',
+                            filter: name === 'colour' || name === 'slabStyle' ? 'none' : 'brightness(0) invert(0.9)'
+                          }}
+                          onError={(e) => {
+                            console.log(`Failed to load icon: ${iconSrc}`);
                             
-                            const testImg = new Image();
-                            testImg.onload = () => {
-                              e.currentTarget.src = colorPath;
-                            };
-                            testImg.onerror = () => {
-                              e.currentTarget.src = '/placeholder.svg';
-                            };
-                            testImg.src = colorPath;
-                          } else {
-                            // Try direct path as fallback for other icon types
-                            const directPath = `/last_icons/${name === 'style' ? 'AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons' : 
-                                               name === 'slabStyle' ? 'AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons' : 
-                                               name === 'stoneType' ? 'AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons' : 
-                                               name === 'custom' ? 'AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons' : 
-                                               ''}/AdvertCreator_${name === 'style' ? 'HeadStyle' : name === 'slabStyle' ? 'SlabStyle' : name === 'stoneType' ? 'StoneType' : 'Customisation'}_Icon_${option.replace(/\s+/g, '')}.svg`;
-                            
-                            // Try the direct path first
-                            const testImg = new Image();
-                            testImg.onload = () => {
-                              e.currentTarget.src = directPath;
-                            };
-                            testImg.onerror = () => {
-                              e.currentTarget.src = '/placeholder.svg';
-                            };
-                            testImg.src = directPath;
-                          }
-                        }}
-                        key={`${name}-${option}-${Math.random()}`}
-                      />
+                            // Special handling for color icons
+                            if (name === 'colour') {
+                              const colorPath = `/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_${option}.svg`;
+                              console.log(`Trying color fallback: ${colorPath}`);
+                              
+                              const testImg = new Image();
+                              testImg.onload = () => {
+                                e.currentTarget.src = colorPath;
+                              };
+                              testImg.onerror = () => {
+                                e.currentTarget.src = '/placeholder.svg';
+                              };
+                              testImg.src = colorPath;
+                            } else {
+                              // Try direct path as fallback for other icon types
+                              const directPath = `/last_icons/${name === 'style' ? 'AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons' : 
+                                                 name === 'slabStyle' ? 'AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons' : 
+                                                 name === 'stoneType' ? 'AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons' : 
+                                                 name === 'custom' ? 'AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons' : 
+                                                 ''}/AdvertCreator_${name === 'style' ? 'HeadStyle' : name === 'slabStyle' ? 'SlabStyle' : name === 'stoneType' ? 'StoneType' : 'Customisation'}_Icon_${option.replace(/\s+/g, '')}.svg`;
+                              
+                              // Try the direct path first
+                              const testImg = new Image();
+                              testImg.onload = () => {
+                                e.currentTarget.src = directPath;
+                              };
+                              testImg.onerror = () => {
+                                e.currentTarget.src = '/placeholder.svg';
+                              };
+                              testImg.src = directPath;
+                            }
+                          }}
+                          key={`${name}-${option}-${Math.random()}`}
+                        />
+                      )}
                     </div>
                     <span>{option}</span>
                   </div>

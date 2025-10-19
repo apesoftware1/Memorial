@@ -152,7 +152,7 @@ export default function SearchForm({
 
       {/* Search results count */}
       {!isSearching && searchQuery.trim() && (
-        <div className="mt-2 text-sm text-[#333]">
+        <div className="mt-2 text-sm text-[#1A1D23]">
           Found {searchResults.length} results for "{searchQuery}"
         </div>
       )}

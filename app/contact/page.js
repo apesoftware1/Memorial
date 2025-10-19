@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { submitContactEnquiry } from '../../graphql/mutations/SubmitContactEnquiry';
 import { useRouter } from 'next/navigation';
+import Header from "@/components/Header"
 
 export default function ContactPage() {
   const { toast } = useToast();
@@ -21,6 +22,12 @@ export default function ContactPage() {
     message: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Mobile header state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [mobileDropdown, setMobileDropdown] = useState(null)
+  const handleMobileMenuToggle = () => setMobileMenuOpen((prev) => !prev)
+  const handleMobileDropdownToggle = (key) => setMobileDropdown((prev) => (prev === key ? null : key))
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -93,6 +100,12 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Header
+        mobileMenuOpen={mobileMenuOpen}
+        handleMobileMenuToggle={handleMobileMenuToggle}
+        mobileDropdown={mobileDropdown}
+        handleMobileDropdownToggle={handleMobileDropdownToggle}
+      />
       {/* Hero Section with Banner Image */}
       <div className="relative h-64 md:h-80 bg-gray-800">
         <Image 
