@@ -22,6 +22,7 @@ export default function BranchSelectorModal({
           <BranchSelector
             companyId={companyId}
             branches={branches}
+            showMainBranchOption={false}
             onBranchSelect={(branch) => {
               onBranchSelect(branch);
               onClose(false);
