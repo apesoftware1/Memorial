@@ -4,6 +4,7 @@ import { useQuery } from '@apollo/client';
 import { GET_MANUFACTURERS } from '@/graphql/queries/getManufacturers';
 import ManufacturerCard from '../components/ManufacturerCard';
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { ChevronDown, MapPin, Search, Check } from "lucide-react";
 import Link from 'next/link';
@@ -251,6 +252,15 @@ export default function ManufacturersPage() {
     setActiveCity(cityName === activeCity ? null : cityName);
   };
 
+  // Reset button handler for the locations dropdown
+  const resetLocationDropdown = useCallback(() => {
+    setSelectedProvince(null);
+    setSelectedCity(null);
+    setSelectedTown(null);
+    setExpandedProvinces({});
+    setExpandedCities({});
+    setSearchFilters(prev => ({ ...prev, location: "" }));
+  }, []);
   const handleMobileMenuToggle = useCallback(() => {
     setUiState((prev) => ({ ...prev, mobileMenuOpen: !prev.mobileMenuOpen }));
   }, []);
@@ -377,6 +387,15 @@ export default function ManufacturersPage() {
                     ref={locationDropdownRef}
                     className="absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-96 overflow-y-auto"
                   >
+                    <div className="sticky top-0 z-10 bg-white px-3 py-2 border-b border-gray-200 flex justify-end">
+                      <button
+                        type="button"
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-800"
+                        onClick={(e) => { e.stopPropagation(); resetLocationDropdown(); }}
+                      >
+                        reset
+                      </button>
+                    </div>
                     {/* Provinces */}
                     {provinces.map((province) => (
                       <div key={province.name} className="border-b border-gray-100 last:border-b-0">
@@ -395,7 +414,20 @@ export default function ManufacturersPage() {
                               type="checkbox"
                               className="mr-2 h-4 w-4"
                               checked={selectedProvince?.name === province.name}
-                              onChange={() => {}}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                if (selectedProvince?.name === province.name && !selectedCity && !selectedTown) {
+                                  setSelectedProvince(null);
+                                  setSelectedCity(null);
+                                  setSelectedTown(null);
+                                  setSearchFilters(prev => ({ ...prev, location: "" }));
+                                } else {
+                                  setSelectedProvince(province);
+                                  setSelectedCity(null);
+                                  setSelectedTown(null);
+                                  setSearchFilters(prev => ({ ...prev, location: province.name }));
+                                }
+                              }}
                               onClick={(e) => e.stopPropagation()}
                             />
                             <span className="font-medium">{province.name}</span>
@@ -407,7 +439,7 @@ export default function ManufacturersPage() {
                             className={`h-4 w-4 text-gray-400 transition-transform ${expandedProvinces[province.name] ? 'rotate-180' : ''}`} 
                           />
                         </div>
-                        
+
                         {/* Cities */}
                         {expandedProvinces[province.name] && (
                           <div className="pl-4 border-t border-gray-100">
@@ -428,7 +460,19 @@ export default function ManufacturersPage() {
                                       type="checkbox"
                                       className="mr-2 h-4 w-4"
                                       checked={selectedCity?.name === city.name && selectedProvince?.name === province.name}
-                                      onChange={() => {}}
+                                      onChange={(e) => {
+                                        e.stopPropagation();
+                                        if (selectedCity?.name === city.name && selectedProvince?.name === province.name) {
+                                          setSelectedCity(null);
+                                          setSelectedTown(null);
+                                          setSearchFilters(prev => ({ ...prev, location: province.name }));
+                                        } else {
+                                          setSelectedProvince(province);
+                                          setSelectedCity(city);
+                                          setSelectedTown(null);
+                                          setSearchFilters(prev => ({ ...prev, location: `${province.name}, ${city.name}` }));
+                                        }
+                                      }}
                                       onClick={(e) => e.stopPropagation()}
                                     />
                                     <span>{city.name}</span>
@@ -440,7 +484,7 @@ export default function ManufacturersPage() {
                                     className={`h-4 w-4 text-gray-400 transition-transform ${expandedCities[`${province.name}-${city.name}`] ? 'rotate-180' : ''}`} 
                                   />
                                 </div>
-                                
+
                                 {/* Towns */}
                                 {expandedCities[`${province.name}-${city.name}`] && (
                                   <div className="pl-4 border-t border-gray-100">
@@ -454,7 +498,18 @@ export default function ManufacturersPage() {
                                           type="checkbox"
                                           className="mr-2 h-4 w-4"
                                           checked={selectedTown === town && selectedCity?.name === city.name && selectedProvince?.name === province.name}
-                                          onChange={() => {}}
+                                          onChange={(e) => {
+                                            e.stopPropagation();
+                                            if (selectedTown === town && selectedCity?.name === city.name && selectedProvince?.name === province.name) {
+                                              setSelectedTown(null);
+                                              setSearchFilters(prev => ({ ...prev, location: `${province.name}, ${city.name}` }));
+                                            } else {
+                                              setSelectedProvince(province);
+                                              setSelectedCity(city);
+                                              setSelectedTown(town);
+                                              setSearchFilters(prev => ({ ...prev, location: `${province.name}, ${city.name}, ${town}` }));
+                                            }
+                                          }}
                                           onClick={(e) => e.stopPropagation()}
                                         />
                                         <span className="text-sm">{town}</span>
@@ -687,42 +742,7 @@ export default function ManufacturersPage() {
           </a>
         </div>
       </div>
-      {/* Footer */}
-      <footer className="bg-gray-800 text-white py-8 mt-8">
-        <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <h4 className="text-lg font-semibold mb-4">About TombstonesFinder</h4>
-              <p className="text-gray-300 text-sm">
-                TombstonesFinder connects you with trusted tombstone manufacturers and suppliers across South Africa.
-              </p>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
-              <ul className="space-y-2">
-                {["Home", "Find a Tombstone", "Find a Manufacturer", "Services", "Contact Us"].map((link, index) => (
-                  <li key={index}>
-                    <a href="#" className="text-gray-300 hover:text-white transition-colors text-sm">
-                      {link}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Contact</h4>
-              <address className="text-gray-300 text-sm not-italic">
-                <p>Email: info@tombstonesfinder.co.za</p>
-                <p>Phone: +27 12 345 6789</p>
-                <p>Address: 123 Tombstone Street, Pretoria, South Africa</p>
-              </address>
-            </div>
-          </div>
-          <div className="border-t border-gray-700 mt-8 pt-4 text-center text-gray-400 text-sm">
-            <p>&copy; {new Date().getFullYear()} TombstonesFinder. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

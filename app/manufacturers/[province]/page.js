@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { ChevronDown, MapPin, Search, Star, ChevronRight } from "lucide-react"
 import Header from "@/components/Header"
+import Footer from "@/components/Footer"
 
 export default function ProvinceManufacturersPage({ params }) {
   const { province } = params
@@ -611,41 +612,7 @@ export default function ProvinceManufacturersPage({ params }) {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-800 text-white py-8 mt-8">
-        <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <h4 className="text-lg font-semibold mb-4">About TombstoneFinder</h4>
-              <p className="text-gray-300 text-sm">
-                TombstoneFinder connects you with trusted tombstone manufacturers and suppliers across South Africa.
-              </p>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
-              <ul className="space-y-2">
-                {["Home", "Find a Tombstone", "Find a Manufacturer", "Services", "Contact Us"].map((link, index) => (
-                  <li key={index}>
-                    <Link href="#" className="text-gray-300 hover:text-white transition-colors text-sm">
-                      {link}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Contact</h4>
-              <address className="text-gray-300 text-sm not-italic">
-                <p>Email: info@tombstonefinder.co.za</p>
-                <p>Phone: +27 12 345 6789</p>
-              </address>
-            </div>
-          </div>
-          <div className="border-t border-gray-700 mt-8 pt-4 text-center text-gray-400 text-sm">
-            <p>&copy; {new Date().getFullYear()} TombstoneFinder. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }
