@@ -7,6 +7,7 @@ import { GET_COMPANY_BY_ID } from '@/graphql/queries/getCompanyById';
 import ManufacturerProfileEditor from '../ManufacturerProfileEditor';
 import BranchButton from '@/components/BranchButton';
 import VideoModal from '@/components/VideoModal';
+import Footer from '@/components/Footer';
 
 export default function ManufacturerProfilePage() {
   const { slug: documentId } = useParams();
@@ -53,6 +54,8 @@ export default function ManufacturerProfilePage() {
         onClose={() => setShowVideoModal(false)} 
         videoUrl={company?.videoUrl} 
       />
+      
+      <Footer />
     </div>
   );
 }

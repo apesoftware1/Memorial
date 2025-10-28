@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useQuery } from '@apollo/client';
 import { GET_COMPANY_BY_USER } from '@/graphql/queries/getCompany';
 import ManufacturerProfileEditor from './ManufacturerProfileEditor';
+import Footer from '@/components/Footer';
 
 export default function OwnerProfilePage() {
   const { data: session } = useSession();
@@ -84,11 +85,14 @@ export default function OwnerProfilePage() {
   const listings = company.listings || [];
 
   return (
-    <ManufacturerProfileEditor 
-      isOwner={true} 
-      company={company} 
-      listings={listings} 
-    />
+    <div>
+      <ManufacturerProfileEditor 
+        isOwner={true} 
+        company={company} 
+        listings={listings} 
+      />
+      <Footer />
+    </div>
   );
 }
 
