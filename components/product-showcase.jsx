@@ -32,6 +32,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
   if (!listing) {
     return null;
   }
+
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileDropdown, setMobileDropdown] = useState(null);
@@ -388,13 +389,16 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                   {showContact ? "Hide Contact Number" : "Show Contact Number"}
                 </button>
                 {/* WhatsApp button visible below the contact button */}
-                <WhatsAppContactDrawer
-                  className="-mx-4 mt-3"
-                  reps={
-                    (selectedBranch?.sales_reps?.length ? selectedBranch.sales_reps : listing?.company?.sales_reps) || []
-                  }
-                  listing_id={listing.documentId}
-                />
+              
+                {listing?.company?.enableWhatsAppButton === true && (
+                  <WhatsAppContactDrawer
+                    className="-mx-4 mt-3"
+                    reps={
+                      (selectedBranch?.sales_reps?.length ? selectedBranch.sales_reps : listing?.company?.sales_reps) || []
+                    }
+                    listing_id={listing.documentId}
+                  />
+                )}
                 {showContact && (
                   <div className="mt-4 p-4 bg-white text-gray-800 rounded-lg mx-auto max-w-sm">
                     <div className="text-center space-y-2">

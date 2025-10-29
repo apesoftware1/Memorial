@@ -957,6 +957,8 @@ const SearchContainer = ({
                 categories={categories}
                 activeTab={activeTab}
                 currentQuery={currentQuery}
+                onQueryChange={(q) => setCurrentQuery(q)}
+                onTypingChange={(typing) => setIsSearchFormFocused(typing)}
               />
             </div>
             
@@ -967,8 +969,31 @@ const SearchContainer = ({
             <div className="flex justify-end mb-0">
               <button
                 onClick={() => {
-                  if (setFilters) setFilters({});
+                  // Removed unintended navigation on reset per user request
+                  if (setFilters) {
+                    setFilters({
+                      
+                      search: "",
+                      minPrice: "",
+                      maxPrice: "",
+                      location: "",
+                      style: "",
+                      slabStyle: "",
+                      stoneType: "",
+                      custom: "",
+                      colour: "",
+                    });
+                  }
                   if (setSelectedCategory) setSelectedCategory(null);
+                  setCurrentQuery("");
+                  setIsSearchFormFocused(false);
+                  setUiState((prev) => ({ ...prev, openDropdown: null, showAllOptions: false }));
+                  setMoreOptionsOpen(false);
+                  if (setSelectedTown) setSelectedTown(null);
+                  setSearchTerm("");
+                  if (typeof window !== "undefined") {
+                    window.dispatchEvent(new Event("searchform:reset"));
+                  }
                 }}
                 className="text-[#D4AF37] hover:text-[#C4A027] font-medium text-sm tracking-wide transition-colors"
               >

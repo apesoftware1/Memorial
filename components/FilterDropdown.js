@@ -194,7 +194,7 @@ export default function FilterDropdown({
         aria-expanded={openDropdown === name}
         aria-haspopup="true"
       >
-        <span>{filters[name] || label}</span>
+        <span>{(localSelection === 'Any' || filters[name] === 'Any') ? 'Any' : (filters[name] || label)}</span>
         <ChevronDown
           className={`h-4 w-4 transition-transform duration-200 ${openDropdown === name ? "transform rotate-180" : ""}`}
         />

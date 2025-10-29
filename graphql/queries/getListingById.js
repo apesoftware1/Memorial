@@ -85,6 +85,7 @@ export const GET_LISTING_BY_ID = gql`
         documentId
       }
       company {
+       enableWhatsAppButton
         documentId
         phone
         name

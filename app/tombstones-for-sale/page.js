@@ -784,7 +784,7 @@ export default function Home() {
             </button>
           </div>
           <div className="max-w-4xl mx-auto mt-2">
-            <button className="text-gray-300 hover:text-white text-sm transition-colors" onClick={handleResetFilters}>Reset</button>
+            <button className="text-gray-300 hover:text-white text-sm transition-colors" onClick={() => { handleResetFilters(); if (typeof window !== 'undefined') { window.dispatchEvent(new Event('searchform:reset')); } }}>Reset</button>
           </div>
         </div>
       </div>

@@ -57,3 +57,5 @@ The `mapListingToProduct()` function maps GraphQL listing data to the expected f
 - Original price is hidden when same as sale price
 - All existing UI components and styling preserved
 - Favorites integration maintained with real product data
+
+//Extend the rectangular button horizontally to align with the left edge of the search form. Match its color precisely with the existing orange search button in the search container, ensuring visual consistency.
