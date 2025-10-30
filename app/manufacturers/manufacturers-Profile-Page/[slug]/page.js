@@ -8,6 +8,7 @@ import ManufacturerProfileEditor from '../ManufacturerProfileEditor';
 import BranchButton from '@/components/BranchButton';
 import VideoModal from '@/components/VideoModal';
 import Footer from '@/components/Footer';
+import { PageLoader } from '@/components/ui/loader';
 
 export default function ManufacturerProfilePage() {
   const { slug: documentId } = useParams();
@@ -18,7 +19,7 @@ export default function ManufacturerProfilePage() {
     skip: !documentId,
   });
 
-  if (loading) return <div>Loading company data...</div>;
+  if (loading) return <PageLoader text="Loading company data..." />;
   if (error) return <div>Error loading company data.</div>;
   const company = data?.companies[0];
   

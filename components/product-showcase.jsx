@@ -27,6 +27,7 @@ import SocialShare from "./SocialShare";
 import RelatedProducts from "./RelatedProducts";
 import WhatsAppContactDrawer from "./WhatsAppContactDrawer";
 import { useSearchParams } from "next/navigation";
+import { PageLoader } from "./ui/loader";
 
 export default function ProductShowcase({ listing, id, allListings = [], currentIndex = 0, onNavigate }) {
   if (!listing) {
@@ -107,7 +108,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
     info,
   } = useProductShowcaseLogic(listing);
 
-  if (loading) return <p>Detecting your location…</p>;
+  if (loading) return <PageLoader text="Detecting your location..." />;
   if (error) return <p>{error}</p>;
 
   return (
@@ -377,14 +378,14 @@ export default function ProductShowcase({ listing, id, allListings = [], current
             {/* Main contact card container */}
             <div className="rounded mb-6 shadow-sm overflow-hidden">
               {/* Dark blue header */}
-              <div className="bg-[#1F2B45] text-white pt-6 pb-0 text-center px-4 rounded-t-lg rounded-b-lg overflow-hidden">
+              <div className="bg-[#1F2B45] text-white pt-6 text-center px-4 rounded-t-lg rounded-b-lg overflow-hidden">
                 CONTACT THE MANUFACTURER
                 <button
                   onClick={() => {
                     handleShowContact();
                     trackAnalyticsEvent("contact_view", listing.documentId);
                   }}
-                  className="w-full max-w-sm bg-red-600 hover:bg-red-700 text-white py-2 rounded mx-auto block mt-6 transition-colors"
+                  className="w-full max-w-sm bg-red-600 hover:bg-red-700 text-white py-2 rounded mx-auto block mt-6 mb-4 transition-colors"
                 >
                   {showContact ? "Hide Contact Number" : "Show Contact Number"}
                 </button>
@@ -392,7 +393,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
               
                 {listing?.company?.enableWhatsAppButton === true && (
                   <WhatsAppContactDrawer
-                    className="-mx-4 mt-3"
+                    className="-mx-4 mt-3 "
                     reps={
                       (selectedBranch?.sales_reps?.length ? selectedBranch.sales_reps : listing?.company?.sales_reps) || []
                     }

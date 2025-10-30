@@ -6,6 +6,7 @@ import { useQuery } from '@apollo/client';
 import { GET_COMPANY_BY_USER } from '@/graphql/queries/getCompany';
 import ManufacturerProfileEditor from './ManufacturerProfileEditor';
 import Footer from '@/components/Footer';
+import { PageLoader } from '@/components/ui/loader';
 
 export default function OwnerProfilePage() {
   const { data: session } = useSession();
@@ -77,11 +78,11 @@ export default function OwnerProfilePage() {
     );
   }
 
-  if (loading) return <div>Loading company data...</div>;
+if (loading) return <PageLoader text="Loading company data..." />;
   if (error) return <div>Error loading company data.</div>;
   
   const company = data?.companies[0];
-  if (!company) return <div>No company data found.</div>;
+  if (!company) return <PageLoader text=" " />;
   const listings = company.listings || [];
 
   return (

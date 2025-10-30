@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useQuery } from "@apollo/client";
 import { GET_LISTING_BY_ID } from "@/graphql/queries/getListingById";
 import ProductShowcase from "@/components/product-showcase";
+import { PageLoader } from "@/components/ui/loader";
 
 export default function TombstoneDetail() {
   const { slug: documentId } = useParams();
@@ -13,8 +14,7 @@ export default function TombstoneDetail() {
     skip: !documentId,
   });
  
-
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <PageLoader text="Loading Product Details" />;
   if (error) return <div>Error loading listing.</div>;
   const listing = data?.listing;
 
