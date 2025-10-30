@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { useState } from 'react'
 
 const BannerAd = ({
-  bannerAd, // can be a string URL or an object with fields
+  bannerAd, // can be a string URL or an object with fields { url, documentId, alt }
   mobileImageSrc,
   desktopImageSrc,
   link,
@@ -34,13 +34,18 @@ const BannerAd = ({
   const resolvedDesktopSrc =
     normalizeSrc(desktopImageSrc) || normalizeSrc(bannerAd);
 
+  // Prefer internal routing to manufacturer profile page using documentId
   const resolvedHref =
     link ||
-    (typeof bannerAd === 'string' ? "https://ads.google.com" : bannerAd?.link || "https://ads.google.com");
+    (typeof bannerAd === 'object' && bannerAd?.documentId
+      ? `/manufacturers/manufacturers-Profile-Page/${bannerAd.documentId}`
+      : null);
 
   const resolvedAlt =
     alt ||
-    (typeof bannerAd === 'string' ? "Banner Ad" : bannerAd?.alt || "Banner Ad");
+    (typeof bannerAd === 'object' && bannerAd?.alt
+      ? bannerAd.alt
+      : 'Banner Ad');
 
   // If no valid src for either viewport, render nothing to avoid Next/Image errors
   if (!resolvedMobileSrc && !resolvedDesktopSrc) {
@@ -57,41 +62,79 @@ const BannerAd = ({
 
   return (
     <div className="w-full mx-auto my-0 border border-light-gray-300 rounded overflow-hidden">
-      <Link href={resolvedHref} target="_blank" rel="noopener noreferrer">
-        {/* Desktop Banner */}
-        <div className={`hidden md:flex relative bg-gray-100 items-center justify-center ${desktopContainerClasses}`}>
-          {resolvedDesktopSrc ? (
-            <Image src={resolvedDesktopSrc} alt={resolvedAlt} fill className="object-cover" unoptimized />
-          ) : (
-            <p className="text-gray-500 text-sm">Desktop Banner Ad (Animated Gif - Linked)</p>
-          )}
-          <div className="absolute top-1 right-1 bg-gray-200 px-1 text-xs text-gray-500 rounded">Ad</div>
-        </div>
+      {/* Use internal Link when we have a resolvedHref, otherwise just render the banners non-clickable */}
+      {resolvedHref ? (
+        <Link href={resolvedHref}>
+          {/* Desktop Banner */}
+          <div className={`hidden md:flex relative bg-gray-100 items-center justify-center ${desktopContainerClasses}`}>
+            {resolvedDesktopSrc ? (
+              <Image src={resolvedDesktopSrc} alt={resolvedAlt} fill className="object-cover" unoptimized />
+            ) : (
+              <p className="text-gray-500 text-sm">Desktop Banner Ad (Animated Gif - Linked)</p>
+            )}
+            <div className="absolute top-1 right-1 bg-gray-200 px-1 text-xs text-gray-500 rounded">Ad</div>
+          </div>
 
-        {/* Mobile Banner */}
-        <div
-          className={`block md:hidden relative bg-white flex items-center justify-center ${mobileContainerClasses}`}
-          style={{
-            // Ensure height matches the image's aspect ratio so it fills top and bottom with no cropping
-            aspectRatio: mobileAR || 3.2, // fallback ~320x100
-            height: 'auto' // override fixed h-24 from classes to respect aspect-ratio
-          }}
-        >
-          {resolvedMobileSrc ? (
-            <Image
-              src={resolvedMobileSrc}
-              alt={resolvedAlt}
-              fill
-              className="object-contain object-center"
-              onLoadingComplete={handleMobileLoaded}
-              unoptimized
-            />
-          ) : (
-            <p className="text-gray-500 text-sm">Mobile Banner Ad (Animated Gif - Linked)</p>
-          )}
-          <div className="absolute top-1 right-1 bg-gray-200 px-1 text-xs text-gray-500 rounded">Ad</div>
+          {/* Mobile Banner */}
+          <div
+            className={`block md:hidden relative bg-white flex items-center justify-center ${mobileContainerClasses}`}
+            style={{
+              // Ensure height matches the image's aspect ratio so it fills top and bottom with no cropping
+              aspectRatio: mobileAR || 3.2, // fallback ~320x100
+              height: 'auto' // override fixed h-24 from classes to respect aspect-ratio
+            }}
+          >
+            {resolvedMobileSrc ? (
+              <Image
+                src={resolvedMobileSrc}
+                alt={resolvedAlt}
+                fill
+                className="object-contain object-center"
+                onLoadingComplete={handleMobileLoaded}
+                unoptimized
+              />
+            ) : (
+              <p className="text-gray-500 text-sm">Mobile Banner Ad (Animated Gif - Linked)</p>
+            )}
+            <div className="absolute top-1 right-1 bg-gray-200 px-1 text-xs text-gray-500 rounded">Ad</div>
+          </div>
+        </Link>
+      ) : (
+        <div>
+          {/* Desktop Banner */}
+          <div className={`hidden md:flex relative bg-gray-100 items-center justify-center ${desktopContainerClasses}`}>
+            {resolvedDesktopSrc ? (
+              <Image src={resolvedDesktopSrc} alt={resolvedAlt} fill className="object-cover" unoptimized />
+            ) : (
+              <p className="text-gray-500 text-sm">Desktop Banner Ad (Animated Gif)</p>
+            )}
+            <div className="absolute top-1 right-1 bg-gray-200 px-1 text-xs text-gray-500 rounded">Ad</div>
+          </div>
+
+          {/* Mobile Banner */}
+          <div
+            className={`block md:hidden relative bg-white flex items-center justify-center ${mobileContainerClasses}`}
+            style={{
+              aspectRatio: mobileAR || 3.2,
+              height: 'auto'
+            }}
+          >
+            {resolvedMobileSrc ? (
+              <Image
+                src={resolvedMobileSrc}
+                alt={resolvedAlt}
+                fill
+                className="object-contain object-center"
+                onLoadingComplete={handleMobileLoaded}
+                unoptimized
+              />
+            ) : (
+              <p className="text-gray-500 text-sm">Mobile Banner Ad (Animated Gif)</p>
+            )}
+            <div className="absolute top-1 right-1 bg-gray-200 px-1 text-xs text-gray-500 rounded">Ad</div>
+          </div>
         </div>
-      </Link>
+      )}
     </div>
   )
 }

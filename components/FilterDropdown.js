@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronDown, Check, Square } from "lucide-react"
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import Image from "next/image"
 
 // Helper function to fix icon paths
@@ -163,6 +163,9 @@ export default function FilterDropdown({
       })
     : options;
 
+  // Local selection to allow visual checkmark on "Any" without altering filters
+  const [localSelection, setLocalSelection] = useState(null);
+
   // Get icon src from pre-encoded paths
   const getIconSrc = (menuName, option) => {
     let iconPath = null;
@@ -191,7 +194,7 @@ export default function FilterDropdown({
         aria-expanded={openDropdown === name}
         aria-haspopup="true"
       >
-        <span>{filters[name] || label}</span>
+        <span>{(localSelection === 'Any' || filters[name] === 'Any') ? 'Any' : (filters[name] || label)}</span>
         <ChevronDown
           className={`h-4 w-4 transition-transform duration-200 ${openDropdown === name ? "transform rotate-180" : ""}`}
         />
@@ -208,7 +211,16 @@ export default function FilterDropdown({
               return (
                 <li
                   key={index}
-                  onClick={() => selectOption(name, option)}
+                  onClick={() => {
+                    if (option === 'Any') {
+                      // Visually select 'Any' but do nothing functionally
+                      setLocalSelection('Any');
+                      return;
+                    }
+                    // Clear local selection when choosing a functional option
+                    setLocalSelection(null);
+                    selectOption(name, option);
+                  }}
                   className="px-3 py-2 text-sm text-gray-300 hover:bg-[#111111] hover:text-[#D4AF37] transition-colors flex justify-between items-center cursor-pointer"
                   role="menuitem"
                 >
@@ -268,7 +280,7 @@ export default function FilterDropdown({
                     </div>
                     <span>{option}</span>
                   </div>
-                  {filters[name] === option && <Check className="h-4 w-4 text-green-500" />}
+                  {((localSelection ?? filters[name]) === option) && <Check className="h-4 w-4 text-green-500" />}
                 </li>
               );
             })}

@@ -252,13 +252,20 @@ useEffect(() => {
     () =>
       (manufacturersData?.companies || [])
         .map((c) => {
-          const u = c?.bannerAd?.url;
-          return typeof u === "string" ? u.trim() : null;
+          const url = typeof c?.bannerAd?.url === "string" ? c.bannerAd.url.trim() : null;
+          const documentId = c?.documentId;
+          if (url && documentId) {
+            return {
+              url,
+              documentId,
+              alt: c?.name ? `${c.name} Banner` : "Banner Ad",
+            };
+          }
+          return null;
         })
-        .filter((u) => typeof u === "string" && u.length > 0),
+        .filter(Boolean),
     [manufacturersData]
   );
-
   const [faqBanner, setFaqBanner] = useState(null);
 
   useEffect(() => {

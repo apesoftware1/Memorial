@@ -122,15 +122,23 @@ const IndexRender = ({
 
   // Fetch companies to build a banner pool
   const { data: manufacturersData } = useQuery(GET_MANUFACTURERS);
-  // Build a pool of usable banner URLs from company.bannerAd.url (trim to avoid empty strings)
+  // Build a pool of usable banner objects linking to manufacturer profiles via documentId
   const bannerPool = useMemo(
     () =>
       (manufacturersData?.companies || [])
         .map((c) => {
-          const u = c.bannerAd?.url;
-          return typeof u === "string" ? u.trim() : null;
+          const url = typeof c?.bannerAd?.url === "string" ? c.bannerAd.url.trim() : null;
+          const documentId = c?.documentId;
+          if (url && documentId) {
+            return {
+              url,
+              documentId,
+              alt: c?.name ? `${c.name} Banner` : "Banner Ad",
+            };
+          }
+          return null;
         })
-        .filter((u) => typeof u === "string" && u.length > 0),
+        .filter(Boolean),
     [manufacturersData]
   );
 
@@ -139,7 +147,7 @@ const IndexRender = ({
   useEffect(() => {
     if (bannerPool.length > 0) {
       const randomIndex = Math.floor(Math.random() * bannerPool.length);
-      setSelectedBanner(bannerPool[randomIndex]); // selectedBanner is a non-empty string URL
+      setSelectedBanner(bannerPool[randomIndex]); // selectedBanner is an object { url, documentId, alt }
     } else {
       setSelectedBanner(null);
     }

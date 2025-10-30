@@ -16,6 +16,28 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Floating Action Button to navigate to blogs page
+function FloatingBlogsButton() {
+  return (
+    <Link
+      href="/regan-dashboard/blogs"
+      aria-label="Open Blogs Admin"
+      className="fixed bottom-6 right-6 z-50"
+    >
+      <Button
+        className="rounded-full w-14 h-14 p-0 shadow-lg bg-primary text-primary-foreground hover:bg-primary/90"
+        title="Blogs"
+      >
+        {/* Book or document icon to represent articles */}
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
+          <path d="M6 2a2 2 0 00-2 2v16a2 2 0 002 2h11a1 1 0 001-1v-1h-9a3 3 0 01-3-3V2z" />
+          <path d="M9 4h8a1 1 0 011 1v12h-9a1 1 0 01-1-1V4z" />
+        </svg>
+      </Button>
+    </Link>
+  );
+}
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -219,6 +241,8 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+            {/* FAB */}
+            <FloatingBlogsButton />
           </>
         )}
       </div>

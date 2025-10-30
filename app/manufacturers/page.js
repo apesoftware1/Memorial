@@ -182,7 +182,8 @@ export default function ManufacturersPage() {
     }
     
     const nameFilter = searchFilters.manufacturerName.toLowerCase().trim();
-    const locationFilter = searchFilters.location.toLowerCase().trim();
+    const locationFilter = (searchFilters.location || '').toLowerCase().replace(/\s*,\s*/g, ',').split(',').pop().trim();
+
     
     const filtered = data.companies.filter(company => {
       const nameMatch = nameFilter === '' || 
@@ -190,6 +191,7 @@ export default function ManufacturersPage() {
       
       const locationMatch = locationFilter === '' || 
         (company.location && company.location.toLowerCase().includes(locationFilter));
+    
       
       return nameMatch && locationMatch;
     });
@@ -370,7 +372,7 @@ export default function ManufacturersPage() {
                   type="text"
                   placeholder="Location"
                   className="w-full p-2 pl-10 pr-8 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent cursor-pointer bg-white"
-                  value={searchFilters.location}
+                  value={selectedTown || selectedCity?.name || selectedProvince?.name || ''}
                   readOnly
                   onClick={() => setShowLocationDropdown(!showLocationDropdown)}
                 />
@@ -413,19 +415,19 @@ export default function ManufacturersPage() {
                             <input
                               type="checkbox"
                               className="mr-2 h-4 w-4"
-                              checked={selectedProvince?.name === province.name}
+                              checked={selectedProvince?.name === province.name && !selectedCity && !selectedTown}
                               onChange={(e) => {
                                 e.stopPropagation();
-                                if (selectedProvince?.name === province.name && !selectedCity && !selectedTown) {
-                                  setSelectedProvince(null);
-                                  setSelectedCity(null);
-                                  setSelectedTown(null);
-                                  setSearchFilters(prev => ({ ...prev, location: "" }));
-                                } else {
+                                if (e.target.checked) {
                                   setSelectedProvince(province);
                                   setSelectedCity(null);
                                   setSelectedTown(null);
                                   setSearchFilters(prev => ({ ...prev, location: province.name }));
+                                } else {
+                                  setSelectedProvince(null);
+                                  setSelectedCity(null);
+                                  setSelectedTown(null);
+                                  setSearchFilters(prev => ({ ...prev, location: "" }));
                                 }
                               }}
                               onClick={(e) => e.stopPropagation()}
@@ -459,7 +461,7 @@ export default function ManufacturersPage() {
                                     <input
                                       type="checkbox"
                                       className="mr-2 h-4 w-4"
-                                      checked={selectedCity?.name === city.name && selectedProvince?.name === province.name}
+                                      checked={selectedCity?.name === city.name && selectedProvince?.name === province.name && !selectedTown}
                                       onChange={(e) => {
                                         e.stopPropagation();
                                         if (selectedCity?.name === city.name && selectedProvince?.name === province.name) {
