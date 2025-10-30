@@ -179,9 +179,6 @@ export default function FilterDropdown({
     // Apply path fixing to ensure correct format
     const fixedPath = iconPath ? fixIconPath(iconPath) : null;
     
-    // Debug log to verify path
-    console.log("ICON SOURCE:", option, fixedPath);
-    
     return fixedPath;
   };
 
@@ -213,8 +210,9 @@ export default function FilterDropdown({
                   key={index}
                   onClick={() => {
                     if (option === 'Any') {
-                      // Visually select 'Any' but do nothing functionally
+                      // Visually select 'Any' and close the dropdown without altering filters
                       setLocalSelection('Any');
+                      toggleDropdown(name);
                       return;
                     }
                     // Clear local selection when choosing a functional option
@@ -240,12 +238,12 @@ export default function FilterDropdown({
                             filter: name === 'colour' || name === 'slabStyle' ? 'none' : 'brightness(0) invert(0.9)'
                           }}
                           onError={(e) => {
-                            console.log(`Failed to load icon: ${iconSrc}`);
+                           
                             
                             // Special handling for color icons
                             if (name === 'colour') {
                               const colorPath = `/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_${option}.svg`;
-                              console.log(`Trying color fallback: ${colorPath}`);
+                             
                               
                               const testImg = new Image();
                               testImg.onload = () => {
