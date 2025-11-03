@@ -179,31 +179,46 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
   }
 
   // FilterDropdown component
-  const FilterDropdown = ({ name, label, options }: { name: string; label: string; options: string[] }) => (
+  const FilterDropdown = ({ name, label, options, replaceLabelWithSelected = false }: { name: string; label: string; options: string[]; replaceLabelWithSelected?: boolean }) => (
     <div className="mb-2 relative w-full sm:rounded-none sm:border-b sm:border-gray-200">
       <button
         onClick={() => toggleFilter(name)}
-        className="w-full flex justify-between items-center py-2 px-2 bg-white text-gray-800 font-semibold text-sm border border-gray-200 sm:border-0 rounded sm:rounded-none focus:outline-none focus:ring-2 focus:ring-amber-400 min-h-[36px] h-[36px] sm:min-h-[56px] sm:h-[56px]"
+        className={`w-full flex justify-between items-center py-2 px-2 bg-white text-gray-800 font-semibold text-sm border border-gray-200 sm:border-0 rounded sm:rounded-none focus:outline-none focus:ring-2 focus:ring-amber-400 min-h-[36px] h-[36px] sm:min-h-[56px] sm:h-[56px] ${showFilters === name ? 'ring-2 ring-amber-400 border-amber-400' : ''}`}
         aria-expanded={showFilters === name}
         aria-haspopup="true"
         style={{ textAlign: 'left' }}
       >
-        <span className="text-gray-700 font-semibold">{label}</span>
+        <div className="flex items-center gap-2 overflow-hidden">
+          <span className="text-gray-700 font-semibold">{(replaceLabelWithSelected && activeFilters?.[name]) ? activeFilters[name] : label}</span>
+          {activeFilters?.[name] && !replaceLabelWithSelected ? (
+            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded border border-amber-300 max-w-[160px] truncate" title={activeFilters[name]}>
+              {activeFilters[name]}
+            </span>
+          ) : null}
+        </div>
         <ChevronDown
           className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${showFilters === name ? "transform rotate-180" : ""}`}
         />
       </button>
       {showFilters === name && (
         <div className="absolute left-0 top-full z-[100] mt-1 w-full bg-[#2E2E30] rounded-md shadow-lg border border-gray-700 animate-slide-in">
+          {activeFilters?.[name] && (
+            <div className="px-3 py-2 bg-[#252526] text-gray-200 text-xs border-b border-gray-700 flex items-center gap-2">
+              <span className="opacity-80">Selected:</span>
+              <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded border border-amber-300">{activeFilters[name]}</span>
+            </div>
+          )}
           <ul className="py-1 max-h-60 overflow-auto" role="menu" aria-orientation="vertical">
             {options.map((option: string) => {
               const iconPath = getIconForOption(name, option);
+              const isSelected = activeFilters?.[name] === option;
               return (
                 <li
                   key={option}
                   onClick={() => setFilter(name, option)}
-                  className="px-3 py-2 text-sm text-gray-300 hover:bg-[#3E3E40] flex items-center cursor-pointer"
+                  className={`px-3 py-2 text-sm text-gray-300 hover:bg-[#3E3E40] flex items-center cursor-pointer ${isSelected ? 'bg-[#3E3E40] border-l-2 border-amber-500' : ''}`}
                   role="menuitem"
+                  aria-selected={isSelected}
                 >
                   <div className="flex items-center flex-1">
                     {iconPath && (
@@ -223,7 +238,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
                     )}
                     <span>{option}</span>
                   </div>
-                  {activeFilters[name] === option && (
+                  {isSelected && (
                     <svg className="h-4 w-4 text-green-500 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
@@ -275,7 +290,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
       />
       <div className="border-t border-gray-200 my-2"></div>
       
-      <FilterDropdown name="location" label="Location" options={mergedOptions.location} />
+      <FilterDropdown name="location" label="Location" options={mergedOptions.location} replaceLabelWithSelected />
       <div className="border-t border-gray-200 my-2"></div>
       <FilterDropdown name="style" label="Head Style" options={mergedOptions.style} />
       <div className="border-t border-gray-200 my-2"></div>

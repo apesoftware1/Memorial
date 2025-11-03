@@ -8,6 +8,7 @@ import Header from "@/components/Header.jsx"
 import { useQuery, ApolloProvider } from "@apollo/client"
 import { GET_BLOG_BY_ID } from "@/graphql/queries/getBlogs"
 import client from "@/lib/apolloClient"
+import ReactMarkdown from "react-markdown";
 
 // Loading skeleton component
 function BlogSkeleton() {
@@ -174,7 +175,8 @@ function BlogContent({ params }) {
             
             <div 
               className="prose prose-amber max-w-none"
-              dangerouslySetInnerHTML={{ __html: blogPost.content }}
+              // dangerouslySetInnerHTML={{ __html: blogPost.content }}
+              children={<ReactMarkdown>{blogPost.content}</ReactMarkdown>}
             />
           </article>
         </div>

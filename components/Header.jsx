@@ -84,7 +84,7 @@ export default function Header({
                       href="/tombstones-for-sale"
                       className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
                     >
-                      TOMBSTONES FOR SALE
+                      TOMBSTONES
                     </Link>
                     <Link
                       href="/tombstones-on-special"

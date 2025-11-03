@@ -24,6 +24,7 @@ interface PremiumListingCardProps {
   isFirstCard?: boolean;
   isOwner?: boolean;
   onPrimaryClick?: (listing: any) => boolean | void;
+  compact?: boolean;
 }
 
 export function PremiumListingCard({
@@ -32,6 +33,7 @@ export function PremiumListingCard({
   isFirstCard = false,
   isOwner = false,
   onPrimaryClick,
+  compact = false,
 }: PremiumListingCardProps): React.ReactElement {
   const router = useRouter();
   const [distanceInfo, setDistanceInfo] = useState<DistanceInfo | null>(null);
@@ -212,7 +214,10 @@ export function PremiumListingCard({
         </div>
         {/* Main Image Container */}
         <div className="bg-white px-3 py-3">
-          <div className="relative h-[350px] w-full rounded-lg overflow-hidden border border-gray-200">
+          <div className={cn(
+            "relative w-full rounded-lg overflow-hidden border border-gray-200",
+            compact ? "h-[240px]" : "h-[350px]"
+          )}>
             <Image
               src={listing.mainImageUrl || "/placeholder.svg"}
               alt={listing.title}
@@ -259,7 +264,7 @@ export function PremiumListingCard({
           </div>
         </div>
         {/* Content (Mobile) */}
-        <div className="w-full px-4 pt-4 pb-2 bg-white flex flex-col">
+        <div className={cn("w-full px-4 bg-white flex flex-col", compact ? "pt-3 pb-2" : "pt-4 pb-2")}>
           {/* Price, Badge, and Heart (Mobile) */}
           <div className="flex flex-col items-start mb-3">
             <div className="text-2xl font-bold text-blue-600">
@@ -300,7 +305,7 @@ export function PremiumListingCard({
           {/* --- Product Details Section (same as desktop) --- */}
           <div className="space-y-0.5 mb-2">
             {/* First line: Tombstone Type, Full Tombstone (bold if present), stoneType, style/theme, culture */}
-            <div className="text-xs text-gray-700">
+            <div className="text-xs text-gray-700 ">
               <strong>{listing.listing_category?.name || getCategoryLabel()}</strong>
               {listing.productDetails?.stoneType &&
                 Array.isArray(listing.productDetails.stoneType) &&
@@ -355,7 +360,7 @@ export function PremiumListingCard({
               )}
             </div>
             {/* Third line: Transport & Installation, Foundation, Warranty */}
-            <div className="text-xs text-gray-700">
+            <div className="text-xs text-gray-700 capitalize">
               {listing.additionalProductDetails?.transportAndInstallation &&
                 Array.isArray(
                   listing.additionalProductDetails.transportAndInstallation
@@ -448,11 +453,11 @@ export function PremiumListingCard({
               {(listing.enquiries !== undefined ||
                 listing.inquiries_c?.length !== undefined) && (
                 <div className="flex items-center text-green-600">
-                  <Check className="w-3.5 h-3.5 mr-1" />
-                  <span className="text-xs">
+                  {/* <Check className="w-3.5 h-3.5 mr-1" /> */}
+                  {/* <span className="text-xs">
                     {listing.enquiries || listing.inquiries_c?.length || 0}{" "}
                     enquiries to this Manufacturer
-                  </span>
+                  </span> */}
                 </div>
               )}
               {/* Location display */}
@@ -484,7 +489,7 @@ export function PremiumListingCard({
       <div className="hidden md:flex min-h-[300px]">
         {/* Left - Main Image (50% width) */}
         <div className="w-1/2 flex-shrink-0 flex flex-col">
-          <div className="relative flex-1 min-h-[300px]">
+          <div className={cn("relative flex-1", compact ? "min-h-[240px]" : "min-h-[300px]")}> 
             <Image
               src={listing.mainImageUrl || "/placeholder.svg"}
               alt={listing.title}
@@ -516,7 +521,7 @@ export function PremiumListingCard({
         </div>
         {/* Right - Content (50% width) */}
         <div className="w-1/2 flex-shrink-0 flex flex-col">
-          <div className="flex-1 p-4 flex flex-col">
+          <div className={cn("flex-1 flex flex-col", compact ? "p-3" : "p-4")}>
             {/* Price and Heart */}
             <div className="flex flex-col items-start mb-3">
               <div className="text-2xl font-bold text-blue-600">
@@ -606,7 +611,7 @@ export function PremiumListingCard({
                 )}
               </div>
               {/* Third line: Transport & Installation, Foundation, Warranty */}
-              <div className="text-xs text-gray-700">
+              <div className="text-xs text-gray-700 capitalize">
                 {listing.additionalProductDetails?.transportAndInstallation &&
                   Array.isArray(
                     listing.additionalProductDetails.transportAndInstallation
@@ -704,15 +709,15 @@ export function PremiumListingCard({
                 <div className="flex justify-between items-stretch space-x-4 mt-2">
                   {/* Left Column for text details */}
                   <div className="flex-1 space-y-1.5">
-                    <div className="font-bold text-lg text-gray-900 leading-tight">
+                    <div className="font-bold font-small text-sm text-gray-900 leading-tight">
                       {manufacturerName}
                     </div>
                     <div className="flex items-center text-green-600">
-                      <Check className="w-3.5 h-3.5 mr-1" />
-                      <span className="text-xs">
+                      {/* <Check className="w-3.5 h-3.5 mr-1" /> */}
+                      {/* <span className="text-xs">
                         {listing.enquiries || listing.inquiries_c?.length || 0}{" "}
                         enquiries to this Manufacturer
-                      </span>
+                      </span> */}
                     </div>
                     <div
                       className="text-xs text-gray-800 mt-1"

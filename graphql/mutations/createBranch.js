@@ -2,7 +2,7 @@
 export async function createBranch(payload) {
   try {
     const STRAPI_API_URL = process.env.STRAPI_API_URL || "https://typical-car-e0b66549b3.strapiapp.com/api/branches";
-    console.log(payload)
+    
     const response = await fetch(STRAPI_API_URL, {
       method: "POST",
       headers: {
