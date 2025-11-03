@@ -28,6 +28,7 @@ import CompanyMediaUpload from "@/components/CompanyMediaUpload";
 import BranchDropdown from "@/components/BranchDropdown";
 import BranchSelectionModal from "@/components/BranchSelectionModal";
 import OperatingHoursModal from "@/components/OperatingHoursModal";
+import { updateBranch } from "@/graphql/mutations/updateBranch";
 
 // Helper function to find a branch by name
 const findBranchByName = (branchName, branches) => {
@@ -192,7 +193,12 @@ export default function ManufacturerProfileEditor({
 
   // Custom confirmation dialog state
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [listingToDelete, setListingToDelete] = useState(null);
+const [listingToDelete, setListingToDelete] = useState(null);
+// --- Added local state for removing listing from a branch ---
+const [selectedBranchIdToDisconnect, setSelectedBranchIdToDisconnect] = useState("");
+const [disconnecting, setDisconnecting] = useState(false);
+const [disconnectError, setDisconnectError] = useState("");
+const [disconnectSuccess, setDisconnectSuccess] = useState(false);
 
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -226,6 +232,10 @@ export default function ManufacturerProfileEditor({
 
   // Company state management
   const [company, setCompany] = useState(initialCompany);
+  // Ensure branches appear immediately after login without requiring a prior reload
+  useEffect(() => {
+    setCompany(initialCompany);
+  }, [initialCompany]);
   
   // Handle saving operating hours
   const handleSaveOperatingHours = async ({ operatingHours }) => {
@@ -2742,6 +2752,9 @@ export default function ManufacturerProfileEditor({
         {/* Custom Confirmation Dialog */}
         {showConfirmDialog && (
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="deleteDialogTitle"
             style={{
               position: "fixed",
               top: 0,
@@ -2803,6 +2816,7 @@ export default function ManufacturerProfileEditor({
                 </div>
                 <div>
                   <h3
+                    id="deleteDialogTitle"
                     style={{
                       margin: 0,
                       fontSize: "18px",
@@ -2836,6 +2850,78 @@ export default function ManufacturerProfileEditor({
                 <strong>"{listingToDelete?.title || "this listing"}"</strong>?
                 This action cannot be undone.
               </p>
+
+              {/* --- Added: Remove listing from a branch section --- */}
+              {listingToDelete?.documentId && Array.isArray(company?.branches) && company.branches.length > 0 && (
+                <div style={{ marginTop: "12px" }}>
+                  <label style={{ display: "block", fontSize: "14px", fontWeight: 600, color: "#374151", marginBottom: "8px" }}>
+                    Remove listing from a branch
+                  </label>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <select
+                      value={selectedBranchIdToDisconnect}
+                      onChange={(e) => setSelectedBranchIdToDisconnect(e.target.value)}
+                      style={{
+                        padding: "8px 12px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "8px",
+                        backgroundColor: "#fff",
+                        fontSize: "14px",
+                        color: "#111827",
+                        outline: "none",
+                      }}
+                    >
+                      <option value="">Select a branch</option>
+                      {company.branches.map((b) => (
+                        <option key={b?.documentId || b?.id} value={b?.documentId || b?.id}>
+                          {b?.name || b?.branchName || "Unnamed Branch"}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={async () => {
+                        if (!selectedBranchIdToDisconnect) return;
+                        setDisconnecting(true);
+                        setDisconnectError("");
+                        setDisconnectSuccess(false);
+                        try {
+                          await updateBranch(selectedBranchIdToDisconnect, { listings: { disconnect: [listingToDelete.documentId] } });
+                          setDisconnectSuccess(true);
+                          // Reload the page after successful removal
+                          setTimeout(() => {
+                            if (typeof window !== "undefined") {
+                              window.location.reload();
+                            }
+                          }, 500);
+                        } catch (err) {
+                          setDisconnectError(err?.message || "Failed to remove listing from branch");
+                        } finally {
+                          setDisconnecting(false);
+                        }
+                      }}
+                      disabled={!selectedBranchIdToDisconnect || disconnecting}
+                      style={{
+                        padding: "8px 12px",
+                        border: "1px solid #fca5a5",
+                        borderRadius: "8px",
+                        backgroundColor: disconnecting ? "#fecaca" : "#fff",
+                        color: "#dc2626",
+                        fontSize: "14px",
+                        fontWeight: 500,
+                        cursor: !selectedBranchIdToDisconnect || disconnecting ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {disconnecting ? "Removing…" : "Remove From Branch"}
+                    </button>
+                  </div>
+                  {disconnectError && (
+                    <p style={{ fontSize: "13px", color: "#dc2626", marginTop: "8px" }}>{disconnectError}</p>
+                  )}
+                  {disconnectSuccess && (
+                    <p style={{ fontSize: "13px", color: "#16a34a", marginTop: "8px" }}>Listing removed from branch.</p>
+                  )}
+                </div>
+              )}
 
               <div
                 style={{

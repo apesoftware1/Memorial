@@ -1,4 +1,6 @@
+import React, { useState, useEffect } from "react"
 import { AlertTriangle, X } from "lucide-react"
+import { updateBranch } from "@/graphql/mutations/updateBranch"
 
 export function ConfirmationModal({ 
   isOpen, 
@@ -8,9 +10,34 @@ export function ConfirmationModal({
   message = "Are you sure you want to proceed?",
   confirmText = "Confirm",
   cancelText = "Cancel",
-  type = "danger" // "danger", "warning", "info"
+  type = "danger", // "danger", "warning", "info"
+  // --- Added optional props to support removing a listing from a branch ---
+  branches = [], // Array of branch objects with { documentId, name }
+  listingId, // The listing documentId to disconnect
+  onBranchRemoved // callback(branchId) after successful removal
 }) {
   if (!isOpen) return null
+
+  // --- Local state for branch removal ---
+  const [selectedBranchId, setSelectedBranchId] = useState("")
+  const [removing, setRemoving] = useState(false)
+  const [removeError, setRemoveError] = useState("")
+  const [removeSuccess, setRemoveSuccess] = useState(false)
+
+  // Accessibility: close on Escape, confirm on Enter
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.()
+      if (e.key === "Enter") {
+        e.preventDefault()
+        onConfirm?.()
+        onClose?.()
+      }
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [isOpen, onClose, onConfirm])
 
   const getTypeStyles = () => {
     switch (type) {
@@ -54,12 +81,38 @@ export function ConfirmationModal({
     onClose()
   }
 
+  // --- Removal handler ---
+  const handleRemoveFromBranch = async () => {
+    if (!selectedBranchId || !listingId) return
+    setRemoving(true)
+    setRemoveError("")
+    setRemoveSuccess(false)
+    try {
+      await updateBranch(selectedBranchId, { listings: { disconnect: [listingId] } })
+      setRemoveSuccess(true)
+      if (typeof onBranchRemoved === "function") {
+        onBranchRemoved(selectedBranchId)
+      }
+      // Close and reload to reflect changes
+      onClose?.()
+      setTimeout(() => {
+        if (typeof window !== "undefined") {
+          window.location.reload()
+        }
+      }, 500)
+    } catch (err) {
+      setRemoveError(err?.message || "Failed to remove listing from branch")
+    } finally {
+      setRemoving(false)
+    }
+  }
+
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
       onClick={handleBackdropClick}
     >
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden ring-1 ring-black/5">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
@@ -73,6 +126,7 @@ export function ConfirmationModal({
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
+            aria-label="Close"
           >
             <X className="w-5 h-5" />
           </button>
@@ -83,10 +137,50 @@ export function ConfirmationModal({
           <p className="text-gray-600 leading-relaxed">
             {message}
           </p>
+
+          {/* --- Added: Remove listing from branch section --- */}
+          {Array.isArray(branches) && branches.length > 0 && listingId && (
+            <div className="mt-4 p-3 border border-gray-200 rounded-xl bg-gray-50">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Remove listing from a branch
+              </label>
+              <div className="flex items-center gap-2">
+                <select
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  value={selectedBranchId}
+                  onChange={(e) => setSelectedBranchId(e.target.value)}
+                >
+                  <option value="">Select a branch</option>
+                  {branches.map((b) => {
+                    const bid = b?.documentId || b?.id || ""
+                    const name = b?.name || b?.branchName || "Unnamed Branch"
+                    return (
+                      <option key={bid} value={bid}>
+                        {name}
+                      </option>
+                    )
+                  })}
+                </select>
+                <button
+                  onClick={handleRemoveFromBranch}
+                  disabled={!selectedBranchId || removing}
+                  className="px-3 py-2 text-sm font-medium text-white rounded-lg bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                >
+                  {removing ? "Removing…" : "Remove From Branch"}
+                </button>
+              </div>
+              {removeError && (
+                <p className="text-sm text-red-600 mt-2">{removeError}</p>
+              )}
+              {removeSuccess && (
+                <p className="text-sm text-green-600 mt-2">Listing removed from branch.</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+        <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"

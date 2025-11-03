@@ -466,7 +466,7 @@ export default function Home() {
     flow.push(
       <div key="listings-1" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {listings.slice(idx, idx + 5).length > 0
-          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} onPrimaryClick={(e) => handleListingPrimaryClick(listing, e)} />)
+          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard compact={true} key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} onPrimaryClick={(e) => handleListingPrimaryClick(listing, e)} />)
           : fallbackCard("listings")}
       </div>
     );
@@ -479,6 +479,7 @@ export default function Home() {
         {listings.slice(idx, idx + 5).length > 0
           ? listings.slice(idx, idx + 5).map((listing, i) => (
               <PremiumListingCard
+                compact={true}
                 key={listing.id || i}
                 listing={listing}
                 href={`/tombstones-for-sale/${listing.documentId || listing.id}`}
@@ -512,6 +513,7 @@ export default function Home() {
         {listings.slice(idx, idx + 5).length > 0
           ? listings.slice(idx, idx + 5).map((listing, i) => (
               <PremiumListingCard
+                compact={true}
                 key={listing.id || i}
                 listing={listing}
                 href={`/tombstones-for-sale/${listing.documentId || listing.id}`}
@@ -530,6 +532,7 @@ export default function Home() {
         {listings.slice(idx, idx + 5).length > 0
           ? listings.slice(idx, idx + 5).map((listing, i) => (
               <PremiumListingCard
+                compact={true}
                 key={listing.id || i}
                 listing={listing}
                 href={`/tombstones-for-sale/${listing.documentId || listing.id}`}
@@ -943,7 +946,7 @@ export default function Home() {
                         <div className="text-center text-gray-500 py-8">No tombstones found for your selected filters.</div>
                       ) : (
                         paginatedListings.map((listing) => (
-                          <PremiumListingCard key={listing.documentId} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} onPrimaryClick={(e) => handleListingPrimaryClick(listing, e)} />
+                          <PremiumListingCard compact={true} key={listing.documentId} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} onPrimaryClick={(e) => handleListingPrimaryClick(listing, e)} />
                         ))
                       )}
                     </div>

@@ -357,7 +357,7 @@ export function StandardListingCard({
           <div className="flex flex-col mt-0">
             <a
               href={listing.company.name}
-              className="manufacturer-link font-medium text-gray-900 text-base mb-1 leading-tight"
+              className="manufacturer-link font-small text-gray-900 text-base mb-1 leading-tight"
               onClick={(e) => e.stopPropagation()}
               aria-label={`View ${listing.manufacturer} profile`}
             >
@@ -366,10 +366,10 @@ export function StandardListingCard({
             <div className="space-y-1">
               {(listing.enquiries !== undefined || listing.inquiries_c?.length !== undefined) && (
                 <div className="flex items-center text-green-600">
-                  <Check className="w-3.5 h-3.5 mr-1" />
-                  <span className="text-xs">
+                  {/* <Check className="w-3.5 h-3.5 mr-1" /> */}
+                  {/* <span className="text-xs">
                     {listing.enquiries || listing.inquiries_c?.length || 0} enquiries to this Manufacturer
-                  </span>
+                  </span> */}
                 </div>
               )}
               {/* Location display */}
@@ -592,15 +592,15 @@ export function StandardListingCard({
           <div className="flex justify-between items-end mt-2">
             <div className="flex flex-col mt-2 flex-1">
               <div>
-                <div className="font-medium text-gray-900 text-base mb-2 leading-tight">
+                <div className="font-small text-gray-900 text-base mb-2 leading-tight">
                   {listing.company.name}
                 </div>
                 <div className="flex items-center text-green-600 mb-1">
-                  <Check className="w-3.5 h-3.5 mr-1" />
-                  <span className="text-xs">
+                  {/* <Check className="w-3.5 h-3.5 mr-1" /> */}
+                  {/* <span className="text-xs">
                     {listing.inquiries_c?.length ?? 0} enquiries to this
                     Manufacturer
-                  </span>
+                  </span> */}
                 </div>
                 <div
                   className="text-xs text-gray-800 mt-1"
