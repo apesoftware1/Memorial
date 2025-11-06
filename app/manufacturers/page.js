@@ -10,9 +10,23 @@ import { ChevronDown, MapPin, Search, Check } from "lucide-react";
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import locationsData from '@/sa_locations_expanded.json';
+import { useProgressiveQuery } from "@/hooks/useProgressiveQuery"
+import {
+  MANUFACTURERS_INITIAL_QUERY,
+  MANUFACTURERS_FULL_QUERY,
+  MANUFACTURERS_DELTA_QUERY,
+} from '@/graphql/queries/getManufacturers';
 
 export default function ManufacturersPage() {
-  const { loading, error, data } = useQuery(GET_MANUFACTURERS);
+
+  const { loading, error, data } = useProgressiveQuery({
+      initialQuery: MANUFACTURERS_INITIAL_QUERY,
+      fullQuery: MANUFACTURERS_FULL_QUERY,
+      deltaQuery: MANUFACTURERS_DELTA_QUERY,
+      variables: { limit: 5 },
+      storageKey: 'manufacturers:lastUpdated',
+      refreshInterval: 3000,
+    });
   const sortModalRef = useRef(null);
   const locationDropdownRef = useRef(null);
 

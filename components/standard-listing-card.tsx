@@ -120,18 +120,18 @@ export function StandardListingCard({
       {/* Mobile Layout (up to 768px) */}
       <div className="relative flex flex-col md:hidden">
         
-
-        {listing.company.hideStandardCompanyLogo !== true &&  (
+        {/* {console.log(listing.company.hideStandardCompanyLogo)} */}
+        {listing?.company?.hideStandardCompanyLogo !== true &&  (
           <div className="absolute bottom-3 right-3 z-20 bg-white border border-white p-2 rounded-lg md:hidden">
             <a
-              href={`/manufacturers/manufacturers-Profile-Page/${listing.company.documentId}`}
+              href={`/manufacturers/manufacturers-Profile-Page/${listing?.company?.documentId}`}
               className="manufacturer-link"
               onClick={(e) => e.stopPropagation()}
-              aria-label={`View ${listing.manufacturer} profile`}
+              aria-label={`View ${listing?.company?.name || listing.manufacturer} profile`}
             >
               <Image
-                src={listing.company.logoUrl}
-                alt={`${listing.manufacturer} Logo`}
+                src={listing?.company?.logoUrl || "/placeholder.svg"}
+                alt={`${listing?.company?.name || listing.manufacturer} Logo`}
                 width={96}
                 height={96}
                 className="object-contain"
@@ -143,8 +143,8 @@ export function StandardListingCard({
         <div className="bg-white px-3 py-3">
           <div className="relative h-[350px] w-full rounded-lg overflow-hidden border border-gray-200">
             <Image
-              src={listing.mainImageUrl || "/placeholder.svg"}
-              alt={listing.title}
+              src={listing?.mainImageUrl || "/placeholder.svg"}
+              alt={listing?.title || "Listing Image"}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw"
@@ -164,8 +164,8 @@ export function StandardListingCard({
         <div className="hidden md:block bg-white px-3 pb-3">
           <div className="relative">
             <div className="flex flex-row gap-1">
-              {Array.isArray(listing.thumbnailUrls)
-                ? listing.thumbnailUrls
+              {Array.isArray(listing?.thumbnailUrls)
+                ? listing?.thumbnailUrls
                     .slice(0, 3)
                     .map((src: string, index: number) => (
                       <button
@@ -197,15 +197,15 @@ export function StandardListingCard({
             <div className="mt-1 mb-0">
                <Badge
                 className={cn("text-white text-sm px-3 py-1 rounded")}
-                style={{ backgroundColor: listing.adFlasherColor || "#DB2777" }}
+                style={{ backgroundColor: listing?.adFlasherColor || "#DB2777" }}
               >
-                {listing.adFlasher || "Unique Design"}
+                {listing?.adFlasher || "Unique Design"}
               </Badge>
             </div>
           </div>
           {/* Title, Details, Features (Mobile) */}
           <h2 className="text-lg font-bold text-gray-800 mb-2 uppercase">
-            {listing.title}
+            {listing?.title || "Listing Title"}
           </h2>
           {/* --- Product Details Section (same as desktop) --- */}
           <div className="space-y-0.5 mb-2">
@@ -221,52 +221,52 @@ export function StandardListingCard({
               
               {listing.productDetails?.style &&
                 Array.isArray(listing.productDetails.style) &&
-                listing.productDetails.style.length > 0 &&
+                listing?.productDetails?.style?.length > 0 &&
                 listing.productDetails.style[0]?.value && (
                   <> | {listing.productDetails.style[0].value}</>
                 )}
               {listing.productDetails?.culture &&
                 Array.isArray(listing.productDetails.culture) &&
-                listing.productDetails.culture.length > 0 &&
-                listing.productDetails.culture[0]?.value && (
-                  <>  | {listing.productDetails.culture[0].value}</>
+                listing?.productDetails?.culture?.length > 0 &&
+                listing?.productDetails?.culture?.[0]?.value && (
+                  <>  | {listing?.productDetails?.culture?.[0]?.value}</>
                 )}
             </div>
             {/* Second line: Customization, Color, Features */}
             <div className="text-xs text-gray-700">
-              {listing.productDetails?.customization &&
-                Array.isArray(listing.productDetails.customization) &&
-                listing.productDetails.customization.length > 0 &&
-                listing.productDetails.customization[0]?.value && (
-                  <>{listing.productDetails.customization[0].value}</>
+              {listing?.productDetails?.customization &&
+                Array.isArray(listing?.productDetails?.customization) &&
+                listing?.productDetails?.customization?.length > 0 &&
+                listing?.productDetails?.customization?.[0]?.value && (
+                  <>{listing?.productDetails?.customization?.[0]?.value}</>
                 )}
-              {listing.productDetails?.color &&
-                Array.isArray(listing.productDetails.color) &&
-                listing.productDetails.color.length > 0 &&
-                listing.productDetails.color[0]?.value && (
+              {listing?.productDetails?.color &&
+                Array.isArray(listing?.productDetails?.color) &&
+                listing?.productDetails?.color?.length > 0 &&
+                listing?.productDetails?.color?.[0]?.value && (
                   <>
-                    {listing.productDetails?.customization &&
-                    Array.isArray(listing.productDetails.customization) &&
-                    listing.productDetails.customization.length > 0 &&
-                    listing.productDetails.customization[0]?.value
+                    {listing?.productDetails?.customization &&
+                    Array.isArray(listing?.productDetails?.customization) &&
+                    listing?.productDetails?.customization?.length > 0 &&
+                    listing?.productDetails?.customization?.[0]?.value
                       ? " | "
                       : ""}
-                    {listing.productDetails.color[0].value}
+                    {listing?.productDetails?.color?.[0]?.value}
                   </>
                 )}
               {listing.features && (
                 <>
                   {(listing.productDetails?.customization &&
-                    Array.isArray(listing.productDetails.customization) &&
-                    listing.productDetails.customization.length > 0 &&
-                    listing.productDetails.customization[0]?.value) ||
-                  (listing.productDetails?.color &&
-                    Array.isArray(listing.productDetails.color) &&
-                    listing.productDetails.color.length > 0 &&
-                    listing.productDetails.color[0]?.value)
+                    Array.isArray(listing?.productDetails?.customization) &&
+                    listing?.productDetails?.customization?.length > 0 &&
+                    listing?.productDetails?.customization?.[0]?.value) ||
+                  (listing?.productDetails?.color &&
+                    Array.isArray(listing?.productDetails?.color) &&
+                    listing?.productDetails?.color?.length > 0 &&
+                    listing?.productDetails?.color?.[0]?.value) 
                     ? " | "
                     : ""}
-                  {listing.features}
+                  {listing?.features}
                 </>
               )}
             </div>
@@ -356,12 +356,12 @@ export function StandardListingCard({
           {/* Manufacturer Information (Mobile) */}
           <div className="flex flex-col mt-0">
             <a
-              href={listing.company.name}
+              href={listing?.company?.name}
               className="manufacturer-link font-small text-gray-900 text-base mb-1 leading-tight"
               onClick={(e) => e.stopPropagation()}
               aria-label={`View ${listing.manufacturer} profile`}
             >
-              {listing.manufacturer || listing.company?.name}
+              {listing.manufacturer || listing?.company?.name}
             </a>
             <div className="space-y-1">
               {(listing.enquiries !== undefined || listing.inquiries_c?.length !== undefined) && (
@@ -592,7 +592,7 @@ export function StandardListingCard({
           <div className="flex justify-between items-end mt-2">
             <div className="flex flex-col mt-2 flex-1">
               <div>
-                <div className="font-small text-gray-900 text-base mb-2 leading-tight">
+                <div className="font-bold font-small text-sm text-gray-900 text-base mb-2 leading-tight">
                   {listing.company.name}
                 </div>
                 <div className="flex items-center text-green-600 mb-1">

@@ -7,7 +7,7 @@ import FeaturedListings from "@/components/FeaturedListings";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { PageLoader, CardSkeleton } from "@/components/ui/loader";
 import { useQuery } from "@apollo/client";
-import { GET_MANUFACTURERS } from "@/graphql/queries/getManufacturers";
+import { GET_BANNER } from "@/graphql/queries/getBanner";
 
 const IndexRender = ({
    
@@ -121,7 +121,7 @@ const IndexRender = ({
     .slice(0, 3);
 
   // Fetch companies to build a banner pool
-  const { data: manufacturersData } = useQuery(GET_MANUFACTURERS);
+  const { data: manufacturersData } = useQuery(GET_BANNER);
   // Build a pool of usable banner objects linking to manufacturer profiles via documentId
   const bannerPool = useMemo(
     () =>

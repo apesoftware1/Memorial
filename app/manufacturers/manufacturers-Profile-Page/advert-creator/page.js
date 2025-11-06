@@ -934,7 +934,7 @@ export default function CreateListingForm() {
               <label style={{ fontSize: 12, marginBottom: 4, display: "block", color: "#555" }}>Sales Person Name</label>
               <input 
                 type="text"
-                value={company.user.name || ''}
+                value={company?.user?.name || ''}
                 style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, opacity: 0.5, padding: "8px 12px", outline: "none", marginBottom: 16, background: "#f9f9f9" }}
                 placeholder="Enter name"
                 disabled

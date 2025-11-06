@@ -9,13 +9,13 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'https://typical-car-e0b66549b3.strapiapp.com', // e.g. cdn.example.com
-      },
+    // Re-enable Next Image optimization and properly whitelist remote hosts
+    unoptimized: false,
+    domains: [
+      'typical-car-e0b66549b3.media.strapiapp.com',
+      'res.cloudinary.com',
     ],
+    formats: ['image/avif', 'image/webp'],
   },
   // Optimized webpack config to fix chunk and 404 errors
   webpack: (config, { dev, isServer }) => {

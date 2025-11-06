@@ -18,6 +18,11 @@ import { Toaster } from "@/components/ui/toaster";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Preconnect to media origins to speed up image loading */}
+        <link rel="preconnect" href="https://typical-car-e0b66549b3.media.strapiapp.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
+      </head>
       <body className={`${inter.className} bg-gray-50`}>
         {/* Localize theme handling to regan-dashboard pages only */}
         <SessionWrapper>

@@ -15,6 +15,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useProgressiveQuery } from "@/hooks/useProgressiveQuery"
+import {
+  MANUFACTURERS_INITIAL_QUERY,
+  MANUFACTURERS_FULL_QUERY,
+  MANUFACTURERS_DELTA_QUERY,
+} from '@/graphql/queries/getManufacturers';
 
 // Floating Action Button to navigate to blogs page
 function FloatingBlogsButton() {
@@ -41,7 +47,15 @@ function FloatingBlogsButton() {
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { loading, error, data } = useQuery(GET_MANUFACTURERS);
+ 
+    const { loading, error, data } = useProgressiveQuery({
+      initialQuery: MANUFACTURERS_INITIAL_QUERY,
+      fullQuery: MANUFACTURERS_FULL_QUERY,
+      deltaQuery: MANUFACTURERS_DELTA_QUERY,
+      variables: { limit: 5 },
+      storageKey: 'manufacturers:lastUpdated',
+      refreshInterval: 3000,
+    });
   // Local dark-mode state scoped to this page
   const [isDark, setIsDark] = useState(false);
 

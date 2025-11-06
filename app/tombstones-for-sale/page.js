@@ -18,60 +18,37 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { PageLoader, CardSkeleton } from "@/components/ui/loader";
 
 // Import GraphQL queries
-import { useQuery } from '@apollo/client';
-import { GET_LISTINGS } from '@/graphql/queries/getListings';
-import { useListingCategories } from "@/hooks/use-ListingCategories";
-
+import { useProgressiveQuery } from '@/hooks/useProgressiveQuery';
+import {
+  LISTINGS_INITIAL_QUERY,
+  LISTINGS_FULL_QUERY,
+  LISTINGS_DELTA_QUERY,
+} from '@/graphql/queries';
+import { useListingCategories } from "@/hooks/use-ListingCategories"
 export default function Home() {
-  const{categories ,_laoding } = useListingCategories()
+  const { categories, loading: categoriesLoading } = useListingCategories();
   // URL query params
   const searchParams = useSearchParams();
   // Derive a stable key from search params to avoid re-running effects due to object identity changes
   const searchParamsKey = searchParams ? searchParams.toString() : '';
   
   // GraphQL data
-  const { data, loading, error } = useQuery(GET_LISTINGS);
-  
+  // Replace Apollo useQuery(GET_LISTINGS) with progressive hook
+  const { data,loading, error } = useProgressiveQuery({
+    initialQuery: LISTINGS_INITIAL_QUERY,
+    fullQuery: LISTINGS_FULL_QUERY,
+    deltaQuery: LISTINGS_DELTA_QUERY,
+    variables: { limit: 10 },
+    storageKey: 'listings:lastUpdated',
+    refreshInterval: 3000,
+  });
+  const listings = data?.listings || [];
   // State for featured listings pagination
   const [featuredActiveIndex, setFeaturedActiveIndex] = useState(0);
   const featuredScrollRef = useRef(null);
   const router = useRouter();
   
-  // Hide "2 Branches" text
-  useEffect(() => {
-    function hideSpecific2BranchesText() {
-      // Target only buttons or specific elements with exact "2 Branches" text
-      const elements = document.querySelectorAll('button, .bg-blue-500, .bg-blue-600, [class*="bg-blue-"]');
-      elements.forEach(el => {
-        if (el.textContent && el.textContent.trim() === '2 Branches') {
-          el.style.display = 'none';
-        }
-      });
-      
-      // Also target elements with exact "2 Branches" text
-      const textElements = document.querySelectorAll('span, div, p');
-      textElements.forEach(el => {
-        if (el.childNodes.length === 1 && el.textContent && el.textContent.trim() === '2 Branches') {
-          el.style.display = 'none';
-        }
-      });
-    }
-    
-    // Run immediately
-    hideSpecific2BranchesText();
-    
-    // Set up a MutationObserver to handle dynamically loaded content
-    const observer = new MutationObserver(() => {
-      hideSpecific2BranchesText();
-    });
-    
-    observer.observe(document.body, { 
-      childList: true, 
-      subtree: true 
-    });
-    
-    return () => observer.disconnect();
-  }, []);
+  // Removed DOM-scanning MutationObserver to avoid forced reflows
   
   // Function to handle featured listings scroll
   const handleFeaturedScroll = () => {
@@ -105,21 +82,21 @@ export default function Home() {
   }, []);
   
   // Use only backend data
-  // const allListings = data?.listings || [];
+  // const allListings = listings || [];
   const allListings = useMemo(() => {
     // Filter out listings where specials.active is true
-    return Array.isArray(data?.listings) 
-      ? data.listings.filter(listing => {
+    return Array.isArray(listings) 
+      ? listings.filter(listing => {
           // Check if listing has specials array and if any special is active
           return !(listing.specials && Array.isArray(listing.specials) && 
                   listing.specials.some(special => special.active === true));
         })
       : [];
-  }, [data?.listings]);
+  }, [listings]);
   const featuredManufacturers = [];
   const seenManufacturers = new Set();
-  if (data?.listings) {
-    data.listings.forEach(l => {
+  if (Array.isArray(listings)) {
+    listings.forEach(l => {
       if (l.company?.isFeatured && !seenManufacturers.has(l.company.name)) {
         featuredManufacturers.push(l.company);
         seenManufacturers.add(l.company.name);
@@ -423,8 +400,8 @@ export default function Home() {
         {/* Mobile: Horizontal scrolling cards */}
         <div className="md:hidden">
           <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide" ref={featuredScrollRef}>
-            {data?.listings?.filter(l => l.isFeatured).length > 0
-              ? data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, i) => (
+            {listings?.filter(l => l.isFeatured).length > 0
+              ? listings?.filter(l => l.isFeatured).slice(0, 3).map((product, i) => (
                   <div key={product.id || i} className="flex-shrink-0 w-80 snap-start">
                     <FeaturedListings listing={product} />
                   </div>
@@ -452,8 +429,8 @@ export default function Home() {
 
         {/* Desktop: Grid layout */}
         <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {data?.listings?.filter(l => l.isFeatured).length > 0
-            ? data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, i) => (
+          {listings?.filter(l => l.isFeatured).length > 0
+            ? listings?.filter(l => l.isFeatured).slice(0, 3).map((product, i) => (
                 <FeaturedListings key={product.id || i} listing={product} />
               ))
             : fallbackCard("featured listings")}
@@ -888,8 +865,9 @@ export default function Home() {
                 {/* Mobile: Horizontal scrolling cards */}
                 <div className="md:hidden">
                   <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide" ref={featuredScrollRef}>
-                    {data?.listings?.filter(l => l.isFeatured).length > 0
-                      ? data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
+                    {console.log(listings.listings)}
+                    {listings?.filter(l => l.isFeatured).length > 0
+                      ? listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
                           Array.isArray(product.branches) && product.branches.length > 0 ? (
                             // Map through branches if they exist
                             product.branches.map((branch) => (
@@ -926,8 +904,8 @@ export default function Home() {
 
                 {/* Desktop: Grid layout */}
                 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {data?.listings?.filter(l => l.isFeatured).length > 0
-                    ? data?.listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
+                  {listings?.filter(l => l.isFeatured).length > 0
+                    ? listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
                         <FeaturedListings key={index} listing={product} />
                       ))
                     : fallbackCard("featured listings")}
