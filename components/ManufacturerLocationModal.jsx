@@ -139,7 +139,7 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
     setIsLoading(true)
     setError('')
 
-    // Convert to numbers and add console.log for testing
+    
     const numLatitude = Number(latitude)
     const numLongitude = Number(longitude)
     

@@ -251,7 +251,7 @@ export default function Header({
                 href="/tombstones-for-sale"
                 className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
               >
-                TOMBSTONES FOR SALE
+                TOMBSTONES
               </Link>
               <Link
                 href="/tombstones-on-special"

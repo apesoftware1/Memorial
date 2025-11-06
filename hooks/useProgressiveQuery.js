@@ -49,6 +49,7 @@ export function useProgressiveQuery({
     mountedRef.current = true;
     const observable = client.watchQuery({
       query: fullQuery,
+      variables, // ensure required variables are provided to full query
       fetchPolicy: 'cache-first',
     });
     const sub = observable.subscribe({
@@ -61,7 +62,7 @@ export function useProgressiveQuery({
       mountedRef.current = false;
       sub.unsubscribe();
     };
-  }, [client, fullQuery]);
+  }, [client, fullQuery, variables]);
 
   // Background full data fetch to populate cache
   useEffect(() => {
@@ -71,6 +72,7 @@ export function useProgressiveQuery({
         try {
           const { data } = await client.query({
             query: fullQuery,
+            variables, // pass variables for full query
             fetchPolicy: 'network-only',
           });
 
@@ -109,12 +111,12 @@ export function useProgressiveQuery({
 
         const { data: delta } = await client.query({
           query: deltaQuery,
-          variables: { since: sinceIso },
+          variables: { ...variables, since: sinceIso }, // include base variables like documentId
           fetchPolicy: 'network-only',
         });
 
         // Merge new updates into cache
-        mergeQueryCache(client, fullQuery, delta);
+        mergeQueryCache(client, fullQuery, delta, deltaQuery);
 
         // Update timestamp
         const maxUpdated = getMaxUpdatedTime(delta);
@@ -127,7 +129,7 @@ export function useProgressiveQuery({
     }, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [client, deltaQuery, fullQuery, refreshInterval, storageKey]);
+  }, [client, deltaQuery, fullQuery, refreshInterval, storageKey, variables]);
 
   // Choose best available data source
   const data = useMemo(() => fullData || initialData, [fullData, initialData]);
@@ -160,14 +162,31 @@ function extractUpdatedAtValues(obj) {
   return timestamps;
 }
 
-function mergeQueryCache(client, query, newData) {
+function mergeQueryCache(client, query, newData, fallbackQuery) {
   if (!newData) return;
   try {
     const existing = client.readQuery({ query }) || {};
+
+    // If the cache doesn't have the full shape yet, write using the fallback
+    // (delta query) to avoid "Missing field ... while writing result" errors.
+    const isEmpty = existing && typeof existing === 'object' && Object.keys(existing).length === 0;
+    if (isEmpty && fallbackQuery) {
+      client.writeQuery({ query: fallbackQuery, data: newData });
+      return;
+    }
+
     const merged = deepMerge(existing, newData);
     client.writeQuery({ query, data: merged });
   } catch (err) {
     console.error('[Cache Merge Error]', err);
+    // Fallback: attempt to write using delta query shape
+    if (fallbackQuery) {
+      try {
+        client.writeQuery({ query: fallbackQuery, data: newData });
+      } catch (err2) {
+        console.error('[Cache Fallback Write Error]', err2);
+      }
+    }
   }
 }
 

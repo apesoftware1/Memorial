@@ -255,7 +255,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         }
       };
       
-      console.log("Updating operating hours with payload:", updatePayload);
+     
       
       // Call the updateCompanyField function
       const result = await updateCompanyField(company.documentId, updatePayload);

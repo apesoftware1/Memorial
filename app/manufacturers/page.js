@@ -636,7 +636,6 @@ export default function ManufacturersPage() {
                 <option>Default</option>
                 <option>Rating: High to Low</option>
                 <option>Listings: Most to Least</option>
-                <option>Distance: Nearest First</option>
                 <option>Alphabetical: A-Z</option>
               </select>
             </div>

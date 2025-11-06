@@ -120,7 +120,7 @@ export function StandardListingCard({
       {/* Mobile Layout (up to 768px) */}
       <div className="relative flex flex-col md:hidden">
         
-        {/* {console.log(listing.company.hideStandardCompanyLogo)} */}
+       
         {listing?.company?.hideStandardCompanyLogo !== true &&  (
           <div className="absolute bottom-3 right-3 z-20 bg-white border border-white p-2 rounded-lg md:hidden">
             <a

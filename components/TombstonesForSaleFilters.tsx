@@ -216,8 +216,12 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
                 <li
                   key={option}
                   onClick={() => setFilter(name, option)}
+                  onMouseDown={(e) => { e.preventDefault(); setFilter(name, option); }}
+                  onTouchStart={(e) => { e.preventDefault(); setFilter(name, option); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFilter(name, option); } }}
                   className={`px-3 py-2 text-sm text-gray-300 hover:bg-[#3E3E40] flex items-center cursor-pointer ${isSelected ? 'bg-[#3E3E40] border-l-2 border-amber-500' : ''}`}
                   role="menuitem"
+                  tabIndex={0}
                   aria-selected={isSelected}
                 >
                   <div className="flex items-center flex-1">
