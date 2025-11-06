@@ -742,7 +742,7 @@ export default function TombstonesOnSpecial() {
                       onClick={(e) => {
                         e.preventDefault();
                         // Add pagination logic here when implemented
-                        console.log('Previous page clicked');
+                      
                       }}
                       className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                       aria-label="Go to previous page"
@@ -753,7 +753,7 @@ export default function TombstonesOnSpecial() {
                       onClick={(e) => {
                         e.preventDefault();
                         // Add pagination logic here when implemented
-                        console.log('Page 1 clicked');
+                      
                       }}
                       className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                       aria-current="page"
@@ -765,7 +765,7 @@ export default function TombstonesOnSpecial() {
                       onClick={(e) => {
                         e.preventDefault();
                         // Add pagination logic here when implemented
-                        console.log('Page 2 clicked');
+                        
                       }}
                       className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                       aria-label="Go to page 2"
@@ -776,7 +776,7 @@ export default function TombstonesOnSpecial() {
                       onClick={(e) => {
                         e.preventDefault();
                         // Add pagination logic here when implemented
-                        console.log('Next page clicked');
+                       
                       }}
                       className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                       aria-label="Go to next page"

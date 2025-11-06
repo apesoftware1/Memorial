@@ -67,7 +67,7 @@ export function useProductShowcaseLogic(listing) {
   // Company location
   const companyLocation = useMemo(
     () => ({
-      lat: Number(listing?.company?.latitude),
+      lat: Number(listing?.company?.latitude) ,
       lng: Number(listing?.company?.longitude),
     }),
     [listing?.company?.latitude, listing?.company?.longitude]

@@ -9,15 +9,24 @@ import BranchButton from '@/components/BranchButton';
 import VideoModal from '@/components/VideoModal';
 import Footer from '@/components/Footer';
 import { PageLoader } from '@/components/ui/loader';
-
+import { useProgressiveQuery } from "@/hooks/useProgressiveQuery";
+import {
+  COMPANY_INITIAL_QUERY,
+  COMPANY_FULL_QUERY,
+  COMPANY_DELTA_QUERY,
+} from '@/graphql/queries/getCompanyById';
 export default function ManufacturerProfilePage() {
   const { slug: documentId } = useParams();
   const [showVideoModal, setShowVideoModal] = useState(false);
   
-  const { data, loading, error } = useQuery(GET_COMPANY_BY_ID, {
-    variables: { documentId: documentId },
-    skip: !documentId,
-  });
+  const { loading, error, data } = useProgressiveQuery({
+        initialQuery: COMPANY_INITIAL_QUERY,
+        fullQuery: COMPANY_FULL_QUERY,
+        deltaQuery: COMPANY_DELTA_QUERY,
+        variables: { limit: 5 ,documentId: documentId },
+        storageKey: 'manufacturers:lastUpdated',
+        refreshInterval: 3000,
+      });
 
   if (loading) return <PageLoader text="Loading company data..." />;
   if (error) return <div>Error loading company data.</div>;

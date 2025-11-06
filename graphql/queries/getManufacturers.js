@@ -82,5 +82,3 @@ export const MANUFACTURERS_DELTA_QUERY = gql`
     }
   }
 `;
-
-// Backward compatibility: keep existing export name pointing to full query

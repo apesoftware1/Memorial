@@ -14,10 +14,10 @@ import React, { useEffect, useState } from "react";
 import { FavoriteButton } from "./favorite-button";
 import Header from "@/components/Header";
 import ProductContactForm from "./product-contact-form";
-import { useGuestLocation } from "@/hooks/useGuestLocation";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import MapModal from "./MapModal";
 import { useProductShowcaseLogic } from "@/hooks/product-showcase-logic";
+import { useGuestLocation } from "@/hooks/useGuestLocation";
 // Added missing modular component imports
 import ProductGallery from "./ProductGallery";
 import ProductDetails from "./ProductDetails";
@@ -108,8 +108,112 @@ export default function ProductShowcase({ listing, id, allListings = [], current
     info,
   } = useProductShowcaseLogic(listing);
 
-  if (loading) return <PageLoader text="Detecting your location..." />;
-  if (error) return <p>{error}</p>;
+  // Branch-first destination coordinates with company fallback
+  // Precedence: branch location (from URL param) -> company location
+  const { calculateDistanceFrom: calcDistance, loading: guestLocLoading, error: guestLocError } = useGuestLocation();
+  const [distanceOverride, setDistanceOverride] = useState(null);
+
+  // Safely read any stored guest location (supports multiple keys and shapes)
+  const [storedGuestLocation, setStoredGuestLocation] = useState(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw =
+        localStorage.getItem("guestLocation") ||
+        localStorage.getItem("GuestLocation") ||
+        localStorage.getItem("userLocation");
+
+      if (!raw) {
+        setStoredGuestLocation(null);
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      const lat = Number(parsed?.lat ?? parsed?.latitude);
+      const lng = Number(parsed?.lng ?? parsed?.longitude);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        setStoredGuestLocation({ lat, lng });
+      } else {
+        setStoredGuestLocation(null);
+      }
+    } catch (err) {
+      console.warn("[Location] Failed to read stored location:", err);
+      setStoredGuestLocation(null);
+    }
+  }, []);
+
+  const coerceNum = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const destinationCoords = React.useMemo(() => {
+    // Try branch coordinates from several possible shapes
+    const branchLatCandidates = [
+      selectedBranch?.location?.latitude,
+      listing?.company?.branch?.location?.latitude,
+      (Array.isArray(listing?.branches)
+        ? listing.branches.find((b) => b?.name === branch)?.location?.latitude
+        : undefined),
+    ];
+    const branchLngCandidates = [
+      selectedBranch?.location?.longitude,
+      listing?.company?.branch?.location?.longitude,
+      (Array.isArray(listing?.branches)
+        ? listing.branches.find((b) => b?.name === branch)?.location?.longitude
+        : undefined),
+    ];
+
+    const branchLatRaw = branchLatCandidates.find((v) => v !== undefined && v !== null);
+    const branchLngRaw = branchLngCandidates.find((v) => v !== undefined && v !== null);
+    const branchLat = coerceNum(branchLatRaw);
+    const branchLng = coerceNum(branchLngRaw);
+
+    if (branch && branchLat !== null && branchLng !== null) {
+      return { lat: branchLat, lng: branchLng, source: "branch" };
+    }
+
+    // Fallback to company coordinates
+    const companyLat = coerceNum(listing?.company?.latitude);
+    const companyLng = coerceNum(listing?.company?.longitude);
+    if (companyLat !== null && companyLng !== null) {
+      return { lat: companyLat, lng: companyLng, source: "company" };
+    }
+
+    return null; // No valid coordinates
+  }, [branch, listing?.branches, listing?.company?.branch, listing?.company?.latitude, listing?.company?.longitude, selectedBranch]);
+
+  // Calculate distance using chosen destination coordinates
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      try {
+        if (!destinationCoords || destinationCoords.lat === null || destinationCoords.lng === null) {
+          setDistanceOverride(null);
+          return;
+        }
+        // If user denied/disabled location and we have no stored coordinates, avoid prompting and use fallback UI
+        if (!storedGuestLocation && guestLocError) {
+          console.warn("[Location] Guest location unavailable/denied. Using fallback UI.");
+          setDistanceOverride(null);
+          return;
+        }
+        const result = await calcDistance(destinationCoords);
+        if (!cancelled) setDistanceOverride(result || null);
+      } catch (err) {
+        console.warn("[Location] Distance calculation failed:", err);
+        if (!cancelled) setDistanceOverride(null);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [calcDistance, destinationCoords, storedGuestLocation, guestLocError]);
+
+  // Prefer branch-based distance if available; otherwise use existing hook distance
+  const effectiveDistanceInfo = distanceOverride || distanceInfo;
+  // Never show location-related loaders/errors; UI should always be available
+  // Keep core features accessible regardless of location availability
 
   return (
     <>
@@ -165,28 +269,32 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                 <p className="text-sm text-gray-700 mt-2 w-full sm:w-auto">
                   {listing.company?.location || "N/A"} |
                   <>
-                    {distanceInfo?.distance?.text ? (
+                    {effectiveDistanceInfo?.distance?.text ? (
                       <>
                         <span className="text-blue-600">
-                          {distanceInfo?.distance?.text
-                            ? `${distanceInfo.distance.text} from you`
-                            : "from you"}
+                          {`${effectiveDistanceInfo.distance.text} from you`}
                         </span>
-
                         <span
-                          onClick={refreshLocation}
+                          onClick={() => {
+                            try { refreshLocation?.(); } catch (err) { console.warn('[Location] refresh failed:', err); }
+                          }}
                           className="text-blue-600 ml-1 cursor-pointer hover:underline"
                         >
                           (refresh)
                         </span>
                       </>
                     ) : (
-                      <span
-                        onClick={refreshLocation}
-                        className="text-blue-600 cursor-pointer hover:underline"
-                      >
-                        km from you
-                      </span>
+                      <>
+                        <span className="text-gray-600">Distance unavailable</span>
+                        <span
+                          onClick={() => {
+                            try { refreshLocation?.(); } catch (err) { console.warn('[Location] refresh failed:', err); }
+                          }}
+                          className="text-blue-600 ml-1 cursor-pointer hover:underline"
+                        >
+                          (set location)
+                        </span>
+                      </>
                     )}
                   </>
                 </p>

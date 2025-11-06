@@ -1,21 +1,102 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { MapPin, Camera, Check, User2, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/priceUtils";
 import { FavoriteButton } from "./favorite-button";
+import { useGuestLocation } from "@/hooks/useGuestLocation";
 
 export default function BranchCard({ branch, listing, onSelect, hideAvailableBranches = true }) {
   if (!branch) return null;
-  const name = branch.name || branch.title || branch.branchName || "Branch";
-  const city = branch.city || branch.town || branch.location?.city || branch.address?.city || "";
+  const name = branch.name || "Branch";
+  const city = branch.location?.address || "";
   const province = branch.province || branch.state || branch.location?.province || branch.address?.province || "";
   const street = branch.street || branch.addressLine1 || branch.address?.street || "";
   const phone = branch.phone || branch.telephone || branch.contactNumber || "";
 
   const joinWithPipes = (parts) => parts.filter(Boolean).join(" | ");
+
+  // Distance calculation state and hooks (consistent with PremiumListingCard)
+  const cardRef = useRef(null);
+  const [distanceInfo, setDistanceInfo] = useState(null);
+  const [hasFetchedDistance, setHasFetchedDistance] = useState(false);
+  const { location, error, loading, calculateDistanceFrom } = useGuestLocation();
+
+  // Robust branch lat/lng extraction (supports multiple shapes)
+  const branchLocation = {
+    lat: Number(
+        branch?.location?.latitude || listing?.company?.latitude
+    ),
+    lng: Number(
+        branch?.location?.longitude || listing?.company?.longitude
+    ),
+  };
+
+  // Defer distance calculation until visible and main thread is idle
+  useEffect(() => {
+    if (!cardRef.current || hasFetchedDistance) return;
+
+    const node = cardRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (
+          entry &&
+          entry.isIntersecting &&
+          branchLocation.lat &&
+          branchLocation.lng
+        ) {
+          const schedule = (cb) => {
+            if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
+              window.requestIdleCallback(cb, { timeout: 2000 });
+            } else {
+              setTimeout(cb, 1200);
+            }
+          };
+
+          schedule(async () => {
+            try {
+              const result = await calculateDistanceFrom(branchLocation);
+              if (result) {
+                setDistanceInfo(result);
+                setHasFetchedDistance(true);
+              }
+            } catch (_) {
+              // Silent failure — keep UI responsive
+            }
+          });
+
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "0px 0px 200px 0px", threshold: 0.01 }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [branchLocation.lat, branchLocation.lng, calculateDistanceFrom, hasFetchedDistance]);
+
+  // Re-attempt distance calculation once user location becomes available.
+  // This fixes the first card missing distance when geolocation is not ready on initial render.
+  useEffect(() => {
+    if (hasFetchedDistance) return;
+    if (!branchLocation.lat || !branchLocation.lng) return;
+    if (!location) return; // wait until location is detected or loaded from storage
+
+    (async () => {
+      try {
+        const result = await calculateDistanceFrom(branchLocation);
+        if (result) {
+          setDistanceInfo(result);
+          setHasFetchedDistance(true);
+        }
+      } catch (_) {
+        // Silent failure
+      }
+    })();
+  }, [location, branchLocation.lat, branchLocation.lng, calculateDistanceFrom, hasFetchedDistance]);
 
   // Create product object for FavoriteButton
   const favoriteProduct = {
@@ -85,7 +166,7 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
   };
 
   return (
-    <div className="relative"> {/* Removed conditional margin-top */}
+    <div className="relative" ref={cardRef}> {/* Removed conditional margin-top */}
       {/* Removed the "Available at X Branches" text completely */}
       
       <div
@@ -176,8 +257,10 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
           
           {/* Branch Details */}
           <div className="space-y-0.5 mb-2">
-            {/* First line: Branch Name */}
-            <div className="text-sm font-semibold text-gray-800">{name} Branch</div>
+            {/* First line: Branch Name (distance moved to final indicator) */}
+            <div className="text-sm font-semibold text-gray-800 flex items-center">
+              <span>{name} Branch</span>
+            </div>
             {/* Second line: City | Province */}
             {(city || province) && (
               <div className="text-xs text-gray-700">{joinWithPipes([city, province])}</div>
@@ -188,10 +271,21 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
             )}
           </div>
           
-          {/* Location indicator */}
+          {/* Location indicator with distance (mobile) */}
           <div className="flex items-center text-xs text-gray-500 mt-1">
             <MapPin className="w-3 h-3 mr-1" />
-            <span>Branch Location</span>
+            <span
+              className="text-xs font-medium text-gray-600 ml-2"
+              aria-live="polite"
+            >
+              {distanceInfo?.distance?.text
+                ? `${distanceInfo.distance.text} from you`
+                : error
+                ? "Distance unavailable"
+                : loading
+                ? "Locating..."
+                : ""}
+            </span>
           </div>
         </div>
       </div>
@@ -237,9 +331,13 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
           
           {/* Branch Details */}
           <div className="space-y-0.5 mb-2">
-            {/* First line: Branch Name */}
-            <div className="text-sm font-semibold text-gray-800">{listing?.description || "No description available"}</div>
-            {/* Second line: City | Province */}
+            {/* First line: Branch Name (distance moved to final indicator) */}
+            <div className="text-sm font-semibold text-gray-800 flex items-center">
+              <span>{name} Branch</span>
+            </div>
+            {/* Second line: Description */}
+            <div className="text-xs text-gray-700">{listing?.description || "No description available"}</div>
+            {/* Third line: City | Province */}
             {(city || province) && (
               <div className="text-xs text-gray-700">{joinWithPipes([city, province])}</div>
             )}
@@ -249,10 +347,24 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
             )}
           </div>
           
-          {/* Location indicator */}
-          <div className="flex items-center text-xs text-gray-500 mt-auto">
-            <MapPin className="w-3 h-3 mr-1" />
-            <span>{name.toUpperCase()} branch</span>
+          {/* Location indicator with distance (desktop) */}
+          <div className="flex items-center justify-between text-xs text-gray-500 mt-auto">
+            <div className="flex items-center">
+              <MapPin className="w-3 h-3 mr-1" />
+              <span
+              className="text-xs font-medium text-gray-600 ml-2"
+              aria-live="polite"
+            >
+              {distanceInfo?.distance?.text
+                ? `${distanceInfo.distance.text} from you`
+                : error
+                ? "Distance unavailable"
+                : loading
+                ? "Locating..."
+                : ""}
+            </span>
+              {/* <span>{name.toUpperCase()} branch</span> */}
+            </div>
           </div>
         </div>
       </div>

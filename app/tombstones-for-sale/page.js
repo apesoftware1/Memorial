@@ -105,8 +105,8 @@ export default function Home() {
   }
   const topFeaturedManufacturers = featuredManufacturers.slice(0, 3);
 
-  // State for filter visibility on mobile
-  const [showFilters, setShowFilters] = useState(false)
+  // State for filter dropdown visibility (tracks which dropdown is open)
+  const [showFilters, setShowFilters] = useState(null)
 
   // State for active filters
   const [activeFilters, setActiveFilters] = useState({
@@ -329,15 +329,15 @@ export default function Home() {
     if (minP) nextFilters.minPrice = minP;
     if (maxP) nextFilters.maxPrice = maxP;
 
-    // Apply filters
+    // Apply filters only when URL params change
     const filtered = filterListingsFrom(nextFilters);
     if (!filtersShallowEqual(activeFilters, nextFilters)) {
       setActiveFilters(nextFilters);
+      setFilteredListings(filtered);
+      if (currentPage !== 1) setCurrentPage(1);
     }
-    setFilteredListings(filtered);
-    if (currentPage !== 1) setCurrentPage(1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParamsKey, allListings]);
+  }, [searchParamsKey]);
 
   // Update filtered listings live when activeFilters change (for live search count)
   useEffect(() => {
@@ -865,7 +865,7 @@ export default function Home() {
                 {/* Mobile: Horizontal scrolling cards */}
                 <div className="md:hidden">
                   <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide" ref={featuredScrollRef}>
-                    {console.log(listings.listings)}
+                   
                     {listings?.filter(l => l.isFeatured).length > 0
                       ? listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
                           Array.isArray(product.branches) && product.branches.length > 0 ? (
