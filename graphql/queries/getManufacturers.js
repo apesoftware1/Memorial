@@ -29,7 +29,6 @@ export const MANUFACTURERS_INITIAL_QUERY = gql`
 export const MANUFACTURERS_FULL_QUERY = gql`
   query ManufacturersFull {
     companies(
-      filters: { isFeatured: { eq: true } },
       pagination: { limit: -1 }
     ) {
       documentId
@@ -58,7 +57,6 @@ export const MANUFACTURERS_DELTA_QUERY = gql`
   query ManufacturersDelta($since: DateTime!) {
     companies(
       filters: { 
-        isFeatured: { eq: true },
         updatedAt: { gt: $since } 
       },
       pagination: { limit: -1 }
