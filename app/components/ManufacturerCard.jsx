@@ -44,7 +44,7 @@ const ManufacturerCard = ({ manufacturer }) => {
             <span className="ml-1 text-blue-400 cursor-pointer" title="More info">&#9432;</span>
           </div>
           <div>
-            <span className="text-gray-500">{manufacturer.branches.length} branches</span>
+            <span className="text-gray-500">{manufacturer?.branches?.length} branches</span>
           </div>
         </div>
         <p className="text-xs sm:text-sm text-gray-700 mt-1 truncate">{manufacturer.description}</p>

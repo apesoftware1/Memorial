@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -37,6 +37,8 @@ export function PremiumListingCard({
 }: PremiumListingCardProps): React.ReactElement {
   const router = useRouter();
   const [distanceInfo, setDistanceInfo] = useState<DistanceInfo | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [hasFetchedDistance, setHasFetchedDistance] = useState(false);
   // Remove the useEffect and replace with direct calculation
   // const [distance, setDistance] = useState<number | null>(null);
   const { location, error, loading, calculateDistanceFrom } =
@@ -152,15 +154,39 @@ export function PremiumListingCard({
     lng: Number(listing?.company?.longitude),
   };
 
+  // Defer distance calculation until the card is visible and the main thread is idle
   useEffect(() => {
-    const fetchDistance = async () => {
-      if (companyLocation.lat && companyLocation.lng) {
-        const result = await calculateDistanceFrom(companyLocation);
-        setDistanceInfo(result);
+    if (!cardRef.current || hasFetchedDistance) return;
+
+    const node = cardRef.current;
+    const observer = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (entry && entry.isIntersecting && companyLocation.lat && companyLocation.lng) {
+        const schedule = (cb: () => void) => {
+          if (typeof (window as any).requestIdleCallback === 'function') {
+            (window as any).requestIdleCallback(cb, { timeout: 2000 });
+          } else {
+            setTimeout(cb, 1200); // defer ~1.2s to avoid blocking LCP
+          }
+        };
+
+        schedule(async () => {
+          try {
+            const result = await calculateDistanceFrom(companyLocation);
+            setDistanceInfo(result);
+            setHasFetchedDistance(true);
+          } catch (_) {
+            // Silent failure; do not block render
+          }
+        });
+
+        observer.disconnect();
       }
-    };
-    fetchDistance();
-  }, [companyLocation.lat, companyLocation.lng, calculateDistanceFrom]);
+    }, { rootMargin: '0px 0px 200px 0px', threshold: 0.01 });
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [companyLocation.lat, companyLocation.lng, calculateDistanceFrom, hasFetchedDistance]);
   // Handle keyboard navigation for accessibility
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -179,7 +205,7 @@ export function PremiumListingCard({
     !window.location.pathname.match(/^\/?$/); // Hide on home page
   
   return (
-    <div className="relative mt-7">
+    <div className="relative mt-7" ref={cardRef}>
       {hasBranches && isTombstonesForSalePage && (
         <div className="absolute -top-7 right-0 z-10 bg-gray-800 text-white px-3 py-1 text-sm font-medium rounded-t-md">
           Available at {branches.length} {branches.length === 1 ? 'Branch' : 'Branches'}

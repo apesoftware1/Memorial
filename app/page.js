@@ -26,6 +26,7 @@ import { PremiumListingCard } from "@/components/premium-listing-card"
 import Header from "@/components/Header"
 import Footer from "@/components/Footer"
 import { useQuery } from '@apollo/client';
+import { useLoggedQuery } from '@/hooks/useLoggedQuery';
 import { GET_LISTINGS } from '@/graphql/queries/getListings';
 import { GET_MANUFACTURERS } from "@/graphql/queries/getManufacturers"
 import FeaturedListings from "@/components/FeaturedListings";
@@ -34,65 +35,21 @@ import BannerAd from "@/components/BannerAd"
 
 import IndexRender from "./indexRender";
 import { useListingCategories } from "@/hooks/use-ListingCategories"
+import { useProgressiveQuery } from "@/hooks/useProgressiveQuery"
+import {
+  LISTINGS_INITIAL_QUERY,
+  LISTINGS_FULL_QUERY,
+  LISTINGS_DELTA_QUERY,
+} from '@/graphql/queries';
+import {
+  MANUFACTURERS_INITIAL_QUERY,
+  MANUFACTURERS_FULL_QUERY,
+  MANUFACTURERS_DELTA_QUERY,
+} from '@/graphql/queries/getManufacturers';
+
+
 
 export default function Home() {
-  // Add CSS to hide all "2 Branches" and "Available at 2 Branches" elements
-  useEffect(() => {
-    // Function to hide all instances of "2 Branches" and "Available at 2 Branches"
-    const hideBranchesElements = () => {
-      // Add CSS to hide blue buttons
-      const style = document.createElement('style');
-      style.textContent = `
-        /* Hide blue buttons with "2 Branches" text */
-        .bg-blue-500, .bg-blue-600, [class*="bg-blue-"] {
-          display: none !important;
-        }
-      `;
-      document.head.appendChild(style);
-      
-      // Find all elements that might contain the text
-      const allElements = document.querySelectorAll('*');
-      
-      allElements.forEach(el => {
-        // Check if element contains the target text
-        const text = el.textContent?.trim() || '';
-        
-        // If element contains exactly "2 Branches" text or "Available at 2 Branches", hide it
-        if (text === '2 Branches' || text === 'Available at 2 Branches') {
-          el.style.display = 'none';
-        }
-        
-        // Also check for elements containing the text as part of their content
-        if (el.childNodes.length === 1 && el.childNodes[0].nodeType === Node.TEXT_NODE) {
-          const nodeText = el.childNodes[0].textContent.trim();
-          if (nodeText === '2 Branches' || nodeText === 'Available at 2 Branches') {
-            el.style.display = 'none';
-            
-            // Also hide parent if it's likely just a wrapper
-            if (el.parentElement && el.parentElement.childElementCount <= 2) {
-              el.parentElement.style.display = 'none';
-            }
-          }
-        }
-      });
-    };
-
-    // Run the function on load
-    hideBranchesElements();
-
-    // Set up a mutation observer to handle dynamically added content
-    const observer = new MutationObserver(() => {
-      hideBranchesElements();
-    });
-
-    // Start observing the document with the configured parameters
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    // Clean up function
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
   
   const { categories, loading: _loading } = useListingCategories()
   const [activeTab, setActiveTab] = useState(0) // Default to SINGLE tab (first tab)
@@ -211,10 +168,17 @@ export default function Home() {
   const toggleDropdown = useCallback((name) => {
     setUiState(prev => ({ ...prev, openDropdown: prev.openDropdown === name ? null : name }));
   }, []);
-
-  const { data, loading, error } = useQuery(GET_LISTINGS);
+ {console.log()}
+  // const { data, loading, error } = useLoggedQuery(GET_LISTINGS, {}, 'GET_LISTINGS');
   // const strapiListings = data?.listings || [];
-
+ const { data,loading, error } = useProgressiveQuery({
+    initialQuery: LISTINGS_INITIAL_QUERY,
+    fullQuery: LISTINGS_FULL_QUERY,
+    deltaQuery: LISTINGS_DELTA_QUERY,
+    variables: { limit: 5 },
+    storageKey: 'listings:lastUpdated',
+    refreshInterval: 3000,
+  });
   // Filter and populate the arrays after fetching listings
 
 // Memoize listings to avoid re-processing on each render
@@ -246,8 +210,15 @@ useEffect(() => {
 }, [strapiListings, loading, error]);
 
   // Fetch companies for FAQ banner (must be above return)
-  const { data: manufacturersData } = useQuery(GET_MANUFACTURERS);
-
+  
+  const { data: manufacturersData,loading: manufacturersLoading, error: manufacturersError } = useProgressiveQuery({
+    initialQuery: MANUFACTURERS_INITIAL_QUERY,
+    fullQuery: MANUFACTURERS_FULL_QUERY,
+    deltaQuery: MANUFACTURERS_DELTA_QUERY,
+    variables: { limit: 1 },
+    storageKey: 'manufacturers:lastUpdated',
+    refreshInterval: 3000,
+  });
   const bannerPool = useMemo(
     () =>
       (manufacturersData?.companies || [])
@@ -277,7 +248,7 @@ useEffect(() => {
     }
   }, [bannerPool]);
 
-  if (_loading) return <PageLoader text="Loading categories..." />
+  if (_loading) return <PageLoader text="Loading" />
   return (
     <div>
       {/* Location Permission Modal */}
@@ -309,6 +280,8 @@ useEffect(() => {
             fill
             className="object-cover"
             priority
+            fetchPriority="high"
+            sizes="100vw"
           />
         </div>
         
