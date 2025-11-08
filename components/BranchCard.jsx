@@ -352,7 +352,7 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
             <div className="flex items-center">
               <MapPin className="w-3 h-3 mr-1" />
               <span
-              className="text-xs font-medium text-gray-600 ml-2"
+              className="text-xs font-medium text-gray-600 ml-0"
               aria-live="polite"
             >
               {distanceInfo?.distance?.text

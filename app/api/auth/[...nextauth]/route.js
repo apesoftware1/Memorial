@@ -1,21 +1,6 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-// Admin credentials - you can change these
-const ADMIN_CREDENTIALS = {
-  email: "regan@tombstonesfinder.com",
-  password: "admin123", // Change this to your desired admin password
-  name: "Regan",
-  role: "admin"
-};
-
-// Admin email addresses that should have access to the dashboard
-const ADMIN_EMAILS = [
-  'regan@tombstonesfinder.com',
-  'admin@tombstonesfinder.com',
-  // Add any other admin emails here
-];
-
 const handler = NextAuth({
   cookies: {
     sessionToken: {
@@ -37,20 +22,6 @@ const handler = NextAuth({
       },
       async authorize(credentials) {
         try {
-          // Check if this is an admin login
-          if (credentials.email === ADMIN_CREDENTIALS.email && 
-              credentials.password === ADMIN_CREDENTIALS.password) {
-            return {
-              id: "admin-1",
-              documentId: "admin-1",
-              name: ADMIN_CREDENTIALS.name,
-              email: ADMIN_CREDENTIALS.email,
-              role: ADMIN_CREDENTIALS.role,
-              isAdmin: true,
-              jwt: "admin-jwt-token"
-            };
-          }
-
           // Regular user authentication via Strapi
           try {
             const res = await fetch("https://typical-car-e0b66549b3.strapiapp.com/api/auth/local", {
@@ -75,13 +46,14 @@ const handler = NextAuth({
             
             const user = await res.json();
             if (user.jwt) {
+              const isAdmin = String(user?.user?.username || "").toLowerCase() === "superadmin";
               return {
                 id: user.user.id,
                 documentId: user.user.documentId || user.user.id,
                 name: user.user.username,
                 email: user.user.email,
-                role: "manufacturer",
-                isAdmin: ADMIN_EMAILS.includes(user.user.email.toLowerCase()),
+                role: isAdmin ? "admin" : "manufacturer",
+                isAdmin,
                 jwt: user.jwt
               };
             }

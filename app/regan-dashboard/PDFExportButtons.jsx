@@ -6,6 +6,8 @@ const EVENT_LABELS = {
   map_view: "Map Views",
   contact_view: "Contact Views",
   inquiry_click: "Inquiries",
+  whatsapp_tracker: "WhatsApp",
+  rep_call_tracker: "Rep Calls",
 };
 
 export default function PdfExporterButton(props) {
@@ -86,6 +88,8 @@ function exportListing({ listing, counts, periodLabel }) {
     ["Map Views", counts?.map_view || 0],
     ["Contact Views", counts?.contact_view || 0],
     ["Inquiries", counts?.inquiry_click || 0],
+    ["WhatsApp", counts?.whatsapp_tracker || 0],
+    ["Rep Calls", counts?.rep_call_tracker || 0],
   ];
 
   ordered.forEach(([label, val]) => {

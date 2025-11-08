@@ -29,6 +29,7 @@ import BranchDropdown from "@/components/BranchDropdown";
 import BranchSelectionModal from "@/components/BranchSelectionModal";
 import OperatingHoursModal from "@/components/OperatingHoursModal";
 import { updateBranch } from "@/graphql/mutations/updateBranch";
+import { useGuestLocation } from "@/hooks/useGuestLocation";
 
 // Helper function to find a branch by name
 const findBranchByName = (branchName, branches) => {
@@ -339,22 +340,64 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
   // Branch location display component
   const BranchLocationInfo = () => {
     if (!branchFromUrl) return null;
-    
+
+    const { location, calculateDistanceFrom } = useGuestLocation();
+    const [distanceText, setDistanceText] = React.useState(null);
+
+    // Local haversine fallback if API distance isn’t available
+    const haversineKm = (lat1, lon1, lat2, lon2) => {
+      const R = 6371;
+      const toRad = (v) => (v * Math.PI) / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
+
+    React.useEffect(() => {
+      const destLat = Number(
+        branchFromUrl?.location?.latitude ??
+          branchFromUrl?.location?.coordinates?.latitude ??
+          company?.latitude
+      );
+      const destLng = Number(
+        branchFromUrl?.location?.longitude ??
+          branchFromUrl?.location?.coordinates?.longitude ??
+          company?.longitude
+      );
+
+      if (!location || Number.isNaN(destLat) || Number.isNaN(destLng)) return;
+
+      (async () => {
+        try {
+          const result = await calculateDistanceFrom({ lat: destLat, lng: destLng });
+          const txt = result?.distance?.text || null;
+          if (txt) {
+            setDistanceText(txt);
+            return;
+          }
+        } catch (_) {
+          // fall through to haversine
+        }
+
+        // Fallback: approximate straight-line distance
+        const km = haversineKm(location.lat, location.lng, destLat, destLng);
+        if (km && Number.isFinite(km)) setDistanceText(`${Math.round(km)} km`);
+      })();
+    }, [location, branchFromUrl?.location?.latitude, branchFromUrl?.location?.longitude, company?.latitude, company?.longitude]);
+
     return (
       <div className="bg-white rounded-lg shadow-md p-4 mb-2">
         <h3 className="text-lg font-semibold flex items-center">
           <MapPin className="w-5 h-5 mr-2 text-primary" />
-          {branchFromUrl.location.address} 
+          {branchFromUrl.location.address}
+          {distanceText && (
+            <span className="ml-2 text-sm text-gray-600">- {distanceText} away from you</span>
+          )}
         </h3>
-        
-        {branchFromUrl.location?.coordinates && (
-          <div className="mt-2 flex items-center text-primary-600">
-            <span className="text-sm">
-              Lat: {branchFromUrl.location.coordinates.latitude}, 
-              Long: {branchFromUrl.location.coordinates.longitude}
-            </span>
-          </div>
-        )}
       </div>
     );
   };
@@ -2573,8 +2616,14 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                         company.logo ||
                         "/placeholder-logo.svg",
                       location: company.location || "location not set",
-                      latitude: company.latitude,
-                      longitude: company.longitude,
+                      latitude:
+                        branchFromUrl?.location?.latitude ??
+                        branchFromUrl?.location?.coordinates?.latitude ??
+                        company.latitude,
+                      longitude:
+                        branchFromUrl?.location?.longitude ??
+                        branchFromUrl?.location?.coordinates?.longitude ??
+                        company.longitude,
                       slug: company.slug,
                     },
                     manufacturer: company.name,

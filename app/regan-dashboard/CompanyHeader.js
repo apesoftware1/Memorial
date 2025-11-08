@@ -50,12 +50,16 @@ export default function CompanyHeader({
         </div>
       </div>
 
-      {/* totals */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-        <Stat label="Listing Views" value={totals.listing_view || 0} />
-        <Stat label="Map Views" value={totals.map_view || 0} />
-        <Stat label="Contact Views" value={totals.contact_view || 0} />
-        <Stat label="Inquiries" value={totals.inquiry_click || 0} />
+      {/* totals - horizontally scrollable */}
+      <div className="mt-4 overflow-x-auto">
+        <div className="flex gap-3 min-w-max pr-2">
+          <Stat label="Listing Views" value={totals.listing_view || 0} />
+          <Stat label="Map Views" value={totals.map_view || 0} />
+          <Stat label="Contact Views" value={totals.contact_view || 0} />
+          <Stat label="Inquiries" value={totals.inquiry_click || 0} />
+          <Stat label="WhatsApp" value={totals.whatsapp_tracker || 0} />
+          <Stat label="Rep Calls" value={totals.rep_call_tracker || 0} />
+        </div>
       </div>
     </div>
   );
@@ -63,7 +67,7 @@ export default function CompanyHeader({
 
 function Stat({ label, value }) {
   return (
-    <div className="rounded-lg border border-border bg-muted p-4">
+    <div className="rounded-lg border border-border bg-muted p-4 min-w-[180px]">
       <div className="text-sm text-muted-foreground">{label}</div>
       <div className="text-2xl font-semibold">{value}</div>
     </div>

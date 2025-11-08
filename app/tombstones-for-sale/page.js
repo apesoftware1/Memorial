@@ -956,3 +956,4 @@ function filtersShallowEqual(a, b) {
   }
   return true;
 }
+// Metadata moved to app/tombstones-for-sale/layout.tsx (server component)

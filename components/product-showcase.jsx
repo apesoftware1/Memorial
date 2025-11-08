@@ -431,6 +431,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                               <a
                                 href={`tel:${listing.company.phone}`}
                                 className="hover:underline"
+                                onClick={() => trackAnalyticsEvent("rep_call_tracker", listing.documentId)}
                               >
                                 {listing.company.phone}
                               </a>
@@ -446,6 +447,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                               <a
                                 href={`tel:${listing.company.mobile}`}
                                 className="hover:underline"
+                                onClick={() => trackAnalyticsEvent("rep_call_tracker", listing.documentId)}
                               >
                                 {listing.company.mobile}
                               </a>
@@ -520,6 +522,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                             <a
                               href={`tel:${listing.company.phone}`}
                               className="hover:underline"
+                              onClick={() => trackAnalyticsEvent("rep_call_tracker", listing.documentId)}
                             >
                               {listing.company.phone}
                             </a>
@@ -535,6 +538,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                             <a
                               href={`tel:${listing.company.mobile}`}
                               className="hover:underline"
+                              onClick={() => trackAnalyticsEvent("rep_call_tracker", listing.documentId)}
                             >
                               {listing.company.mobile}
                             </a>

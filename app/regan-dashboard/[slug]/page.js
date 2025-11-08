@@ -104,13 +104,27 @@ export default function CompanyPerformancePage() {
   const companyTotals = useMemo(() => {
     return listingWithCounts.reduce(
       (acc, l) => sumCounts(acc, l._counts),
-      { listing_view: 0, map_view: 0, contact_view: 0, inquiry_click: 0 }
+      {
+        listing_view: 0,
+        map_view: 0,
+        contact_view: 0,
+        inquiry_click: 0,
+        whatsapp_tracker: 0,
+        rep_call_tracker: 0,
+      }
     );
   }, [listingWithCounts]);
 
   const companyAvg = useMemo(() => {
     const n = listingWithCounts.length || 1;
-    const avg = { listing_view: 0, map_view: 0, contact_view: 0, inquiry_click: 0 };
+    const avg = {
+      listing_view: 0,
+      map_view: 0,
+      contact_view: 0,
+      inquiry_click: 0,
+      whatsapp_tracker: 0,
+      rep_call_tracker: 0,
+    };
     for (const l of listingWithCounts) {
       for (const k of EVENT_KEYS) avg[k] += l._counts[k] || 0;
     }

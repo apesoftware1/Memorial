@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import ProductShowcase from "@/components/product-showcase";
+import ProductStructuredData from "@/components/ProductStructuredData";
 import LoadingIndicator from "@/components/LoadingIndicator";
 
 export default function ProductPage() {
@@ -48,5 +49,10 @@ export default function ProductPage() {
     return <div className="text-center p-8">Listing not found</div>;
   }
 
-  return <ProductShowcase listing={listing} id={id} />;
+  return (
+    <>
+      <ProductStructuredData listing={listing} />
+      <ProductShowcase listing={listing} id={id} />
+    </>
+  );
 }

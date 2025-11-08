@@ -294,3 +294,4 @@ export default function ContactPage() {
     </div>
   );
 }
+// Metadata moved to app/contact/layout.tsx (server component)

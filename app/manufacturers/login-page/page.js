@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { signIn, useSession } from "next-auth/react";
+import { signIn, useSession, getSession } from "next-auth/react";
 
 const cardStyle = {
   background: "#fff",
@@ -46,21 +46,7 @@ const buttonStyle = (loading) => ({
   outline: 'none',
 });
 
-const adminButtonStyle = {
-  width: "100%",
-  background: "#dc2626",
-  color: "#fff",
-  fontWeight: 700,
-  fontSize: 16,
-  padding: "12px 0",
-  border: "none",
-  borderRadius: 4,
-  cursor: "pointer",
-  marginTop: 12,
-  boxShadow: '0 2px 8px rgba(220,38,38,0.08)',
-  transition: 'background 0.2s, box-shadow 0.2s',
-  outline: 'none',
-};
+// Removed admin button styles as admin login button is deprecated
 
 // Add keyframes for fade/scale in
 if (typeof window !== 'undefined' && !document.getElementById('login-anim-style')) {
@@ -72,17 +58,12 @@ if (typeof window !== 'undefined' && !document.getElementById('login-anim-style'
     .input-focus:focus { border-color: #1565c0 !important; box-shadow: 0 0 0 2px #90caf9 !important; background: #fff !important; }
     .login-link:hover { color: #003c5a !important; text-decoration: underline; }
     .login-btn:hover:not(:disabled) { background: #003c5a !important; }
-    .admin-btn:hover { background: #b91c1c !important; }
+    /* admin button removed */
   `;
   document.head.appendChild(style);
 }
 
-// Admin email addresses that should have access to the dashboard
-const ADMIN_EMAILS = [
-  'regan@tombstonesfinder.com',
-  'admin@tombstonesfinder.com',
-  // Add any other admin emails here
-];
+// Admin detection now relies on session.user.isAdmin (from NextAuth)
 
 export default function ManufacturerLogin() {
   const [email, setEmail] = useState("");
@@ -95,8 +76,8 @@ export default function ManufacturerLogin() {
   // Redirect if already logged in
   useEffect(() => {
     if (status === "authenticated" && session) {
-      // Check if user is admin and redirect accordingly
-      if (ADMIN_EMAILS.includes(session.user.email?.toLowerCase())) {
+      // Redirect based on server-evaluated admin flag
+      if (session.user?.isAdmin) {
         router.push("/regan-dashboard");
       } else {
         router.push("/manufacturers/manufacturers-Profile-Page");
@@ -139,35 +120,15 @@ export default function ManufacturerLogin() {
         password,
       });
       if (result.ok) {
-        // Check if user is admin and redirect accordingly
-        if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+        // Read the latest session to decide destination
+        const current = await getSession();
+        if (current?.user?.isAdmin) {
           router.push("/regan-dashboard");
         } else {
           router.push("/manufacturers/manufacturers-Profile-Page");
         }
       } else {
         setError("Login failed. Please check your credentials.");
-      }
-    } catch (err) {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleAdminLogin() {
-    setLoading(true);
-    setError("");
-    try {
-      const result = await signIn("credentials", {
-        redirect: false,
-        email: "regan@tombstonesfinder.com",
-        password: "admin123", // This should match the password in NextAuth config
-      });
-      if (result.ok) {
-        router.push("/regan-dashboard");
-      } else {
-        setError("Admin login failed. Please check credentials.");
       }
     } catch (err) {
       setError("Network error. Please try again.");
@@ -245,20 +206,7 @@ export default function ManufacturerLogin() {
               {loading ? "Signing in..." : "Continue"}
             </button>
             
-            {/* Admin Login Button */}
-            <div style={{ marginTop: 24, textAlign: 'center' }}>
-              <div style={{ borderTop: "1px solid #e0e0e0", margin: "0 0 16px 0" }} />
-              <p style={{ fontSize: 14, color: '#666', marginBottom: 12 }}>Website Administrator</p>
-              <button
-                type="button"
-                onClick={handleAdminLogin}
-                style={adminButtonStyle}
-                className="admin-btn"
-                disabled={loading}
-              >
-                {loading ? "Signing in..." : "Login as Admin"}
-              </button>
-            </div>
+            {/* Admin Login Button removed; single Continue button is used */}
           </form>
         </div>
       </div>

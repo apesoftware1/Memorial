@@ -84,3 +84,4 @@ export default function SpecialTombstoneDetail({ params }) {
     </div>
   )
 }
+// Dynamic metadata moved to app/tombstones-on-special/[id]/layout.tsx (server component)
