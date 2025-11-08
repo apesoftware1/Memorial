@@ -2616,8 +2616,14 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                         company.logo ||
                         "/placeholder-logo.svg",
                       location: company.location || "location not set",
-                      latitude: branchFromUrl?.location?.latitude || company.latitude,
-                      longitude: branchFromUrl?.location?.longitude || company.longitude,
+                      latitude:
+                        branchFromUrl?.location?.latitude ??
+                        branchFromUrl?.location?.coordinates?.latitude ??
+                        company.latitude,
+                      longitude:
+                        branchFromUrl?.location?.longitude ??
+                        branchFromUrl?.location?.coordinates?.longitude ??
+                        company.longitude,
                       slug: company.slug,
                     },
                     manufacturer: company.name,
