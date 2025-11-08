@@ -762,3 +762,5 @@ export default function ManufacturersPage() {
   );
 }
 
+// Metadata moved to app/manufacturers/layout.tsx (server component)
+
