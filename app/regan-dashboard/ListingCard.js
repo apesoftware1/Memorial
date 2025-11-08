@@ -26,6 +26,8 @@ export default function ListingCard({ listing, counts, performance, children }) 
           <Metric label="Map Views" value={counts.map_view || 0} />
           <Metric label="Contact Views" value={counts.contact_view || 0} />
           <Metric label="Inquiries" value={counts.inquiry_click || 0} />
+          <Metric label="WhatsApp" value={counts.whatsapp_tracker || 0} />
+          <Metric label="Rep Calls" value={counts.rep_call_tracker || 0} />
         </div>
 
         <div className="mt-auto pt-2 flex items-center gap-2">

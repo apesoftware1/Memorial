@@ -4,7 +4,14 @@
 import { useQuery } from "@apollo/client";
 import { GET_COMPANY_WITH_ANALYTICS } from "@/graphql/queries/GetCompanyPerformance";
 
-export const EVENT_KEYS = ["listing_view", "map_view", "contact_view", "inquiry_click"];
+export const EVENT_KEYS = [
+  "listing_view",
+  "map_view",
+  "contact_view",
+  "inquiry_click",
+  "whatsapp_tracker",
+  "rep_call_tracker",
+];
 
 export const useCompanyPerformance = (documentId, eventsStart, eventsEnd) => {
   return useQuery(GET_COMPANY_WITH_ANALYTICS, {
@@ -20,7 +27,14 @@ export const useCompanyPerformance = (documentId, eventsStart, eventsEnd) => {
 
 // Helper functions
 export const countEvents = (events) => {
-  const counts = { listing_view: 0, map_view: 0, contact_view: 0, inquiry_click: 0 };
+  const counts = {
+    listing_view: 0,
+    map_view: 0,
+    contact_view: 0,
+    inquiry_click: 0,
+    whatsapp_tracker: 0,
+    rep_call_tracker: 0,
+  };
   for (const ev of events || []) {
     if (counts[ev.eventType] !== undefined) counts[ev.eventType] += 1;
   }
