@@ -175,6 +175,30 @@ export default function Home() {
     return '';
   };
 
+  // Province synonyms and matching helper
+  const provinceSynonyms = {
+    'gauteng': ['gauteng', 'gp'],
+    'western cape': ['western cape', 'wc'],
+    'kwazulu-natal': ['kwazulu-natal', 'kwazulu natal', 'kzn'],
+    'eastern cape': ['eastern cape', 'ec'],
+    'free state': ['free state', 'fs'],
+    'north west': ['north west', 'nw'],
+    'limpopo': ['limpopo', 'lp'],
+    'mpumalanga': ['mpumalanga', 'mp'],
+    'northern cape': ['northern cape', 'nc']
+  };
+
+  const normalizeProvince = (name) =>
+    (name || '').toLowerCase().trim().replace(/\s+/g, ' ');
+
+  const matchesProvince = (companyLocation, selectedProvince) => {
+    const lowerLoc = (companyLocation || '').toLowerCase();
+    const key = normalizeProvince(selectedProvince);
+    const terms = provinceSynonyms[key] || (key ? [key] : []);
+    if (!terms.length) return true;
+    return terms.some(term => lowerLoc.includes(term));
+  };
+
   // Generic filter function that accepts a filters object
   const filterListingsFrom = (filtersObj) => {
     let filtered = [...allListings];
@@ -242,9 +266,9 @@ export default function Home() {
     if (f.category && f.category !== 'All Categories' && f.category !== '') {
       filtered = filtered.filter(listing => (listing.listing_category?.name || '').toLowerCase() === f.category.toLowerCase());
     }
-    // Location (partial)
+    // Location (partial with abbreviation support)
     if (f.location && f.location !== 'All' && f.location !== '') {
-      filtered = filtered.filter(listing => (listing.company?.location || '').toLowerCase().includes(f.location.toLowerCase()));
+      filtered = filtered.filter(listing => matchesProvince(listing.company?.location, f.location));
     }
     // Stone Type (partial from productDetails)
     if (f.stoneType && f.stoneType !== 'All' && f.stoneType !== '') {

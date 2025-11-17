@@ -1,6 +1,7 @@
 import type React from "react"
 import "./globals.css"
 import type { Metadata } from "next"
+import Script from 'next/script'
 import { Inter } from "next/font/google"
 import ApolloWrapper from "./ApolloWrapper";
 import SessionWrapper from "./components/SessionWrapper";
@@ -74,6 +75,7 @@ export const metadata: Metadata = {
 }
 
 import { Toaster } from "@/components/ui/toaster";
+import GAEvents from './components/GAEvents'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -82,6 +84,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Preconnect to media origins to speed up image loading */}
         <link rel="preconnect" href="https://typical-car-e0b66549b3.media.strapiapp.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
+        {/* Google Analytics – paste your GA4 Measurement ID in NEXT_PUBLIC_GA_ID inside .env.local */}
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID ?? 'G-PASTE_MEASUREMENT_ID_HERE'}`}
+          strategy="afterInteractive"
+        />
+        <Script id="ga-init" strategy="afterInteractive">
+          {`
+            // Paste your GA4 Measurement ID into NEXT_PUBLIC_GA_ID in .env.local
+            // Example:
+            // NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${process.env.NEXT_PUBLIC_GA_ID ?? 'G-PASTE_MEASUREMENT_ID_HERE'}', {
+              page_path: window.location.pathname,
+            });
+          `}
+        </Script>
       </head>
       <body className={`${inter.className} bg-gray-50`}>
         {/* Localize theme handling to regan-dashboard pages only */}
@@ -89,6 +109,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ApolloWrapper>
             <FavoritesProvider>
               {children}
+              {/* Track GA pageviews on client-side route changes */}
+              <GAEvents />
               <Toaster />
             </FavoritesProvider>
           </ApolloWrapper>
