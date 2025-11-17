@@ -34,8 +34,8 @@ export default function Footer() {
             <address className="text-gray-300 text-sm not-italic">
               <p>Email: info@tombstonefinder.co.za</p>
               <p>Phone: 087 153 1560</p>
-              <p>Address: 18 EMOYENI</p>
-              <p>17 CORKWOOD CLOSE, SIMBITHI ECOESTATE, KWA-ZULU NATAL, 4399</p>
+              <p>Address: 18 Emoyeni</p>
+              <p>17 Cockwood Close, Simbithi EcoEstate, Kwa-Zulu Natal, 4399</p>
             </address>
           </div>
         </div>
