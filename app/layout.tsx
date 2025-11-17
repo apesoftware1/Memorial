@@ -1,4 +1,5 @@
 import type React from "react"
+import { Suspense } from 'react'
 import "./globals.css"
 import type { Metadata } from "next"
 import Script from 'next/script'
@@ -109,8 +110,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ApolloWrapper>
             <FavoritesProvider>
               {children}
-              {/* Track GA pageviews on client-side route changes */}
-              <GAEvents />
+              {/* Track GA pageviews on client-side route changes (wrap in Suspense to satisfy Next.js) */}
+              <Suspense fallback={null}>
+                <GAEvents />
+              </Suspense>
               <Toaster />
             </FavoritesProvider>
           </ApolloWrapper>
