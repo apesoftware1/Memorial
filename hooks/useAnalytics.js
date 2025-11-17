@@ -7,9 +7,10 @@ export const useAnalytics = () => {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    if (pathname) {
-      pageview(pathname + searchParams.toString())
-    }
+    if (!pathname) return
+    const qs = searchParams ? searchParams.toString() : ''
+    const fullPath = qs ? `${pathname}?${qs}` : pathname
+    pageview(fullPath)
   }, [pathname, searchParams])
 }
 
@@ -21,4 +22,4 @@ export const trackEvent = ({ action, category, label, value }) => {
       value: value,
     })
   }
-} 
+}

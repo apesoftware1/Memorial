@@ -33,8 +33,9 @@ export default function Footer() {
             <h4 className="text-lg font-semibold mb-4">Contact</h4>
             <address className="text-gray-300 text-sm not-italic">
               <p>Email: info@tombstonefinder.co.za</p>
-              <p>Phone: +27 12 345 6789</p>
-              <p>Address: 123 Memorial Street, Pretoria, South Africa</p>
+              <p>Phone: 087 153 1560</p>
+              <p>Address: 18 Emoyeni</p>
+              <p>17 Cockwood Close, Simbithi EcoEstate, Kwa-Zulu Natal, 4399</p>
             </address>
           </div>
         </div>

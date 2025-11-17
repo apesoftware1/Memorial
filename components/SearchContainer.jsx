@@ -201,6 +201,30 @@ const SearchContainer = ({
     return coordinates[cityName] || null;
   };
 
+  // Province synonyms to match common abbreviations and variants
+  const provinceSynonyms = {
+    'gauteng': ['gauteng', 'gp'],
+    'western cape': ['western cape', 'wc'],
+    'kwazulu-natal': ['kwazulu-natal', 'kwazulu natal', 'kzn'],
+    'eastern cape': ['eastern cape', 'ec'],
+    'free state': ['free state', 'fs'],
+    'north west': ['north west', 'nw'],
+    'limpopo': ['limpopo', 'lp'],
+    'mpumalanga': ['mpumalanga', 'mp'],
+    'northern cape': ['northern cape', 'nc']
+  };
+
+  const normalizeProvince = (name) =>
+    (name || '').toLowerCase().trim().replace(/\s+/g, ' ');
+
+  const matchesProvince = (companyLocation, selectedProvince) => {
+    const lowerLoc = (companyLocation || '').toLowerCase();
+    const key = normalizeProvince(selectedProvince);
+    const terms = provinceSynonyms[key] || (key ? [key] : []);
+    if (!terms.length) return true;
+    return terms.some(term => lowerLoc.includes(term));
+  };
+
   // Local state to control mobile-only location modal
   const [showLocationModal, setShowLocationModal] = useState(false);
   const mobileLocationsData = useMemo(() => {
@@ -315,9 +339,8 @@ const SearchContainer = ({
 
     // Location (company.location, partial)
     if (paramLocation) {
-      const q = paramLocation.toLowerCase();
       next = next.filter((listing) =>
-        (listing?.company?.location || "").toLowerCase().includes(q)
+        matchesProvince(listing?.company?.location, paramLocation)
       );
     }
 
@@ -409,9 +432,7 @@ const SearchContainer = ({
           // Location (partial)
           .filter((listing) =>
             f.location && f.location !== "All" && f.location !== ""
-              ? (listing?.company?.location || "")
-                  .toLowerCase()
-                  .includes(f.location.toLowerCase())
+              ? matchesProvince(listing?.company?.location, f.location)
               : true
           )
           // Stone Type (partial)
@@ -642,14 +663,9 @@ const SearchContainer = ({
 
     // Filter by location
     if (filters?.location) {
-      filtered = filtered.filter((listing) => {
-        const listingLocation =
-          listing.company?.location || listing.title?.toLowerCase();
-
-        return listingLocation
-          ?.toLowerCase()
-          .includes(filters.location.toLowerCase());
-      });
+      filtered = filtered.filter((listing) =>
+        matchesProvince(listing.company?.location, filters.location)
+      );
     }
 
     // Filter by price range
