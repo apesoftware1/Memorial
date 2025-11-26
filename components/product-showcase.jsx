@@ -26,7 +26,7 @@ import CompanyInfoCard from "./CompanyInfoCard";
 import SocialShare from "./SocialShare";
 import RelatedProducts from "./RelatedProducts";
 import WhatsAppContactDrawer from "./WhatsAppContactDrawer";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import { PageLoader } from "./ui/loader";
 
 export default function ProductShowcase({ listing, id, allListings = [], currentIndex = 0, onNavigate }) {
@@ -41,6 +41,8 @@ export default function ProductShowcase({ listing, id, allListings = [], current
   const [isTransitioning, setIsTransitioning] = useState(false);
   const searchParams = useSearchParams();
   const branch = searchParams.get("branch"); // Prioritize branchId prop
+  const pathname = usePathname();
+  const basePath = pathname && pathname.includes('/tombstones-for-sale') ? '/tombstones-for-sale' : '/product';
   
   // Navigation functions for Next/Previous
   const handlePrevious = () => {
@@ -52,8 +54,9 @@ export default function ProductShowcase({ listing, id, allListings = [], current
       setIsTransitioning(true);
       const prevIndex = (currentIndex - 1 + allListings.length) % allListings.length;
       const prevListing = allListings[prevIndex];
-      if (prevListing && prevListing.id) {
-        window.location.href = `/product/${prevListing.id}${branch ? `?branch=${branch}` : ''}`;
+      if (prevListing && (prevListing.documentId || prevListing.id)) {
+        const targetId = prevListing.documentId || prevListing.id;
+        window.location.href = `${basePath}/${targetId}${branch ? `?branch=${branch}` : ''}`;
       }
     }
   };
@@ -67,8 +70,9 @@ export default function ProductShowcase({ listing, id, allListings = [], current
       setIsTransitioning(true);
       const nextIndex = (currentIndex + 1) % allListings.length;
       const nextListing = allListings[nextIndex];
-      if (nextListing && nextListing.id) {
-        window.location.href = `/product/${nextListing.id}${branch ? `?branch=${branch}` : ''}`;
+      if (nextListing && (nextListing.documentId || nextListing.id)) {
+        const targetId = nextListing.documentId || nextListing.id;
+        window.location.href = `${basePath}/${targetId}${branch ? `?branch=${branch}` : ''}`;
       }
     }
   };
