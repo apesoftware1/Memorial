@@ -131,8 +131,8 @@ export function PremiumListingCard({
       const listingId = listing?.documentId || listing?.id;
       if (listingId && branchId) {
         e.preventDefault();
-        // Fix the path to ensure proper routing to product showcase
-        router.push(`/product/${listingId}?branch=${branchId}`);
+        // Route to tombstone listing detail with branch context
+        router.push(`/tombstones-for-sale/${listingId}?branch=${branchId}`);
         return;
       }
     }

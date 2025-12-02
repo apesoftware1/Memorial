@@ -185,20 +185,25 @@ const SearchContainer = ({
     return [];
   };
 
-  // Helper function to get coordinates for major South African cities
+  // Helper: normalize province name for consistent lookups
+  const normalizeProvince = (name) =>
+    (name || '').toLowerCase().trim().replace(/\s+/g, ' ');
+
+  // Helper function to get coordinates for major South African provinces (normalized keys)
   const getCityCoordinates = (cityName) => {
-    const coordinates = {
-      Gauteng: { lat: -26.2041, lng: 28.0473 },
-      "Western Cape": { lat: -33.9249, lng: 18.4241 },
-      "KwaZulu-Natal": { lat: -29.8587, lng: 31.0218 },
-      "Eastern Cape": { lat: -32.2968, lng: 26.4194 },
-      "Free State": { lat: -28.4545, lng: 26.7968 },
-      Mpumalanga: { lat: -25.4753, lng: 30.9694 },
-      Limpopo: { lat: -23.4013, lng: 29.4179 },
-      "North West": { lat: -25.4753, lng: 25.4753 },
-      "Northern Cape": { lat: -30.5595, lng: 22.9375 },
+    const byProvince = {
+      'gauteng': { lat: -26.2041, lng: 28.0473 },
+      'western cape': { lat: -33.9249, lng: 18.4241 },
+      'kwazulu-natal': { lat: -29.8587, lng: 31.0218 },
+      'eastern cape': { lat: -32.2968, lng: 26.4194 },
+      'free state': { lat: -28.4545, lng: 26.7968 },
+      'mpumalanga': { lat: -25.4753, lng: 30.9694 },
+      'limpopo': { lat: -23.4013, lng: 29.4179 },
+      'north west': { lat: -25.4753, lng: 25.4753 },
+      'northern cape': { lat: -30.5595, lng: 22.9375 },
     };
-    return coordinates[cityName] || null;
+    const key = normalizeProvince(cityName);
+    return byProvince[key] || null;
   };
 
   // Province synonyms to match common abbreviations and variants
@@ -214,9 +219,6 @@ const SearchContainer = ({
     'northern cape': ['northern cape', 'nc']
   };
 
-  const normalizeProvince = (name) =>
-    (name || '').toLowerCase().trim().replace(/\s+/g, ' ');
-
   const matchesProvince = (companyLocation, selectedProvince) => {
     const lowerLoc = (companyLocation || '').toLowerCase();
     const key = normalizeProvince(selectedProvince);
@@ -229,15 +231,31 @@ const SearchContainer = ({
   const [showLocationModal, setShowLocationModal] = useState(false);
   const mobileLocationsData = useMemo(() => {
     const list = (filterOptions?.location || []).filter(Boolean);
-    return list.map((name, index) => ({
-      id: String(index),
-      name,
-      count: 0,
-      // Add sample coordinates for major South African cities for distance calculations
-      lat: getCityCoordinates(name)?.lat,
-      lng: getCityCoordinates(name)?.lng,
-    }));
-  }, [filterOptions]);
+
+    // Pre-compute counts per province from all listings
+    const totalCount = Array.isArray(allListings) ? allListings.length : 0;
+
+    const countForProvince = (provinceName) => {
+      if (!Array.isArray(allListings) || !provinceName) return 0;
+      const key = normalizeProvince(provinceName);
+      if (key === 'any') return totalCount;
+      return allListings.reduce((acc, listing) => {
+        const locStr = listing?.company?.location || '';
+        return matchesProvince(locStr, provinceName) ? acc + 1 : acc;
+      }, 0);
+    };
+
+    return list.map((name, index) => {
+      const coords = getCityCoordinates(name);
+      return {
+        id: normalizeProvince(name) === 'any' ? 'all' : String(index),
+        name,
+        count: countForProvince(name),
+        lat: coords?.lat || null,
+        lng: coords?.lng || null,
+      };
+    });
+  }, [filterOptions, allListings]);
 
   // Effect: filter allListings based on URL params on load and whenever params change
   useEffect(() => {

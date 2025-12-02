@@ -142,7 +142,7 @@ export default function Home() {
         const branchId = branches[0]?.id || branches[0]?.documentId;
         const listingId = listing?.documentId || listing?.id;
         if (listingId && branchId) {
-          router.push(`/product/${listingId}?branch=${branchId}`);
+          router.push(`/tombstones-for-sale/${listingId}?branch=${branchId}`);
           return true; // handled
         }
       }
@@ -161,7 +161,7 @@ export default function Home() {
         setShowBranchesModal(false);
         // Pass the full branch object as a serialized JSON string in the query
         const branchData = encodeURIComponent(JSON.stringify(branch));
-        router.push(`/product/${listingId}?branch=${branchId}&branchData=${branchData}`);
+        router.push(`/tombstones-for-sale/${listingId}?branch=${branchId}&branchData=${branchData}`);
       }
     } catch (e) {
       console.error('Failed to navigate to product showcase from branch selection', e);
