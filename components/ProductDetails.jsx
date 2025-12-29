@@ -32,7 +32,11 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
   };
 
   return (
-    <div className="border-y border-gray-200 py-2 mb-4 px-2">
+    <div 
+      className="border-y border-gray-200 py-2 mb-4 px-2"
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+    >
       <div className="flex flex-wrap gap-2 text-sm text-gray-700">
         {/* Head Style */}
         {getFirstValue(productDetails.style) && (

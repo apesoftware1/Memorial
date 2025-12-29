@@ -32,7 +32,11 @@ function getCategoryLabel(listing) {
 
 const FeaturedListings = ({ listing }) => (
   <Link href={`/tombstones-for-sale/${listing.documentId}`} className="block group">
-    <div className="bg-white border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+    <div 
+      className="bg-white border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+    >
       {/* Image Container */}
       <div className="relative h-56 bg-gray-100">
         <Image

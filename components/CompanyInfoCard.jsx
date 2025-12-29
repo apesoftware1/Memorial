@@ -4,7 +4,11 @@ import PropTypes from "prop-types";
 
 export default function CompanyInfoCard({ logo, rating, operatingHours, companyName }) {
   return (
-    <div className="text-center mb-4">
+    <div 
+      className="text-center mb-4"
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+    >
       <div className="flex justify-center mb-2">
         <div className="relative h-32 w-64">
           <Image

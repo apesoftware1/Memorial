@@ -5,7 +5,11 @@ import PropTypes from "prop-types";
 
 export default function ProductDescription({ description, additionalDetails, getAllValues }) {
   return (
-    <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
+    <div 
+      className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm"
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+    >
       <div className="mb-4">
         <h2 className="text-lg font-bold uppercase mb-2">Tombstone Description</h2>
         <p className="text-sm text-gray-700 mb-0">{description}</p>

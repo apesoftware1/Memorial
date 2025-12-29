@@ -205,7 +205,7 @@ export function PremiumListingCard({
     !window.location.pathname.match(/^\/?$/); // Hide on home page
   
   return (
-    <div className="relative mt-7" ref={cardRef}>
+    <div className="relative mt-7" ref={cardRef} onContextMenu={(e) => e.preventDefault()} onDragStart={(e) => e.preventDefault()}>
       {hasBranches && isTombstonesForSalePage && (
         <div className="absolute -top-7 right-0 z-10 bg-gray-800 text-white px-3 py-1 text-sm font-medium rounded-t-md">
           Available at {branches.length} {branches.length === 1 ? 'Branch' : 'Branches'}
@@ -830,3 +830,4 @@ const shouldShowDetail = (value: any) => {
   // show only if contains any non-digit character
   return /[^\d]/.test(str);
 };
+

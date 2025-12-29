@@ -14,6 +14,9 @@ import TombstonesForSaleFilters from "@/components/TombstonesForSaleFilters"
 import FeaturedManufacturer from '@/components/FeaturedManufacturer';
 import BannerAd from '@/components/BannerAd';
 import Pagination from '@/components/Pagination';
+import CategoryTabs from '@/components/CategoryTabs.jsx';
+import MobileFilterTags from "@/components/MobileFilterTags";
+import MobileResultsBar from "@/components/MobileResultsBar";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { PageLoader, CardSkeleton } from "@/components/ui/loader";
 
@@ -27,10 +30,13 @@ import {
 import { useListingCategories } from "@/hooks/use-ListingCategories"
 export default function Home() {
   const { categories, loading: categoriesLoading } = useListingCategories();
+  const [activeTab, setActiveTab] = useState(0);
   // URL query params
   const searchParams = useSearchParams();
   // Derive a stable key from search params to avoid re-running effects due to object identity changes
   const searchParamsKey = searchParams ? searchParams.toString() : '';
+  // Memoize GraphQL variables to avoid effect re-subscriptions and render loops
+  const queryVariables = useMemo(() => ({ limit: 10 }), []);
   
   // GraphQL data
   // Replace Apollo useQuery(GET_LISTINGS) with progressive hook
@@ -38,7 +44,7 @@ export default function Home() {
     initialQuery: LISTINGS_INITIAL_QUERY,
     fullQuery: LISTINGS_FULL_QUERY,
     deltaQuery: LISTINGS_DELTA_QUERY,
-    variables: { limit: 10 },
+    variables: queryVariables,
     storageKey: 'listings:lastUpdated',
     refreshInterval: 3000,
   });
@@ -54,7 +60,7 @@ export default function Home() {
   const handleFeaturedScroll = () => {
     if (featuredScrollRef.current) {
       const scrollLeft = featuredScrollRef.current.scrollLeft;
-      const cardWidth = 320; // Card width + gap
+      const cardWidth = 272; // Card width (w-64 = 256px) + gap (16px)
       const newIndex = Math.round(scrollLeft / cardWidth);
       setFeaturedActiveIndex(Math.min(newIndex, 2)); // Max 3 cards (0, 1, 2)
     }
@@ -63,7 +69,7 @@ export default function Home() {
   // Function to scroll to specific featured card
   const scrollToFeaturedCard = (index) => {
     if (featuredScrollRef.current) {
-      const cardWidth = 320;
+      const cardWidth = 272;
       featuredScrollRef.current.scrollTo({
         left: index * cardWidth,
         behavior: 'smooth'
@@ -82,7 +88,6 @@ export default function Home() {
   }, []);
   
   // Use only backend data
-  // const allListings = listings || [];
   const allListings = useMemo(() => {
     // Filter out listings where specials.active is true
     return Array.isArray(listings) 
@@ -122,12 +127,49 @@ export default function Home() {
     category: null,
   })
 
-  // State for filtered listings
-  const [filteredListings, setFilteredListings] = useState([]);
-
   // Branch selection modal state
   const [showBranchesModal, setShowBranchesModal] = useState(false);
   const [selectedListing, setSelectedListing] = useState(null);
+
+  // Keep CategoryTabs in sync with the selected category filter
+  const desiredOrder = ["SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"];
+  const sortedCategories = useMemo(() => {
+    return (categories || [])
+      .filter(cat => cat?.name)
+      .map(cat => ({ ...cat, upper: cat.name.toUpperCase() }))
+      .reduce((acc, cat) => {
+        const idx = desiredOrder.indexOf(cat.upper);
+        if (idx !== -1) acc[idx] = cat;
+        return acc;
+      }, Array(desiredOrder.length).fill(null))
+      .filter(Boolean);
+  }, [categories]);
+
+  // Initialize active tab from current category or default to SINGLE
+  useEffect(() => {
+    if (!sortedCategories.length) return;
+    const currentName = activeFilters.category;
+    if (currentName) {
+      const idx = sortedCategories.findIndex(c => c.name === currentName);
+      setActiveTab(idx >= 0 ? idx : 0);
+    } else {
+      // Default selection to first tab (typically SINGLE)
+      setActiveTab(0);
+      setActiveFilters(prev => ({ ...prev, category: sortedCategories[0].name }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedCategories.length]);
+
+  const handleTabChange = (index) => {
+    setActiveTab(index);
+    const selected = sortedCategories[index];
+    if (selected?.name) {
+      setActiveFilters(prev => ({ ...prev, category: selected.name }));
+    }
+  };
+
+  // Active category object for background image (match homepage behavior)
+  const activeCategory = sortedCategories[activeTab] || null;
 
   // When user clicks a listing: if multiple branches -> open modal directly, if one -> go to product showcase
   const handleListingPrimaryClick = (listing) => {
@@ -203,6 +245,27 @@ export default function Home() {
   const filterListingsFrom = (filtersObj) => {
     let filtered = [...allListings];
     const f = filtersObj || activeFilters;
+
+    // Helper to handle both string and array filters
+    const checkMatch = (itemVal, filterVal, exact = false) => {
+      if (!filterVal || filterVal === 'All' || filterVal === '' || filterVal === 'Any' || filterVal === 'All Categories' || filterVal === 'Min Price' || filterVal === 'Max Price') return true;
+      
+      if (Array.isArray(filterVal)) {
+        if (filterVal.length === 0) return true;
+        if (filterVal.includes('All') || filterVal.includes('Any') || filterVal.includes('All Categories')) return true;
+        
+        return filterVal.some(fv => {
+           if (!fv) return false;
+           const fStr = fv.toString().toLowerCase();
+           const iStr = (itemVal || '').toString().toLowerCase();
+           return exact ? iStr === fStr : iStr.includes(fStr);
+        });
+      }
+      
+      const fStr = filterVal.toString().toLowerCase();
+      const iStr = (itemVal || '').toString().toLowerCase();
+      return exact ? iStr === fStr : iStr.includes(fStr);
+    };
     
     // Search parameter (against comprehensive product details)
     if (f.search && f.search !== '') {
@@ -267,30 +330,29 @@ export default function Home() {
       filtered = filtered.filter(listing => (listing.listing_category?.name || '').toLowerCase() === f.category.toLowerCase());
     }
     // Location (partial with abbreviation support)
-    if (f.location && f.location !== 'All' && f.location !== '') {
-      filtered = filtered.filter(listing => matchesProvince(listing.company?.location, f.location));
+    if (f.location) {
+       if (Array.isArray(f.location) && f.location.length > 0 && !f.location.includes('All')) {
+          filtered = filtered.filter(listing => f.location.some(loc => matchesProvince(listing.company?.location, loc)));
+       } else if (f.location && f.location !== 'All' && !Array.isArray(f.location) && f.location !== '') {
+          filtered = filtered.filter(listing => matchesProvince(listing.company?.location, f.location));
+       }
     }
     // Stone Type (partial from productDetails)
-    if (f.stoneType && f.stoneType !== 'All' && f.stoneType !== '') {
-      filtered = filtered.filter(listing => ((listing.productDetails?.stoneType?.[0]?.value || '').toLowerCase().includes(f.stoneType.toLowerCase())));
-    }
+    filtered = filtered.filter(listing => checkMatch(listing.productDetails?.stoneType?.[0]?.value, f.stoneType));
+
     // Color (partial from productDetails) - support both color and colour externally
     const colorQuery = f.color || f.colour;
-    if (colorQuery && colorQuery !== 'All' && colorQuery !== '') {
-      filtered = filtered.filter(listing => ((listing.productDetails?.color?.[0]?.value || '').toLowerCase().includes(colorQuery.toLowerCase())));
-    }
+    filtered = filtered.filter(listing => checkMatch(listing.productDetails?.color?.[0]?.value, colorQuery));
+
     // Style (partial)
-    if (f.style && f.style !== 'All' && f.style !== '') {
-      filtered = filtered.filter(listing => ((listing.productDetails?.style?.[0]?.value || '').toLowerCase().includes(f.style.toLowerCase())));
-    }
+    filtered = filtered.filter(listing => checkMatch(listing.productDetails?.style?.[0]?.value, f.style));
+
     // Slab Style (partial)
-    if (f.slabStyle && f.slabStyle !== 'All' && f.slabStyle !== '') {
-      filtered = filtered.filter(listing => ((listing.productDetails?.slabStyle?.[0]?.value || '').toLowerCase().includes(f.slabStyle.toLowerCase())));
-    }
+    filtered = filtered.filter(listing => checkMatch(listing.productDetails?.slabStyle?.[0]?.value, f.slabStyle));
+
     // Custom (partial)
-    if (f.custom && f.custom !== 'All' && f.custom !== '') {
-      filtered = filtered.filter(listing => ((listing.productDetails?.customization?.[0]?.value || '').toLowerCase().includes(f.custom.toLowerCase())));
-    }
+    filtered = filtered.filter(listing => checkMatch(listing.productDetails?.customization?.[0]?.value, f.custom));
+
     // Min Price
     if (f.minPrice && f.minPrice !== 'Min Price' && f.minPrice !== '') {
       const min = parsePrice(f.minPrice);
@@ -311,18 +373,15 @@ export default function Home() {
   };
 
   // Convenience wrapper using current state
-  const filterListings = () => filterListingsFrom(activeFilters);
+  const filteredListings = useMemo(() => filterListingsFrom(activeFilters), [activeFilters, allListings]);
 
   // Search button handler
   const handleSearch = () => {
-    setFilteredListings(filterListings());
     setCurrentPage(1);
   };
 
   // Update filtered listings on mount and when allListings changes
-  useEffect(() => {
-    setFilteredListings(allListings);
-  }, [allListings]);
+  // Removed as filteredListings is now memoized
 
   // Read URL params and apply filters on page load and when params change
   useEffect(() => {
@@ -354,22 +413,12 @@ export default function Home() {
     if (maxP) nextFilters.maxPrice = maxP;
 
     // Apply filters only when URL params change
-    const filtered = filterListingsFrom(nextFilters);
     if (!filtersShallowEqual(activeFilters, nextFilters)) {
       setActiveFilters(nextFilters);
-      setFilteredListings(filtered);
       if (currentPage !== 1) setCurrentPage(1);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParamsKey]);
-
-  // Update filtered listings live when activeFilters change (for live search count)
-  useEffect(() => {
-    if (allListings && allListings.length > 0) {
-      const filtered = filterListingsFrom(activeFilters);
-      setFilteredListings(filtered);
-    }
-  }, [activeFilters, allListings]);
 
   // State for sort order
   const [sortOrder, setSortOrder] = useState("Default");
@@ -418,23 +467,33 @@ export default function Home() {
     // 3 featured listings
     flow.push(
       <div key="featured-listings" className="mb-8">
-        <h2 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">FEATURED LISTINGS</h2>
-        <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
-        
+        <h2 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4 mt-4">FEATURED LISTINGS</h2>
+        <p className="text-center text-xs text-gray-500 -mt-3 mb-2">*Sponsored</p>
+
         {/* Mobile: Horizontal scrolling cards */}
         <div className="md:hidden">
           <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide" ref={featuredScrollRef}>
-            {listings?.filter(l => l.isFeatured).length > 0
-              ? listings?.filter(l => l.isFeatured).slice(0, 3).map((product, i) => (
-                  <div key={product.id || i} className="flex-shrink-0 w-80 snap-start">
-                    <FeaturedListings listing={product} />
-                  </div>
-                ))
-              : (
-                <div className="flex-shrink-0 w-80 snap-start flex justify-center">
-                  {fallbackCard("featured listings")}
-                </div>
-              )}
+            
+             {listings?.filter(l => l.isFeatured).length > 0
+               ? listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
+                   Array.isArray(product.branches) && product.branches.length > 0 ? (
+                     // Map through branches if they exist
+                     product.branches.map((branch) => (
+                       <div key={`${product.documentId || product.id}-${branch.documentId || branch.id}`} className="flex-shrink-0 w-64 snap-start">
+                         <FeaturedListings listing={{...product, currentBranch: branch}} />
+                       </div>
+                     ))
+                   ) : (
+                     <div key={product.id || index} className="flex-shrink-0 w-64 snap-start">
+                       <FeaturedListings listing={product} />
+                     </div>
+                   )
+                 ))
+               : (
+                 <div className="flex-shrink-0 w-64 snap-start flex justify-center">
+                   {fallbackCard("featured listings")}
+                 </div>
+               )}
           </div>
           {/* Pagination Dots - Mobile only */}
           <div className="flex justify-center mt-4 space-x-2">
@@ -454,8 +513,8 @@ export default function Home() {
         {/* Desktop: Grid layout */}
         <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {listings?.filter(l => l.isFeatured).length > 0
-            ? listings?.filter(l => l.isFeatured).slice(0, 3).map((product, i) => (
-                <FeaturedListings key={product.id || i} listing={product} />
+            ? listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
+                <FeaturedListings key={product.id || index} listing={product} />
               ))
             : fallbackCard("featured listings")}
         </div>
@@ -716,8 +775,44 @@ export default function Home() {
         mobileDropdown={mobileDropdown}
         handleMobileDropdownToggle={handleMobileDropdownToggle}
         onMobileFilterClick={() => setMobileFilterOpen(true)}
+        autoHideOnScroll={true}
       />
+
+      {/* Mobile Active Filters Tags */}
+      <MobileFilterTags activeFilters={activeFilters} setActiveFilters={setActiveFilters} />
       
+      {/* Mobile Sticky Results Bar */}
+      <MobileResultsBar 
+        count={filteredListings.length} 
+        onSortClick={() => setShowSortDropdown(true)}
+        onFilterClick={() => setMobileFilterOpen(true)}
+      />
+
+      {/* Mobile Sort Modal */}
+      {showSortDropdown && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-40 md:hidden" onClick={() => setShowSortDropdown(false)}>
+          <div 
+            ref={sortModalRef} 
+            className="w-full max-w-md mx-auto rounded-t-2xl bg-[#232323] p-4 pb-8 animate-slide-in-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {['Default', 'Price: Low to High', 'Price: High to Low', 'Newest First'].map(option => (
+              <div
+                key={option}
+                className={`flex items-center justify-between px-2 py-4 text-lg border-b border-[#333] last:border-b-0 cursor-pointer ${sortOrder === option ? 'text-white font-bold' : 'text-gray-200'}`}
+                onClick={() => { setSortOrder(option); setShowSortDropdown(false); }}
+              >
+                <span>{option}</span>
+                <span className={`ml-2 w-6 h-6 flex items-center justify-center rounded-full border-2 ${sortOrder === option ? 'border-blue-500' : 'border-gray-500'}`}
+                      style={{ background: sortOrder === option ? '#2196f3' : 'transparent' }}>
+                  {sortOrder === option && <span className="block w-3 h-3 bg-white rounded-full"></span>}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Branch selection modal - only show when a listing with multiple branches is clicked */}
       {showBranchesModal && selectedListing && (
         <PremiumListingCardModal
@@ -750,6 +845,12 @@ export default function Home() {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-4 pb-6">
+            {/* Category Tabs - Mobile drawer */}
+            {sortedCategories.length > 0 && (
+              <div className="mb-4">
+                {/* CategoryTabs removed */}
+              </div>
+            )}
             <TombstonesForSaleFilters
               activeFilters={activeFilters}
               setActiveFilters={setActiveFilters}
@@ -759,62 +860,47 @@ export default function Home() {
               filteredListings={filteredListings}
               handleSearch={handleSearch}
               getActiveCategory={getActiveCategory}
+              showCategoryDropdown={true}
             />
           </div>
         </div>
       )}
-      {/* Search Bar */}
-      <div className="bg-[#00647A] py-4">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row gap-2">
-            <div className="relative flex-grow">
-              <input
-                type="text"
-                placeholder="Search Location, Colour, Manufacturer..."
-                className="w-full p-2 pr-10 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                value={activeFilters.search || ''}
-                onChange={e => setActiveFilters({ ...activeFilters, search: e.target.value })}
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <ChevronDown className="h-5 w-5 text-gray-400" />
+
+      {/* Hero banner background with CategoryTabs overlay (uses homepage category images) */}
+      {sortedCategories.length > 0 && (
+        <div className="hidden md:block relative w-full h-[120px] sm:h-[160px] md:h-[180px]">
+          {/* Background Image - Hidden on mobile to mirror homepage */}
+          <div className="absolute inset-0 z-0 hidden sm:block">
+            <Image
+              src={activeCategory?.backgroundImage?.url || "/2560(w)x400px(h)_Banner_OldYoungCouple.jpg"}
+              alt={activeCategory?.name || "Category background"}
+              fill
+              className="object-cover"
+              priority
+              fetchPriority="high"
+              sizes="100vw"
+            />
+          </div>
+          <div className="absolute inset-0 bg-black/20" aria-hidden="true"></div>
+          <div className="absolute inset-x-0 bottom-0 px-4 z-10">
+            {/* Match main content container to align left edge with filters */}
+            <div className="max-w-6xl mx-auto">
+              {/* Slightly increase tabs width to reveal all items */}
+              <div className="hidden md:block w-full md:w-[60%]">
+                <CategoryTabs categories={sortedCategories} activeTab={activeTab} setActiveTab={handleTabChange} />
               </div>
             </div>
-            <button 
-              className="bg-amber-500 hover:bg-amber-600 text-white p-2 px-4 rounded transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
-              onClick={handleSearch}
-            >
-              <Search className="h-4 w-4" />
-              <span>{`Search (${filteredListings.length}) ${getActiveCategory()} Tombstones`}</span>
-            </button>
-          </div>
-          <div className="max-w-4xl mx-auto mt-2">
-            <button className="text-gray-300 hover:text-white text-sm transition-colors" onClick={() => { handleResetFilters(); if (typeof window !== 'undefined') { window.dispatchEvent(new Event('searchform:reset')); } }}>Reset</button>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Breadcrumb */}
-      <div className="container mx-auto px-4 py-4">
-        <div className="max-w-4xl mx-auto">
-          <nav className="text-sm text-gray-500 mb-4" aria-label="Breadcrumb">
-            <ol className="flex items-center space-x-1">
-              <li>
-                <Link href="/" className="text-blue-600 hover:text-blue-800 transition-colors">
-                  Home
-                </Link>
-              </li>
-              <li className="flex items-center">
-                <ChevronRight className="h-4 w-4 mx-1" />
-                <span className="text-gray-700">Tombstones For Sale</span>
-              </li>
-            </ol>
-          </nav>
-
-          <h1 className="text-2xl font-bold text-gray-800 mb-6">Tombstones For Sale</h1>
-
+      {/* Main Content Container */}
+      <div className="container mx-auto px-4 pt-0 pb-4">
+        <div className="max-w-6xl mx-auto">
+          
           <div className="flex flex-col md:flex-row gap-6">
             {/* Filters - Left Side */}
-            <div className="w-full md:w-1/4 hidden sm:block md:sticky md:top-20 md:self-start">
+            <div className="w-full md:w-1/4 hidden sm:block md:sticky md:top-0 md:self-start">
               <TombstonesForSaleFilters
                 activeFilters={activeFilters}
                 setActiveFilters={setActiveFilters}
@@ -824,13 +910,14 @@ export default function Home() {
                 filteredListings={filteredListings}
                 handleSearch={handleSearch}
                 getActiveCategory={getActiveCategory}
+                showCategoryDropdown={true}
               />
             </div>
 
             {/* Product Listings - Right Side */}
             <div className="w-full md:w-3/4">
               {/* Results Header */}
-              <div className="flex justify-between items-center mb-4 bg-gray-100 rounded px-4 py-2 shadow-sm">
+              <div className="hidden sm:flex justify-between items-center mt-3 sm:mt-4 mb-4 bg-gray-100 rounded px-4 py-2 shadow-sm">
                 <p className="text-gray-600">
                   {filteredListings.length === 0
                     ? `No results found for your filters.`
@@ -839,31 +926,6 @@ export default function Home() {
                     : `${filteredListings.length} Results (of ${allListings.length})`}
                 </p>
                 <div className="flex items-center">
-                  {/* Mobile Sort Button */}
-                  <div className="sm:hidden flex items-center text-blue-600 font-semibold cursor-pointer select-none" onClick={() => setShowSortDropdown(!showSortDropdown)}>
-                    <span className="mr-1">Sort</span>
-                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5" stroke="#2196f3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </div>
-                  {/* Mobile Sort Modal */}
-                  {showSortDropdown && (
-                    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-40 sm:hidden">
-                      <div ref={sortModalRef} className="w-full max-w-md mx-auto rounded-t-2xl bg-[#232323] p-4 pb-8 animate-slide-in-up">
-                        {['Default', 'Price: Low to High', 'Price: High to Low', 'Newest First'].map(option => (
-                          <div
-                            key={option}
-                            className={`flex items-center justify-between px-2 py-4 text-lg border-b border-[#333] last:border-b-0 cursor-pointer ${sortOrder === option ? 'text-white font-bold' : 'text-gray-200'}`}
-                            onClick={() => { setSortOrder(option); setShowSortDropdown(false); }}
-                          >
-                            <span>{option}</span>
-                            <span className={`ml-2 w-6 h-6 flex items-center justify-center rounded-full border-2 ${sortOrder === option ? 'border-blue-500' : 'border-gray-500'}`}
-                                  style={{ background: sortOrder === option ? '#2196f3' : 'transparent' }}>
-                              {sortOrder === option && <span className="block w-3 h-3 bg-white rounded-full"></span>}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                   {/* Desktop Sort Dropdown */}
                   <div className="hidden sm:flex items-center">
                     <span className="text-sm text-gray-600 mr-2">Sort by</span>
@@ -883,8 +945,8 @@ export default function Home() {
 
               {/* Featured Listings */}
               <div id="featured-listings" className="mb-8">
-                <h2 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4">FEATURED LISTINGS</h2>
-                <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
+                <h2 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4 mt-6">FEATURED LISTINGS</h2>
+                <p className="text-center text-xs text-gray-500 -mt-3 mb-2">*Sponsored</p>
 
                 {/* Mobile: Horizontal scrolling cards */}
                 <div className="md:hidden">
@@ -895,18 +957,18 @@ export default function Home() {
                           Array.isArray(product.branches) && product.branches.length > 0 ? (
                             // Map through branches if they exist
                             product.branches.map((branch) => (
-                              <div key={`${product.documentId || product.id}-${branch.documentId || branch.id}`} className="flex-shrink-0 w-80 snap-start">
+                              <div key={`${product.documentId || product.id}-${branch.documentId || branch.id}`} className="flex-shrink-0 w-64 snap-start">
                                 <FeaturedListings listing={{...product, currentBranch: branch}} />
                               </div>
                             ))
                           ) : (
-                            <div key={product.id || index} className="flex-shrink-0 w-80 snap-start">
+                            <div key={product.id || index} className="flex-shrink-0 w-64 snap-start">
                               <FeaturedListings listing={product} />
                             </div>
                           )
                         ))
                       : (
-                        <div className="flex-shrink-0 w-80 snap-start flex justify-center">
+                        <div className="flex-shrink-0 w-64 snap-start flex justify-center">
                           {fallbackCard("featured listings")}
                         </div>
                       )}
@@ -930,7 +992,7 @@ export default function Home() {
                 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {listings?.filter(l => l.isFeatured).length > 0
                     ? listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
-                        <FeaturedListings key={index} listing={product} />
+                        <FeaturedListings key={product.id || index} listing={product} />
                       ))
                     : fallbackCard("featured listings")}
                 </div>
@@ -939,9 +1001,9 @@ export default function Home() {
               {/* Premium Listings */}
               <section className="py-4">
                 <div className="container mx-auto px-4">
-                  <div className="max-w-4xl mx-auto">
+                  <div className="max-w-6xl mx-auto">
                     <h3 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4 text-base font-bold">PREMIUM LISTINGS SPONSORED</h3>
-                    <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
+                    <p className="text-center text-xs text-gray-500 -mt-2 mb-2">*Sponsored</p>
 
                     <div className="space-y-6">
                       {paginatedListings.length === 0 ? (
@@ -981,3 +1043,19 @@ function filtersShallowEqual(a, b) {
   return true;
 }
 // Metadata moved to app/tombstones-for-sale/layout.tsx (server component)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

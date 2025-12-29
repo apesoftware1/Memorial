@@ -166,7 +166,7 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
   };
 
   return (
-    <div className="relative" ref={cardRef}> {/* Removed conditional margin-top */}
+    <div className="relative" ref={cardRef} onContextMenu={(e) => e.preventDefault()} onDragStart={(e) => e.preventDefault()}> {/* Removed conditional margin-top */}
       {/* Removed the "Available at X Branches" text completely */}
       
       <div

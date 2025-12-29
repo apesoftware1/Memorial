@@ -75,7 +75,11 @@ const FeaturedManufacturer = ({ manufacturer }) => {
           <h3 className="text-center text-gray-600 mb-2">Featured Manufacturer</h3>
           <p className="text-center text-xs text-gray-500 mb-4">*Sponsored</p>
 
-          <div className="border border-gray-300 rounded bg-white p-4 mb-4 hover:shadow-md transition-shadow">
+          <div 
+            className="border border-gray-300 rounded bg-white p-4 mb-4 hover:shadow-md transition-shadow"
+            onContextMenu={(e) => e.preventDefault()}
+            onDragStart={(e) => e.preventDefault()}
+          >
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0">
               <div>
                 <h4 className="font-bold text-gray-800 text-xl mb-1 leading-tight">{manufacturer.name}</h4>
@@ -175,4 +179,4 @@ const ProductCard = ({ product }) => (
   </div>
 )
 
-export default FeaturedManufacturer
+export default FeaturedManufacturer

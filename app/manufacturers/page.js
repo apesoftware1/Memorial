@@ -5,6 +5,7 @@ import { GET_MANUFACTURERS } from '@/graphql/queries/getManufacturers';
 import ManufacturerCard from '../components/ManufacturerCard';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Pagination from "@/components/Pagination";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { ChevronDown, MapPin, Search, Check } from "lucide-react";
 import Link from 'next/link';
@@ -53,6 +54,9 @@ export default function ManufacturersPage() {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   // State for sort order
   const [sortOrder, setSortOrder] = useState("Default");
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
   
   // State for filtered manufacturers
   const [filteredManufacturers, setFilteredManufacturers] = useState([]);
@@ -217,6 +221,7 @@ export default function ManufacturersPage() {
   // Handle search button click
   const handleSearchClick = () => {
     filterManufacturers();
+    setCurrentPage(1);
   };
   
   // Handle selection of province, city, or town
@@ -319,6 +324,13 @@ export default function ManufacturersPage() {
   }
   
   const resultsCount = sortedManufacturers.length;
+
+  // Determine visible list and paginate
+  const visibleManufacturers = isFiltered ? filteredManufacturers : sortedManufacturers;
+  const totalPages = Math.ceil((visibleManufacturers?.length || 0) / PAGE_SIZE) || 1;
+  const startIdx = (currentPage - 1) * PAGE_SIZE;
+  const endIdx = startIdx + PAGE_SIZE;
+  const paginatedManufacturers = visibleManufacturers.slice(startIdx, endIdx);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -606,39 +618,39 @@ export default function ManufacturersPage() {
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5" stroke="#2196f3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             {/* Mobile Sort Modal */}
-            {showSortDropdown && (
-              <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-40 sm:hidden">
-                <div ref={sortModalRef} className="w-full max-w-md mx-auto rounded-t-2xl bg-[#232323] p-4 pb-8 animate-slide-in-up">
-                  {['Default', 'Rating: High to Low', 'Listings: Most to Least', 'Distance: Nearest First', 'Alphabetical: A-Z'].map(option => (
-                    <div
-                      key={option}
-                      className={`flex items-center justify-between px-2 py-4 text-lg border-b border-[#333] last:border-b-0 cursor-pointer ${sortOrder === option ? 'text-white font-bold' : 'text-gray-200'}`}
-                      onClick={() => { setSortOrder(option); setShowSortDropdown(false); }}
-                    >
-                      <span>{option}</span>
-                      <span className={`ml-2 w-6 h-6 flex items-center justify-center rounded-full border-2 ${sortOrder === option ? 'border-blue-500' : 'border-gray-500'}`}
+                {showSortDropdown && (
+                  <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-40 sm:hidden">
+                    <div ref={sortModalRef} className="w-full max-w-md mx-auto rounded-t-2xl bg-[#232323] p-4 pb-8 animate-slide-in-up">
+                      {['Default', 'Rating: High to Low', 'Listings: Most to Least', 'Distance: Nearest First', 'Alphabetical: A-Z'].map(option => (
+                        <div
+                          key={option}
+                          className={`flex items-center justify-between px-2 py-4 text-lg border-b border-[#333] last:border-b-0 cursor-pointer ${sortOrder === option ? 'text-white font-bold' : 'text-gray-200'}`}
+                          onClick={() => { setSortOrder(option); setCurrentPage(1); setShowSortDropdown(false); }}
+                        >
+                          <span>{option}</span>
+                          <span className={`ml-2 w-6 h-6 flex items-center justify-center rounded-full border-2 ${sortOrder === option ? 'border-blue-500' : 'border-gray-500'}`}
                             style={{ background: sortOrder === option ? '#2196f3' : 'transparent' }}>
-                        {sortOrder === option && <span className="block w-3 h-3 bg-white rounded-full"></span>}
-                      </span>
+                            {sortOrder === option && <span className="block w-3 h-3 bg-white rounded-full"></span>}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+                )}
+                {/* Desktop Sort Dropdown */}
+                <div className="hidden sm:flex items-center">
+                  <span className="text-sm font-semibold text-gray-700 mr-2">Sort by</span>
+                  <select
+                    className="p-1 border border-gray-300 rounded text-sm font-semibold text-blue-600 bg-white"
+                    value={sortOrder}
+                    onChange={(e) => { setSortOrder(e.target.value); setCurrentPage(1); }}
+                  >
+                    <option>Default</option>
+                    <option>Rating: High to Low</option>
+                    <option>Listings: Most to Least</option>
+                    <option>Alphabetical: A-Z</option>
+                  </select>
                 </div>
-              </div>
-            )}
-            {/* Desktop Sort Dropdown */}
-            <div className="hidden sm:flex items-center">
-              <span className="text-sm font-semibold text-gray-700 mr-2">Sort by</span>
-              <select
-                className="p-1 border border-gray-300 rounded text-sm font-semibold text-blue-600 bg-white"
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-              >
-                <option>Default</option>
-                <option>Rating: High to Low</option>
-                <option>Listings: Most to Least</option>
-                <option>Alphabetical: A-Z</option>
-              </select>
-            </div>
           </div>
         </div>
 
@@ -646,8 +658,8 @@ export default function ManufacturersPage() {
         <div className="flex flex-col md:flex-row gap-0 w-auto">
           {/* Left: Manufacturers List and Pagination */}
           <div className="w-auto md:w-4/5 flex flex-col space-y-4 items-start">
-            {Array.isArray(isFiltered ? filteredManufacturers : data?.companies) && 
-              (isFiltered ? filteredManufacturers : data?.companies).map((company) => (
+            {Array.isArray(paginatedManufacturers) && 
+              paginatedManufacturers.map((company) => (
                 <ManufacturerCard
                   key={company.documentId}
                   manufacturer={{
@@ -657,34 +669,13 @@ export default function ManufacturersPage() {
                   }}
                 />
               ))}
-            {resultsCount > 5 && (
+            {visibleManufacturers.length > PAGE_SIZE && (
               <div className="mt-8 flex justify-start w-auto">
-                <nav className="inline-flex rounded-md shadow">
-                  <a
-                    href="#"
-                    className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                  >
-                    Previous
-                  </a>
-                  <a
-                    href="#"
-                    className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-blue-600 hover:bg-blue-50"
-                  >
-                    1
-                  </a>
-                  <a
-                    href="#"
-                    className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                  >
-                    2
-                  </a>
-                  <a
-                    href="#"
-                    className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                  >
-                    Next
-                  </a>
-                </nav>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={(page) => setCurrentPage(page)}
+                />
               </div>
             )}
           </div>

@@ -7,6 +7,7 @@ import SearchForm from "@/components/SearchForm";
 import FilterDropdown from "@/components/FilterDropdown";
 import LocationModal from "@/components/LocationModal";
 import CategoryTabs from "@/components/CategoryTabs.jsx";
+import MobileFilterTags from "@/components/MobileFilterTags.jsx";
 import { SearchLoader } from "@/components/ui/loader";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -147,7 +148,9 @@ const SearchContainer = ({
 }) => {
   const router = useRouter();
   const [currentQuery, setCurrentQuery] = useState("");
+  const [isCalculating, setIsCalculating] = useState(false);
   const [isSearchFormFocused, setIsSearchFormFocused] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
   // Modal functionality disabled - no longer needed
   // const [showFullScreenModal, setShowFullScreenModal] = useState(false);
   const searchFormRef = useRef(null);
@@ -228,7 +231,16 @@ const SearchContainer = ({
   };
 
   // Local state to control mobile-only location modal
-  const [showLocationModal, setShowLocationModal] = useState(false);
+
+  // Effect to simulate calculation loading state when filters or activeTab change
+  useEffect(() => {
+    setIsCalculating(true);
+    const timer = setTimeout(() => {
+      setIsCalculating(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [filters, activeTab]);
+
   const mobileLocationsData = useMemo(() => {
     const list = (filterOptions?.location || []).filter(Boolean);
 
@@ -749,38 +761,13 @@ const SearchContainer = ({
   const renderSearchButtonContent = () => {
     const searching =
       isSearching !== undefined ? isSearching : internalIsSearching;
-    if (searching) {
+    if (searching || isCalculating) {
       return <SearchLoader />;
     }
     
-    // If we have a search term, show "Found X abstracts"
-    if (filters?.search && filters.search !== "") {
-      // If we're on a specific category tab, show that category's results
-      if (categories && categories.length > 0 && activeTab !== undefined) {
-        const desiredOrder = [
-          "SINGLE",
-          "DOUBLE",
-          "CHILD",
-          "HEAD",
-          "PLAQUES",
-          "CREMATION",
-        ];
-        const sortedCategories = desiredOrder
-          .map((name) =>
-            categories.find((cat) => cat.name && cat.name.toUpperCase() === name)
-          )
-          .filter(Boolean);
-        const selectedCategoryObj = sortedCategories[activeTab];
-        if (selectedCategoryObj) {
-          return `Found ${searchButtonCount} ${selectedCategoryObj.name} abstracts`;
-        }
-      }
-      return `Found ${searchButtonCount} results`;
-    }
-    
-    // Always show count and category, even if 0
+    // Always calculate category label if available
     let categoryLabel = "";
-    if (categories && categories.length > 0) {
+    if (categories && categories.length > 0 && activeTab !== undefined) {
       const desiredOrder = [
         "SINGLE",
         "DOUBLE",
@@ -796,12 +783,20 @@ const SearchContainer = ({
         .filter(Boolean);
       const selectedCategoryObj = sortedCategories[activeTab];
       if (selectedCategoryObj) {
-        categoryLabel = selectedCategoryObj.name + " Results ";
+        categoryLabel = selectedCategoryObj.name + " tombstones";
       }
     }
-    return `Search (${searchButtonCount})${
-      categoryLabel ? " " + categoryLabel : ""
-    }`;
+    
+    // If we have a search term
+    if (filters?.search && filters.search !== "") {
+      if (categoryLabel) {
+         return `Found ${searchButtonCount} ${categoryLabel}`;
+      }
+      return `Found ${searchButtonCount} results`;
+    }
+
+    // Default state: "View (19) SINGLE tombstones"
+    return `View (${searchButtonCount})${categoryLabel ? " " + categoryLabel : ""}`;
   };
 
   // Use provided functions or defaults
@@ -877,7 +872,7 @@ const SearchContainer = ({
   );
 
   return (
-    <div className="w-full mt-0 md:mt-20">
+    <div className="w-full mt-28 md:mt-20">
       <div className="container mx-auto px-0 max-w-4xl">
         <div className="w-full md:max-w-lg flex flex-col justify-between relative bg-[#005D77]">
           {/* CategoryTabs - flush with top and sides */}
@@ -893,9 +888,18 @@ const SearchContainer = ({
           {/* (We keep the later single instance that includes action buttons) */}
 
           {/* Main content with padding below tabs (single instance kept) */}
-          <div className="flex flex-col gap-3 sm:gap-4 p-4 sm:p-6">
+          <div className="flex flex-col gap-3 sm:gap-4 px-4 pb-4 pt-4 sm:p-6">
+            
+            {/* Mobile Filter Tags */}
+            {!isDesktop && (
+              <MobileFilterTags 
+                activeFilters={filters} 
+                setActiveFilters={setFilters} 
+              />
+            )}
+
             {/* Search Heading */}
-            <h2 className="text-xl sm:text-2xl text-[#D4AF37] font-semibold mb-0 tracking-wide leading-tight">
+            <h2 className="text-xl sm:text-2xl text-[#D4AF37] font-semibold mb-0 tracking-wide leading-tight whitespace-nowrap">
               Find Your Loved One A Tombstone!
             </h2>
 

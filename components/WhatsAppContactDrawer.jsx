@@ -144,7 +144,11 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
               setShowPhoneIndex(null);
             }}
           />
-          <aside className="absolute right-0 top-0 h-full w-[90%] sm:w-[420px] bg-white shadow-xl flex flex-col">
+          <aside 
+            className="absolute right-0 top-0 h-full w-[90%] sm:w-[420px] bg-white shadow-xl flex flex-col"
+            onContextMenu={(e) => e.preventDefault()}
+            onDragStart={(e) => e.preventDefault()}
+          >
             {/* Header */}
             {view === "list" ? (
               <div className="flex items-center justify-between px-5 py-4 border-b">
