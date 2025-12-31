@@ -31,8 +31,8 @@ export default async function sitemap() {
           }
         `,
       }),
-      // Avoid caching to keep sitemap fresh
-      cache: "no-store",
+      // Use ISR with 1 hour revalidation instead of no-store to fix build error
+      next: { revalidate: 3600 },
     });
 
     if (res.ok) {
