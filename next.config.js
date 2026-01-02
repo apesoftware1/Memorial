@@ -2,27 +2,44 @@
 const path = require('path');
 
 const nextConfig = {
+  // eslint config is correct, keeping it.
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Explicitly set the output file tracing root to the current project directory
+  outputFileTracingRoot: path.join(__dirname),
   images: {
     // Re-enable Next Image optimization and properly whitelist remote hosts
     unoptimized: false,
-    domains: [
-      'typical-car-e0b66549b3.media.strapiapp.com',
-      'res.cloudinary.com',
-    ],
     formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'typical-car-e0b66549b3.media.strapiapp.com',
+      },
+      {
+        protocol: 'http',
+        hostname: 'typical-car-e0b66549b3.media.strapiapp.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+      {
+        protocol: 'http',
+        hostname: 'res.cloudinary.com',
+      },
+    ],
   },
   // Optimized webpack config to fix chunk and 404 errors
   webpack: (config, { dev, isServer }) => {
     // Basic module resolution
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': path.join(process.cwd(), './'),
+      '@': path.join(__dirname, './'),
     }
     
     // Optimize chunks
@@ -68,3 +85,4 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
+
