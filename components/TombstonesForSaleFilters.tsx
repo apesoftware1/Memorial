@@ -266,10 +266,18 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
         : (currentVal && currentVal !== 'All' && currentVal !== 'Any' && currentVal !== 'All Categories' && !replaceLabelWithSelected ? [currentVal] : []);
 
      return (
-    <div className="mb-2 relative w-full sm:rounded-none sm:border-b sm:border-gray-700">
-      <button
+    <div className="mb-2 relative w-full sm:rounded-none">
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => toggleFilter(name)}
-        className={`w-full flex justify-between items-center py-2 px-3 bg-[#0D7C99] text-white font-semibold text-sm rounded-t-sm focus:outline-none hover:bg-[#0D7C99]/90 min-h-[44px] transition-all`}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleFilter(name);
+          }
+        }}
+        className={`w-full flex justify-between items-center py-2 px-3 bg-[#0D7C99] text-white font-semibold text-sm rounded-t-sm focus:outline-none hover:bg-[#0D7C99]/90 min-h-[44px] transition-all cursor-pointer`}
         aria-expanded={showFilters === name}
         aria-haspopup="true"
         style={{ textAlign: 'left' }}
@@ -287,7 +295,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
             ))}
         </div>
         <ChevronDown className={`h-5 w-5 text-white transition-transform duration-200 ${showFilters === name ? 'transform rotate-180' : ''}`} />
-      </button>
+      </div>
 
       {showFilters === name && (
         <div className="absolute z-50 left-0 right-0 mt-0 bg-[#2E2E30] border border-gray-600 shadow-xl max-h-60 overflow-y-auto">
@@ -378,20 +386,14 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
             label="Category" 
             options={loading ? ["Loading..."] : ["All Categories", ...categories.map((cat: any) => cat.name)]} 
           />
-          <div className="border-t border-teal-700/60 my-2"></div>
         </div>
       )}
       
       <FilterDropdown name="location" label="Location" options={mergedOptions.location} />
-      <div className="border-t border-teal-700/60 my-2"></div>
       <FilterDropdown name="style" label="Head Style" options={mergedOptions.style} />
-      <div className="border-t border-teal-700/60 my-2"></div>
       <FilterDropdown name="slabStyle" label="Slab Style" options={mergedOptions.slabStyle} />
-      <div className="border-t border-teal-700/60 my-2"></div>
       <FilterDropdown name="stoneType" label="Stone Type" options={mergedOptions.stoneType} />
-      <div className="border-t border-teal-700/60 my-2"></div>
       <FilterDropdown name="colour" label="Colour" options={mergedOptions.colour} />
-      <div className="border-t border-teal-700/60 my-2"></div>
       <FilterDropdown name="custom" label="Customisation" options={mergedOptions.custom} />
       
       {/* Duplicate Search Button */}
