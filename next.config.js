@@ -3,9 +3,6 @@ const path = require('path');
 
 const nextConfig = {
   // eslint config is correct, keeping it.
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -85,4 +82,5 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
+
 
