@@ -324,7 +324,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
                           alt={`${option} icon`}
                           width={24}
                           height={24}
-                          className={`w-full h-full object-contain filter brightness-0 invert`} 
+                          className={`w-full h-full object-contain ${name !== 'colour' ? 'filter brightness-0 invert' : ''}`} 
                         />
                       </div>
                   )}
