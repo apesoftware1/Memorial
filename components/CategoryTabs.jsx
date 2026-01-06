@@ -9,8 +9,8 @@ export default function CategoryTabs({ categories, activeTab, setActiveTab }) {
     .map(name => categories.find(cat => cat.name && cat.name.toUpperCase() === name))
     .filter(Boolean);
   return (
-    <div className="w-full md:max-w-lg overflow-hidden py-0">
-      <div className="flex overflow-x-auto hide-scrollbar h-[56px]">
+    <div className="w-full overflow-hidden py-0">
+      <div className="flex overflow-x-auto h-[56px] scrollbar-hide">
         {sortedCategories.map((item, index) => (
           <div
             key={index}
@@ -56,3 +56,4 @@ export default function CategoryTabs({ categories, activeTab, setActiveTab }) {
     </div>
   );
 }
+

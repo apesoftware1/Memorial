@@ -2,22 +2,34 @@
 const path = require('path');
 
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // eslint: {
+  //   ignoreDuringBuilds: true,
+  // },
   typescript: {
     ignoreBuildErrors: true,
   },
   images: {
     // Re-enable Next Image optimization and properly whitelist remote hosts
     unoptimized: false,
-    domains: [
-      'typical-car-e0b66549b3.media.strapiapp.com',
-      'res.cloudinary.com',
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'typical-car-e0b66549b3.media.strapiapp.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+      {
+        protocol: 'http',
+        hostname: 'res.cloudinary.com',
+      },
     ],
     formats: ['image/avif', 'image/webp'],
   },
   // Optimized webpack config to fix chunk and 404 errors
+  // Note: This only applies when using 'next build' or 'next dev --webpack'
+  // When using 'next dev' (Turbopack), this block is skipped.
   webpack: (config, { dev, isServer }) => {
     // Basic module resolution
     config.resolve.alias = {

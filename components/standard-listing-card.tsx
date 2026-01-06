@@ -116,6 +116,8 @@ export function StandardListingCard({
       onClick={handleClick}
       role="button"
       tabIndex={0}
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
     >
       {/* Mobile Layout (up to 768px) */}
       <div className="relative flex flex-col md:hidden">
@@ -528,23 +530,23 @@ export function StandardListingCard({
                   listing.additionalProductDetails.foundationOptions.length > 0 &&
                   listing.additionalProductDetails.foundationOptions[0]
                     ?.value && (
-                    <>
-                      {listing.additionalProductDetails
-                        ?.transportAndInstallation &&
-                      Array.isArray(
-                        listing.additionalProductDetails.transportAndInstallation
-                      ) &&
+                  <>
+                    {listing.additionalProductDetails
+                      ?.transportAndInstallation &&
+                    Array.isArray(
                       listing.additionalProductDetails.transportAndInstallation
-                        .length > 0 &&
-                    listing.additionalProductDetails
-                      .transportAndInstallation[0]?.value
-                      ? " | "
-                      : ""}
-                    {
-                      listing.additionalProductDetails.foundationOptions[0]
-                        .value
-                    }
-                  </>
+                    ) &&
+                    listing.additionalProductDetails.transportAndInstallation
+                      .length > 0 &&
+                  listing.additionalProductDetails
+                    .transportAndInstallation[0]?.value
+                    ? " | "
+                    : ""}
+                  {
+                    listing.additionalProductDetails.foundationOptions[0]
+                      .value
+                  }
+                </>
                 )}
                 {listing.additionalProductDetails?.warrantyOrGuarantee &&
                   Array.isArray(
@@ -575,11 +577,11 @@ export function StandardListingCard({
                       ?.value)
                       ? " | "
                       : ""}
-                    {
-                      listing.additionalProductDetails.warrantyOrGuarantee[0]
-                        .value
-                    }
-                  </>
+                  {
+                    listing.additionalProductDetails.warrantyOrGuarantee[0]
+                      .value
+                  }
+                </>
                 )}
             </div>
                

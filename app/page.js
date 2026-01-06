@@ -79,7 +79,17 @@ export default function Home() {
   const handleMobileMenuToggle = () => setMobileMenuOpen((open) => !open);
   const handleMobileDropdownToggle = (section) => setMobileDropdown((prev) => prev === section ? null : section);
 
-  const activeCategory = categories[activeTab]
+  // Sort categories to match CategoryTabs logic
+  const sortedCategories = useMemo(() => {
+    if (!categories) return [];
+    const desiredOrder = ["SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"];
+    return desiredOrder
+      .map(name => categories.find(cat => cat.name && cat.name.toUpperCase() === name))
+      .filter(Boolean);
+  }, [categories]);
+
+  const activeCategory = sortedCategories[activeTab] || categories[activeTab];
+
   // All hooks at the top
   const [uiState, setUiState] = useState({
     showAllOptions: false,
@@ -272,8 +282,8 @@ useEffect(() => {
 
       {/* 2. Hero Section with Search */}
       <section className="relative flex items-center bg-[#333]">
-        {/* Background Image - Hidden on mobile */}
-        <div className="absolute inset-0 z-0 hidden sm:block">
+        {/* Background Image - Shown on mobile too */}
+        <div className="absolute top-0 left-0 w-full h-28 md:h-full md:inset-0 z-0 block">
           <Image
             src={activeCategory?.backgroundImage?.url || "/placeholder.svg"}
             alt= {activeCategory?.name || "Category background"}

@@ -12,6 +12,7 @@ interface TombstonesForSaleFiltersProps {
   filteredListings?: any[];
   handleSearch?: () => void;
   getActiveCategory?: () => string;
+  showCategoryDropdown?: boolean;
 }
 
 // Use the same filter options as SearchContainer
@@ -129,6 +130,16 @@ const getIconForOption = (filterName: string, option: string) => {
   switch (filterName) {
     case 'location':
       return locationIcons[option as keyof typeof locationIcons];
+    case 'category':
+      // Try direct match
+      if (categoryIcons[option as keyof typeof categoryIcons]) return categoryIcons[option as keyof typeof categoryIcons];
+      // Try matching start
+      const key = Object.keys(categoryIcons).find(k => option.startsWith(k));
+      if (key) return categoryIcons[key as keyof typeof categoryIcons];
+      // Try special cases
+      if (option.includes('Headstone')) return categoryIcons['Head'];
+      if (option.includes('Plaques')) return categoryIcons['Plaque'];
+      return null;
     case 'style':
       return headStyleIcons[option as keyof typeof headStyleIcons];
     case 'slabStyle':
@@ -144,7 +155,7 @@ const getIconForOption = (filterName: string, option: string) => {
   }
 };
 
-export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions, filteredListings, handleSearch, getActiveCategory }: TombstonesForSaleFiltersProps) {
+export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions, filteredListings, handleSearch, getActiveCategory, showCategoryDropdown = true }: TombstonesForSaleFiltersProps) {
   const [showMore, setShowMore] = useState(false);
   const { categories, loading } = useListingCategories();
   const mergedOptions = { ...defaultFilterOptions, ...filterOptions };
@@ -169,84 +180,156 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
     setShowFilters(showFilters === filter ? null : filter)
   }
 
+  // Helper for multi-select
+  const isMultiSelect = (name: string) => ['style', 'slabStyle', 'stoneType', 'colour', 'custom'].includes(name);
+
   // Set filter value
   const setFilter = (category: string, value: string) => {
-    setActiveFilters({
-      ...activeFilters,
-      [category]: value,
-    })
-    setShowFilters(null)
+    if (isMultiSelect(category)) {
+        let current = activeFilters[category];
+        let newValues = [];
+        
+        // Normalize current to array
+        if (Array.isArray(current)) {
+            newValues = [...current];
+        } else if (current && current !== 'All' && current !== 'Any' && current !== 'All Categories' && current !== '') {
+            newValues = [current];
+        }
+        
+        if (value === 'Any' || value === 'All' || value === 'All Categories') {
+             newValues = []; // Clear
+        } else {
+             if (newValues.includes(value)) {
+                 newValues = newValues.filter(v => v !== value);
+             } else {
+                 newValues.push(value);
+             }
+        }
+        
+        setActiveFilters({
+          ...activeFilters,
+          [category]: newValues.length > 0 ? newValues : null,
+        });
+        // Keep open
+    } else {
+        setActiveFilters({
+          ...activeFilters,
+          [category]: value,
+        })
+        setShowFilters(null)
+    }
   }
 
+  // Helper to remove a specific filter tag
+  const removeFilterTag = (category: string, value: string) => {
+    if (category === 'minPrice') {
+      setActiveFilters({ ...activeFilters, minPrice: "Min Price" });
+    } else if (category === 'maxPrice') {
+      setActiveFilters({ ...activeFilters, maxPrice: "Max Price" });
+    } else if (isMultiSelect(category)) {
+      setFilter(category, value); // reusing setFilter logic which toggles/removes
+    } else {
+      // Single select (location, category)
+      setActiveFilters({ ...activeFilters, [category]: null });
+    }
+  };
+
+  // Component to render a single tag
+  const FilterTag = ({ label, onRemove }: { label: string, onRemove: () => void }) => (
+    <div className="flex items-center bg-[#004d63] text-white text-xs px-2 py-1 rounded-sm border border-teal-700/50" onClick={(e) => e.stopPropagation()}>
+      <span className="mr-1">{label}</span>
+      <button 
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+        className="hover:text-red-300 focus:outline-none"
+      >
+        <div className="text-[10px]">✕</div>
+      </button>
+    </div>
+  );
+
   // FilterDropdown component
-  const FilterDropdown = ({ name, label, options, replaceLabelWithSelected = false }: { name: string; label: string; options: string[]; replaceLabelWithSelected?: boolean }) => (
-    <div className="mb-2 relative w-full sm:rounded-none sm:border-b sm:border-gray-200">
-      <button
+  const FilterDropdown = ({ name, label, options, replaceLabelWithSelected = false }: { name: string; label: string; options: string[]; replaceLabelWithSelected?: boolean }) => {
+     const isMulti = isMultiSelect(name);
+     const currentVal = activeFilters?.[name];
+     
+     const isSelected = (opt: string) => {
+         if (isMulti) {
+             if (Array.isArray(currentVal)) return currentVal.includes(opt);
+             return currentVal === opt;
+         }
+         return currentVal === opt;
+     };
+
+     // Get selected items for tags
+     const selectedItems = isMulti 
+        ? (Array.isArray(currentVal) ? currentVal : (currentVal ? [currentVal] : []))
+        : (currentVal && currentVal !== 'All' && currentVal !== 'Any' && currentVal !== 'All Categories' && !replaceLabelWithSelected ? [currentVal] : []);
+
+     return (
+    <div className="mb-2 relative w-full sm:rounded-none">
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => toggleFilter(name)}
-        className={`w-full flex justify-between items-center py-2 px-2 bg-white text-gray-800 font-semibold text-sm border border-gray-200 sm:border-0 rounded sm:rounded-none focus:outline-none focus:ring-2 focus:ring-amber-400 min-h-[36px] h-[36px] sm:min-h-[56px] sm:h-[56px] ${showFilters === name ? 'ring-2 ring-amber-400 border-amber-400' : ''}`}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleFilter(name);
+          }
+        }}
+        className={`w-full flex justify-between items-center py-2 px-3 bg-[#0D7C99] text-white font-semibold text-sm rounded-t-sm focus:outline-none hover:bg-[#0D7C99]/90 min-h-[44px] transition-all cursor-pointer`}
         aria-expanded={showFilters === name}
         aria-haspopup="true"
         style={{ textAlign: 'left' }}
       >
-        <div className="flex items-center gap-2 overflow-hidden">
-          <span className="text-gray-700 font-semibold">{(replaceLabelWithSelected && activeFilters?.[name]) ? activeFilters[name] : label}</span>
-          {activeFilters?.[name] && !replaceLabelWithSelected ? (
-            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded border border-amber-300 max-w-[160px] truncate" title={activeFilters[name]}>
-              {activeFilters[name]}
+        <div className="flex flex-wrap items-center gap-2 pr-2">
+            <span className="text-white font-semibold text-base">
+                {replaceLabelWithSelected && !isMulti && currentVal ? currentVal : label}
             </span>
-          ) : null}
+            {selectedItems.length > 0 && selectedItems.map((item: string) => (
+                <FilterTag 
+                  key={item} 
+                  label={item} 
+                  onRemove={() => removeFilterTag(name, item)} 
+                />
+            ))}
         </div>
-        <ChevronDown
-          className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${showFilters === name ? "transform rotate-180" : ""}`}
-        />
-      </button>
+        <ChevronDown className={`h-5 w-5 text-white transition-transform duration-200 ${showFilters === name ? 'transform rotate-180' : ''}`} />
+      </div>
+
       {showFilters === name && (
-        <div className="absolute left-0 top-full z-[100] mt-1 w-full bg-[#2E2E30] rounded-md shadow-lg border border-gray-700 animate-slide-in">
-          {activeFilters?.[name] && (
-            <div className="px-3 py-2 bg-[#252526] text-gray-200 text-xs border-b border-gray-700 flex items-center gap-2">
-              <span className="opacity-80">Selected:</span>
-              <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded border border-amber-300">{activeFilters[name]}</span>
-            </div>
-          )}
-          <ul className="py-1 max-h-60 overflow-auto" role="menu" aria-orientation="vertical">
+        <div className="absolute z-50 left-0 right-0 mt-0 bg-[#2E2E30] border border-gray-600 shadow-xl max-h-60 overflow-y-auto">
+          <ul className="py-2" role="menu">
             {options.map((option: string) => {
               const iconPath = getIconForOption(name, option);
-              const isSelected = activeFilters?.[name] === option;
+              const selected = isSelected(option);
+              
               return (
                 <li
                   key={option}
                   onClick={() => setFilter(name, option)}
-                  onMouseDown={(e) => { e.preventDefault(); setFilter(name, option); }}
-                  onTouchStart={(e) => { e.preventDefault(); setFilter(name, option); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFilter(name, option); } }}
-                  className={`px-3 py-2 text-sm text-gray-300 hover:bg-[#3E3E40] flex items-center cursor-pointer ${isSelected ? 'bg-[#3E3E40] border-l-2 border-amber-500' : ''}`}
+                  className={`px-4 py-3 text-sm text-gray-200 hover:bg-[#3E3E40] transition-colors flex items-center cursor-pointer border-b border-gray-700/50 last:border-0`}
                   role="menuitem"
-                  tabIndex={0}
-                  aria-selected={isSelected}
                 >
-                  <div className="flex items-center flex-1">
-                    {iconPath && (
+                  {/* Checkbox / Radio */}
+                  <div className={`w-5 h-5 mr-3 flex items-center justify-center rounded-sm border ${selected ? 'bg-white border-white' : 'border-gray-400 bg-transparent'}`}>
+                      {selected && <div className="w-2.5 h-2.5 bg-black rounded-[1px]"></div>}
+                  </div>
+                  
+                  {/* Icon */}
+                  {iconPath && (
                       <div className="w-6 h-6 mr-3 flex-shrink-0">
                         <Image
                           src={iconPath}
                           alt={`${option} icon`}
                           width={24}
                           height={24}
-                          className={`w-full h-full object-contain ${
-                            name !== 'slabStyle' && name !== 'colour' 
-                              ? 'filter brightness-0 invert opacity-80' 
-                              : ''
-                          }`}
+                          className={`w-full h-full object-contain ${name !== 'colour' ? 'filter brightness-0 invert' : ''}`} 
                         />
                       </div>
-                    )}
-                    <span>{option}</span>
-                  </div>
-                  {isSelected && (
-                    <svg className="h-4 w-4 text-green-500 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
                   )}
+                  
+                  <span className="font-medium">{option}</span>
                 </li>
               );
             })}
@@ -254,56 +337,64 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
         </div>
       )}
     </div>
-  )
+  )};
 
   return (
-    <div className="w-full" ref={filterContainerRef}>
+    <div
+      className="w-full bg-[#005D77] text-white min-h-full"
+      ref={filterContainerRef}
+    >
+      <div className="p-4 sm:p-6">
       {/* Price Section */}
       <div className="mb-4">
-        <div className="bg-white sm:rounded-none sm:shadow-sm sm:border sm:border-gray-200 p-4 sm:p-4">
-          <div className="font-bold text-xs text-gray-700 mb-3 tracking-wide">PRICE</div>
-          <div className="grid grid-cols-2 gap-2">
-            <select
-              className="w-full p-2 border border-gray-300 rounded text-sm min-h-[36px] h-[36px] sm:min-h-[56px] sm:h-[56px]"
-              value={activeFilters.minPrice}
-              onChange={(e) => setActiveFilters({ ...activeFilters, minPrice: e.target.value })}
-            >
-              {mergedOptions.minPrice.map((option: string) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
-            <select
-              className="w-full p-2 border border-gray-300 rounded text-sm min-h-[36px] h-[36px] sm:min-h-[56px] sm:h-[56px]"
-              value={activeFilters.maxPrice}
-              onChange={(e) => setActiveFilters({ ...activeFilters, maxPrice: e.target.value })}
-            >
-              {mergedOptions.maxPrice.map((option: string) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
-          </div>
+        <div className="grid grid-cols-2 gap-2">
+          <select
+            className="w-full p-2 border border-teal-700/60 bg-[#0D7C99] text-white rounded-none text-sm min-h-[36px] h-[36px] sm:min-h-[56px] sm:h-[56px]"
+            value={activeFilters.minPrice}
+            onChange={(e) => setActiveFilters({ ...activeFilters, minPrice: e.target.value })}
+          >
+            {mergedOptions.minPrice.map((option: string) => (
+              <option key={option}>{option}</option>
+            ))}
+          </select>
+          <select
+            className="w-full p-2 border border-teal-700/60 bg-[#0D7C99] text-white rounded-none text-sm min-h-[36px] h-[36px] sm:min-h-[56px] sm:h-[56px]"
+            value={activeFilters.maxPrice}
+            onChange={(e) => setActiveFilters({ ...activeFilters, maxPrice: e.target.value })}
+          >
+            {mergedOptions.maxPrice.map((option: string) => (
+              <option key={option}>{option}</option>
+            ))}
+          </select>
+        </div>
+        {/* Price Tags */}
+        <div className="flex flex-wrap mt-2">
+          {activeFilters.minPrice && activeFilters.minPrice !== "Min Price" && (
+             <FilterTag label={activeFilters.minPrice} onRemove={() => removeFilterTag('minPrice', activeFilters.minPrice)} />
+          )}
+          {activeFilters.maxPrice && activeFilters.maxPrice !== "Max Price" && (
+             <FilterTag label={activeFilters.maxPrice} onRemove={() => removeFilterTag('maxPrice', activeFilters.maxPrice)} />
+          )}
         </div>
       </div>
-      <div className="border-t border-gray-200 my-2"></div>
+      <div className="border-t border-teal-700/60 my-2"></div>
       
-      {/* Category Filter */}
-      <FilterDropdown 
-        name="category" 
-        label="Category" 
-        options={loading ? ["Loading..."] : ["All Categories", ...categories.map((cat: any) => cat.name)]} 
-      />
-      <div className="border-t border-gray-200 my-2"></div>
+      {/* Category Filter (optional; hidden when using CategoryTabs) */}
+      {showCategoryDropdown && (
+        <div className="md:hidden">
+          <FilterDropdown 
+            name="category" 
+            label="Category" 
+            options={loading ? ["Loading..."] : ["All Categories", ...categories.map((cat: any) => cat.name)]} 
+          />
+        </div>
+      )}
       
-      <FilterDropdown name="location" label="Location" options={mergedOptions.location} replaceLabelWithSelected />
-      <div className="border-t border-gray-200 my-2"></div>
+      <FilterDropdown name="location" label="Location" options={mergedOptions.location} />
       <FilterDropdown name="style" label="Head Style" options={mergedOptions.style} />
-      <div className="border-t border-gray-200 my-2"></div>
       <FilterDropdown name="slabStyle" label="Slab Style" options={mergedOptions.slabStyle} />
-      <div className="border-t border-gray-200 my-2"></div>
       <FilterDropdown name="stoneType" label="Stone Type" options={mergedOptions.stoneType} />
-      <div className="border-t border-gray-200 my-2"></div>
       <FilterDropdown name="colour" label="Colour" options={mergedOptions.colour} />
-      <div className="border-t border-gray-200 my-2"></div>
       <FilterDropdown name="custom" label="Customisation" options={mergedOptions.custom} />
       
       {/* Duplicate Search Button */}
@@ -316,8 +407,29 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
             <Search className="h-4 w-4 flex-shrink-0" />
             <span className="truncate">{`Search (${filteredListings.length}) ${getActiveCategory()} Tombstones`}</span>
           </button>
+          {/* Clear All button */}
+          <button
+            className="mt-3 w-full bg-transparent border border-white/40 text-white hover:bg-white/10 active:bg-white/20 p-2 rounded text-sm"
+            onClick={() => {
+              setActiveFilters({
+                minPrice: "Min Price",
+                maxPrice: "Max Price",
+                location: null,
+                stoneType: null,
+                color: null,
+                style: null,
+                slabStyle: null,
+                custom: null,
+                colour: null,
+                category: activeFilters.category || null,
+              });
+            }}
+          >
+            Clear All
+          </button>
         </div>
       )}
+      </div>
     </div>
   )
 }

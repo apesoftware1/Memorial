@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Heart, MapPin, Camera, Check, User2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -199,13 +199,13 @@ export function PremiumListingCard({
   const branches = Array.isArray(listing?.branches) ? listing.branches : [];
   const hasBranches = branches.length > 0;
   
+  const pathname = usePathname();
+  
   // Check if we're on the tombstones-for-sale page and not on the home page
-  const isTombstonesForSalePage = typeof window !== 'undefined' && 
-    window.location.pathname.includes('tombstones-for-sale') && 
-    !window.location.pathname.match(/^\/?$/); // Hide on home page
+  const isTombstonesForSalePage = pathname?.includes('tombstones-for-sale') && pathname !== '/';
   
   return (
-    <div className="relative mt-7" ref={cardRef}>
+    <div className="relative mt-7" ref={cardRef} onContextMenu={(e) => e.preventDefault()} onDragStart={(e) => e.preventDefault()}>
       {hasBranches && isTombstonesForSalePage && (
         <div className="absolute -top-7 right-0 z-10 bg-gray-800 text-white px-3 py-1 text-sm font-medium rounded-t-md">
           Available at {branches.length} {branches.length === 1 ? 'Branch' : 'Branches'}
@@ -830,3 +830,4 @@ const shouldShowDetail = (value: any) => {
   // show only if contains any non-digit character
   return /[^\d]/.test(str);
 };
+

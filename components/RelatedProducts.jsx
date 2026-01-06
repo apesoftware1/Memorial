@@ -13,7 +13,11 @@ export default function RelatedProducts({ products = [] }) {
       {products.length > 0 ? (
         products.slice(0, 3).map((product) => (
           <Link key={product.documentId} href={`/tombstones-for-sale/${product.documentId}`} className="block">
-            <div className="flex border-b border-gray-200 py-3 hover:bg-gray-50 transition">
+            <div 
+              className="flex border-b border-gray-200 py-3 hover:bg-gray-50 transition"
+              onContextMenu={(e) => e.preventDefault()}
+              onDragStart={(e) => e.preventDefault()}
+            >
               <div className="relative h-20 w-20 flex-shrink-0">
                 <Image
                   src={product.mainImageUrl || "/placeholder.svg"}

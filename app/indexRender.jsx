@@ -30,7 +30,7 @@ const IndexRender = ({
   const handleFeaturedScroll = () => {
     if (featuredScrollRef.current) {
       const scrollLeft = featuredScrollRef.current.scrollLeft;
-      const cardWidth = 320; // Card width + gap
+      const cardWidth = 304; // Card width (w-72 = 288px) + gap (gap-4 = 16px)
       const newIndex = Math.round(scrollLeft / cardWidth);
       setFeaturedActiveIndex(Math.min(newIndex, 2)); // Max 3 cards (0, 1, 2)
     }
@@ -39,7 +39,7 @@ const IndexRender = ({
   // Function to scroll to specific featured card
   const scrollToFeaturedCard = (index) => {
     if (featuredScrollRef.current) {
-      const cardWidth = 320;
+      const cardWidth = 304;
       featuredScrollRef.current.scrollTo({
         left: index * cardWidth,
         behavior: 'smooth'
@@ -193,27 +193,27 @@ const IndexRender = ({
             
             {/* Mobile: Horizontal scrolling cards */}
             <div className="md:hidden">
-              <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide" ref={featuredScrollRef}>
+              <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide px-4" ref={featuredScrollRef}>
                 {[0, 1, 2].map(idx =>
                   featuredListings && featuredListings[idx] ? (
-                    <div key={featuredListings[idx].id || idx} className="flex-shrink-0 w-80 snap-start">
+                    <div key={featuredListings[idx].id || idx} className="flex-shrink-0 w-72 snap-start">
                       <FeaturedListings listing={featuredListings[idx]} />
                     </div>
                   ) : (
-                    <div key={"fallback-" + idx} className="flex-shrink-0 w-80 snap-start flex justify-center">
+                    <div key={"fallback-" + idx} className="flex-shrink-0 w-72 snap-start flex justify-center">
                       {fallbackCard("featured listings")}
                     </div>
                   )
                 )}
               </div>
               {/* Pagination Dots - Mobile only */}
-              <div className="flex justify-center mt-4 space-x-4 mb-4">
+              <div className="flex justify-center mt-4 space-x-3 mb-4">
                 {[0, 1, 2].map((index) => (
                   <button
                     key={index}
                     onClick={() => scrollToFeaturedCard(index)}
-                    className={`w-5 h-5 rounded-full transition-colors duration-200 shadow-md ${
-                      featuredActiveIndex === index ? 'bg-blue-700 ring-4 ring-blue-300' : 'bg-gray-400 hover:bg-blue-500'
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-200 shadow-sm ${
+                      featuredActiveIndex === index ? 'bg-blue-700 ring-2 ring-blue-300 scale-110' : 'bg-gray-300 hover:bg-blue-400'
                     }`}
                     aria-label={`Go to card ${index + 1}`}
                   ></button>

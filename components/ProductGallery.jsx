@@ -27,7 +27,12 @@ export default function ProductGallery({
 
   return (
     <>
-      <div className="relative w-full h-[400px] overflow-hidden mb-2 px-2 sm:px-0 cursor-pointer" onClick={handleImageClick}>
+      <div 
+        className="relative w-full h-[400px] overflow-hidden mb-2 px-2 sm:px-0 cursor-pointer" 
+        onClick={handleImageClick}
+        onContextMenu={(e) => e.preventDefault()}
+        onDragStart={(e) => e.preventDefault()}
+      >
         <Image
           src={images[selectedIndex] || "/placeholder.svg"}
           alt={productTitle}

@@ -77,6 +77,8 @@ export const metadata: Metadata = {
 
 import { Toaster } from "@/components/ui/toaster";
 import GAEvents from './components/GAEvents'
+import ImageProtection from "@/components/ImageProtection";
+import MaintenanceBanner from "@/components/MaintenanceBanner";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -104,21 +106,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `}
         </Script>
       </head>
-      <body className={`${inter.className} bg-gray-50`}>
-        {/* Localize theme handling to regan-dashboard pages only */}
+      <body className={inter.className}>
+        <ImageProtection />
         <SessionWrapper>
           <ApolloWrapper>
             <FavoritesProvider>
               {children}
-              {/* Track GA pageviews on client-side route changes (wrap in Suspense to satisfy Next.js) */}
-              <Suspense fallback={null}>
-                <GAEvents />
-              </Suspense>
-              <Toaster />
             </FavoritesProvider>
           </ApolloWrapper>
         </SessionWrapper>
+        <Toaster />
+        <Suspense fallback={null}>
+          <GAEvents />
+        </Suspense>
       </body>
     </html>
-  );
+  )
 }

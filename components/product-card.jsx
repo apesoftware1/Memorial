@@ -32,7 +32,11 @@ export function ProductCard(props) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden transition-transform hover:shadow-lg">
+    <div 
+      className="bg-white rounded-lg shadow-md overflow-hidden transition-transform hover:shadow-lg"
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+    >
       <Link href={`/product/${id}`} className="block">
         <div className="relative h-48 w-full">
           <Image 
@@ -62,3 +66,4 @@ export function ProductCard(props) {
     </div>
   )
 }
+
