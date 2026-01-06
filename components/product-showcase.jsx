@@ -236,16 +236,22 @@ export default function ProductShowcase({ listing, id, allListings = [], current
           Home
         </Link>
         <span className="mx-1">&gt;</span>
-        <Link href="/tombstones-on-special" className="hover:underline">
-          Tombstones on Special
+        <Link href="/tombstones-for-sale" className="hover:underline">
+          Tombstones for sale
         </Link>
         <span className="mx-1">&gt;</span>
         <Link 
-          href={`/manufacturers/manufacturers-Profile-Page/${listing.company?.documentId || listing.companyId}${branch ? `?branch=${branch}` : ''}`}
+          href={`/manufacturers/manufacturers-Profile-Page/${listing.company?.documentId || listing.companyId}`}
           className="text-blue-600 hover:text-blue-800 transition-colors"
         >
-          {listing.company?.location || "N/A"}
+          {listing.company?.name || "Company"}
         </Link>
+        {selectedBranch && (
+          <>
+            <span className="mx-1">&gt;</span>
+            <span className="text-gray-600">{selectedBranch.name}</span>
+          </>
+        )}
         <span className="mx-1">&gt;</span>
         <span className="text-gray-900 font-semibold">{listing.title}</span>
       </nav>
@@ -271,7 +277,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
               {/* Location and navigation links on the same horizontal line */}
               <div className="flex flex-row items-center justify-between w-full mb-1 flex-wrap">
                 <p className="text-sm text-gray-700 mt-2 w-full sm:w-auto">
-                  {listing.company?.location || "N/A"} |
+                  {selectedBranch?.location?.address || listing.company?.location || "N/A"} |
                   <>
                     {effectiveDistanceInfo?.distance?.text ? (
                       <>

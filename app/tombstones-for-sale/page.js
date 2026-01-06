@@ -844,13 +844,7 @@ export default function Home() {
               <X className="h-6 w-6 text-gray-700" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 pb-6">
-            {/* Category Tabs - Mobile drawer */}
-            {sortedCategories.length > 0 && (
-              <div className="mb-4">
-                {/* CategoryTabs removed */}
-              </div>
-            )}
+          <div className="flex-1 overflow-y-auto w-full p-0">
             <TombstonesForSaleFilters
               activeFilters={activeFilters}
               setActiveFilters={setActiveFilters}

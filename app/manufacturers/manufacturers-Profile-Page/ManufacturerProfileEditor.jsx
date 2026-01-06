@@ -667,6 +667,9 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
           listing_category: categoryDocId
             ? { connect: [{ documentId: categoryDocId }] }
             : undefined,
+          branches: full.branches?.length
+            ? { connect: full.branches.map((b) => ({ documentId: b.documentId })) }
+            : undefined,
 
           productDetails: {
             color: (full.productDetails?.color || []).map(({ value }) => ({

@@ -318,9 +318,11 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
               {listing?.price ? formatPrice(listing.price) : "Contact for price"}
             </div>
             <div className="mt-1 mb-0 md:hidden">
-              <Badge className="text-white text-sm px-3 py-1 rounded bg-pink-600">
-                {getCategoryLabel() || listing?.adFlasher || "Available at this branch"}
-              </Badge>
+              {(getCategoryLabel() || listing?.adFlasher) && (
+                <Badge className="text-white text-sm px-3 py-1 rounded bg-pink-600">
+                  {getCategoryLabel() || listing?.adFlasher}
+                </Badge>
+              )}
             </div>
           </div>
           

@@ -5,6 +5,7 @@ export const GET_LISTING_BY_ID = gql`
     listing(documentId: $documentID) {
       documentId
       branches {
+        documentId
         name
         sales_reps {
           call

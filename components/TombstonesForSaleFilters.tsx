@@ -341,9 +341,10 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
 
   return (
     <div
-      className="w-full bg-[#005D77] text-white rounded-none shadow-sm p-4 sm:p-6"
+      className="w-full bg-[#005D77] text-white min-h-full"
       ref={filterContainerRef}
     >
+      <div className="p-4 sm:p-6">
       {/* Price Section */}
       <div className="mb-4">
         <div className="grid grid-cols-2 gap-2">
@@ -428,6 +429,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
           </button>
         </div>
       )}
+      </div>
     </div>
   )
 }

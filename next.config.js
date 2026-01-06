@@ -2,23 +2,26 @@
 const path = require('path');
 
 const nextConfig = {
-  // eslint config is correct, keeping it.
+  // Turbopack configuration to silence warnings
+  experimental: {
+    turbo: {
+      resolveAlias: {
+        '@': path.join(process.cwd(), './'),
+      }
+    }
+  },
+  // eslint: {
+  //   ignoreDuringBuilds: true,
+  // },
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Explicitly set the output file tracing root to the current project directory
-  outputFileTracingRoot: path.join(__dirname),
   images: {
     // Re-enable Next Image optimization and properly whitelist remote hosts
     unoptimized: false,
-    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'typical-car-e0b66549b3.media.strapiapp.com',
-      },
-      {
-        protocol: 'http',
         hostname: 'typical-car-e0b66549b3.media.strapiapp.com',
       },
       {
@@ -30,13 +33,16 @@ const nextConfig = {
         hostname: 'res.cloudinary.com',
       },
     ],
+    formats: ['image/avif', 'image/webp'],
   },
   // Optimized webpack config to fix chunk and 404 errors
+  // Note: This only applies when using 'next build' or 'next dev --webpack'
+  // When using 'next dev' (Turbopack), this block is skipped.
   webpack: (config, { dev, isServer }) => {
     // Basic module resolution
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': path.join(__dirname, './'),
+      '@': path.join(process.cwd(), './'),
     }
     
     // Optimize chunks
@@ -82,5 +88,3 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
-
-

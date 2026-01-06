@@ -78,6 +78,7 @@ export const metadata: Metadata = {
 import { Toaster } from "@/components/ui/toaster";
 import GAEvents from './components/GAEvents'
 import ImageProtection from "@/components/ImageProtection";
+import MaintenanceBanner from "@/components/MaintenanceBanner";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
