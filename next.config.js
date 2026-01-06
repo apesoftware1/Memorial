@@ -2,14 +2,6 @@
 const path = require('path');
 
 const nextConfig = {
-  // Turbopack configuration to silence warnings
-  experimental: {
-    turbo: {
-      resolveAlias: {
-        '@': path.join(process.cwd(), './'),
-      }
-    }
-  },
   // eslint: {
   //   ignoreDuringBuilds: true,
   // },
