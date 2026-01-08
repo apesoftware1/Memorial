@@ -10,6 +10,9 @@ query GetListings {
           latitude
           longitude
           mapUrl
+          province
+          city
+          town
         }
       }
     title

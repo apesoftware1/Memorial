@@ -35,6 +35,13 @@ export default function AdvertCreator() {
     setImages(newImages);
   }
 
+  function handleRemoveImage(e, idx) {
+    e.stopPropagation();
+    const newImages = [...images];
+    newImages[idx] = null;
+    setImages(newImages);
+  }
+
   return (
     <div style={{
       maxWidth: 1000,
@@ -133,11 +140,38 @@ export default function AdvertCreator() {
                   background: "#fafbfc",
                   cursor: "pointer",
                   position: "relative",
+                  overflow: "visible",
                 }}
                 onClick={() => document.getElementById(`img-upload-${idx}`).click()}
               >
                 {img ? (
-                  <img src={URL.createObjectURL(img)} alt="" style={{ width: 56, height: 56, borderRadius: "50%" }} />
+                  <>
+                    <img src={URL.createObjectURL(img)} alt="" style={{ width: 56, height: 56, borderRadius: "50%" }} />
+                    <button
+                      type="button"
+                      onClick={(e) => handleRemoveImage(e, idx)}
+                      style={{
+                        position: "absolute",
+                        top: -6,
+                        right: -6,
+                        background: "red",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "50%",
+                        width: 20,
+                        height: 20,
+                        fontSize: 12,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: 100,
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                      }}
+                    >
+                      X
+                    </button>
+                  </>
                 ) : (
                   <span style={{ color: "#bbb", fontSize: 28, fontWeight: 700 }}>+</span>
                 )}

@@ -230,6 +230,26 @@ const SearchContainer = ({
     return terms.some(term => lowerLoc.includes(term));
   };
 
+  // Helper to check if listing matches location (company location OR branch location)
+  const checkListingLocation = (listing, locationFilter) => {
+    if (!locationFilter || locationFilter === 'Any') return true;
+    
+    // Check company location
+    if (matchesProvince(listing?.company?.location, locationFilter)) return true;
+    
+    // Check branches
+    if (Array.isArray(listing?.branches)) {
+      return listing.branches.some(branch => 
+        // Check province (primary) then fallbacks
+        matchesProvince(branch?.location?.province, locationFilter) ||
+        matchesProvince(branch?.location?.address, locationFilter) ||
+        matchesProvince(branch?.location?.city, locationFilter) ||
+        matchesProvince(branch?.location?.town, locationFilter)
+      );
+    }
+    return false;
+  };
+
   // Local state to control mobile-only location modal
 
   // Effect to simulate calculation loading state when filters or activeTab change
@@ -252,8 +272,7 @@ const SearchContainer = ({
       const key = normalizeProvince(provinceName);
       if (key === 'any') return totalCount;
       return allListings.reduce((acc, listing) => {
-        const locStr = listing?.company?.location || '';
-        return matchesProvince(locStr, provinceName) ? acc + 1 : acc;
+        return checkListingLocation(listing, provinceName) ? acc + 1 : acc;
       }, 0);
     };
 
@@ -367,10 +386,10 @@ const SearchContainer = ({
       });
     }
 
-    // Location (company.location, partial)
+    // Location (company.location OR branches, partial)
     if (paramLocation) {
       next = next.filter((listing) =>
-        matchesProvince(listing?.company?.location, paramLocation)
+        checkListingLocation(listing, paramLocation)
       );
     }
 
@@ -462,7 +481,7 @@ const SearchContainer = ({
           // Location (partial)
           .filter((listing) =>
             f.location && f.location !== "All" && f.location !== ""
-              ? matchesProvince(listing?.company?.location, f.location)
+              ? checkListingLocation(listing, f.location)
               : true
           )
           // Stone Type (partial)

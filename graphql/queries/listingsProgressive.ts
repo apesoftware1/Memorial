@@ -45,7 +45,7 @@ export const LISTINGS_FULL_QUERY = gql`
       updatedAt
       branches {
         name
-        location { address latitude longitude mapUrl }
+        location { address latitude longitude mapUrl province city town}
       }
       title
       listing_category { name }
@@ -103,7 +103,7 @@ export const LISTINGS_DELTA_QUERY = gql`
     ) {
       documentId
       updatedAt
-      branches { name location { address latitude longitude mapUrl } }
+      branches { name location { address latitude longitude mapUrl province city town} }
       title
       listing_category { name }
       mainImageUrl

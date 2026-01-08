@@ -157,6 +157,27 @@ export default function ManufacturerProfileEditor({
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const sortModalRef = useRef();
   const [sortBy, setSortBy] = useState("Price");
+  const isMounted = useRef(false);
+
+  // Load persisted sort option on mount
+  useEffect(() => {
+    const savedSort = localStorage.getItem("manufacturerProfileSortBy");
+    if (savedSort) {
+      setSortBy(savedSort);
+    }
+    // Mark as mounted after checking storage
+    setTimeout(() => {
+      isMounted.current = true;
+    }, 0);
+  }, []);
+
+  // Persist sort option when changed - but only after initial mount
+  useEffect(() => {
+    if (isMounted.current) {
+      localStorage.setItem("manufacturerProfileSortBy", sortBy);
+    }
+  }, [sortBy]);
+
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -2454,7 +2475,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                   ref={sortModalRef}
                   className="w-full max-w-md mx-auto rounded-t-2xl bg-[#232323] p-4 pb-8 animate-slide-in-up"
                 >
-                  {["Price", "Listing Date"].map((option) => (
+                  {["Price", "Listing Date", "Alphabetical Order"].map((option) => (
                     <div
                       key={option}
                       className={`flex items-center justify-between px-2 py-4 text-lg border-b border-[#333] last:border-b-0 cursor-pointer ${
@@ -2543,6 +2564,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
               >
                 <option value="Price">Price</option>
                 <option value="Listing Date">Listing Date</option>
+                <option value="Alphabetical Order">Alphabetical Order</option>
               </select>
             </div>
             {/* Desktop Category Filter Dropdown */}
@@ -2601,6 +2623,9 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
               if (sortBy === "Listing Date") {
                 // Use createdAt as the listing date field, ascending order (oldest first)
                 return new Date(a.createdAt) - new Date(b.createdAt);
+              }
+              if (sortBy === "Alphabetical Order") {
+                return (a.title || "").localeCompare(b.title || "");
               }
               return 0;
             })

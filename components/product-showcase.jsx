@@ -219,6 +219,17 @@ export default function ProductShowcase({ listing, id, allListings = [], current
   // Never show location-related loaders/errors; UI should always be available
   // Keep core features accessible regardless of location availability
 
+  // Determine the primary contact number to display (Branch Rep > Company Phone)
+  const contactNumber = React.useMemo(() => {
+    // 1. Try branch sales rep
+    if (selectedBranch?.sales_reps?.length > 0) {
+      const firstRep = selectedBranch.sales_reps[0];
+      if (firstRep.call) return firstRep.call;
+    }
+    // 2. Fallback to company phone
+    return listing.company?.phone;
+  }, [selectedBranch, listing.company?.phone]);
+
   return (
     <>
       <Header 
@@ -429,21 +440,21 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                       ? "Hide Contact Number"
                       : "Show Contact Number"}
                   </button>
-                  {showContact && (
+                    {showContact && (
                     <div className="mt-4 p-4 bg-gray-50 rounded-lg border max-w-xs w-full">
                       <div className="text-center space-y-2">
-                        {listing.company?.phone && (
+                        {contactNumber && (
                           <div>
                             <span className="text-sm font-semibold text-gray-700">
                               Phone:
                             </span>
                             <div className="text-lg font-bold text-blue-600">
                               <a
-                                href={`tel:${listing.company.phone}`}
+                                href={`tel:${contactNumber}`}
                                 className="hover:underline"
                                 onClick={() => trackAnalyticsEvent("rep_call_tracker", listing.documentId)}
                               >
-                                {listing.company.phone}
+                                {contactNumber}
                               </a>
                             </div>
                           </div>
@@ -479,7 +490,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                             </div>
                           </div>
                         )}
-                        {!listing.company?.phone &&
+                        {!contactNumber &&
                           !listing.company?.mobile &&
                           !listing.company?.email && (
                             <div className="text-sm text-gray-500">
@@ -523,18 +534,18 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                 {showContact && (
                   <div className="mt-4 p-4 bg-white text-gray-800 rounded-lg mx-auto max-w-sm">
                     <div className="text-center space-y-2">
-                      {listing.company?.phone && (
+                      {contactNumber && (
                         <div>
                           <span className="text-sm font-semibold text-gray-700">
                             Phone:
                           </span>
                           <div className="text-lg font-bold text-blue-600">
                             <a
-                              href={`tel:${listing.company.phone}`}
+                              href={`tel:${contactNumber}`}
                               className="hover:underline"
                               onClick={() => trackAnalyticsEvent("rep_call_tracker", listing.documentId)}
                             >
-                              {listing.company.phone}
+                              {contactNumber}
                             </a>
                           </div>
                         </div>
@@ -570,7 +581,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                           </div>
                         </div>
                       )}
-                      {!listing.company?.phone &&
+                      {!contactNumber &&
                         !listing.company?.mobile &&
                         !listing.company?.email && (
                           <div className="text-sm text-gray-500">
