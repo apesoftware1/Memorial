@@ -30,6 +30,10 @@ export const GET_LISTING_BY_ID = gql`
       thumbnailPublicIds
       description
       price
+      listing_category {
+        documentId
+        name
+      }
       isOnSpecial
       specials {
         active

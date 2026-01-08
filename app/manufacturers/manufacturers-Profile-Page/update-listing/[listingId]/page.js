@@ -10,6 +10,19 @@ import { useRouter } from "next/navigation";
 import { uploadToCloudinary } from "@/lib/cloudinary"; // moved from bottom to top
 import pricingAdFlasher from '../../../../../pricingAdFlasher.json';
 import { useToast } from "../../../../../hooks/use-toast";
+import { useListingCategories } from '@/hooks/use-ListingCategories';
+import { desiredOrder } from '@/lib/categories';
+
+
+// Category icon map for Category Selection (Advert Creator)
+const CATEGORY_ICON_MAP = {
+  SINGLE: "/last_icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/Single.svg",
+  DOUBLE: "/last_icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_2_Double.svg",
+  CHILD: "/last_icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_3_Child.svg",
+  HEAD: "/last_icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_4_Head.svg",
+  PLAQUES: "/last_icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_5-Plaques.svg",
+  CREMATION: "/last_icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_6_Cremation.svg",
+};
 
 function isMobile() {
   if (typeof window === 'undefined') return false;
@@ -20,6 +33,15 @@ export default function UpdateListingPage() {
   const { listingId } = useParams();
   const { data: session, status } = useSession();
   const router = useRouter();
+  
+  const { categories, loading: categoriesLoading, error: categoriesError } = useListingCategories();
+  const sortedCategories = Array.isArray(categories)
+      ? desiredOrder
+          .map(name => categories.find(cat => cat?.name && cat.name.toUpperCase() === name))
+          .filter(Boolean)
+      : [];
+
+  const [selectedCategory, setSelectedCategory] = useState(null);
   
   // State for custom toast notification
   const [showMessage, setShowMessage] = useState(false);
@@ -137,6 +159,9 @@ export default function UpdateListingPage() {
     if (listing) {
       setTitle(listing.title || "");
       setDescription(listing.description || "");
+      if (listing.listing_category) {
+        setSelectedCategory(listing.listing_category);
+      }
       setImages([
         listing.mainImageUrl ? listing.mainImageUrl : null,
         ...(listing.thumbnailUrls || [])
@@ -271,6 +296,7 @@ export default function UpdateListingPage() {
           adFlasher: flasher,
           adFlasherColor: selectedAdFlasherColor, // NEW: persist color on update
           manufacturingTimeframe: manufacturingTimeframe,
+          listing_category: selectedCategory?.documentId,
           mainImageUrl: mainImageUrl || null,
           mainImagePublicId: mainImagePublicId || null,
           thumbnailUrls: finalThumbUrls,
@@ -545,6 +571,64 @@ export default function UpdateListingPage() {
       <div style={{ maxWidth: 1000, margin: "0 auto 8px auto", display: "flex", justifyContent: "flex-end" }}>
         <span style={{ fontSize: 12, color: "#888" }}>All fields are required for updating a listing.</span>
       </div>
+      {/* Category Selection Section Header */}
+      <div style={{ background: "#005bac", color: "#fff", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
+        CATEGORY SELECTION
+      </div>
+      <div style={{ height: 12 }} />
+      
+      {/* Category Selection Content */}
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ fontSize: 12, marginBottom: 8, color: "#555" }}>Select a category for your listing:</div>
+        
+        {categoriesLoading && <div>Loading categories...</div>}
+        {categoriesError && <div style={{color: 'red'}}>Error loading categories: {categoriesError.message}</div>}
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+          {!categoriesLoading && !categoriesError && sortedCategories.map((category) => {
+            return (
+              <button
+                key={category.documentId}
+                type="button"
+                onClick={() => setSelectedCategory(category)}
+                style={{
+                  padding: "12px 16px",
+                  border: selectedCategory?.documentId === category.documentId ? "2px solid #005bac" : "1px solid #ccc",
+                  borderRadius: 8,
+                  background: selectedCategory?.documentId === category.documentId ? "#e6f3ff" : "#fff",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: selectedCategory?.documentId === category.documentId ? "600" : "400",
+                  color: selectedCategory?.documentId === category.documentId ? "#005bac" : "#333",
+                  transition: "all 0.2s ease",
+                  textAlign: "center",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8
+                }}
+              >
+                 {(CATEGORY_ICON_MAP[category.name?.toUpperCase()] || category.icon) && (
+                  <Image 
+                    src={CATEGORY_ICON_MAP[category.name?.toUpperCase()] || category.icon} 
+                    alt={category.name} 
+                    width={20} 
+                    height={20} 
+                    style={{ flexShrink: 0 }}
+                  />
+                )}
+                {category.name}
+              </button>
+            );
+          })}
+        </div>
+        {selectedCategory && (
+          <div style={{ marginTop: 8, fontSize: 12, color: "#666" }}>
+            Selected: <strong>{selectedCategory.name}</strong>
+          </div>
+        )}
+      </div>
+
       {/* Product Name, Description & Images Section Header */}
       <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
         PRODUCT NAME, DESCRIPTION & IMAGES
