@@ -48,6 +48,24 @@ export const GET_LISTING_BY_SLUG = gql`
         }
       }
       manufacturingTimeframe
+      branches {
+        documentId
+        name
+        sales_reps {
+          call
+          whatsapp
+          name
+          avatar {
+            url
+          }
+        }
+        location {
+          address
+          latitude
+          longitude
+          mapUrl
+        }
+      }
       company {
         sales_reps {
           call

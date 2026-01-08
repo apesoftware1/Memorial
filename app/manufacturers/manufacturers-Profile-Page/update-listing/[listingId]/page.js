@@ -163,6 +163,17 @@ export default function UpdateListingPage() {
     }
   }, [listing]);
 
+  const handleRemoveImage = (e, index) => {
+    e.stopPropagation();
+    const newImages = [...images];
+    newImages[index] = null;
+    setImages(newImages);
+
+    const newFiles = [...imageFiles];
+    newFiles[index] = null;
+    setImageFiles(newFiles);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -178,39 +189,78 @@ export default function UpdateListingPage() {
     try {
       const folderName = listing?.company?.name || undefined;
 
-      // detect replacements
-      const replacingMain = Boolean(imageFiles[0]);
-      const thumbFilesToUpload = [];
-      for (let idx = 1; idx <= 5; idx++) {
-        if (imageFiles[idx]) thumbFilesToUpload.push({ idx, file: imageFiles[idx] });
-      }
-
-      // Main image (upload if replacing)
-      let mainImageUrl = listing?.mainImageUrl || null;
-      let mainImagePublicId = existingPublicIds.main || null;
-      if (replacingMain) {
-        const uploaded = await uploadToCloudinary(imageFiles[0], folderName);
-        mainImageUrl = uploaded?.url || uploaded?.secure_url || mainImageUrl;
-        mainImagePublicId = uploaded?.public_id || mainImagePublicId;
-      }
-
-      // Thumbnails (upload if any replacement provided)
+      // Prepare lists for final state and deletions
+      let mainImageUrl = null;
+      let mainImagePublicId = null;
       const finalThumbUrls = [];
       const finalThumbPublicIds = [];
-      if (thumbFilesToUpload.length > 0) {
-        const uploadedThumbs = await Promise.all(
-          thumbFilesToUpload.map(({ file }) => uploadToCloudinary(file, folderName))
-        );
-        uploadedThumbs.forEach(u => {
+      const publicIdsToDelete = [];
+
+      // 1. Process Main Image (Index 0)
+      if (imageFiles[0]) {
+        // New file uploaded
+        const uploaded = await uploadToCloudinary(imageFiles[0], folderName);
+        mainImageUrl = uploaded?.url || uploaded?.secure_url;
+        mainImagePublicId = uploaded?.public_id;
+        
+        // Mark old main image for deletion if it existed
+        if (existingPublicIds.main) {
+          publicIdsToDelete.push(existingPublicIds.main);
+        }
+      } else if (images[0]) {
+        // Existing image kept
+        mainImageUrl = images[0];
+        mainImagePublicId = existingPublicIds.main;
+      } else {
+        // Image removed
+        if (existingPublicIds.main) {
+          publicIdsToDelete.push(existingPublicIds.main);
+        }
+      }
+
+      // 2. Process Thumbnails (Indices 1-10)
+      // We iterate through slots 1 to 10
+      const thumbUploadPromises = [];
+      const thumbUploadIndices = [];
+
+      for (let idx = 1; idx <= 10; idx++) {
+        if (imageFiles[idx]) {
+          // New file to upload
+          thumbUploadIndices.push(idx);
+          thumbUploadPromises.push(uploadToCloudinary(imageFiles[idx], folderName));
+          
+          // If there was an existing image at this slot, mark it for deletion
+          // Note: existingPublicIds.thumbs array corresponds to original slots if we assume order is preserved
+          // However, listing.thumbnailUrls might have been fewer than 10.
+          // existingPublicIds.thumbs[idx - 1] corresponds to the image loaded at that slot.
+          if (existingPublicIds.thumbs && existingPublicIds.thumbs[idx - 1]) {
+            publicIdsToDelete.push(existingPublicIds.thumbs[idx - 1]);
+          }
+        } else if (images[idx]) {
+          // Existing image kept
+          finalThumbUrls.push(images[idx]);
+          // Keep the corresponding public ID
+          if (existingPublicIds.thumbs && existingPublicIds.thumbs[idx - 1]) {
+            finalThumbPublicIds.push(existingPublicIds.thumbs[idx - 1]);
+          }
+        } else {
+          // Slot is empty (removed or never existed)
+          // If there WAS an image here originally, mark it for deletion
+          if (existingPublicIds.thumbs && existingPublicIds.thumbs[idx - 1]) {
+            publicIdsToDelete.push(existingPublicIds.thumbs[idx - 1]);
+          }
+        }
+      }
+
+      // Wait for thumbnail uploads
+      if (thumbUploadPromises.length > 0) {
+        const results = await Promise.all(thumbUploadPromises);
+        results.forEach(u => {
           if (u?.url || u?.secure_url) {
             finalThumbUrls.push(u.url || u.secure_url);
             finalThumbPublicIds.push(u.public_id || null);
           }
         });
-      } else {
-        // keep existing if none supplied
-        (Array.isArray(listing?.thumbnailUrls) ? listing.thumbnailUrls : []).forEach(u => finalThumbUrls.push(u));
-        (Array.isArray(listing?.thumbnailPublicIds) ? listing.thumbnailPublicIds : []).forEach(pid => finalThumbPublicIds.push(pid));
       }
 
       const payload = {
@@ -265,15 +315,8 @@ export default function UpdateListingPage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Cleanup old Cloudinary assets only if they were replaced
+      // Cleanup old Cloudinary assets
       try {
-        const publicIdsToDelete = [];
-        if (replacingMain && existingPublicIds.main) {
-          publicIdsToDelete.push(existingPublicIds.main);
-        }
-        if (thumbFilesToUpload.length > 0 && Array.isArray(existingPublicIds.thumbs) && existingPublicIds.thumbs.length) {
-          publicIdsToDelete.push(...existingPublicIds.thumbs);
-        }
         if (publicIdsToDelete.length > 0) {
           await fetch('/api/cloudinary/delete', {
             method: 'POST',
@@ -535,11 +578,38 @@ export default function UpdateListingPage() {
                   cursor: "pointer",
                   position: "relative",
                   marginBottom: 4,
+                  overflow: "visible",
                 }}
                 onClick={() => document.getElementById(`img-upload-main`).click()}
               >
                 {images[0] ? (
-                  <img src={images[0]} alt="Main" style={{ width: 88, height: 88, borderRadius: 8 }} />
+                  <>
+                    <img src={images[0]} alt="Main" style={{ width: 88, height: 88, borderRadius: 8 }} />
+                    <button
+                      type="button"
+                      onClick={(e) => handleRemoveImage(e, 0)}
+                      style={{
+                        position: "absolute",
+                        top: -6,
+                        right: -6,
+                        background: "red",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "50%",
+                        width: 20,
+                        height: 20,
+                        fontSize: 12,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: 100,
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                      }}
+                    >
+                      X
+                    </button>
+                  </>
                 ) : (
                   <span style={{ color: "#bbb", fontSize: 36, fontWeight: 700 }}>+</span>
                 )}
@@ -581,11 +651,38 @@ export default function UpdateListingPage() {
                       cursor: idx > 5 ? "not-allowed" : "pointer",
                       position: "relative",
                       opacity: idx > 5 ? 0.6 : 1,
+                      overflow: "visible",
                     }}
                     onClick={() => idx <= 5 && document.getElementById(`img-upload-${idx}`).click()}
                   >
                     {images[idx] ? (
-                      <img src={images[idx]} alt="" style={{ width: 40, height: 40, borderRadius: 8 }} />
+                      <>
+                        <img src={images[idx]} alt="" style={{ width: 40, height: 40, borderRadius: 8 }} />
+                        <button
+                          type="button"
+                          onClick={(e) => handleRemoveImage(e, idx)}
+                          style={{
+                            position: "absolute",
+                            top: -6,
+                            right: -6,
+                            background: "red",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "50%",
+                            width: 20,
+                            height: 20,
+                            fontSize: 12,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            zIndex: 100,
+                            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                          }}
+                        >
+                          X
+                        </button>
+                      </>
                     ) : (
                       <span style={{ color: idx > 5 ? "#999" : "#bbb", fontSize: 22, fontWeight: 700 }}>
                         {idx > 5 ? "×" : "+"}

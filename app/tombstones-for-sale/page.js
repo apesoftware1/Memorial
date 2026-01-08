@@ -241,6 +241,26 @@ export default function Home() {
     return terms.some(term => lowerLoc.includes(term));
   };
 
+  // Helper to check if listing matches location (company location OR branch location)
+  const checkListingLocation = (listing, locationFilter) => {
+    if (!locationFilter || locationFilter === 'Any' || locationFilter === 'All') return true;
+    
+    // Check company location
+    if (matchesProvince(listing?.company?.location, locationFilter)) return true;
+    
+    // Check branches
+    if (Array.isArray(listing?.branches)) {
+      return listing.branches.some(branch => 
+        // Check province (primary) then fallbacks
+        matchesProvince(branch?.location?.province, locationFilter) ||
+        matchesProvince(branch?.location?.address, locationFilter) ||
+        matchesProvince(branch?.location?.city, locationFilter) ||
+        matchesProvince(branch?.location?.town, locationFilter)
+      );
+    }
+    return false;
+  };
+
   // Generic filter function that accepts a filters object
   const filterListingsFrom = (filtersObj) => {
     let filtered = [...allListings];
@@ -332,9 +352,9 @@ export default function Home() {
     // Location (partial with abbreviation support)
     if (f.location) {
        if (Array.isArray(f.location) && f.location.length > 0 && !f.location.includes('All')) {
-          filtered = filtered.filter(listing => f.location.some(loc => matchesProvince(listing.company?.location, loc)));
+          filtered = filtered.filter(listing => f.location.some(loc => checkListingLocation(listing, loc)));
        } else if (f.location && f.location !== 'All' && !Array.isArray(f.location) && f.location !== '') {
-          filtered = filtered.filter(listing => matchesProvince(listing.company?.location, f.location));
+          filtered = filtered.filter(listing => checkListingLocation(listing, f.location));
        }
     }
     // Stone Type (partial from productDetails)
