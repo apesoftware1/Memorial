@@ -114,7 +114,12 @@ export function PremiumListingCard({
     if (target.closest(".manufacturer-link")) return;
 
     // Get branches array
-    const branches = Array.isArray(listing?.branches) ? listing.branches : [];
+    let branches: any[] = [];
+    if (Array.isArray(listing?.branch_listings) && listing.branch_listings.length > 0) {
+      branches = listing.branch_listings.map((bl: any) => bl.branch).filter(Boolean);
+    } else {
+      branches = Array.isArray(listing?.branches) ? listing.branches : [];
+    }
     
     // If listing has more than one branch, prevent navigation and call ViewListingByBranchesModal
     if (branches.length > 1) {
@@ -196,7 +201,12 @@ export function PremiumListingCard({
   };
 
   // Get branches array
-  const branches = Array.isArray(listing?.branches) ? listing.branches : [];
+  let branches: any[] = [];
+  if (Array.isArray(listing?.branch_listings) && listing.branch_listings.length > 0) {
+    branches = listing.branch_listings.map((bl: any) => bl.branch).filter(Boolean);
+  } else {
+    branches = Array.isArray(listing?.branches) ? listing.branches : [];
+  }
   const hasBranches = branches.length > 0;
   
   const pathname = usePathname();
@@ -315,11 +325,11 @@ export function PremiumListingCard({
               >
                 {listing.adFlasher || "Unique Design"}
               </Badge>
-              {Array.isArray(listing?.branches) && listing.branches.length > 1 && isTombstonesForSalePage && (
+              {hasBranches && branches.length > 1 && isTombstonesForSalePage && (
                 <Badge
                   className={cn("bg-blue-600 text-white text-sm px-3 py-1 rounded")}
                 >
-                  Available at {listing.branches.length} Branches
+                  Available at {branches.length} Branches
                 </Badge>
               )}
             </div>

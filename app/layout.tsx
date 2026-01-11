@@ -73,6 +73,9 @@ export const metadata: Metadata = {
     ],
     creator: "@TombstoneFinder",
   },
+  icons: {
+    icon: "/icon.svg",
+  },
 }
 
 import { Toaster } from "@/components/ui/toaster";

@@ -256,6 +256,96 @@
           "Tender Tribute"
         ],
         "color": "#C18F65"
+      },
+      "ARCH": {
+        "options": [
+          "Eternal Passage",
+          "Sacred Threshold",
+          "Honoured Rest",
+          "Timeless Gateway",
+          "Graceful Passage",
+          "Final Crossing",
+          "Dignified Rest",
+          "Blessed Passage",
+          "Quiet Transition",
+          "Lasting Honour"
+        ],
+        "color": "#778899"
+      },
+      "CHURCH": {
+        "options": [
+          "Sacred",
+          "Reverent",
+          "Blessed",
+          "Faithful",
+          "Holy Ground",
+          "Devout",
+          "Consecrated",
+          "Spiritual",
+          "Prayerful",
+          "Hallowed"
+        ],
+        "color": "#800000"
+      },
+      "HOUSE": {
+        "options": [
+          "Final Home",
+          "Eternal Dwelling",
+          "Peaceful Abode",
+          "Resting Place",
+          "Home of Peace",
+          "Lasting Shelter",
+          "Sacred Home",
+          "Forever Home",
+          "Place of Rest",
+          "Beloved Home"
+        ],
+        "color": "#D2691E"
+      },
+      "ORGANIC": {
+        "options": [
+          "Natural Rest",
+          "Gentle Return",
+          "Earthbound Peace",
+          "Harmonious Rest",
+          "Living Memory",
+          "Quiet Shelter",
+          "Rooted Peace",
+          "Eternal Flow",
+          "Soft Embrace",
+          "Calm Abode"
+        ],
+        "color": "#556B2F"
+      },
+      "SQUARE": {
+        "options": [
+          "Final Home",
+          "Eternal Dwelling",
+          "Peaceful Abode",
+          "Resting Place",
+          "Home of Peace",
+          "Lasting Shelter",
+          "Sacred Home",
+          "Forever Home",
+          "Place of Rest",
+          "Beloved Home"
+        ],
+        "color": "#4682B4"
+      },
+      "WAVE": {
+        "options": [
+          "Flowing",
+          "Serene",
+          "Tranquil",
+          "Eternal Flow",
+          "Graceful",
+          "Peaceful",
+          "Harmonious",
+          "Gentle Curve",
+          "Timeless",
+          "Calm Presence"
+        ],
+        "color": "#1E90FF"
       }
     }
   }

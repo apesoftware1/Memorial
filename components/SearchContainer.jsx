@@ -60,6 +60,12 @@ const defaultFilterOptions = {
     "Car",
     "Bike",
     "Sports",
+    "Wave",
+    "Church",
+    "House",
+    "Square",
+    "Organic",
+    "Arch",
   ],
   slabStyle: [
     "Any",
@@ -70,6 +76,7 @@ const defaultFilterOptions = {
     "Half Slab",
     "Stepped Slab",
     "Tiled Slab",
+    "Double",
   ],
   stoneType: [
     "Any",
@@ -113,6 +120,9 @@ const defaultFilterOptions = {
     "Pearl",
     "Red",
     "White",
+    "Gold",
+    "Yellow",
+    "Pink",
   ],
   bodyType: [
     "Full Tombstone",

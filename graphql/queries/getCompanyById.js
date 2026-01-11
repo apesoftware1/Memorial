@@ -75,6 +75,10 @@ export const COMPANY_INITIAL_QUERY = gql`
             mapUrl
           }
         }
+        branch_listings {
+          branch { documentId name location { address latitude longitude mapUrl province city town} }
+          price
+        }
         documentId
         title
         slug
@@ -192,6 +196,10 @@ export const COMPANY_FULL_QUERY = gql`
             longitude
             mapUrl
           }
+        }
+        branch_listings {
+          branch { documentId name location { address latitude longitude mapUrl province city town} }
+          price
         }
         documentId
         title

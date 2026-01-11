@@ -53,9 +53,13 @@ export function PremiumListingCardModal({
   onBranchSelect,
 }: PremiumListingCardModalProps): React.ReactElement {
   if (!listing) return <></>;
-
-  // Get branches array
-  const branches = Array.isArray(listing?.branches) ? listing.branches : [];
+  // Get branches array from branch_listings (new structure) or branches (legacy)
+  let branches: any[] = [];
+  if (Array.isArray(listing?.branch_listings) && listing.branch_listings.length > 0) {
+    branches = listing.branch_listings.map((bl: any) => bl.branch).filter(Boolean);
+  } else {
+    branches = Array.isArray(listing?.branches) ? listing.branches : [];
+  }
   
   // Only show this component if there are multiple branches
   if (branches.length <= 1) return <></>;

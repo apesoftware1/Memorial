@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 
-export default function CategoryTabs({ categories, activeTab, setActiveTab }) {
+export default function CategoryTabs({ categories, activeTab, setActiveTab, counts }) {
   const desiredOrder = ["SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"];
   const sortedCategories = desiredOrder
     .map(name => categories.find(cat => cat.name && cat.name.toUpperCase() === name))
@@ -24,7 +24,7 @@ export default function CategoryTabs({ categories, activeTab, setActiveTab }) {
             }}
           >
             <div className="flex flex-col items-center justify-center h-full w-full">
-              <div className="flex flex-col items-center justify-center h-[32px] w-full">
+              <div className="flex flex-col items-center justify-center h-[32px] w-full relative">
                 <Image
                   src={
                     item.name === 'SINGLE' ? '/final-icons/single.svg' : 
@@ -42,6 +42,11 @@ export default function CategoryTabs({ categories, activeTab, setActiveTab }) {
                     : {}
                   }
                 />
+                {counts && counts[item.name] > 0 && (
+                  <span className="absolute -top-1 right-[calc(50%-18px)] flex items-center justify-center min-w-[16px] h-[16px] px-1 bg-red-600 text-white text-[9px] font-bold rounded-full border border-white z-10 shadow-sm">
+                    {counts[item.name]}
+                  </span>
+                )}
               </div>
               <span
                 className="text-[0.7rem] leading-tight w-full text-center"

@@ -83,6 +83,7 @@ const slabStyleOptions = [
   'Half Slab',
   'Stepped Slab',
   'Tiled Slab',
+  'Double',
 ];
 
 const transportOptions = ['Free transport within 20km', 'Paid delivery']
