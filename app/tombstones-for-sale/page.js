@@ -174,7 +174,16 @@ export default function Home() {
   // When user clicks a listing: if multiple branches -> open modal directly, if one -> go to product showcase
   const handleListingPrimaryClick = (listing) => {
     try {
-      const branches = Array.isArray(listing?.branches) ? listing.branches : [];
+      console.log(listing.branch_listings)
+      
+      // Support new structure (branch_listings) and legacy structure (branches)
+      let branches = [];
+      if (Array.isArray(listing?.branch_listings) && listing.branch_listings.length > 0) {
+        branches = listing.branch_listings.map(bl => bl.branch).filter(Boolean);
+      } else {
+        branches = Array.isArray(listing?.branches) ? listing.branches : [];
+      }
+
       if (branches.length > 1) {
         setSelectedListing(listing);
         setShowBranchesModal(true);
@@ -394,6 +403,27 @@ export default function Home() {
 
   // Convenience wrapper using current state
   const filteredListings = useMemo(() => filterListingsFrom(activeFilters), [activeFilters, allListings]);
+
+  // Calculate counts for badges on CategoryTabs
+  const categoryCounts = useMemo(() => {
+    // Create filters excluding category to get potential matches across all categories
+    // We set category to 'All Categories' to bypass the category filter in filterListingsFrom
+    const filtersNoCategory = { ...activeFilters, category: 'All Categories' };
+    
+    // Get all listings that match the search/location/price/etc
+    const potentialListings = filterListingsFrom(filtersNoCategory);
+    
+    // Count them by category
+    const counts = {};
+    potentialListings.forEach(listing => {
+      const catName = listing?.listing_category?.name;
+      if (catName) {
+        counts[catName] = (counts[catName] || 0) + 1;
+      }
+    });
+    
+    return counts;
+  }, [activeFilters, allListings]);
 
   // Search button handler
   const handleSearch = () => {
@@ -643,16 +673,17 @@ export default function Home() {
       "Biodegradable", "Brass", "Ceramic/Porcelain", "Composite", "Concrete", "Copper", "Glass", "Granite", "Limestone", "Marble", "Perspex", "Quartzite", "Sandstone", "Slate", "Steel", "Stone", "Tile", "Wood"
     ],
     slabStyle: [
-      "Curved Slab", "Frame with Infill", "Full Slab", "Glass Slab", "Half Slab", "Stepped Slab", "Tiled Slab"
+      "Curved Slab", "Frame with Infill", "Full Slab", "Glass Slab", "Half Slab", "Stepped Slab", "Tiled Slab", "Double"
     ],
     style: [
-      "Christian Cross", "Heart", "Bible", "Pillars", "Traditional African", "Abstract", "Praying Hands", "Scroll", "Angel", "Mausoleum", "Obelisk", "Plain", "Teddy Bear", "Butterfly", "Car", "Bike", "Sports"
+      "Christian Cross", "Heart", "Bible", "Pillars", "Traditional African", "Abstract", "Praying Hands", "Scroll", "Angel", "Mausoleum", "Obelisk", "Plain", "Teddy Bear", "Butterfly", "Car", "Bike", "Sports",
+      "Wave", "Church", "House", "Square", "Organic", "Arch"
     ],
     custom: [
       "Bronze/Stainless Plaques", "Ceramic Photo Plaques", "Flower Vases", "Gold Lettering", "Inlaid Glass", "Photo Laser-Edging", "QR Code"
     ],
     colour: [
-      "Black", "Blue", "Green", "Grey-Dark", "Grey-Light", "Maroon", "Pearl", "Red", "White"
+      "Black", "Blue", "Green", "Grey-Dark", "Grey-Light", "Maroon", "Pearl", "Red", "White", "Gold", "Yellow", "Pink"
     ],
     color: ["Black", "White", "Grey", "Brown", "Blue Pearl", "Red"],
     culture: ["Christian", "Jewish", "Muslim", "Hindu", "Traditional African"],
@@ -901,7 +932,7 @@ export default function Home() {
             <div className="max-w-6xl mx-auto">
               {/* Slightly increase tabs width to reveal all items */}
               <div className="hidden md:block w-full md:w-[60%]">
-                <CategoryTabs categories={sortedCategories} activeTab={activeTab} setActiveTab={handleTabChange} />
+                <CategoryTabs categories={sortedCategories} activeTab={activeTab} setActiveTab={handleTabChange} counts={categoryCounts} />
               </div>
             </div>
           </div>

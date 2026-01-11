@@ -310,6 +310,17 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         let branchListings = listings.filter(listing => 
           listing.branches?.some(b => b.documentId === branch.documentId)
         );
+
+        // Override price with branch specific price if available
+        branchListings = branchListings.map(listing => {
+          const branchListing = listing.branch_listings?.find(bl => 
+            bl.branch?.documentId === branch.documentId
+          );
+          if (branchListing?.price) {
+            return { ...listing, price: branchListing.price };
+          }
+          return listing;
+        });
         
         // Apply category filter
         if (categoryFilter !== "All Categories") {

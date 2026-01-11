@@ -811,12 +811,14 @@ export default function UpdateListingPage() {
         const styleOptions = [
           'Christian Cross','Heart','Bible','Pillars','Traditional African','Abstract',
           'Praying Hands','Scroll','Angel','Mausoleum','Obelisk','Plain','Teddy Bear','Butterfly','Car','Bike','Sports',
+          'Wave','Church','House','Square','Organic','Arch',
         ];
         const slabStyleOptions = [
-          'Curved Slab','Frame with Infill','Full Slab','Glass Slab','Half Slab','Stepped Slab','Tiled Slab',
+          'Curved Slab','Frame with Infill','Full Slab','Glass Slab','Half Slab','Stepped Slab','Tiled Slab','Double',
         ];
         const colorOptions = [
           'Black','Blue','Green','Grey-Dark','Grey-Light','Maroon','Pearl','Red','White','Mixed',
+          'Gold','Yellow','Pink',
         ];
         const stoneTypeOptions = [
           'Biodegradable','Brass','Ceramic/Porcelain','Composite','Concrete','Copper','Glass','Granite',

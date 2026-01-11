@@ -66,6 +66,12 @@ export const GET_COMPANY_BY_USER = gql`
           mapUrl
         }
       }
+        branch_listings {
+          branch {
+            documentId
+          }
+          price
+        }
         documentId
           listing_category {
       name

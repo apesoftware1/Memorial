@@ -164,6 +164,20 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
     if (s.includes("CREMATION")) return "Cremation";
     return "";
   };
+  // Determine price: Check for branch-specific override in branch_listings, fallback to listing base price
+  const branchListing = Array.isArray(listing?.branch_listings) 
+    ? listing.branch_listings.find(bl => {
+        if (!bl?.branch || !branch) return false;
+
+        // Check ID match (loose equality for string/number)
+        // Check documentId match (strict equality)
+        if (branch.documentId && bl.branch.documentId && branch.documentId === bl.branch.documentId) return true;
+
+        return false;
+      })
+    : null;
+    console.log(branchListing, "from branch card")
+  const displayPrice = branchListing?.price || listing?.price;
 
   return (
     <div className="relative" ref={cardRef} onContextMenu={(e) => e.preventDefault()} onDragStart={(e) => e.preventDefault()}> {/* Removed conditional margin-top */}
@@ -241,7 +255,7 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
           {/* Price and Badge */}
           <div className="flex flex-col items-start mb-3">
             <div className="text-2xl font-bold text-blue-600 pr-14">
-              {listing?.price ? formatPrice(listing.price) : "Contact for price"}
+              {displayPrice ? formatPrice(displayPrice) : "Contact for price"}
             </div>
             <div className="mt-1 mb-0 pr-14">
               <Badge className="text-white text-sm px-3 py-1 rounded bg-pink-600">
@@ -315,7 +329,7 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
           {/* Price and Badge */}
           <div className="flex flex-col items-start mb-3">
             <div className="text-2xl font-bold text-blue-600">
-              {listing?.price ? formatPrice(listing.price) : "Contact for price"}
+              {displayPrice ? formatPrice(displayPrice) : "Contact for price"}
             </div>
             <div className="mt-1 mb-0 md:hidden">
               {(getCategoryLabel() || listing?.adFlasher) && (

@@ -8,7 +8,7 @@ import Header from "@/components/Header"
 import Footer from "@/components/Footer"
 
 export default function ProvinceManufacturersPage({ params }) {
-  const { province } = params
+  const { province } = use(params)
   const decodedProvince = decodeURIComponent(province.replace(/-/g, " "))
 
   // State for active city filter
