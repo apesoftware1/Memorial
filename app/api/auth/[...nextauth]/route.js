@@ -22,9 +22,9 @@ const handler = NextAuth({
       },
       async authorize(credentials) {
         try {
-          // Regular user authentication via Strapi
           try {
-            const res = await fetch("https://typical-car-e0b66549b3.strapiapp.com/api/auth/local", {
+            const baseUrl = process.env.STRAPI_API_URL || "https://api.tombstonesfinder.co.za";
+            const res = await fetch(`${baseUrl}/api/auth/local`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({

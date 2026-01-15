@@ -68,9 +68,9 @@ const CreateSpecialModal = ({ isOpen, onClose, listing }) => {
           },
         },
       };
-  
+      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
       const specialResponse = await fetch(
-        'https://typical-car-e0b66549b3.strapiapp.com/api/specials',
+        `${baseUrl}/specials`,
         {
           method: 'POST',
           headers: {
@@ -97,9 +97,8 @@ const CreateSpecialModal = ({ isOpen, onClose, listing }) => {
           specialEndDate: formatDate(endDate),
         },
       };
-  
       const listingResponse = await fetch(
-        `https://typical-car-e0b66549b3.strapiapp.com/api/listings/${listing.documentId}`,
+        `${baseUrl}/listings/${listing.documentId}`,
         {
           method: 'PUT',
           headers: {

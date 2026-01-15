@@ -649,7 +649,8 @@ export default function CreateListingForm() {
 
 
 
-      const res = await fetch('https://typical-car-e0b66549b3.strapiapp.com/api/listings', {
+      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
+      const res = await fetch(`${baseUrl}/listings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

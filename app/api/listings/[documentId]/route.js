@@ -4,9 +4,8 @@ export async function PATCH(request, { params }) {
   try {
     const { documentId } = params;
     const body = await request.json();
-
-    // Make the PATCH request to Strapi using hardcoded URL like auth route
-    const response = await fetch(`https://typical-car-e0b66549b3.strapiapp.com/api/listings/${documentId}`, {
+    const baseUrl = process.env.STRAPI_API_URL || "https://api.tombstonesfinder.co.za";
+    const response = await fetch(`${baseUrl}/api/listings/${documentId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

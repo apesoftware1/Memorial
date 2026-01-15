@@ -1,7 +1,6 @@
 export async function submitContactEnquiry(payload) {
   try {
-    // Use the public Next.js environment variable
-    const apiUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://typical-car-e0b66549b3.strapiapp.com/api';
+    const apiUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
     
     const response = await fetch(`${apiUrl}/enquiries`, {
       method: "POST",

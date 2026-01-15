@@ -737,9 +737,9 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         },
       };
 
-      // 6) Create duplicate
+      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
       const res = await fetch(
-        "https://typical-car-e0b66549b3.strapiapp.com/api/listings",
+        `${baseUrl}/listings`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1002,8 +1002,9 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     setShowDeleteMessage(false);
 
     try {
+      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
       const res = await fetch(
-        `https://typical-car-e0b66549b3.strapiapp.com/api/listings/${documentId}`,
+        `${baseUrl}/listings/${documentId}`,
         {
           method: "DELETE",
           headers: {
@@ -1081,12 +1082,12 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     const newInquiries = allInquiries.filter((inq) => inq.isNew === true);
 
     if (newInquiries.length > 0) {
-      // Update backend for each new inquiry
       for (const inquiry of newInquiries) {
         try {
           const inquiryId = inquiry.documentId || inquiry.id;
+          const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
           await fetch(
-            `https://typical-car-e0b66549b3.strapiapp.com/api/inquiries/${inquiryId}`,
+            `${baseUrl}/inquiries/${inquiryId}`,
             {
               method: "PUT",
               headers: {
