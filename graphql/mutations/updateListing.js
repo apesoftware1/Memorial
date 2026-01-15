@@ -5,10 +5,8 @@ export async function updateListingField(documentId, updateObj) {
   }
   
   try {
-    // For debugging purposes, log the payload
-    console.log('Updating listing with payload:', { documentId, data: updateObj });
-    
-    const res = await fetch(`https://typical-car-e0b66549b3.strapiapp.com/api/listings/${documentId}`, {
+    const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
+    const res = await fetch(`${baseUrl}/listings/${documentId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -54,10 +52,8 @@ export async function updateListingImage(documentId, imageType, imageUrl, imageP
   }
   
   try {
-    // For debugging purposes, log the payload
-    console.log('Updating listing image with payload:', { documentId, imageType, data: updateObj });
-    
-    const res = await fetch(`https://typical-car-e0b66549b3.strapiapp.com/api/listings/${documentId}`, {
+    const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
+    const res = await fetch(`${baseUrl}/listings/${documentId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

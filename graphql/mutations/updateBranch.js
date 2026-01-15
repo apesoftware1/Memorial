@@ -4,8 +4,9 @@ export async function updateBranch(branchDocumentId, data) {
   }
 
   try {
+    const baseUrl = process.env.STRAPI_API_URL || "https://api.tombstonesfinder.co.za";
     const response = await fetch(
-`https://typical-car-e0b66549b3.strapiapp.com/api/branches/${branchDocumentId}`,
+`${baseUrl}/api/branches/${branchDocumentId}`,
       {
         method: "PUT",
         headers: {

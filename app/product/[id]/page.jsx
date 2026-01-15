@@ -15,8 +15,8 @@ export default function ProductPage() {
   useEffect(() => {
     async function fetchListing() {
       try {
-        // Using the correct API endpoint
-        const response = await fetch(`https://typical-car-e0b66549b3.strapiapp.com/api/listings/${id}`);
+        const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
+        const response = await fetch(`${baseUrl}/listings/${id}`);
         if (!response.ok) {
           throw new Error("Failed to fetch listing");
         }

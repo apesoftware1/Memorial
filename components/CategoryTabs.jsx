@@ -61,4 +61,4 @@ export default function CategoryTabs({ categories, activeTab, setActiveTab, coun
     </div>
   );
 }
-
+

@@ -1,6 +1,7 @@
 export const sendInquiryRest = async ({ name,mobileNumber, email, message = "", documentId }) => {
     try {
-      const response = await fetch('https://typical-car-e0b66549b3.strapiapp.com/api/inquiries', {
+      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
+      const response = await fetch(`${baseUrl}/inquiries`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

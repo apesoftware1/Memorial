@@ -1,9 +1,9 @@
 // lib/createBranch.js
 export async function createBranch(payload) {
   try {
-    const STRAPI_API_URL = process.env.STRAPI_API_URL || "https://typical-car-e0b66549b3.strapiapp.com/api/branches";
+    const baseUrl = process.env.STRAPI_API_URL || "https://api.tombstonesfinder.co.za";
     
-    const response = await fetch(STRAPI_API_URL, {
+    const response = await fetch(`${baseUrl}/api/branches`, {    
       method: "POST",
       headers: {
         "Content-Type": "application/json",

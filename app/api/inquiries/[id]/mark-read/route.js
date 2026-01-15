@@ -3,11 +3,8 @@ export async function POST(request, { params }) {
     const { id } = params;
     const body = await request.json();
     const { isRead, isNew } = body;
-
-    console.log('API: Updating inquiry', id, 'with', { isRead, isNew });
-
-    // Update the inquiry in Strapi with correct format
-    const response = await fetch(`https://typical-car-e0b66549b3.strapiapp.com/api/inquiries/${id}`, {
+    const baseUrl = process.env.STRAPI_API_URL || "https://api.tombstonesfinder.co.za";
+    const response = await fetch(`${baseUrl}/api/inquiries/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

@@ -331,7 +331,8 @@ export default function UpdateListingPage() {
         }
       };
 
-      const response = await fetch(`https://typical-car-e0b66549b3.strapiapp.com/api/listings/${listing.documentId}`, {
+      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
+      const response = await fetch(`${baseUrl}/listings/${listing.documentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

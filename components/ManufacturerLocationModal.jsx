@@ -152,8 +152,9 @@ export default function ManufacturerLocationModal({ isOpen, onClose, company, on
     }
     
     try {
+      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
       const response = await fetch(
-        `https://typical-car-e0b66549b3.strapiapp.com/api/companies/${company.documentId}`,
+        `${baseUrl}/companies/${company.documentId}`,
         {
           method: 'PUT',
           headers: {

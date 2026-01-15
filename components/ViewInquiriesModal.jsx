@@ -64,7 +64,8 @@ export default function ViewInquiriesModal({ open, onClose, listings, onInquirie
     if (inquiry.isRead !== true) {
       try {
         const inquiryId = inquiry.documentId || inquiry.id;
-        const response = await fetch(`https://typical-car-e0b66549b3.strapiapp.com/api/inquiries/${inquiryId}`, {
+        const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
+        const response = await fetch(`${baseUrl}/inquiries/${inquiryId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

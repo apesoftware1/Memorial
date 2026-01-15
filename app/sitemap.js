@@ -12,7 +12,8 @@ export default async function sitemap() {
   const dynamicRoutes = [];
 
   try {
-    const res = await fetch("https://typical-car-e0b66549b3.strapiapp.com/graphql", {
+    const strapiBase = process.env.STRAPI_API_URL || "https://api.tombstonesfinder.co.za";
+    const res = await fetch(`${strapiBase}/graphql`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
