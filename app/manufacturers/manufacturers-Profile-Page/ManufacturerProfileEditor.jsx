@@ -25,7 +25,6 @@ import { GET_LISTING_CATEGORY } from '@/graphql/queries/getListingCategory';
 import CreateBranchModal from "@/components/CreatebranchModal";
 import BranchSelector from "@/components/BranchSelector";
 import CompanyMediaUpload from "@/components/CompanyMediaUpload";
-import BranchDropdown from "@/components/BranchDropdown";
 import BranchSelectionModal from "@/components/BranchSelectionModal";
 import OperatingHoursModal from "@/components/OperatingHoursModal";
 import { updateBranch } from "@/graphql/mutations/updateBranch";
@@ -185,6 +184,9 @@ export default function ManufacturerProfileEditor({
   const [editValue, setEditValue] = useState("");
   
   const [selectedBranch, setSelectedBranch] = useState(null);
+  const handleBranchSelect = (branch) => {
+    setSelectedBranch(branch);
+  };
   const [branchFromUrl, setBranchFromUrl] = useState(null);
   const [filteredListings, setFilteredListings] = useState(listings);
   // Single-step Operating Hours editor state
@@ -245,9 +247,6 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
   const [showVideoSlotModal, setShowVideoSlotModal] = useState(false);
   const [showCreateBranchModal, setShowCreateBranchModal] = useState(false);
   const [showBranchSelectorModal, setShowBranchSelectorModal] = useState(false);
-  const [isAddingToBranch, setIsAddingToBranch] = useState(false);
-  const [selectedBranchId, setSelectedBranchId] = useState("");
-  const [showBranchDropdown, setShowBranchDropdown] = useState(false);
   const [showBranchSelectionModal, setShowBranchSelectionModal] = useState(false);
   const [selectedListingForBranch, setSelectedListingForBranch] = useState(null);
   const [showOperatingHoursModal, setShowOperatingHoursModal] = useState(false);
@@ -442,53 +441,6 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       .replace(/[^\w\s-]/g, "")
       .trim()
       .replace(/\s+/g, "-");
-
-  // Handle adding a listing to a branch
-  async function handleAddToBranch(listing, branchId) {
-    if (!listing?.documentId) {
-      toast({
-        title: "Add to Branch failed",
-        description: "Listing ID not found.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setIsAddingToBranch(true);
-
-      // Use provided branchId or check if any branches are available
-      const selectedBranchId = branchId || company.branches?.[0]?.documentId;
-
-      if (!selectedBranchId) {
-        toast({
-          title: "Add to Branch failed",
-          description: "No branches available. Please create a branch first.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      await addListingToBranch(selectedBranchId, listing.documentId);
-
-      toast({
-        title: "Success",
-        description: "Listing added to branch successfully.",
-        className: "bg-green-500 text-white border-green-600",
-        variant: "default",
-      });
-    } catch (error) {
-      console.error("Error adding listing to branch:", error);
-      toast({
-        title: "Add to Branch failed",
-        description:
-          error.message || "An error occurred while adding listing to branch.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsAddingToBranch(false);
-    }
-  }
 
   async function handleDuplicate(listing) {
     if (!listing?.documentId) {
@@ -1267,14 +1219,6 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     }
   };
   const branchobj = findBranchByName(selectedBranch?.name || "" , company.branches);
-  // Profile picture and video upload are now handled by CompanyMediaUpload component
-  const handleBranchSelect = (branch, shouldRunFunction = false) => {
-    setSelectedBranch(branch);
-
-    if (shouldRunFunction) {
-      handleAddToBranch(branch.name, branch.documentId);
-    }
-  };
   return (
     <>
       <Header 
@@ -2750,9 +2694,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                             alignItems: "center",
                           }}
                         >
-                          <span>
-                            {isAddingToBranch ? "Adding..." : "Add to Branch"}
-                          </span>
+                          <span>Add to Branch</span>
                           <svg
                             width="16"
                             height="16"
@@ -2769,40 +2711,6 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                               strokeLinejoin="round"
                             />
                           </svg>
-
-                          {showBranchDropdown &&
-                            company.branches?.length > 0 && (
-                              <div
-                                style={{
-                                  position: "absolute",
-                                  right: "-200px",
-                                  top: 0,
-                                  width: "200px",
-                                  backgroundColor: "white",
-                                  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-                                  borderRadius: "4px",
-                                  zIndex: 100,
-                                }}
-                                onMouseLeave={() =>
-                                  setShowBranchDropdown(false)
-                                }
-                              >
-                                <div
-                                  style={{
-                                    padding: "8px",
-                                    borderBottom: "1px solid #eee",
-                                    fontWeight: "bold",
-                                  }}
-                                >
-                                  <BranchDropdown
-                                    branches={company.branches}
-                                    onSelect={(branch) =>
-                                      handleBranchSelect(branch, true)
-                                    }
-                                  />
-                                </div>
-                              </div>
-                            )}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -3111,7 +3019,6 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
           branches={company.branches || []}
           listingId={selectedListingForBranch?.documentId}
           onSuccess={(branch) => {
-            setIsAddingToBranch(false);
             toast({
               title: "Success",
               description: `Listing added to ${branch.name} branch`,
