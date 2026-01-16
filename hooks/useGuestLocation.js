@@ -55,16 +55,36 @@ export const useGuestLocation = () => {
     );
   }, []);
 
-  // ✅ Calculate distance via backend API
   const calculateDistanceFrom = useCallback(
-    async (destLat, destLng) => {
+    async (destination) => {
       if (!location) {
         console.warn("User location not yet detected.");
         return null;
       }
 
+      const destLat = Number(destination?.lat);
+      const destLng = Number(destination?.lng);
+
+      if (Number.isNaN(destLat) || Number.isNaN(destLng)) {
+        return null;
+      }
+
+      const haversineKm = (lat1, lon1, lat2, lon2) => {
+        const R = 6371;
+        const toRad = (v) => (v * Math.PI) / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRad(lat1)) *
+            Math.cos(toRad(lat2)) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      };
+
       try {
-       
         const res = await fetch("/api/distance", {
           method: "POST",
           headers: {
@@ -73,8 +93,8 @@ export const useGuestLocation = () => {
           body: JSON.stringify({
             userLat: location.lat,
             userLng: location.lng,
-            destLat: destLat.lat,
-            destLng: destLat.lng,
+            destLat,
+            destLng,
           }),
         });
 
@@ -86,7 +106,20 @@ export const useGuestLocation = () => {
         return data;
       } catch (err) {
         console.error("Error calculating distance:", err);
-        return null;
+        const km = haversineKm(location.lat, location.lng, destLat, destLng);
+        if (!km || !Number.isFinite(km)) {
+          return null;
+        }
+        const valueMeters = Math.round(km * 1000);
+        return {
+          distance: {
+            value: valueMeters,
+            text: `${Math.round(km)} km`,
+          },
+          origin: { lat: location.lat, lng: location.lng },
+          destination: { lat: destLat, lng: destLng },
+          source: "haversine",
+        };
       }
     },
     [location]
