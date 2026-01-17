@@ -8,13 +8,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useTheme } from "next-themes";
 
 // Import shadcn UI components
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { useProgressiveQuery } from "@/hooks/useProgressiveQuery"
 import {
   MANUFACTURERS_INITIAL_QUERY,
@@ -58,6 +58,8 @@ export default function DashboardPage() {
     });
   // Local dark-mode state scoped to this page
   const [isDark, setIsDark] = useState(false);
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
 
   // Initialize theme from localStorage so it controls both pages
   useEffect(() => {
@@ -65,6 +67,22 @@ export default function DashboardPage() {
       const stored = localStorage.getItem('reganDashboardTheme');
       if (stored) setIsDark(stored === 'dark');
     } catch {}
+  }, []);
+
+  useEffect(() => {
+    const loadMaintenance = async () => {
+      try {
+        setMaintenanceLoading(true);
+        const res = await fetch("/api/maintenance-mode");
+        if (!res.ok) return;
+        const data = await res.json();
+        setMaintenanceEnabled(!!data?.enabled);
+      } catch {
+      } finally {
+        setMaintenanceLoading(false);
+      }
+    };
+    loadMaintenance();
   }, []);
 
   const toggleTheme = () => {
@@ -75,6 +93,21 @@ export default function DashboardPage() {
       } catch {}
       return next;
     });
+  };
+
+  const toggleMaintenance = async () => {
+    try {
+      const next = !maintenanceEnabled;
+      setMaintenanceEnabled(next);
+      await fetch("/api/maintenance-mode", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ enabled: next }),
+      });
+    } catch {
+    }
   };
 
   // State for search filters
@@ -175,7 +208,20 @@ export default function DashboardPage() {
             {/* Header with Manufacturer Name and Logout Button */}
             <div className="bg-black text-white py-6 shadow-md">
               <div className="container mx-auto px-4 flex justify-between items-center">
-                <h1 className="text-3xl font-bold">Manufacturer Dashboard</h1>
+                <div className="flex flex-col gap-1">
+                  <h1 className="text-3xl font-bold">Manufacturer Dashboard</h1>
+                  <div className="flex items-center gap-2 text-xs text-gray-300">
+                    <span>Maintenance banner</span>
+                    <Switch
+                      checked={maintenanceEnabled}
+                      onCheckedChange={toggleMaintenance}
+                      disabled={maintenanceLoading}
+                    />
+                    <span className="ml-1">
+                      {maintenanceEnabled ? "On" : "Off"}
+                    </span>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={toggleTheme}

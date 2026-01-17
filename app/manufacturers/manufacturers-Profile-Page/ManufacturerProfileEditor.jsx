@@ -2875,41 +2875,6 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                         </option>
                       ))}
                     </select>
-                    <button
-                      onClick={async () => {
-                        if (!selectedBranchIdToDisconnect) return;
-                        setDisconnecting(true);
-                        setDisconnectError("");
-                        setDisconnectSuccess(false);
-                        try {
-                          await updateBranch(selectedBranchIdToDisconnect, { listings: { disconnect: [listingToDelete.documentId] } });
-                          setDisconnectSuccess(true);
-                          // Reload the page after successful removal
-                          setTimeout(() => {
-                            if (typeof window !== "undefined") {
-                              window.location.reload();
-                            }
-                          }, 500);
-                        } catch (err) {
-                          setDisconnectError(err?.message || "Failed to remove listing from branch");
-                        } finally {
-                          setDisconnecting(false);
-                        }
-                      }}
-                      disabled={!selectedBranchIdToDisconnect || disconnecting}
-                      style={{
-                        padding: "8px 12px",
-                        border: "1px solid #fca5a5",
-                        borderRadius: "8px",
-                        backgroundColor: disconnecting ? "#fecaca" : "#fff",
-                        color: "#dc2626",
-                        fontSize: "14px",
-                        fontWeight: 500,
-                        cursor: !selectedBranchIdToDisconnect || disconnecting ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      {disconnecting ? "Removing…" : "Remove From Branch"}
-                    </button>
                   </div>
                   {disconnectError && (
                     <p style={{ fontSize: "13px", color: "#dc2626", marginTop: "8px" }}>{disconnectError}</p>
@@ -2923,8 +2888,9 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
               <div
                 style={{
                   display: "flex",
-                  gap: "12px",
+                  gap: "10px",
                   justifyContent: "flex-end",
+                  marginTop: "20px",
                 }}
               >
                 <button
@@ -2933,12 +2899,12 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                     setListingToDelete(null);
                   }}
                   style={{
-                    padding: "10px 20px",
+                    padding: "6px 14px",
                     border: "1px solid #d1d5db",
-                    borderRadius: "8px",
+                    borderRadius: "6px",
                     backgroundColor: "#fff",
                     color: "#374151",
-                    fontSize: "14px",
+                    fontSize: "13px",
                     fontWeight: "500",
                     cursor: "pointer",
                     transition: "all 0.2s ease",
@@ -2955,6 +2921,48 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                   Cancel
                 </button>
                 <button
+                  onClick={async () => {
+                    if (!selectedBranchIdToDisconnect) return;
+                    setDisconnecting(true);
+                    setDisconnectError("");
+                    setDisconnectSuccess(false);
+                    try {
+                      await updateBranch(selectedBranchIdToDisconnect, { listings: { disconnect: [listingToDelete.documentId] } });
+                      setDisconnectSuccess(true);
+                      setTimeout(() => {
+                        if (typeof window !== "undefined") {
+                          window.location.reload();
+                        }
+                      }, 500);
+                    } catch (err) {
+                      setDisconnectError(err?.message || "Failed to remove listing from branch");
+                    } finally {
+                      setDisconnecting(false);
+                    }
+                  }}
+                  disabled={!selectedBranchIdToDisconnect || disconnecting}
+                  style={{
+                    padding: "6px 14px",
+                    border: "1px solid #fca5a5",
+                    borderRadius: "6px",
+                    backgroundColor: disconnecting ? "#fecaca" : "#fff",
+                    color: "#dc2626",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    cursor: !selectedBranchIdToDisconnect || disconnecting ? "not-allowed" : "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseOver={(e) => {
+                    if (!selectedBranchIdToDisconnect || disconnecting) return;
+                    e.target.style.backgroundColor = "#fee2e2";
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.backgroundColor = disconnecting ? "#fecaca" : "#fff";
+                  }}
+                >
+                  {disconnecting ? "Removing…" : "Remove From Branch"}
+                </button>
+                <button
                   onClick={() => {
                     setShowConfirmDialog(false);
                     if (listingToDelete) {
@@ -2963,12 +2971,12 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                     setListingToDelete(null);
                   }}
                   style={{
-                    padding: "10px 20px",
+                    padding: "6px 14px",
                     border: "none",
-                    borderRadius: "8px",
+                    borderRadius: "6px",
                     backgroundColor: "#dc2626",
                     color: "#fff",
-                    fontSize: "14px",
+                    fontSize: "13px",
                     fontWeight: "500",
                     cursor: "pointer",
                     transition: "all 0.2s ease",
