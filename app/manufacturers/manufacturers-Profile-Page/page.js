@@ -34,13 +34,13 @@ export default function OwnerProfilePage() {
   const { data, loading, error, refetch } = useQuery(GET_COMPANY_BY_USER, {
     variables: { documentId },
     skip: !documentId,
-    fetchPolicy: 'cache-and-network', // Always check for updates
+    fetchPolicy: 'cache-first', // Reduced network usage - rely on cache unless manual refresh
     notifyOnNetworkStatusChange: true,
   });
 
   // Auto-refresh data when page becomes visible (e.g., when navigating back)
   useEffect(() => {
-    // Only set up listeners if auto-refresh is enabled
+    // Only set up listeners if auto-refresh is explicitly enabled
     if (!autoRefreshEnabled) return;
     
     const handleVisibilityChange = () => {
@@ -49,18 +49,11 @@ export default function OwnerProfilePage() {
       }
     };
 
-    const handleFocus = () => {
-      if (documentId) {
-        refetch();
-      }
-    };
-
+    // Only refresh on visibility change, not focus (too aggressive)
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
     };
   }, [documentId, refetch, autoRefreshEnabled]);
 
@@ -91,6 +84,10 @@ if (loading) return <PageLoader text="Loading company data..." />;
         isOwner={true} 
         company={company} 
         listings={listings} 
+        onRefresh={refetch}
+        isRefreshing={loading}
+        autoRefreshEnabled={autoRefreshEnabled}
+        onToggleAutoRefresh={() => setAutoRefreshEnabled(prev => !prev)}
       />
       <Footer />
     </div>

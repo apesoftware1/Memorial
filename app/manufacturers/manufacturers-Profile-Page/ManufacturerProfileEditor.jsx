@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Star, MapPin, Edit2, Upload, Lock } from "lucide-react";
+import { Star, MapPin, Edit2, Upload, Lock, RefreshCw, Activity } from "lucide-react";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -149,6 +149,10 @@ export default function ManufacturerProfileEditor({
   listings,
   onVideoClick,
   branchButton,
+  onRefresh,
+  isRefreshing,
+  autoRefreshEnabled,
+  onToggleAutoRefresh,
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -607,7 +611,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       try {
         const categoriesResp = await client.query({
           query: GET_LISTING_CATEGORY,
-          fetchPolicy: "network-only",
+          fetchPolicy: "cache-first",
         });
         const categories = categoriesResp?.data?.listingCategories || [];
         const matched = categories.find(
@@ -1263,7 +1267,57 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
               gap: "12px",
             }}
           >
-            {/* Notification Button */}
+            {/* Auto Refresh Toggle */}
+            <button
+              onClick={onToggleAutoRefresh}
+              title={autoRefreshEnabled ? "Disable Auto-Refresh" : "Enable Auto-Refresh"}
+              style={{
+                background: autoRefreshEnabled ? "#28a745" : "#808080",
+                color: "#fff",
+                borderRadius: 8,
+                padding: "12px 16px",
+                fontWeight: 700,
+                fontSize: 15,
+                border: "none",
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
+                transition: "background 0.2s",
+                marginBottom: 8,
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Activity size={18} />
+            </button>
+
+            {/* Manual Refresh Button */}
+            <button
+              onClick={() => onRefresh()}
+              disabled={isRefreshing}
+              title="Refresh Data"
+              style={{
+                background: "#808080",
+                color: "#fff",
+                borderRadius: 8,
+                padding: "12px 16px",
+                fontWeight: 700,
+                fontSize: 15,
+                border: "none",
+                cursor: isRefreshing ? "not-allowed" : "pointer",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
+                transition: "background 0.2s",
+                marginBottom: 8,
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                opacity: isRefreshing ? 0.7 : 1,
+              }}
+            >
+              <RefreshCw size={18} className={isRefreshing ? "animate-spin" : ""} />
+            </button>
+
+            {/* Notification Button */ }
             <button
               onClick={handleNotificationClick}
               style={{

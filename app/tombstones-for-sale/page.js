@@ -46,7 +46,8 @@ export default function Home() {
     deltaQuery: LISTINGS_DELTA_QUERY,
     variables: queryVariables,
     storageKey: 'listings:lastUpdated',
-    refreshInterval: 3000,
+    refreshInterval: 0, // Disable auto-refresh to prevent 429 errors
+    staleTime: 1000 * 60 * 5, // 5 minutes staleness to prevent refetch on nav
   });
   const listings = data?.listings || [];
   // State for featured listings pagination
