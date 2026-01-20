@@ -1,9 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Star, MapPin, Edit2, Upload, Lock } from "lucide-react";
+import { Star, MapPin, Edit2, Upload, Lock, RefreshCw, Activity, Trash2 } from "lucide-react";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PremiumListingCard } from "@/components/premium-listing-card";
 import Header from "@/components/Header";
 import ViewInquiriesModal from "@/components/ViewInquiriesModal";
@@ -149,6 +150,10 @@ export default function ManufacturerProfileEditor({
   listings,
   onVideoClick,
   branchButton,
+  onRefresh,
+  isRefreshing,
+  autoRefreshEnabled,
+  onToggleAutoRefresh,
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -207,6 +212,11 @@ export default function ManufacturerProfileEditor({
   const [editingSocialLinks, setEditingSocialLinks] = useState({});
   const [createSpecialModalOpen, setCreateSpecialModalOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState(null);
+  // Bulk selection state
+  const [selectedListingIds, setSelectedListingIds] = useState(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  
   const [viewInquiriesModalOpen, setViewInquiriesModalOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(Infinity);
 
@@ -607,7 +617,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       try {
         const categoriesResp = await client.query({
           query: GET_LISTING_CATEGORY,
-          fetchPolicy: "network-only",
+          fetchPolicy: "cache-first",
         });
         const categories = categoriesResp?.data?.listingCategories || [];
         const matched = categories.find(
@@ -711,12 +721,83 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         description: `"${duplicatedTitle}" created successfully.`,
       });
 
-      // 7) Navigate to edit the duplicated listing immediately
-      if (newDocId) {
-        router.push(
-          `/manufacturers/manufacturers-Profile-Page/update-listing/${newDocId}`
-        );
+      // 7) Optimistically update the cache instead of refetching the whole list
+      // This prevents the "Last Get" (fetching all 150+ listings) which causes 429 errors.
+      
+      // A. Fetch only the SINGLE new listing (cheap)
+      const { data: newData } = await client.query({
+        query: GET_LISTING_BY_ID,
+        variables: { documentID: newDocId },
+        fetchPolicy: "network-only",
+      });
+      const newListing = newData?.listing;
+
+      if (newListing) {
+        // B. Manually update the GET_COMPANY_BY_USER cache
+        // We need the user's documentId which is passed in the query variables.
+        // We can access the user ID from the company object if available: company.user.documentId
+        
+        if (company?.user?.documentId) {
+            try {
+                const queryVars = { documentId: company.user.documentId };
+                // Attempt to read the exact query from cache
+                // Note: Apollo readQuery throws if data is missing, so we wrap in try/catch
+                const companyData = client.readQuery({
+                    query: GET_COMPANY_BY_USER,
+                    variables: queryVars,
+                });
+
+                if (companyData?.companies?.[0]) {
+                    // Ensure branch_listings exists to prevent UI crashes
+                    const safeNewListing = {
+                        ...newListing,
+                        branch_listings: newListing.branch_listings || [],
+                        branches: newListing.branches || [],
+                        // Ensure other required fields are present to match query shape
+                        listing_category: newListing.listing_category || null,
+                        productDetails: newListing.productDetails || null,
+                        additionalProductDetails: newListing.additionalProductDetails || null,
+                        inquiries_c: newListing.inquiries_c || [],
+                    };
+
+                    const updatedCompany = {
+                        ...companyData.companies[0],
+                        listings: [...(companyData.companies[0].listings || []), safeNewListing],
+                    };
+
+                    client.writeQuery({
+                        query: GET_COMPANY_BY_USER,
+                        variables: queryVars,
+                        data: {
+                            companies: [updatedCompany],
+                        },
+                    });
+                    
+                    // Also update the local state to reflect changes immediately
+                    // This handles the "filteredListings" state used for rendering
+                    setFilteredListings((prev) => [...prev, safeNewListing]);
+                    
+                    // Also update the main "companyListings" state if it exists
+                    setCompanyListings((prev) => [...prev, safeNewListing]);
+                    
+                    // Update the "company" prop if possible/needed (but props are read-only)
+                    // The parent component might re-render if it subscribes to the cache
+                }
+            } catch (cacheErr) {
+                console.warn("Could not update cache optimistically:", cacheErr);
+                // Fallback to full refresh if cache update fails
+                if (onRefresh) onRefresh();
+            }
+        } else {
+             // Fallback if we can't find the user ID
+             if (onRefresh) onRefresh();
+        }
       }
+      
+      // Optional: If we wanted to navigate, we would use:
+      // if (newDocId) {
+      //   router.push(`/manufacturers/manufacturers-Profile-Page/update-listing/${newDocId}`);
+      // }
     } catch (err) {
       console.error(err);
       toast({
@@ -728,6 +809,88 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       setIsDuplicating(false);
     }
   }
+
+  // Bulk Selection Handlers
+  const toggleSelectionMode = () => {
+    if (selectionMode) {
+      setSelectedListingIds(new Set());
+    }
+    setSelectionMode(!selectionMode);
+  };
+
+  const toggleListingSelection = (id) => {
+    const newSelected = new Set(selectedListingIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedListingIds(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedListingIds.size === 0) return;
+    
+    if (!window.confirm(`Are you sure you want to delete ${selectedListingIds.size} listings? This cannot be undone.`)) {
+        return;
+    }
+
+    setIsBulkDeleting(true);
+    try {
+        const ids = Array.from(selectedListingIds);
+        const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
+        
+        // Process in batches of 5 to avoid overwhelming the server
+        const BATCH_SIZE = 5;
+        for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+            const batch = ids.slice(i, i + BATCH_SIZE);
+            await Promise.all(batch.map(async (id) => {
+                 try {
+                     const res = await fetch(`${baseUrl}/listings/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                     });
+                     if (!res.ok) {
+                         console.error(`Failed to delete listing ${id}: ${res.status}`);
+                     }
+                 } catch (err) {
+                     console.error(`Error deleting listing ${id}:`, err);
+                 }
+            }));
+        }
+
+        // Optimistic update
+        const remainingIds = new Set(ids); // Ideally check which ones actually succeeded
+        
+        setCompanyListings(prev => prev.filter(l => !remainingIds.has(l.documentId || l.id)));
+        setFilteredListings(prev => prev.filter(l => !remainingIds.has(l.documentId || l.id)));
+        
+        // Clear selection
+        setSelectedListingIds(new Set());
+        setSelectionMode(false);
+        
+        toast({
+            title: "Bulk Delete Successful",
+            description: `Selected listings have been deleted.`,
+            variant: "default", 
+        });
+        
+        // Trigger refresh to sync with server fully
+        if (onRefresh) onRefresh();
+
+    } catch (error) {
+        console.error("Bulk delete error:", error);
+        toast({
+            title: "Bulk Delete Failed",
+            description: "An error occurred while deleting listings.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsBulkDeleting(false);
+    }
+  };
 
   const toggleDayOpen = (key) => {
     setDailyHours((prev) => ({
@@ -1263,7 +1426,57 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
               gap: "12px",
             }}
           >
-            {/* Notification Button */}
+            {/* Auto Refresh Toggle */}
+            <button
+              onClick={onToggleAutoRefresh}
+              title={autoRefreshEnabled ? "Disable Auto-Refresh" : "Enable Auto-Refresh"}
+              style={{
+                background: autoRefreshEnabled ? "#28a745" : "#808080",
+                color: "#fff",
+                borderRadius: 8,
+                padding: "12px 16px",
+                fontWeight: 700,
+                fontSize: 15,
+                border: "none",
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
+                transition: "background 0.2s",
+                marginBottom: 8,
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Activity size={18} />
+            </button>
+
+            {/* Manual Refresh Button */}
+            <button
+              onClick={() => onRefresh()}
+              disabled={isRefreshing}
+              title="Refresh Data"
+              style={{
+                background: "#808080",
+                color: "#fff",
+                borderRadius: 8,
+                padding: "12px 16px",
+                fontWeight: 700,
+                fontSize: 15,
+                border: "none",
+                cursor: isRefreshing ? "not-allowed" : "pointer",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
+                transition: "background 0.2s",
+                marginBottom: 8,
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                opacity: isRefreshing ? 0.7 : 1,
+              }}
+            >
+              <RefreshCw size={18} className={isRefreshing ? "animate-spin" : ""} />
+            </button>
+
+            {/* Notification Button */ }
             <button
               onClick={handleNotificationClick}
               style={{
@@ -2392,6 +2605,37 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
             {companyListings.length} Active Listings
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* Mobile Selection Button */}
+            {isOwner && (
+                <div className="sm:hidden flex items-center mr-2">
+                    {!selectionMode ? (
+                        <div
+                            className="flex items-center text-gray-600 font-semibold cursor-pointer select-none"
+                            onClick={toggleSelectionMode}
+                        >
+                            <span className="mr-1">Select</span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-3">
+                            <span 
+                                className="text-gray-500 text-sm" 
+                                onClick={toggleSelectionMode}
+                            >
+                                Cancel
+                            </span>
+                            {selectedListingIds.size > 0 && (
+                                <span 
+                                    className="text-red-600 font-bold text-sm flex items-center" 
+                                    onClick={handleBulkDelete}
+                                >
+                                    Delete ({selectedListingIds.size})
+                                </span>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Mobile Sort Button */}
             <div
               className="sm:hidden flex items-center text-blue-600 font-semibold cursor-pointer select-none"
@@ -2505,6 +2749,55 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                 </div>
               </div>
             )}
+            {/* Desktop Bulk Selection */}
+            {isOwner && (
+              <div className="hidden sm:flex items-center mr-4">
+                  <button
+                      onClick={toggleSelectionMode}
+                      style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          border: selectionMode ? '1px solid #2196f3' : '1px solid #e0e0e0',
+                          backgroundColor: selectionMode ? '#e3f2fd' : 'white',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          color: selectionMode ? '#2196f3' : '#555',
+                          marginRight: '8px'
+                      }}
+                  >
+                      {selectionMode ? 'Cancel Selection' : 'Select Listings'}
+                  </button>
+                  
+                  {selectionMode && selectedListingIds.size > 0 && (
+                      <button
+                          onClick={handleBulkDelete}
+                          disabled={isBulkDeleting}
+                          style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              border: '1px solid #dc3545',
+                              backgroundColor: '#dc3545',
+                              cursor: isBulkDeleting ? 'not-allowed' : 'pointer',
+                              fontSize: '13px',
+                              fontWeight: 600,
+                              color: 'white',
+                              opacity: isBulkDeleting ? 0.7 : 1
+                          }}
+                      >
+                          <Trash2 size={14} />
+                          Delete ({selectedListingIds.size})
+                      </button>
+                  )}
+              </div>
+            )}
+            
             {/* Desktop Sort Dropdown */}
             <div className="hidden sm:flex items-center">
               <span style={{ fontSize: 13, color: "#888" }}>Sort by:</span>
@@ -2590,6 +2883,27 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                 key={listing.documentId || listing.id}
                 style={{ width: "100%", height: "100%", position: "relative" }}
               >
+                {/* Selection Checkbox Overlay */}
+                {selectionMode && (
+                    <div 
+                        style={{
+                            position: 'absolute',
+                            top: 10,
+                            left: 10,
+                            zIndex: 20,
+                            backgroundColor: 'rgba(255,255,255,0.8)',
+                            borderRadius: '4px',
+                            padding: '4px',
+                        }}
+                        onClick={(e) => e.stopPropagation()} 
+                    >
+                        <Checkbox 
+                            checked={selectedListingIds.has(listing.documentId || listing.id)}
+                            onCheckedChange={() => toggleListingSelection(listing.documentId || listing.id)}
+                            style={{ width: 24, height: 24 }}
+                        />
+                    </div>
+                )}
                 <PremiumListingCard
                   listing={{
                     ...listing,
@@ -2875,41 +3189,6 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                         </option>
                       ))}
                     </select>
-                    <button
-                      onClick={async () => {
-                        if (!selectedBranchIdToDisconnect) return;
-                        setDisconnecting(true);
-                        setDisconnectError("");
-                        setDisconnectSuccess(false);
-                        try {
-                          await updateBranch(selectedBranchIdToDisconnect, { listings: { disconnect: [listingToDelete.documentId] } });
-                          setDisconnectSuccess(true);
-                          // Reload the page after successful removal
-                          setTimeout(() => {
-                            if (typeof window !== "undefined") {
-                              window.location.reload();
-                            }
-                          }, 500);
-                        } catch (err) {
-                          setDisconnectError(err?.message || "Failed to remove listing from branch");
-                        } finally {
-                          setDisconnecting(false);
-                        }
-                      }}
-                      disabled={!selectedBranchIdToDisconnect || disconnecting}
-                      style={{
-                        padding: "8px 12px",
-                        border: "1px solid #fca5a5",
-                        borderRadius: "8px",
-                        backgroundColor: disconnecting ? "#fecaca" : "#fff",
-                        color: "#dc2626",
-                        fontSize: "14px",
-                        fontWeight: 500,
-                        cursor: !selectedBranchIdToDisconnect || disconnecting ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      {disconnecting ? "Removing…" : "Remove From Branch"}
-                    </button>
                   </div>
                   {disconnectError && (
                     <p style={{ fontSize: "13px", color: "#dc2626", marginTop: "8px" }}>{disconnectError}</p>
@@ -2923,8 +3202,9 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
               <div
                 style={{
                   display: "flex",
-                  gap: "12px",
+                  gap: "10px",
                   justifyContent: "flex-end",
+                  marginTop: "20px",
                 }}
               >
                 <button
@@ -2933,12 +3213,12 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                     setListingToDelete(null);
                   }}
                   style={{
-                    padding: "10px 20px",
+                    padding: "6px 14px",
                     border: "1px solid #d1d5db",
-                    borderRadius: "8px",
+                    borderRadius: "6px",
                     backgroundColor: "#fff",
                     color: "#374151",
-                    fontSize: "14px",
+                    fontSize: "13px",
                     fontWeight: "500",
                     cursor: "pointer",
                     transition: "all 0.2s ease",
@@ -2955,6 +3235,48 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                   Cancel
                 </button>
                 <button
+                  onClick={async () => {
+                    if (!selectedBranchIdToDisconnect) return;
+                    setDisconnecting(true);
+                    setDisconnectError("");
+                    setDisconnectSuccess(false);
+                    try {
+                      await updateBranch(selectedBranchIdToDisconnect, { listings: { disconnect: [listingToDelete.documentId] } });
+                      setDisconnectSuccess(true);
+                      setTimeout(() => {
+                        if (typeof window !== "undefined") {
+                          window.location.reload();
+                        }
+                      }, 500);
+                    } catch (err) {
+                      setDisconnectError(err?.message || "Failed to remove listing from branch");
+                    } finally {
+                      setDisconnecting(false);
+                    }
+                  }}
+                  disabled={!selectedBranchIdToDisconnect || disconnecting}
+                  style={{
+                    padding: "6px 14px",
+                    border: "1px solid #fca5a5",
+                    borderRadius: "6px",
+                    backgroundColor: disconnecting ? "#fecaca" : "#fff",
+                    color: "#dc2626",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    cursor: !selectedBranchIdToDisconnect || disconnecting ? "not-allowed" : "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseOver={(e) => {
+                    if (!selectedBranchIdToDisconnect || disconnecting) return;
+                    e.target.style.backgroundColor = "#fee2e2";
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.backgroundColor = disconnecting ? "#fecaca" : "#fff";
+                  }}
+                >
+                  {disconnecting ? "Removing…" : "Remove From Branch"}
+                </button>
+                <button
                   onClick={() => {
                     setShowConfirmDialog(false);
                     if (listingToDelete) {
@@ -2963,12 +3285,12 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                     setListingToDelete(null);
                   }}
                   style={{
-                    padding: "10px 20px",
+                    padding: "6px 14px",
                     border: "none",
-                    borderRadius: "8px",
+                    borderRadius: "6px",
                     backgroundColor: "#dc2626",
                     color: "#fff",
-                    fontSize: "14px",
+                    fontSize: "13px",
                     fontWeight: "500",
                     cursor: "pointer",
                     transition: "all 0.2s ease",

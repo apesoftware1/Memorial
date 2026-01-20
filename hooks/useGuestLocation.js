@@ -69,6 +69,7 @@ export const useGuestLocation = () => {
         return null;
       }
 
+      // Use Haversine client-side calculation to prevent 429 API storms
       const haversineKm = (lat1, lon1, lat2, lon2) => {
         const R = 6371;
         const toRad = (v) => (v * Math.PI) / 180;
@@ -84,6 +85,26 @@ export const useGuestLocation = () => {
         return R * c;
       };
 
+      const km = haversineKm(location.lat, location.lng, destLat, destLng);
+      
+      if (!km || !Number.isFinite(km)) {
+        return null;
+      }
+      
+      const valueMeters = Math.round(km * 1000);
+      return {
+        distance: {
+          value: valueMeters,
+          text: `${Math.round(km)} km`,
+        },
+        origin: { lat: location.lat, lng: location.lng },
+        destination: { lat: destLat, lng: destLng },
+        source: "haversine-local",
+      };
+      
+      /* 
+       * DISABLED: API Call to prevent 429 errors during mass listing
+       * 
       try {
         const res = await fetch("/api/distance", {
           method: "POST",
@@ -121,6 +142,7 @@ export const useGuestLocation = () => {
           source: "haversine",
         };
       }
+      */
     },
     [location]
   );

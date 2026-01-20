@@ -144,9 +144,9 @@ export function ConfirmationModal({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Remove listing from a branch
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                 <select
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                   value={selectedBranchId}
                   onChange={(e) => setSelectedBranchId(e.target.value)}
                 >
@@ -161,13 +161,6 @@ export function ConfirmationModal({
                     )
                   })}
                 </select>
-                <button
-                  onClick={handleRemoveFromBranch}
-                  disabled={!selectedBranchId || removing}
-                  className="px-3 py-2 text-sm font-medium text-white rounded-lg bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-                >
-                  {removing ? "Removing…" : "Remove From Branch"}
-                </button>
               </div>
               {removeError && (
                 <p className="text-sm text-red-600 mt-2">{removeError}</p>
@@ -187,6 +180,15 @@ export function ConfirmationModal({
           >
             {cancelText}
           </button>
+          {Array.isArray(branches) && branches.length > 0 && listingId && (
+            <button
+              onClick={handleRemoveFromBranch}
+              disabled={!selectedBranchId || removing}
+              className="px-4 py-2 text-sm font-medium text-white rounded-lg bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 whitespace-nowrap"
+            >
+              {removing ? "Removing…" : "Remove From Branch"}
+            </button>
+          )}
           <button
             onClick={handleConfirm}
             className={`px-4 py-2 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${styles.confirmBtn}`}

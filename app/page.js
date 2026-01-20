@@ -187,7 +187,8 @@ export default function Home() {
     deltaQuery: LISTINGS_DELTA_QUERY,
     variables: { limit: 5 },
     storageKey: 'listings:lastUpdated',
-    refreshInterval: 3000,
+    refreshInterval: 60000, // Reduced from 3000ms to 60s to save bandwidth
+    staleTime: 1000 * 60 * 5, // 5 minutes staleness
   });
   // Filter and populate the arrays after fetching listings
 

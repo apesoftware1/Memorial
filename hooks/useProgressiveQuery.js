@@ -28,6 +28,7 @@ export function useProgressiveQuery({
   variables = {},
   storageKey = 'data:lastUpdated',
   refreshInterval = 3000,
+  staleTime = 0, // Time in ms before data is considered stale
 }) {
   const client = useApolloClient();
   const mountedRef = useRef(true);
@@ -70,6 +71,16 @@ export function useProgressiveQuery({
       (async () => {
         const start = performance.now();
         try {
+          // Check if data is stale
+          if (staleTime > 0 && typeof window !== 'undefined') {
+            const lastUpdated = Number(window.localStorage.getItem(storageKey) || 0);
+            const now = Date.now();
+            if (now - lastUpdated < staleTime) {
+              console.log(`[Background Fetch] Skipped (Fresh for ${(staleTime - (now - lastUpdated)) / 1000}s)`);
+              return;
+            }
+          }
+
           const { data } = await client.query({
             query: fullQuery,
             variables, // pass variables for full query
@@ -79,7 +90,7 @@ export function useProgressiveQuery({
           // Track last updated timestamp for delta refresh
           const maxUpdated = getMaxUpdatedTime(data);
           if (maxUpdated && typeof window !== 'undefined') {
-            window.localStorage.setItem(storageKey, String(maxUpdated));
+            window.localStorage.setItem(storageKey, String(Date.now())); // Use current time for staleness check
           }
 
           console.log(`[Background Fetch] ${(performance.now() - start).toFixed(0)} ms`);
@@ -88,13 +99,16 @@ export function useProgressiveQuery({
         }
       })();
     }
-  }, [initialData, initialLoading, client, fullQuery, storageKey]);
+  }, [initialData, initialLoading, client, fullQuery, storageKey, staleTime, variables]);
 
   // Silent background delta refresh
   useEffect(() => {
-    if (!deltaQuery) return;
+    if (!deltaQuery || refreshInterval <= 0) return;
 
     const interval = setInterval(async () => {
+      // Skip if page is hidden
+      if (typeof document !== 'undefined' && document.hidden) return;
+
       try {
         const sinceMs =
           typeof window !== 'undefined'

@@ -7,6 +7,7 @@ import { Inter } from "next/font/google"
 import ApolloWrapper from "./ApolloWrapper";
 import SessionWrapper from "./components/SessionWrapper";
 import { FavoritesProvider } from "@/context/favorites-context.jsx";
+import MaintenanceBanner from "@/components/MaintenanceBanner";
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -89,7 +90,6 @@ export const metadata: Metadata = {
 import { Toaster } from "@/components/ui/toaster";
 import GAEvents from './components/GAEvents'
 import ImageProtection from "@/components/ImageProtection";
-import MaintenanceBanner from "@/components/MaintenanceBanner";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -119,6 +119,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={inter.className}>
         <ImageProtection />
+        <MaintenanceBanner />
         <SessionWrapper>
           <ApolloWrapper>
             <FavoritesProvider>

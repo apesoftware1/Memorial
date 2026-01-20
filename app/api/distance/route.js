@@ -1,11 +1,32 @@
 // app/api/distance/route.js
 
+// Simple in-memory cache to reduce Google Maps API calls
+// Keys: "userLat,userLng:destLat,destLng"
+// Values: { distance, duration, timestamp }
+const CACHE = new Map();
+const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour cache duration
+const MAX_CACHE_SIZE = 1000; // Prevent memory leaks
+
 export async function POST(req) {
   try {
     const { userLat, userLng, destLat, destLng } = await req.json();
 
     if (!userLat || !userLng || !destLat || !destLng) {
       return new Response(JSON.stringify({ error: "Missing coordinates" }), { status: 400 });
+    }
+
+    // 1. Check Cache
+    const cacheKey = `${Number(userLat).toFixed(4)},${Number(userLng).toFixed(4)}:${Number(destLat).toFixed(4)},${Number(destLng).toFixed(4)}`;
+    
+    if (CACHE.has(cacheKey)) {
+      const entry = CACHE.get(cacheKey);
+      if (Date.now() - entry.timestamp < CACHE_TTL_MS) {
+        // Return cached result
+        return new Response(JSON.stringify(entry.data), { status: 200 });
+      } else {
+        // Expired
+        CACHE.delete(cacheKey);
+      }
     }
 
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
@@ -43,11 +64,21 @@ export async function POST(req) {
       return new Response(JSON.stringify({ error: "No route found" }), { status: 404 });
     }
 
+    const result = {
+      distance: { text: `${(route.distanceMeters / 1000).toFixed(1)} km`, value: route.distanceMeters },
+      duration: { text: `${Math.round(parseInt(route.duration) / 60)} mins`, value: parseInt(route.duration) },
+    };
+
+    // 2. Update Cache
+    if (CACHE.size >= MAX_CACHE_SIZE) {
+      // Simple eviction: remove first key
+      const firstKey = CACHE.keys().next().value;
+      CACHE.delete(firstKey);
+    }
+    CACHE.set(cacheKey, { data: result, timestamp: Date.now() });
+
     return new Response(
-      JSON.stringify({
-        distance: { text: `${(route.distanceMeters / 1000).toFixed(1)} km`, value: route.distanceMeters },
-        duration: { text: `${Math.round(parseInt(route.duration) / 60)} mins`, value: parseInt(route.duration) },
-      }),
+      JSON.stringify(result),
       { status: 200 }
     );
   } catch (err) {
