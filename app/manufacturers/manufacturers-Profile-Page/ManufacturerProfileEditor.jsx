@@ -715,21 +715,49 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
   const handleBulkAssignToBranch = async (branchId, branchName) => {
     if (!branchId || selectedListingIds.size === 0) return;
     
+    // Filter listings to determine which ones need assignment vs. which are duplicates
+    const ids = Array.from(selectedListingIds);
+    const listingsToAssign = [];
+    const skippedListings = [];
+
+    ids.forEach(id => {
+        const listing = companyListings.find(l => (l.documentId || l.id) === id);
+        if (!listing) return;
+
+        const isAlreadyInBranch = listing.branches?.some(b => 
+            (b.documentId || b.id) === branchId
+        );
+
+        if (isAlreadyInBranch) {
+            skippedListings.push(listing);
+        } else {
+            listingsToAssign.push(listing);
+        }
+    });
+
+    // Case 1: All selected listings already exist in the target branch -> Block
+    if (listingsToAssign.length === 0) {
+        toast({
+            title: "Operation Blocked",
+            description: "One or more selected listings already exist in branches and cannot be reassigned.",
+            variant: "destructive"
+        });
+        return;
+    }
+
     setIsBulkAssigning(true);
     
     try {
-      const ids = Array.from(selectedListingIds);
       const BATCH_SIZE = 5;
       
       let successCount = 0;
       let errorCount = 0;
       
-      for (let i = 0; i < ids.length; i += BATCH_SIZE) {
-        const batch = ids.slice(i, i + BATCH_SIZE);
-        await Promise.all(batch.map(async (listingId) => {
+      for (let i = 0; i < listingsToAssign.length; i += BATCH_SIZE) {
+        const batch = listingsToAssign.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(async (listing) => {
+          const listingId = listing.documentId || listing.id;
           try {
-             // Find listing to get price
-             const listing = companyListings.find(l => (l.documentId || l.id) === listingId);
              const price = listing ? Number(listing.price) : 0;
              
              // Step 1: Create the direct relationship (branches.listings)
@@ -749,10 +777,18 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         }));
       }
       
+      let description = `Assigned ${successCount} listings to ${branchName}.`;
+      if (skippedListings.length > 0) {
+        description += ` ${skippedListings.length} listings were skipped as they already exist in this branch.`;
+      }
+      if (errorCount > 0) {
+        description += ` ${errorCount} failed.`;
+      }
+
       toast({
           title: "Assignment Complete",
-          description: `Assigned ${successCount} listings to ${branchName}. ${errorCount > 0 ? `${errorCount} failed.` : ''}`,
-          variant: errorCount > 0 ? "destructive" : "default" // Warning variant might not exist
+          description: description,
+          variant: errorCount > 0 ? "destructive" : "default" 
       });
       
       setSelectedListingIds(new Set());
@@ -776,30 +812,50 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
   const handleBulkAssignToAllBranches = async () => {
     if (!company.branches || company.branches.length === 0 || selectedListingIds.size === 0) return;
 
+    const listingIds = Array.from(selectedListingIds);
+    const branches = company.branches;
+    const tasks = [];
+    let totalPossibleAssignments = 0;
+      
+    // Create a task for every valid listing-branch combination
+    for (const branch of branches) {
+        const branchId = branch.documentId || branch.id;
+        for (const listingId of listingIds) {
+             totalPossibleAssignments++;
+             const listing = companyListings.find(l => (l.documentId || l.id) === listingId);
+             
+             // Check for duplicate in this specific branch
+             const isAlreadyInBranch = listing?.branches?.some(b => 
+                (b.documentId || b.id) === branchId
+             );
+
+             if (!isAlreadyInBranch) {
+                 tasks.push({ listingId, branchId, listing });
+             }
+        }
+    }
+
+    // If no tasks generated, it means all selected listings are already in all branches
+    if (tasks.length === 0) {
+        toast({
+            title: "Operation Blocked",
+            description: "One or more selected listings already exist in branches and cannot be reassigned.",
+            variant: "destructive"
+        });
+        return;
+    }
+
     setIsBulkAssigning(true);
 
     try {
-      const listingIds = Array.from(selectedListingIds);
-      const branches = company.branches;
-      const tasks = [];
-      
-      // Create a task for every listing-branch combination
-      for (const branch of branches) {
-          const branchId = branch.documentId || branch.id;
-          for (const listingId of listingIds) {
-               tasks.push({ listingId, branchId });
-          }
-      }
-
       const BATCH_SIZE = 5;
       let successCount = 0;
       let errorCount = 0;
 
       for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
         const batch = tasks.slice(i, i + BATCH_SIZE);
-        await Promise.all(batch.map(async ({ listingId, branchId }) => {
+        await Promise.all(batch.map(async ({ listingId, branchId, listing }) => {
           try {
-             const listing = companyListings.find(l => (l.documentId || l.id) === listingId);
              const price = listing ? Number(listing.price) : 0;
 
              // Step 1: Create the direct relationship (branches.listings)
@@ -819,9 +875,15 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         }));
       }
 
+      const skippedCount = totalPossibleAssignments - tasks.length;
+      let description = `Assigned ${successCount} listings across ${branches.length} branches.`;
+      if (skippedCount > 0) {
+        description += ` ${skippedCount} assignments were skipped as duplicates.`;
+      }
+      
       toast({
           title: "Bulk Assignment Complete",
-          description: `Assigned ${selectedListingIds.size} listings to all ${branches.length} branches.`,
+          description: description,
           variant: errorCount > 0 ? "destructive" : "default"
       });
 
@@ -2627,6 +2689,9 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
             borderBottom: "1px solid #e0e0e0",
             maxWidth: 1200,
             margin: "32px auto 28px auto",
+            position: "sticky",
+            top: 65, // Below the 64px header + 1px border
+            zIndex: 40,
           }}
         >
           {isOwner && (
