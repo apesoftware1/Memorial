@@ -228,6 +228,7 @@ export default function CompanyMediaUpload({ company, type = "video" }) {
                   src={previewUrl}
                   alt="Profile"
                   className="w-32 h-32 object-cover border rounded"
+                  loading="lazy"
                 />
               )}
             </div>

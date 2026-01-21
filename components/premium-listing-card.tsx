@@ -259,7 +259,8 @@ export function PremiumListingCard({
               alt={listing.title}
               fill
               className="object-cover"
-              sizes="(max-width: 768px) 100vw"
+              sizes="(max-width: 768px) 100vw, 50vw"
+              priority={isFirstCard}
             />
             {/* Heart icon overlay - top right corner */}
             <div className="absolute top-4 right-2 z-20" onClick={(e) => e.stopPropagation()}>

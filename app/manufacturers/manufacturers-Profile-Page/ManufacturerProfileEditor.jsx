@@ -1,14 +1,23 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Star, MapPin, Edit2, Upload, Lock, RefreshCw, Activity, Trash2 } from "lucide-react";
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo, forwardRef } from "react";
+import { VirtuosoGrid } from 'react-virtuoso';
 import { useRouter, useSearchParams } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PremiumListingCard } from "@/components/premium-listing-card";
 import Header from "@/components/Header";
-import ViewInquiriesModal from "@/components/ViewInquiriesModal";
-import CreateSpecialModal from "@/components/CreateSpecialModal";
+import dynamic from 'next/dynamic';
+
+const ViewInquiriesModal = dynamic(() => import("@/components/ViewInquiriesModal"), { ssr: false });
+const CreateSpecialModal = dynamic(() => import("@/components/CreateSpecialModal"), { ssr: false });
+const ManufacturerLocationModal = dynamic(() => import("@/components/ManufacturerLocationModal"), { ssr: false });
+const CreateBranchModal = dynamic(() => import("@/components/CreatebranchModal"), { ssr: false });
+const BranchSelector = dynamic(() => import("@/components/BranchSelector"), { ssr: false });
+const BranchSelectionModal = dynamic(() => import("@/components/BranchSelectionModal"), { ssr: false });
+const OperatingHoursModal = dynamic(() => import("@/components/OperatingHoursModal"), { ssr: false });
+
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -16,20 +25,17 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { useManufacturerLocation } from "@/hooks/useManufacturerLocation";
-import ManufacturerLocationModal from "@/components/ManufacturerLocationModal";
 import { updateCompanyField } from "@/graphql/mutations/updateCompany";
 import { toast } from "@/hooks/use-toast";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { useApolloClient } from '@apollo/client';
 import { GET_LISTING_BY_ID } from '@/graphql/queries/getListingById';
 import { GET_LISTING_CATEGORY } from '@/graphql/queries/getListingCategory';
-import CreateBranchModal from "@/components/CreatebranchModal";
-import BranchSelector from "@/components/BranchSelector";
 import CompanyMediaUpload from "@/components/CompanyMediaUpload";
-import BranchSelectionModal from "@/components/BranchSelectionModal";
-import OperatingHoursModal from "@/components/OperatingHoursModal";
 import { updateBranch } from "@/graphql/mutations/updateBranch";
 import { useGuestLocation } from "@/hooks/useGuestLocation";
+import ListingCardItem from "./ListingCardItem";
+import { getIconPath, OPERATING_DAY_ORDER, SOCIAL_ICON_MAP } from "./constants";
 
 // Helper function to find a branch by name
 const findBranchByName = (branchName, branches) => {
@@ -144,6 +150,8 @@ function parsePrice(val) {
   return 0;
 }
 
+import { addListingToBranchListing, addListingToBranch } from "@/lib/addListingToBranch";
+
 export default function ManufacturerProfileEditor({
   isOwner,
   company: initialCompany,
@@ -195,12 +203,7 @@ export default function ManufacturerProfileEditor({
   const [branchFromUrl, setBranchFromUrl] = useState(null);
   const [filteredListings, setFilteredListings] = useState(listings);
   // Single-step Operating Hours editor state
-  const OPERATING_DAY_ORDER = [
-    "monToFri",
-    "saturday",
-    "sunday",
-    "publicHoliday",
-  ];
+
   const [operatingDayIndex, setOperatingDayIndex] = useState(0); // 0..3
   const [operatingPhase, setOperatingPhase] = useState("idle"); // 'idle' | 'open' | 'close' | 'review'
   const [tempOpenTime, setTempOpenTime] = useState(null); // holds selected open time before choosing close
@@ -210,14 +213,24 @@ export default function ManufacturerProfileEditor({
     ? selectedDayFilters
     : OPERATING_DAY_ORDER;
   const [editingSocialLinks, setEditingSocialLinks] = useState({});
-  const [createSpecialModalOpen, setCreateSpecialModalOpen] = useState(false);
+  const [modals, setModals] = useState({
+    createSpecial: false,
+    viewInquiries: false,
+    createBranch: false,
+    branchSelector: false,
+    branchSelection: false,
+    operatingHours: false,
+    videoSlot: false,
+    confirmDelete: false,
+  });
+  const toggleModal = useCallback((name, value) => setModals(prev => ({ ...prev, [name]: value })), []);
+
   const [selectedListing, setSelectedListing] = useState(null);
   // Bulk selection state
   const [selectedListingIds, setSelectedListingIds] = useState(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   
-  const [viewInquiriesModalOpen, setViewInquiriesModalOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(Infinity);
 
   // Delete success message state
@@ -225,9 +238,8 @@ export default function ManufacturerProfileEditor({
   const [deleteMessage, setDeleteMessage] = useState("");
   const [showDeleteMessage, setShowDeleteMessage] = useState(false);
 
-  // Custom confirmation dialog state
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-const [listingToDelete, setListingToDelete] = useState(null);
+  // Custom confirmation dialog state - consolidated
+  const [listingToDelete, setListingToDelete] = useState(null);
 // --- Added local state for removing listing from a branch ---
 const [selectedBranchIdToDisconnect, setSelectedBranchIdToDisconnect] = useState("");
 const [disconnecting, setDisconnecting] = useState(false);
@@ -254,12 +266,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
   // Profile picture upload state + Video modal
   const profilePicInputRef = useRef(null);
   const [isUploadingProfilePic, setIsUploadingProfilePic] = useState(false);
-  const [showVideoSlotModal, setShowVideoSlotModal] = useState(false);
-  const [showCreateBranchModal, setShowCreateBranchModal] = useState(false);
-  const [showBranchSelectorModal, setShowBranchSelectorModal] = useState(false);
-  const [showBranchSelectionModal, setShowBranchSelectionModal] = useState(false);
   const [selectedListingForBranch, setSelectedListingForBranch] = useState(null);
-  const [showOperatingHoursModal, setShowOperatingHoursModal] = useState(false);
+  const [isBulkAssigning, setIsBulkAssigning] = useState(false);
 
   // Company state management
   const [company, setCompany] = useState(initialCompany);
@@ -472,134 +480,6 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       });
       const full = data?.listing;
       if (!full) throw new Error("Full listing details not found.");
-
-      // 2) Icon maps + resolver (mirrors Advert Creator)
-      const COLOR_ICON_MAP = {
-        Black:
-          "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Black.svg",
-        Blue: "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Blue.svg",
-        Green:
-          "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Green.svg",
-        "Grey-Dark":
-          "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Dark.svg",
-        "Grey-Light":
-          "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Light.svg",
-        Maroon:
-          "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Maroon.svg",
-        Pearl:
-          "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Pearl.svg",
-        White:
-          "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_White.svg",
-        Mixed:
-          "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Mixed.svg",
-      };
-      const HEAD_STYLE_ICON_MAP = {
-        "Christian Cross":
-          "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_ChristianCross.svg",
-        Heart:
-          "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Heart.svg",
-        Bible:
-          "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bible.svg",
-        Pillars:
-          "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Pillars.svg",
-        "Traditional African":
-          "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TraditionalAfrican.svg",
-        Abstract:
-          "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Abstract.svg",
-        "Praying Hands":
-          "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_PrayingHands.svg",
-        Scroll:
-          "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Scroll.svg",
-        Angel:
-          "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Angel.svg",
-        Mausoleum:
-          "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Mausolean.svg",
-        Obelisk:
-          "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Obelisk.svg",
-        Plain:
-          "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg",
-        "Teddy Bear":
-          "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TeddyBear.svg",
-        Butterfly:
-          "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Butterfly.svg",
-        Car: "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Car.svg",
-        Bike: "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bike.svg",
-        Sports:
-          "/last icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Sport.svg",
-      };
-      const STONE_TYPE_ICON_MAP = {
-        Biodegradable:
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Biodegradable.svg",
-        Brass:
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Brass.svg",
-        "Ceramic/Porcelain":
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Ceramic_Porcelain.svg",
-        Composite:
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Composite.svg",
-        Concrete:
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Concrete.svg",
-        Copper:
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Copper.svg",
-        Glass:
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Glass.svg",
-        Granite:
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Granite.svg",
-        Limestone:
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Limestone.svg",
-        Marble:
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Marble.svg",
-        Perspex:
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Perspex.svg",
-        Quartzite:
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Quartzite.svg",
-        Sandstone:
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Sandstone.svg",
-        Slate:
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Slate.svg",
-        Steel:
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Steel.svg",
-        Stone:
-          "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg",
-        Tile: "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Tile.svg",
-        Wood: "/last icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Wood.svg",
-      };
-      const CUSTOMIZATION_ICON_MAP = {
-        "Bronze/Stainless Plaques":
-          "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_BronzeStainless Plaque.svg",
-        "Ceramic Photo Plaques":
-          "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_CeramicPhotoPlaque.svg",
-        "Flower Vases":
-          "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_FlowerVase.svg",
-        "Gold Lettering":
-          "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_GoldLettering.svg",
-        "Inlaid Glass":
-          "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_InlaidGlass.svg",
-        "Photo Laser-Edging":
-          "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_PhotoLaserEdginhg.svg",
-        "QR Code":
-          "/last icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_QR Code.svg",
-      };
-      const getIconPath = (type, value) => {
-        const key = String(value || "").trim();
-        switch (type) {
-          case "color":
-            return COLOR_ICON_MAP[key] || null;
-          case "style":
-            return (
-              HEAD_STYLE_ICON_MAP[key] ||
-              "/new files/newIcons/Styles_Icons/Styles_Icons-11.svg"
-            );
-          case "stoneType":
-            return STONE_TYPE_ICON_MAP[key] || null;
-          case "customization":
-            return (
-              CUSTOMIZATION_ICON_MAP[key] ||
-              "/new files/newIcons/Custom_Icons/Custom_Icons-54.svg"
-            );
-          default:
-            return null;
-        }
-      };
 
       // 3) Compute unique slug and duplicated title
       const baseSlug = slugify(full.slug || full.title || "listing");
@@ -818,14 +698,148 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     setSelectionMode(!selectionMode);
   };
 
-  const toggleListingSelection = (id) => {
-    const newSelected = new Set(selectedListingIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
+  const toggleListingSelection = useCallback((id) => {
+    setSelectedListingIds(prev => {
+      const newSelected = new Set(prev);
+      if (newSelected.has(id)) {
+        newSelected.delete(id);
+      } else {
+        newSelected.add(id);
+      }
+      return newSelected;
+    });
+  }, []);
+
+
+
+  const handleBulkAssignToBranch = async (branchId, branchName) => {
+    if (!branchId || selectedListingIds.size === 0) return;
+    
+    setIsBulkAssigning(true);
+    
+    try {
+      const ids = Array.from(selectedListingIds);
+      const BATCH_SIZE = 5;
+      
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+        const batch = ids.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(async (listingId) => {
+          try {
+             // Find listing to get price
+             const listing = companyListings.find(l => (l.documentId || l.id) === listingId);
+             const price = listing ? Number(listing.price) : 0;
+             
+             // Step 1: Create the direct relationship (branches.listings)
+             await addListingToBranch(branchId, listingId);
+
+             // Step 2: Create the pricing entry (branch_listings)
+             await addListingToBranchListing({
+               listingDocumentId: listingId,
+               branchDocumentId: branchId,
+               price: price
+             });
+             successCount++;
+          } catch (err) {
+             console.error(`Failed to assign listing ${listingId} to branch ${branchId}`, err);
+             errorCount++;
+          }
+        }));
+      }
+      
+      toast({
+          title: "Assignment Complete",
+          description: `Assigned ${successCount} listings to ${branchName}. ${errorCount > 0 ? `${errorCount} failed.` : ''}`,
+          variant: errorCount > 0 ? "destructive" : "default" // Warning variant might not exist
+      });
+      
+      setSelectedListingIds(new Set());
+      setSelectionMode(false);
+      
+      // Refresh
+      if (onRefresh) onRefresh();
+      
+    } catch (error) {
+       console.error("Bulk assign error:", error);
+       toast({
+           title: "Error",
+           description: "Failed to perform bulk assignment.",
+           variant: "destructive"
+       });
+    } finally {
+       setIsBulkAssigning(false);
     }
-    setSelectedListingIds(newSelected);
+  };
+
+  const handleBulkAssignToAllBranches = async () => {
+    if (!company.branches || company.branches.length === 0 || selectedListingIds.size === 0) return;
+
+    setIsBulkAssigning(true);
+
+    try {
+      const listingIds = Array.from(selectedListingIds);
+      const branches = company.branches;
+      const tasks = [];
+      
+      // Create a task for every listing-branch combination
+      for (const branch of branches) {
+          const branchId = branch.documentId || branch.id;
+          for (const listingId of listingIds) {
+               tasks.push({ listingId, branchId });
+          }
+      }
+
+      const BATCH_SIZE = 5;
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
+        const batch = tasks.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(async ({ listingId, branchId }) => {
+          try {
+             const listing = companyListings.find(l => (l.documentId || l.id) === listingId);
+             const price = listing ? Number(listing.price) : 0;
+
+             // Step 1: Create the direct relationship (branches.listings)
+             await addListingToBranch(branchId, listingId);
+
+             // Step 2: Create the pricing entry (branch_listings)
+             await addListingToBranchListing({
+               listingDocumentId: listingId,
+               branchDocumentId: branchId,
+               price: price
+             });
+             successCount++;
+          } catch (err) {
+             console.error(`Failed to assign listing ${listingId} to branch ${branchId}`, err);
+             errorCount++;
+          }
+        }));
+      }
+
+      toast({
+          title: "Bulk Assignment Complete",
+          description: `Assigned ${selectedListingIds.size} listings to all ${branches.length} branches.`,
+          variant: errorCount > 0 ? "destructive" : "default"
+      });
+
+      setSelectedListingIds(new Set());
+      setSelectionMode(false);
+      
+      if (onRefresh) onRefresh();
+
+    } catch (error) {
+       console.error("Bulk assign all error:", error);
+       toast({
+           title: "Error",
+           description: "Failed to perform bulk assignment to all branches.",
+           variant: "destructive"
+       });
+    } finally {
+       setIsBulkAssigning(false);
+    }
   };
 
   const handleBulkDelete = async () => {
@@ -953,6 +967,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
   // Notification state management
   const [companyListings, setCompanyListings] = useState(listings || []);
   const [notificationCount, setNotificationCount] = useState(0);
+  
+
 
   // Update company state when initialCompany changes
   useEffect(() => {
@@ -987,6 +1003,24 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     ).length;
     setNotificationCount(unreadCount);
   }, [companyListings]);
+
+  // Memoize sorted and filtered listings to avoid expensive re-sorting on every render
+  const sortedAndFilteredListings = useMemo(() => {
+    const baseListings = branchFromUrl ? filteredListings : companyListings;
+    return [...baseListings].sort((a, b) => {
+      if (sortBy === "Price") {
+        return parsePrice(a.price) - parsePrice(b.price);
+      }
+      if (sortBy === "Listing Date") {
+        // Use createdAt as the listing date field, ascending order (oldest first)
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      }
+      if (sortBy === "Alphabetical Order") {
+        return (a.title || "").localeCompare(b.title || "");
+      }
+      return 0;
+    });
+  }, [branchFromUrl, filteredListings, companyListings, sortBy]);
 
   // Location check hook with company update callback
   const locationUpdateCallback = useCallback((updatedCompany) => {
@@ -1066,18 +1100,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     },
   ];
 
-  // Social icon map - using proper named icons
-  const socialIconMap = {
-    website: "/new files/newIcons/Social Media Icons/Advert Set-Up-03.svg", // Website icon (using generic)
-    facebook: "/new files/Social Media Icons/Social Media Icons/facebook.svg",
-    instagram: "/new files/newIcons/Social Media Icons/Advert Set-Up-04.svg", // Instagram icon
-    tiktok: "/new files/newIcons/Social Media Icons/Advert Set-Up-07.svg", // TikTok icon (using generic for now)
-    youtube: "/new files/newIcons/Social Media Icons/Advert Set-Up-05.svg", // YouTube icon
-    x: "/new files/Social Media Icons/Social Media Icons/twitter.svg", // Using twitter.svg for X
-    whatsapp: "/new files/Social Media Icons/Social Media Icons/whatsapp.svg",
-    messenger:
-      "/new files/Social Media Icons/Social Media Icons/Advert Set-Up-06.svg", // Messenger icon (confirmed)
-  };
+
 
   if (mobile && isOwner) {
     return (
@@ -1228,7 +1251,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     }
 
     // Open the modal
-    setViewInquiriesModalOpen(true);
+    toggleModal("viewInquiries", true);
   }, [companyListings, handleInquiriesRead]);
 
   // Function to navigate to advert creator with company data
@@ -1381,6 +1404,27 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       setIsUploading(false);
     }
   };
+  const handleEditListing = useCallback((listing) => {
+    window.location.href = `/manufacturers/manufacturers-Profile-Page/update-listing/${listing.documentId || listing.id}`;
+  }, []);
+
+  const handleDeleteListing = useCallback((listing) => {
+    setListingToDelete(listing);
+    toggleModal("confirmDelete", true);
+  }, []);
+
+  const handleCreateSpecial = useCallback((listing) => {
+    setSelectedListing(listing);
+    toggleModal("createSpecial", true);
+  }, []);
+
+  const handleAddToBranch = useCallback((listing) => {
+    if (company.branches?.length > 0) {
+      setSelectedListingForBranch(listing);
+      toggleModal("branchSelection", true);
+    }
+  }, [company.branches]);
+
   const branchobj = findBranchByName(selectedBranch?.name || "" , company.branches);
   return (
     <>
@@ -1552,12 +1596,12 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                   Update Branch
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => setShowBranchSelectorModal(true)}
+                  onClick={() => toggleModal("branchSelector", true)}
                 >
                   Switch Branch
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => setShowCreateBranchModal(true)}
+                  onClick={() => toggleModal("createBranch", true)}
                 >
                   Create Branch
                 </DropdownMenuItem>
@@ -1751,6 +1795,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                       key={company.logoUrl}
                       style={{ objectFit: "contain" }}
                       sizes="100vw"
+                      priority
                     />
                     {isOwner && isUploading && (
                       <div
@@ -1893,7 +1938,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                     border: "none",
                     cursor: "pointer",
                   }}
-                  onClick={() => setShowOperatingHoursModal(true)}
+                  onClick={() => toggleModal("operatingHours", true)}
                   title="Edit operating hours"
                 >
                   <Edit2 style={{ width: 16, height: 16, color: "#888" }} />
@@ -2053,12 +2098,12 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
             {/* CreateBranchModal is conditionally rendered based on state */}
             <CreateBranchModal
               documentId={company.documentId}
-              isOpen={showCreateBranchModal}
-              onClose={() => setShowCreateBranchModal(false)}
+              isOpen={modals.createBranch}
+              onClose={() => toggleModal("createBranch", false)}
             />
             
             {/* Branch Selector Modal */}
-            <Dialog open={showBranchSelectorModal} onOpenChange={setShowBranchSelectorModal}>
+            <Dialog open={modals.branchSelector} onOpenChange={(open) => toggleModal("branchSelector", open)}>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Switch Branch</DialogTitle>
@@ -2069,7 +2114,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                     branches={company.branches}
                     onBranchSelect={(branch) => {
                       handleBranchSelect(branch);
-                      setShowBranchSelectorModal(false);
+                      toggleModal("branchSelector", false);
                     }}
                   />
                 </div>
@@ -2132,6 +2177,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                         height: "100%",
                         borderRadius: 6,
                       }}
+                      loading="lazy"
                     />
                   </div>
                 )}
@@ -2186,7 +2232,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
             </div>
 
             {/* Warning Modal */}
-            {showVideoSlotModal && (
+            {modals.videoSlot && (
               <div
                 style={{
                   position: "fixed",
@@ -2200,7 +2246,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                   justifyContent: "center",
                   zIndex: 9999,
                 }}
-                onClick={() => setShowVideoSlotModal(false)}
+                onClick={() => toggleModal("videoSlot", false)}
               >
                 <div
                   style={{
@@ -2244,7 +2290,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                       Contact
                     </a>
                     <button
-                      onClick={() => setShowVideoSlotModal(false)}
+                      onClick={() => toggleModal("videoSlot", false)}
                       style={{
                         padding: "8px 12px",
                         borderRadius: 6,
@@ -2395,7 +2441,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                       }}
                     >
                       <Image
-                        src={socialIconMap[social.name] || ""}
+                        src={SOCIAL_ICON_MAP[social.name] || ""}
                         alt={social.name}
                         width={18}
                         height={18}
@@ -2499,7 +2545,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                         }}
                       >
                         <Image
-                          src={socialIconMap[social.name] || ""}
+                          src={SOCIAL_ICON_MAP[social.name] || ""}
                           alt={social.name}
                           width={18}
                           height={18}
@@ -2773,6 +2819,57 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                   </button>
                   
                   {selectionMode && selectedListingIds.size > 0 && (
+                    <>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                              disabled={isBulkAssigning}
+                              style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '4px 10px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #2196f3',
+                                  backgroundColor: '#2196f3',
+                                  cursor: isBulkAssigning ? 'not-allowed' : 'pointer',
+                                  fontSize: '13px',
+                                  fontWeight: 600,
+                                  color: 'white',
+                                  marginRight: '8px',
+                                  opacity: isBulkAssigning ? 0.7 : 1
+                              }}
+                          >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M9 18l6-6-6-6"/>
+                              </svg>
+                              {isBulkAssigning ? 'Assigning...' : 'Assign to Branch'} ({selectedListingIds.size})
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          {company?.branches?.length > 0 ? (
+                            <>
+                                <DropdownMenuItem 
+                                    onClick={handleBulkAssignToAllBranches}
+                                    style={{ fontWeight: 'bold', borderBottom: '1px solid #eee' }}
+                                >
+                                    Assign to All Branches
+                                </DropdownMenuItem>
+                                {company.branches.map((branch) => (
+                                    <DropdownMenuItem
+                                        key={branch.documentId || branch.id}
+                                        onClick={() => handleBulkAssignToBranch(branch.documentId || branch.id, branch.name)}
+                                    >
+                                        {branch.name}
+                                    </DropdownMenuItem>
+                                ))}
+                            </>
+                          ) : (
+                            <DropdownMenuItem disabled>No branches available</DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
                       <button
                           onClick={handleBulkDelete}
                           disabled={isBulkDeleting}
@@ -2794,6 +2891,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                           <Trash2 size={14} />
                           Delete ({selectedListingIds.size})
                       </button>
+                    </>
                   )}
               </div>
             )}
@@ -2841,204 +2939,73 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
           </div>
         </div>
 
-        {/* Product Grid */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: mobile ? "1fr" : "1fr 1fr",
-            gap: mobile ? 20 : 40,
-            maxWidth: 1200,
-            margin: "0 auto",
-            alignItems: "stretch",
-          }}
-        >
+        {/* Product Grid - Virtualized */}
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           {/* Display branch information if filtering by branch */}
-          {branchFromUrl && <BranchLocationInfo />}
-          
-          {/* Display exact count of listings for the branch */}
           {branchFromUrl && (
-            <div className="col-span-full mb-4">
-              <p className="text-gray-600">
-                Showing {filteredListings.length} listing{filteredListings.length !== 1 ? 's' : ''} for {branchFromUrl.name} branch
-              </p>
-            </div>
-          )}
-          
-          {[...(branchFromUrl ? filteredListings : companyListings)]
-            .sort((a, b) => {
-              if (sortBy === "Price") {
-                return parsePrice(a.price) - parsePrice(b.price);
-              }
-              if (sortBy === "Listing Date") {
-                // Use createdAt as the listing date field, ascending order (oldest first)
-                return new Date(a.createdAt) - new Date(b.createdAt);
-              }
-              if (sortBy === "Alphabetical Order") {
-                return (a.title || "").localeCompare(b.title || "");
-              }
-              return 0;
-            })
-            .map((listing, idx) => (
-              <div
-                key={listing.documentId || listing.id}
-                style={{ width: "100%", height: "100%", position: "relative" }}
-              >
-                {/* Selection Checkbox Overlay */}
-                {selectionMode && (
-                    <div 
-                        style={{
-                            position: 'absolute',
-                            top: 10,
-                            left: 10,
-                            zIndex: 20,
-                            backgroundColor: 'rgba(255,255,255,0.8)',
-                            borderRadius: '4px',
-                            padding: '4px',
-                        }}
-                        onClick={(e) => e.stopPropagation()} 
-                    >
-                        <Checkbox 
-                            checked={selectedListingIds.has(listing.documentId || listing.id)}
-                            onCheckedChange={() => toggleListingSelection(listing.documentId || listing.id)}
-                            style={{ width: 24, height: 24 }}
-                        />
-                    </div>
-                )}
-                <PremiumListingCard
-                  listing={{
-                    ...listing,
-                    company: {
-                      name: company.name,
-                      logoUrl:
-                        company.logoUrl ||
-                        company.logo ||
-                        "/placeholder-logo.svg",
-                      location: company.location || "location not set",
-                      latitude:
-                        branchFromUrl?.location?.latitude ??
-                        branchFromUrl?.location?.coordinates?.latitude ??
-                        company.latitude,
-                      longitude:
-                        branchFromUrl?.location?.longitude ??
-                        branchFromUrl?.location?.coordinates?.longitude ??
-                        company.longitude,
-                      slug: company.slug,
-                    },
-                    manufacturer: company.name,
-                    enquiries: listing.inquiries?.length || 0,
-                  }}
-                  isFirstCard={idx === 0}
-                  href={`/tombstones-for-sale/${
-                    listing.documentId || listing.id
-                  }`}
-                  isOwner={isOwner}
-                />
-                {isOwner && (
-                  <div style={{ position: 'absolute', top: 40, right: 16, zIndex: 2 }}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          style={{
-                            background: "#808080",
-                            border: "none",
-                            borderRadius: 6,
-                            padding: "6px 12px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            cursor: "pointer",
-                          }}
-                        >
-                          <SettingsIcon />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() =>
-                            (window.location.href = `/manufacturers/manufacturers-Profile-Page/update-listing/${
-                              listing.documentId || listing.id
-                            }`)
-                          }
-                        >
-                          Edit Listing
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDuplicate(listing)}
-                          disabled={isDuplicating}
-                          style={{
-                            opacity: isDuplicating ? 0.6 : 1,
-                            cursor: isDuplicating ? "not-allowed" : "pointer",
-                          }}
-                        >
-                          {isDuplicating
-                            ? "Duplicating..."
-                            : "Duplicate Listing"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setListingToDelete(listing);
-                            setShowConfirmDialog(true);
-                          }}
-                          disabled={isDeleting}
-                          style={{
-                            opacity: isDeleting ? 0.6 : 1,
-                            cursor: isDeleting ? "not-allowed" : "pointer",
-                          }}
-                        >
-                          {isDeleting ? "Deleting..." : "Delete Listing"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedListing(listing);
-                            setCreateSpecialModalOpen(true);
-                          }}
-                        >
-                          Create Special
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            if (company.branches?.length > 0) {
-                              setSelectedListingForBranch(listing);
-                              setShowBranchSelectionModal(true);
-                            }
-                          }}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                          }}
-                        >
-                          <span>Add to Branch</span>
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                            style={{ marginLeft: "8px" }}
-                          >
-                            <path
-                              d="M9 18l6-6-6-6"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                )}
+            <>
+              <BranchLocationInfo />
+              <div className="col-span-full mb-4">
+                <p className="text-gray-600">
+                  Showing {filteredListings.length} listing{filteredListings.length !== 1 ? 's' : ''} for {branchFromUrl.name} branch
+                </p>
               </div>
-            ))}
+            </>
+          )}
+
+          <VirtuosoGrid
+            useWindowScroll
+            totalCount={sortedAndFilteredListings.length}
+            components={{
+              List: forwardRef(({ style, children, ...props }, ref) => (
+                <div
+                  ref={ref}
+                  style={{
+                    ...style,
+                    display: "grid",
+                    gridTemplateColumns: mobile ? "1fr" : "1fr 1fr",
+                    gap: mobile ? 20 : 40,
+                    alignItems: "stretch",
+                  }}
+                  {...props}
+                >
+                  {children}
+                </div>
+              ))
+            }}
+            itemContent={(index) => {
+              const listing = sortedAndFilteredListings[index];
+              return (
+                <ListingCardItem
+                  key={listing.documentId || listing.id}
+                  listing={listing}
+                  isFirstCard={index === 0}
+                  selectionMode={selectionMode}
+                  isSelected={selectedListingIds.has(listing.documentId || listing.id)}
+                  onToggleSelection={toggleListingSelection}
+                  company={company}
+                  branchFromUrl={branchFromUrl}
+                  isOwner={isOwner}
+                  isDuplicating={isDuplicating}
+                  isDeleting={isDeleting}
+                  onDuplicate={handleDuplicate}
+                  onDelete={handleDeleteListing}
+                  onEdit={handleEditListing}
+                  onCreateSpecial={handleCreateSpecial}
+                  onAddToBranch={handleAddToBranch}
+                />
+              );
+            }}
+          />
         </div>
+
+
 
         {/* Create Special Modal */}
         <CreateSpecialModal
-          isOpen={createSpecialModalOpen}
+          isOpen={modals.createSpecial}
           onClose={() => {
-            setCreateSpecialModalOpen(false);
+            toggleModal("createSpecial", false);
             setSelectedListing(null);
           }}
           listing={selectedListing}
@@ -3046,8 +3013,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
 
         {/* View Inquiries Modal */}
         <ViewInquiriesModal
-          open={viewInquiriesModalOpen}
-          onClose={() => setViewInquiriesModalOpen(false)}
+          open={modals.viewInquiries}
+          onClose={() => toggleModal("viewInquiries", false)}
           listings={companyListings}
           onInquiriesRead={handleInquiriesRead}
         />
@@ -3061,7 +3028,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         />
 
         {/* Custom Confirmation Dialog */}
-        {showConfirmDialog && (
+        {modals.confirmDelete && (
           <div
             role="dialog"
             aria-modal="true"
@@ -3209,7 +3176,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
               >
                 <button
                   onClick={() => {
-                    setShowConfirmDialog(false);
+                    toggleModal("confirmDelete", false);
                     setListingToDelete(null);
                   }}
                   style={{
@@ -3278,7 +3245,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                 </button>
                 <button
                   onClick={() => {
-                    setShowConfirmDialog(false);
+                    toggleModal("confirmDelete", false);
                     if (listingToDelete) {
                       handleDelete(listingToDelete.documentId);
                     }
@@ -3336,8 +3303,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
 
         {/* Branch Selection Modal */}
         <BranchSelectionModal
-          isOpen={showBranchSelectionModal}
-          onClose={() => setShowBranchSelectionModal(false)}
+          isOpen={modals.branchSelection}
+          onClose={() => toggleModal("branchSelection", false)}
           branches={company.branches || []}
           listingId={selectedListingForBranch?.documentId}
           onSuccess={(branch) => {
@@ -3351,8 +3318,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
 
         {/* Operating Hours Modal */}
         <OperatingHoursModal
-          isOpen={showOperatingHoursModal}
-          onClose={() => setShowOperatingHoursModal(false)}
+          isOpen={modals.operatingHours}
+          onClose={() => toggleModal("operatingHours", false)}
           initialData={company?.operatingHours || {
             monToFri: "",
             saturday: "",
@@ -3361,6 +3328,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
           }}
           onSave={handleSaveOperatingHours}
         />
+
+
       </div>
     </>
   );
