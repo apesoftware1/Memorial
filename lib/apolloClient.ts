@@ -3,7 +3,32 @@ import { persistCache, LocalStorageWrapper } from 'apollo3-cache-persist';
 
 // Shared cache instance so persistence can hydrate it before client creation
 const cache = new InMemoryCache({
-  // Type policies can be added here if needed
+  typePolicies: {
+    Listing: {
+      keyFields: "documentId",
+    },
+    Company: {
+      keyFields: "documentId",
+    },
+    Branch: {
+      keyFields: "documentId",
+    },
+    ListingCategory: {
+      keyFields: "documentId",
+    },
+    BlogPost: {
+      keyFields: "documentId",
+    },
+    UsersPermissionsUser: {
+      keyFields: "documentId",
+    },
+    InquiryC: {
+      keyFields: "documentId",
+    },
+    Inquiry: {
+      keyFields: "documentId",
+    },
+  },
 });
 
 export function createApolloClient(): ApolloClient<NormalizedCacheObject> {

@@ -106,6 +106,7 @@ export const GET_LISTING_BY_SLUG = gql`
           price
           documentId
           listing_category {
+            documentId
             name
           }
           productDetails {

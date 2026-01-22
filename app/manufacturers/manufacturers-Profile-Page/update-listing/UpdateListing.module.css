@@ -1,0 +1,555 @@
+.container {
+  max-width: 1000px;
+  margin: 40px auto;
+  background: #f8f8f8;
+  padding: 24px;
+  border-radius: 16px;
+  font-family: Arial, sans-serif;
+  color: #333;
+  position: relative;
+}
+
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  padding: 12px 16px;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 300px;
+  color: white;
+}
+
+.toastSuccess {
+  background-color: #4CAF50;
+}
+
+.toastError {
+  background-color: #F44336;
+}
+
+.toastMessage {
+  margin: 0;
+  font-weight: 500;
+}
+
+.toastClose {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  margin-left: 12px;
+}
+
+.errorMessage {
+  color: red;
+}
+
+.returnLinkContainer {
+  max-width: 1000px;
+  margin: 0 auto 8px auto;
+  padding-left: 4px;
+}
+
+.returnLink {
+  color: #005bac;
+  font-size: 13px;
+  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+}
+
+.returnLinkArrow {
+  font-size: 18px;
+  margin-right: 4px;
+}
+
+.header {
+  background: #005bac;
+  color: #fff;
+  font-weight: bold;
+  font-size: 18px;
+  padding: 16px;
+  text-align: center;
+  border-radius: 12px;
+  margin-bottom: 32px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.noteContainer {
+  max-width: 1000px;
+  margin: 0 auto 8px auto;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.noteText {
+  font-size: 12px;
+  color: #888;
+}
+
+.sectionHeader {
+  background: #005bac;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 6px 12px;
+  margin-bottom: 0;
+  letter-spacing: 0.5px;
+}
+
+.sectionHeaderGray {
+  background: #ededed;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 6px 12px;
+  margin-bottom: 0;
+  letter-spacing: 0.5px;
+}
+
+.sectionHeaderFlex {
+  display: flex;
+  align-items: center;
+}
+
+.sectionHeaderTitle {
+  margin-right: 8px;
+}
+
+.marginTopZero {
+  margin-top: 0;
+}
+
+.spacer12 {
+  height: 12px;
+}
+
+.categorySelectionContainer {
+  margin-bottom: 32px;
+}
+
+.categorySelectionLabel {
+  font-size: 12px;
+  margin-bottom: 8px;
+  color: #555;
+}
+
+.categoryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.categoryButton {
+  padding: 12px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.categoryButtonActive {
+  border: 2px solid #005bac;
+  background: #e6f3ff;
+  font-weight: 600;
+  color: #005bac;
+}
+
+.categoryButtonInactive {
+  border: 1px solid #ccc;
+  background: #fff;
+  font-weight: 400;
+  color: #333;
+}
+
+.categoryIcon {
+  flex-shrink: 0;
+}
+
+.selectedCategoryText {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #666;
+}
+
+.productGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 32px;
+  margin-bottom: 32px;
+}
+
+.inputLabel {
+  font-size: 12px;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.inputField {
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px 12px;
+  outline: none;
+  margin-bottom: 16px;
+}
+
+.textAreaField {
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px 12px;
+  outline: none;
+  min-height: 80px;
+}
+
+.imageGrid {
+  display: flex;
+  gap: 12px;
+}
+
+.imageColumn {
+  flex: 1;
+}
+
+.mainImageLabel {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 2px;
+}
+
+.mainImageUploadBox {
+  width: 96px;
+  height: 96px;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fafbfc;
+  cursor: pointer;
+  position: relative;
+  margin-bottom: 4px;
+  overflow: visible;
+}
+
+.mainImagePreview {
+  width: 88px;
+  height: 88px;
+  border-radius: 8px;
+}
+
+.removeImageButton {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: red;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.plusIcon {
+  color: #bbb;
+  font-size: 36px;
+  font-weight: 700;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.thumbnailGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.thumbnailUploadBox {
+  width: 48px;
+  height: 48px;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: visible;
+}
+
+.thumbnailActive {
+  background: #fafbfc;
+  cursor: pointer;
+}
+
+.thumbnailDisabled {
+  background: #e0e0e0;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.thumbnailPreview {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+}
+
+.thumbnailPlus {
+  color: #bbb;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.thumbnailDisabledIcon {
+  color: #999;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.productDetailsGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.detailsHeader {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.detailsIcon {
+  margin-right: 6px;
+}
+
+.detailsSubHeader {
+  font-size: 11px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.checkboxInput {
+  margin-right: 8px;
+}
+
+.checkboxIcon {
+  margin-right: 8px;
+  object-fit: contain;
+}
+
+.checkboxBlockLabel {
+  display: block;
+  font-size: 13px;
+}
+
+.checkboxInputSmallMargin {
+  margin-right: 6px;
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.3);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modalContent {
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px;
+  min-width: 260px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+  text-align: center;
+}
+
+.modalText {
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+
+.modalButton {
+  background: #005bac;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 24px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.additionalDetailsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.additionalDetailsHeader {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.additionalDetailsSubHeader {
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.checkboxGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pricingGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.adFlasherGrid {
+  display: grid;
+  grid-template-columns: max-content 16px;
+  column-gap: 8px;
+  row-gap: 6px;
+  align-items: start;
+}
+
+.adFlasherButton {
+  display: contents;
+}
+
+.adFlasherCategoryName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #222;
+  align-self: start;
+}
+
+.adFlasherArrow {
+  font-size: 12px;
+  color: #111;
+  line-height: 1;
+  align-self: start;
+  justify-self: end;
+  display: inline-block;
+  width: 16px;
+  text-align: center;
+}
+
+.adFlasherPanel {
+  grid-column: 1 / -1;
+  padding: 4px 0 8px 18px;
+}
+
+.selectionPreview {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px dashed #C8C8C8;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.selectionLabel {
+  font-size: 12px;
+  color: #444;
+}
+
+.selectionValue {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.priceInput {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  outline: none;
+}
+
+.actionButtons {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 12px 0 24px 0;
+}
+
+.saveButton {
+  background: #005bac;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.saveButtonDisabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.cancelButton {
+  background: #d9d9d9;
+  color: #333;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}

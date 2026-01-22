@@ -2,27 +2,32 @@
 
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useQuery } from "@apollo/client";
+import { useQuery, useApolloClient } from "@apollo/client";
 import React, { useState, useEffect, useMemo } from 'react';
-import { GET_LISTING_BY_ID } from '@/graphql/queries/getListingById';
+import { GET_LISTING_BY_ID_LIGHT } from '@/graphql/queries/getListingByIdLight';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { uploadToCloudinary } from "@/lib/cloudinary"; // moved from bottom to top
+import { uploadToCloudinary } from "@/lib/cloudinary";
 import pricingAdFlasher from '../../../../../pricingAdFlasher.json';
 import { useToast } from "../../../../../hooks/use-toast";
 import { useListingCategories } from '@/hooks/use-ListingCategories';
+import { addListingToBranch, addListingToBranchListing, updateBranchListing } from "../../../../../lib/addListingToBranch";
 import { desiredOrder } from '@/lib/categories';
-
-
-// Category icon map for Category Selection (Advert Creator)
-const CATEGORY_ICON_MAP = {
-  SINGLE: "/last_icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/Single.svg",
-  DOUBLE: "/last_icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_2_Double.svg",
-  CHILD: "/last_icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_3_Child.svg",
-  HEAD: "/last_icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_4_Head.svg",
-  PLAQUES: "/last_icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_5-Plaques.svg",
-  CREMATION: "/last_icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_Icons_X6_AdvertCreator_Icons/MainCatergories_AdvertCreator_Icons_6_Cremation.svg",
-};
+import styles from "../UpdateListing.module.css";
+import { 
+  CATEGORY_ICON_MAP, 
+  MANUFACTURING_LEAD_TIME_OPTIONS, 
+  formatManufacturingLeadTimeText, 
+  ICON_PATHS,
+  STYLE_OPTIONS,
+  SLAB_STYLE_OPTIONS,
+  COLOR_OPTIONS,
+  STONE_TYPE_OPTIONS,
+  CUSTOMIZATION_OPTIONS,
+  TRANSPORT_OPTIONS,
+  FOUNDATION_OPTIONS,
+  WARRANTY_OPTIONS
+} from "../constants/updateListingConstants";
 
 function isMobile() {
   if (typeof window === 'undefined') return false;
@@ -30,6 +35,7 @@ function isMobile() {
 }
 
 export default function UpdateListingPage() {
+  const client = useApolloClient();
   const { listingId } = useParams();
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -48,7 +54,7 @@ export default function UpdateListingPage() {
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(true);
   
-  const { data, loading, error } = useQuery(GET_LISTING_BY_ID, {
+  const { data, loading, error, refetch } = useQuery(GET_LISTING_BY_ID_LIGHT, {
     variables: { documentID: listingId },
     skip: !listingId,
   });
@@ -74,13 +80,8 @@ export default function UpdateListingPage() {
   const [price, setPrice] = useState("");
   const [flasher, setFlasher] = useState("");
   const [manufacturingTimeframe, setManufacturingTimeframe] = useState("1");
+  const [branchPrices, setBranchPrices] = useState({});
 
-  // Manufacturing Lead Time options and helpers
-  const manufacturingLeadTimeOptions = [1, 2, 3, 7, 10, 14, 21];
-  const formatManufacturingLeadTimeText = (days) => {
-    if (days === 1) return "X1 WORKING DAY AFTER POP (Proof of Payment)";
-    return `X${days} WORKING DAYS AFTER POP (Proof of Payment)`;
-  };
   const handleManufacturingLeadTimeToggle = (days) => {
     const str = String(days);
     setManufacturingTimeframe((prev) => (prev === str ? "" : str));
@@ -181,6 +182,16 @@ export default function UpdateListingPage() {
       setFlasher(listing.adFlasher || "");
       setManufacturingTimeframe(listing.manufacturingTimeframe || "1");
 
+      if (listing.branch_listings) {
+        const prices = {};
+        listing.branch_listings.forEach(bl => {
+          if (bl.branch) {
+            prices[bl.branch.documentId] = bl.price;
+          }
+        });
+        setBranchPrices(prices);
+      }
+
       setExistingPublicIds({
         main: listing?.mainImagePublicId || null,
         thumbs: Array.isArray(listing?.thumbnailPublicIds) ? listing.thumbnailPublicIds : [],
@@ -197,6 +208,11 @@ export default function UpdateListingPage() {
     const newFiles = [...imageFiles];
     newFiles[index] = null;
     setImageFiles(newFiles);
+  };
+
+  // Function to get the appropriate icon path for each attribute
+  const getIconPath = (type, value) => {
+    return ICON_PATHS[type]?.[value] || ICON_PATHS.style["Plain"];
   };
 
   const handleSubmit = async (e) => {
@@ -244,7 +260,6 @@ export default function UpdateListingPage() {
       }
 
       // 2. Process Thumbnails (Indices 1-10)
-      // We iterate through slots 1 to 10
       const thumbUploadPromises = [];
       const thumbUploadIndices = [];
 
@@ -255,9 +270,6 @@ export default function UpdateListingPage() {
           thumbUploadPromises.push(uploadToCloudinary(imageFiles[idx], folderName));
           
           // If there was an existing image at this slot, mark it for deletion
-          // Note: existingPublicIds.thumbs array corresponds to original slots if we assume order is preserved
-          // However, listing.thumbnailUrls might have been fewer than 10.
-          // existingPublicIds.thumbs[idx - 1] corresponds to the image loaded at that slot.
           if (existingPublicIds.thumbs && existingPublicIds.thumbs[idx - 1]) {
             publicIdsToDelete.push(existingPublicIds.thumbs[idx - 1]);
           }
@@ -357,6 +369,69 @@ export default function UpdateListingPage() {
 
       const result = await response.json();
       
+      // Invalidate this specific listing in Apollo cache to ensure fresh data
+      if (listing?.documentId) {
+        client.cache.evict({
+          id: client.cache.identify({
+            __typename: 'Listing',
+            documentId: listing.documentId
+          })
+        });
+      }
+
+      // Also invalidate the company's listings array to force a refresh of the list
+      if (listing?.company?.documentId) {
+        client.cache.modify({
+          id: client.cache.identify({
+            __typename: 'Company',
+            documentId: listing.company.documentId
+          }),
+          fields: {
+            listings(existingListingsRefs, { readField }) {
+              return undefined; // Force refetch
+            }
+          }
+        });
+      }
+
+      // Force refetch of the current page data to ensure UI is in sync
+      await refetch();
+      
+      client.cache.gc();
+      
+      // Clean up orphaned references
+      client.cache.gc();
+      
+      // Process Branch Prices
+      if (listing?.company?.branches) {
+         const branchPromises = listing.company.branches.map(async (branch) => {
+            const branchId = branch.documentId;
+            const newPrice = branchPrices[branchId];
+            const existingBranchListing = listing.branch_listings?.find(bl => bl.branch?.documentId === branchId);
+            const existingPrice = existingBranchListing?.price;
+            const existingBranchListingId = existingBranchListing?.documentId;
+
+            if (newPrice && newPrice !== "") {
+               const numericPrice = parseFloat(newPrice);
+               if (existingBranchListingId) {
+                  // Update existing
+                  if (numericPrice !== existingPrice) {
+                     await updateBranchListing({ branchListingDocumentId: existingBranchListingId, price: numericPrice });
+                  }
+               } else {
+                  // Create new
+                   await addListingToBranch(branchId, listing.documentId);
+                   await addListingToBranchListing({
+                     listingDocumentId: listing.documentId,
+                     branchDocumentId: branchId,
+                     price: numericPrice
+                   });
+               }
+            }
+         });
+         await Promise.all(branchPromises);
+      }
+
       // Show success message
       setMessage("Listing updated successfully!");
       setIsSuccess(true);
@@ -400,98 +475,6 @@ export default function UpdateListingPage() {
       setModalOpen(true);
     }
   };
-  
-  // Function to get the appropriate icon path for each attribute
-  const getIconPath = (type, value) => {
-    // Base path for icons
-    const basePath = "/last_icons";
-    
-    // Map of icon paths by type and value
-    const iconPaths = {
-      color: {
-        "Black": `${basePath}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Black.svg`,
-        "Blue": `${basePath}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Blue.svg`,
-        "Green": `${basePath}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Green.svg`,
-        "Grey-Dark": `${basePath}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Dark.svg`,
-        "Grey-Light": `${basePath}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Light.svg`,
-        "Maroon": `${basePath}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Maroon.svg`,
-        "Pearl": `${basePath}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Pearl.svg`,
-        "Red": `${basePath}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Red.svg`,
-        "White": `${basePath}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_White.svg`,
-        "Mixed": `${basePath}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Mixed.svg`,
-      },
-      style: {
-        "Christian Cross": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_ChristianCross.svg`,
-        "Heart": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Heart.svg`,
-        "Bible": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bible.svg`,
-        "Pillars": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Pillars.svg`,
-        "Traditional African": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TraditionalAfrican.svg`,
-        "Abstract": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Abstract.svg`,
-        "Praying Hands": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_PrayingHands.svg`,
-        "Scroll": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Scroll.svg`,
-        "Angel": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Angel.svg`,
-        "Mausoleum": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Mausoleum.svg`,
-        "Obelisk": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Obelisk.svg`,
-        "Plain": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg`,
-        "Teddy Bear": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TeddyBear.svg`,
-        "Butterfly": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Butterfly.svg`,
-        "Car": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Car.svg`,
-        "Bike": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bike.svg`,
-        "Sports": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Sports.svg`,
-      },
-      stoneType: {
-        "Biodegradable": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg`,
-        "Brass": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Brass.svg`,
-        "Ceramic/Porcelain": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Ceramic_Porcelain.svg`,
-        "Composite": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Composite.svg`,
-        "Concrete": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Concrete.svg`,
-        "Copper": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Brass.svg`,
-        "Glass": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Glass.svg`,
-        "Granite": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Granite.svg`,
-        "Limestone": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Limestone.svg`,
-        "Marble": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Marble.svg`,
-        "Perspex": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Glass.svg`,
-        "Quartzite": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg`,
-        "Sandstone": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Sandstone.svg`,
-        "Slate": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Slate.svg`,
-        "Steel": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Steel.svg`,
-        "Stone": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg`,
-        "Tile": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg`,
-        "Wood": `${basePath}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Wood.svg`,
-      },
-      slabStyle: {
-        "Curved Slab": `${basePath}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_CurvedSlab.svg`,
-        "Frame with Infill": `${basePath}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_FramewithInfill.svg`,
-        "Full Slab": `${basePath}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_FullSlab.svg`,
-        "Glass Slab": `${basePath}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_GlassSlab.svg`,
-        "Half Slab": `${basePath}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_HalfSlab.svg`,
-        "Stepped Slab": `${basePath}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Stepped.svg`,
-        "Tiled Slab": `${basePath}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Tiled.svg`,
-      },
-      customization: {
-        "Bronze/Stainless Plaques": `${basePath}/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_BronzeStainless Plaque.svg`,
-        "Ceramic Photo Plaques": `${basePath}/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_CeramicPhotoPlaque.svg`,
-        "Flower Vases": `${basePath}/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_FlowerVase.svg`,
-        "Gold Lettering": `${basePath}/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_GoldLettering.svg`,
-        "Inlaid Glass": `${basePath}/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_InlaidGlass.svg`,
-        "Photo Laser-Edging": `${basePath}/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_PhotoLaserEdginhg.svg`,
-        "QR Code": `${basePath}/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_QR Code.svg`,
-      },
-      culture: {
-        "Christian": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_ChristianCross.svg`,
-        "Jewish": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg`,
-        "Islamic": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg`,
-        "Buddhist": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg`,
-        "Hindu": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg`,
-        "Secular": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg`,
-        "African": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TraditionalAfrican.svg`,
-        "Other": `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg`,
-      }
-    };
-    
-    // Return the icon path if it exists, otherwise return a default icon
-    return iconPaths[type]?.[value] || `${basePath}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg`;
-  };
 
   if (status === "loading") return <div>Loading session...</div>;
   if (!session) return <div>You must be logged in to update a listing.</div>;
@@ -500,114 +483,56 @@ export default function UpdateListingPage() {
   if (!listing) return <div>Listing not found.</div>;
 
   return (
-    <div style={{
-      maxWidth: 1000,
-      margin: "40px auto",
-      background: "#f8f8f8",
-      padding: 24,
-      borderRadius: 16,
-      fontFamily: "Arial, sans-serif",
-      color: "#333",
-      position: "relative",
-    }}>
+    <div className={styles.container}>
       {/* Custom Toast Notification */}
       {showMessage && (
-        <div 
-          style={{
-            position: "fixed",
-            top: "20px",
-            right: "20px",
-            zIndex: 1000,
-            padding: "12px 16px",
-            borderRadius: "4px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            minWidth: "300px",
-            backgroundColor: isSuccess ? "#4CAF50" : "#F44336",
-            color: "white",
-          }}
-        >
+        <div className={`${styles.toast} ${isSuccess ? styles.toastSuccess : styles.toastError}`}>
           <div>
-            <p style={{ margin: 0, fontWeight: "500" }}>{message}</p>
+            <p className={styles.toastMessage}>{message}</p>
           </div>
           <button 
             onClick={() => setShowMessage(false)}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "white",
-              fontSize: "20px",
-              cursor: "pointer",
-              marginLeft: "12px",
-            }}
+            className={styles.toastClose}
           >
             ×
           </button>
         </div>
       )}
       {/* Return Link */}
-      <div style={{ maxWidth: 1000, margin: "0 auto 8px auto", paddingLeft: 4 }}>
-        <a href="/manufacturers/manufacturers-Profile-Page" style={{ color: "#005bac", fontSize: 13, textDecoration: "underline", display: "inline-flex", alignItems: "center" }}>
-          <span style={{ fontSize: 18, marginRight: 4 }}>&lt;</span> Return to Profile Page & Listings.
+      <div className={styles.returnLinkContainer}>
+        <a href="/manufacturers/manufacturers-Profile-Page" className={styles.returnLink}>
+          <span className={styles.returnLinkArrow}>&lt;</span> Return to Profile Page & Listings.
         </a>
       </div>
       {/* Header */}
-      <div style={{
-        background: "#005bac",
-        color: "#fff",
-        fontWeight: "bold",
-        fontSize: 18,
-        padding: 16,
-        textAlign: "center",
-        borderRadius: 12,
-        marginBottom: 32,
-        textTransform: "uppercase",
-        letterSpacing: 1,
-      }}>
+      <div className={styles.header}>
         UPDATE LISTING
       </div>
       {/* Note */}
-      <div style={{ maxWidth: 1000, margin: "0 auto 8px auto", display: "flex", justifyContent: "flex-end" }}>
-        <span style={{ fontSize: 12, color: "#888" }}>All fields are required for updating a listing.</span>
+      <div className={styles.noteContainer}>
+        <span className={styles.noteText}>All fields are required for updating a listing.</span>
       </div>
       {/* Category Selection Section Header */}
-      <div style={{ background: "#005bac", color: "#fff", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
+      <div className={styles.sectionHeader}>
         CATEGORY SELECTION
       </div>
-      <div style={{ height: 12 }} />
+      <div className={styles.spacer12} />
       
       {/* Category Selection Content */}
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ fontSize: 12, marginBottom: 8, color: "#555" }}>Select a category for your listing:</div>
+      <div className={styles.categorySelectionContainer}>
+        <div className={styles.categorySelectionLabel}>Select a category for your listing:</div>
         
         {categoriesLoading && <div>Loading categories...</div>}
-        {categoriesError && <div style={{color: 'red'}}>Error loading categories: {categoriesError.message}</div>}
+        {categoriesError && <div className={styles.errorMessage}>Error loading categories: {categoriesError.message}</div>}
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+        <div className={styles.categoryGrid}>
           {!categoriesLoading && !categoriesError && sortedCategories.map((category) => {
             return (
               <button
                 key={category.documentId}
                 type="button"
                 onClick={() => setSelectedCategory(category)}
-                style={{
-                  padding: "12px 16px",
-                  border: selectedCategory?.documentId === category.documentId ? "2px solid #005bac" : "1px solid #ccc",
-                  borderRadius: 8,
-                  background: selectedCategory?.documentId === category.documentId ? "#e6f3ff" : "#fff",
-                  cursor: "pointer",
-                  fontSize: 14,
-                  fontWeight: selectedCategory?.documentId === category.documentId ? "600" : "400",
-                  color: selectedCategory?.documentId === category.documentId ? "#005bac" : "#333",
-                  transition: "all 0.2s ease",
-                  textAlign: "center",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8
-                }}
+                className={`${styles.categoryButton} ${selectedCategory?.documentId === category.documentId ? styles.categoryButtonActive : styles.categoryButtonInactive}`}
               >
                  {(CATEGORY_ICON_MAP[category.name?.toUpperCase()] || category.icon) && (
                   <Image 
@@ -615,7 +540,7 @@ export default function UpdateListingPage() {
                     alt={category.name} 
                     width={20} 
                     height={20} 
-                    style={{ flexShrink: 0 }}
+                    className={styles.categoryIcon}
                   />
                 )}
                 {category.name}
@@ -624,85 +549,55 @@ export default function UpdateListingPage() {
           })}
         </div>
         {selectedCategory && (
-          <div style={{ marginTop: 8, fontSize: 12, color: "#666" }}>
+          <div className={styles.selectedCategoryText}>
             Selected: <strong>{selectedCategory.name}</strong>
           </div>
         )}
       </div>
 
       {/* Product Name, Description & Images Section Header */}
-      <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px", marginBottom: 0, letterSpacing: 0.5 }}>
+      <div className={styles.sectionHeaderGray}>
         PRODUCT NAME, DESCRIPTION & IMAGES
       </div>
-      <div style={{ height: 12 }} />
+      <div className={styles.spacer12} />
       {/* Product Name, Description & Images Content */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 32, marginBottom: 32 }}>
+      <div className={styles.productGrid}>
         {/* Left: Name & Description */}
         <div>
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Product Name</label>
-          <input style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", marginBottom: 16 }} value={title} onChange={e => setTitle(e.target.value)} />
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Product Description</label>
-          <textarea style={{ width: "100%", border: "1px solid #ccc", borderRadius: 4, padding: "8px 12px", outline: "none", minHeight: 80 }} value={description} onChange={e => setDescription(e.target.value)} />
+          <label className={styles.inputLabel}>Product Name</label>
+          <input className={styles.inputField} value={title} onChange={e => setTitle(e.target.value)} />
+          <label className={styles.inputLabel}>Product Description</label>
+          <textarea className={styles.textAreaField} value={description} onChange={e => setDescription(e.target.value)} />
         </div>
         {/* Right: Images */}
         <div>
-          <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Product Images</label>
-          <div style={{ display: "flex", gap: 12 }}>
+          <label className={styles.inputLabel}>Product Images</label>
+          <div className={styles.imageGrid}>
             <div>
-              <div style={{ fontSize: 11, color: "#888", marginBottom: 2 }}>Main Image</div>
+              <div className={styles.mainImageLabel}>Main Image</div>
               <div
-                style={{
-                  width: 96,
-                  height: 96,
-                  border: "2px solid #ccc",
-                  borderRadius: 8,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "#fafbfc",
-                  cursor: "pointer",
-                  position: "relative",
-                  marginBottom: 4,
-                  overflow: "visible",
-                }}
+                className={styles.mainImageUploadBox}
                 onClick={() => document.getElementById(`img-upload-main`).click()}
               >
                 {images[0] ? (
                   <>
-                    <img src={images[0]} alt="Main" style={{ width: 88, height: 88, borderRadius: 8 }} />
+                    <img src={images[0]} alt="Main" className={styles.mainImagePreview} />
                     <button
                       type="button"
                       onClick={(e) => handleRemoveImage(e, 0)}
-                      style={{
-                        position: "absolute",
-                        top: -6,
-                        right: -6,
-                        background: "red",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "50%",
-                        width: 20,
-                        height: 20,
-                        fontSize: 12,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        zIndex: 100,
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-                      }}
+                      className={styles.removeImageButton}
                     >
                       X
                     </button>
                   </>
                 ) : (
-                  <span style={{ color: "#bbb", fontSize: 36, fontWeight: 700 }}>+</span>
+                  <span className={styles.plusIcon}>+</span>
                 )}
                 <input
                   id={`img-upload-main`}
                   type="file"
                   accept="image/*"
-                  style={{ display: "none" }}
+                  className={styles.hiddenInput}
                   onChange={e => {
                     const file = e.target.files?.[0];
                     if (!file) return;
@@ -718,58 +613,28 @@ export default function UpdateListingPage() {
                 />
               </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, color: "#888", marginBottom: 2 }}>Additional Images only for PREMIUM Packages</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+            <div className={styles.imageColumn}>
+              <div className={styles.mainImageLabel}>Additional Images only for PREMIUM Packages</div>
+              <div className={styles.thumbnailGrid}>
                 {[1,2,3,4,5,6,7,8,9,10].map((idx) => (
                   <div
                     key={idx}
-                    style={{
-                      width: 48,
-                      height: 48,
-                      border: "2px solid #ccc",
-                      borderRadius: 8,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: idx > 5 ? "#e0e0e0" : "#fafbfc",
-                      cursor: idx > 5 ? "not-allowed" : "pointer",
-                      position: "relative",
-                      opacity: idx > 5 ? 0.6 : 1,
-                      overflow: "visible",
-                    }}
+                    className={`${styles.thumbnailUploadBox} ${idx > 5 ? styles.thumbnailDisabled : styles.thumbnailActive}`}
                     onClick={() => idx <= 5 && document.getElementById(`img-upload-${idx}`).click()}
                   >
                     {images[idx] ? (
                       <>
-                        <img src={images[idx]} alt="" style={{ width: 40, height: 40, borderRadius: 8 }} />
+                        <img src={images[idx]} alt="" className={styles.thumbnailPreview} />
                         <button
                           type="button"
                           onClick={(e) => handleRemoveImage(e, idx)}
-                          style={{
-                            position: "absolute",
-                            top: -6,
-                            right: -6,
-                            background: "red",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "50%",
-                            width: 20,
-                            height: 20,
-                            fontSize: 12,
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            zIndex: 100,
-                            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-                          }}
+                          className={styles.removeImageButton}
                         >
                           X
                         </button>
                       </>
                     ) : (
-                      <span style={{ color: idx > 5 ? "#999" : "#bbb", fontSize: 22, fontWeight: 700 }}>
+                      <span className={idx > 5 ? styles.thumbnailDisabledIcon : styles.thumbnailPlus}>
                         {idx > 5 ? "×" : "+"}
                       </span>
                     )}
@@ -777,7 +642,7 @@ export default function UpdateListingPage() {
                       id={`img-upload-${idx}`}
                       type="file"
                       accept="image/*"
-                      style={{ display: "none" }}
+                      className={styles.hiddenInput}
                       onChange={e => {
                         if (idx <= 5) {
                           const file = e.target.files?.[0];
@@ -802,195 +667,162 @@ export default function UpdateListingPage() {
         </div>
       </div>
       {/* Product Details Section Header */}
-      <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px ", marginBottom: 0, letterSpacing: 0.5, display: 'flex', alignItems: 'center' }}>
-        <span style={{ marginRight: 8 }}>PRODUCT DETAILS</span>
+      <div className={`${styles.sectionHeaderGray} ${styles.sectionHeaderFlex}`}>
+        <span className={styles.sectionHeaderTitle}>PRODUCT DETAILS</span>
       </div>
-      <div style={{ height: 12 }} />
-      {/* Product Details Grid with Icons (copied style from Advert Creator) */}
-      {(() => {
-        // Options from Advert Creator
-        const styleOptions = [
-          'Christian Cross','Heart','Bible','Pillars','Traditional African','Abstract',
-          'Praying Hands','Scroll','Angel','Mausoleum','Obelisk','Plain','Teddy Bear','Butterfly','Car','Bike','Sports',
-          'Wave','Church','House','Square','Organic','Arch',
-        ];
-        const slabStyleOptions = [
-          'Curved Slab','Frame with Infill','Full Slab','Glass Slab','Half Slab','Stepped Slab','Tiled Slab','Double',
-        ];
-        const colorOptions = [
-          'Black','Blue','Green','Grey-Dark','Grey-Light','Maroon','Pearl','Red','White','Mixed',
-          'Gold','Yellow','Pink',
-        ];
-        const stoneTypeOptions = [
-          'Biodegradable','Brass','Ceramic/Porcelain','Composite','Concrete','Copper','Glass','Granite',
-          'Limestone','Marble','Perspex','Quartzite','Sandstone','Slate','Steel','Stone','Tile','Wood',
-        ];
-        const customizationOptions = [
-          'Bronze/Stainless Plaques','Ceramic Photo Plaques','Flower Vases','Gold Lettering','Inlaid Glass','Photo Laser-Edging','QR Code',
-        ];
-      
-        return (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 24, marginBottom: 32 }}>
-            {/* HEAD STYLE (max 2) */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-                <Image src="/new files/newIcons/Styles_Icons/Styles_Icons-11.svg" alt="Head Style" width={18} height={18} style={{ marginRight: 6 }} />
-                Head Style
-              </div>
-              <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>Can choose up to X2 HEAD STYLE Options</div>
-              {styleOptions.map((s) => {
-                const icon = getIconPath('style', s);
-                return (
-                  <label key={s} style={{ display: "flex", alignItems: "center", fontSize: 13, marginBottom: 6 }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedStyle.includes(s)}
-                      onChange={() => handleCheckboxChange(selectedStyle, setSelectedStyle, s, 2)}
-                      style={{ marginRight: 8 }}
-                    />
-                    {icon && <Image src={icon} alt={`${s} icon`} width={22} height={22} style={{ marginRight: 8, objectFit: 'contain' }} />}
-                    <span>{s}</span>
-                  </label>
-                );
-              })}
-            </div>
-      
-            {/* SLAB STYLE (max 1) */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-                <Image src="/new files/newIcons/Styles_Icons/Styles_Icons-11.svg" alt="Slab Style" width={18} height={18} style={{ marginRight: 6 }} />
-                Slab Style
-              </div>
-              <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>Can choose up to X1 Slab Style Option</div>
-              {slabStyleOptions.map((s) => {
-                const icon = getIconPath('slabStyle', s);
-                return (
-                  <label key={s} style={{ display: "flex", alignItems: "center", fontSize: 13, marginBottom: 6 }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedSlabStyle.includes(s)}
-                      onChange={() => handleCheckboxChange(selectedSlabStyle, setSelectedSlabStyle, s, 1)}
-                      style={{ marginRight: 8 }}
-                    />
-                    {icon && <Image src={icon} alt={`${s} icon`} width={22} height={22} style={{ marginRight: 8, objectFit: 'contain' }} />}
-                    <span>{s}</span>
-                  </label>
-                );
-              })}
-            </div>
-      
-            {/* COLOUR (max 2) */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-                <Image src="/new files/newIcons/Colour_Icons/Colour_Icons-28.svg" alt="Colour" width={18} height={18} style={{ marginRight: 6 }} />
-                Colour
-              </div>
-              <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>Can choose up to X2 Colour Options</div>
-              {colorOptions.map((c) => {
-                const icon = getIconPath('color', c);
-                return (
-                  <label key={c} style={{ display: "flex", alignItems: "center", fontSize: 13, marginBottom: 6 }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedColour.includes(c)}
-                      onChange={() => handleCheckboxChange(selectedColour, setSelectedColour, c, 2)}
-                      style={{ marginRight: 8 }}
-                    />
-                    {icon && <Image src={icon} alt={`${c} icon`} width={22} height={22} style={{ marginRight: 8, objectFit: 'contain' }} />}
-                    <span>{c}</span>
-                  </label>
-                );
-              })}
-            </div>
-      
-            {/* STONE TYPE (max 2) */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-                <Image src="/new files/newIcons/Material_Icons/Material_Icons-39.svg" alt="Stone Type" width={18} height={18} style={{ marginRight: 6 }} />
-                Stone Type
-              </div>
-              <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>Can choose up to X2 Material Options</div>
-              {stoneTypeOptions.map((st) => {
-                const icon = getIconPath('stoneType', st);
-                return (
-                  <label key={st} style={{ display: "flex", alignItems: "center", fontSize: 13, marginBottom: 6 }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedStoneType.includes(st)}
-                      onChange={() => handleCheckboxChange(selectedStoneType, setSelectedStoneType, st, 2)}
-                      style={{ marginRight: 8 }}
-                    />
-                    {icon && <Image src={icon} alt={`${st} icon`} width={22} height={22} style={{ marginRight: 8, objectFit: 'contain' }} />}
-                    <span>{st}</span>
-                  </label>
-                );
-              })}
-            </div>
-      
-            {/* CUSTOMISATION (max 3) */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-                <Image src="/new files/newIcons/Custom_Icons/Custom_Icons-54.svg" alt="Customisation" width={18} height={18} style={{ marginRight: 6 }} />
-                Customisation
-              </div>
-              <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>Can choose up to X3 Custom Options</div>
-              {customizationOptions.map((cu) => {
-                const icon = getIconPath('customization', cu);
-                return (
-                  <label key={cu} style={{ display: "flex", alignItems: "center", fontSize: 13, marginBottom: 6 }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedCustomisation.includes(cu)}
-                      onChange={() => handleCheckboxChange(selectedCustomisation, setSelectedCustomisation, cu, 3)}
-                      style={{ marginRight: 8 }}
-                    />
-                    {icon && <Image src={icon} alt={`${cu} icon`} width={22} height={22} style={{ marginRight: 8, objectFit: 'contain' }} />}
-                    <span>{cu}</span>
-                  </label>
-                );
-              })}
-            </div>
-            {/* Modal for max selection warning */}
-            {modalOpen && (
-              <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.3)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ background: '#fff', borderRadius: 12, padding: 32, minWidth: 260, boxShadow: '0 2px 16px rgba(0,0,0,0.18)', textAlign: 'center' }}>
-                  <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>{modalMsg}</div>
-                  <button onClick={() => setModalOpen(false)} style={{ background: '#005bac', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 24px', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>OK</button>
-                </div>
-              </div>
-            )}
+      <div className={styles.spacer12} />
+      {/* Product Details Grid with Icons */}
+      <div className={styles.productDetailsGrid}>
+        {/* HEAD STYLE (max 2) */}
+        <div>
+          <div className={styles.detailsHeader}>
+            <Image src="/new files/newIcons/Styles_Icons/Styles_Icons-11.svg" alt="Head Style" width={18} height={18} className={styles.detailsIcon} />
+            Head Style
           </div>
-        );
-      })()}
+          <div className={styles.detailsSubHeader}>Can choose up to X2 HEAD STYLE Options</div>
+          {STYLE_OPTIONS.map((s) => {
+            const icon = getIconPath('style', s);
+            return (
+              <label key={s} className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={selectedStyle.includes(s)}
+                  onChange={() => handleCheckboxChange(selectedStyle, setSelectedStyle, s, 2)}
+                  className={styles.checkboxInput}
+                />
+                {icon && <Image src={icon} alt={`${s} icon`} width={22} height={22} className={styles.checkboxIcon} />}
+                <span>{s}</span>
+              </label>
+            );
+          })}
+        </div>
+  
+        {/* SLAB STYLE (max 1) */}
+        <div>
+          <div className={styles.detailsHeader}>
+            <Image src="/new files/newIcons/Styles_Icons/Styles_Icons-11.svg" alt="Slab Style" width={18} height={18} className={styles.detailsIcon} />
+            Slab Style
+          </div>
+          <div className={styles.detailsSubHeader}>Can choose up to X1 Slab Style Option</div>
+          {SLAB_STYLE_OPTIONS.map((s) => {
+            const icon = getIconPath('slabStyle', s);
+            return (
+              <label key={s} className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={selectedSlabStyle.includes(s)}
+                  onChange={() => handleCheckboxChange(selectedSlabStyle, setSelectedSlabStyle, s, 1)}
+                  className={styles.checkboxInput}
+                />
+                {icon && <Image src={icon} alt={`${s} icon`} width={22} height={22} className={styles.checkboxIcon} />}
+                <span>{s}</span>
+              </label>
+            );
+          })}
+        </div>
+  
+        {/* COLOUR (max 2) */}
+        <div>
+          <div className={styles.detailsHeader}>
+            <Image src="/new files/newIcons/Colour_Icons/Colour_Icons-28.svg" alt="Colour" width={18} height={18} className={styles.detailsIcon} />
+            Colour
+          </div>
+          <div className={styles.detailsSubHeader}>Can choose up to X2 Colour Options</div>
+          {COLOR_OPTIONS.map((c) => {
+            const icon = getIconPath('color', c);
+            return (
+              <label key={c} className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={selectedColour.includes(c)}
+                  onChange={() => handleCheckboxChange(selectedColour, setSelectedColour, c, 2)}
+                  className={styles.checkboxInput}
+                />
+                {icon && <Image src={icon} alt={`${c} icon`} width={22} height={22} className={styles.checkboxIcon} />}
+                <span>{c}</span>
+              </label>
+            );
+          })}
+        </div>
+  
+        {/* STONE TYPE (max 2) */}
+        <div>
+          <div className={styles.detailsHeader}>
+            <Image src="/new files/newIcons/Material_Icons/Material_Icons-39.svg" alt="Stone Type" width={18} height={18} className={styles.detailsIcon} />
+            Stone Type
+          </div>
+          <div className={styles.detailsSubHeader}>Can choose up to X2 Material Options</div>
+          {STONE_TYPE_OPTIONS.map((st) => {
+            const icon = getIconPath('stoneType', st);
+            return (
+              <label key={st} className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={selectedStoneType.includes(st)}
+                  onChange={() => handleCheckboxChange(selectedStoneType, setSelectedStoneType, st, 2)}
+                  className={styles.checkboxInput}
+                />
+                {icon && <Image src={icon} alt={`${st} icon`} width={22} height={22} className={styles.checkboxIcon} />}
+                <span>{st}</span>
+              </label>
+            );
+          })}
+        </div>
+  
+        {/* CUSTOMISATION (max 3) */}
+        <div>
+          <div className={styles.detailsHeader}>
+            <Image src="/new files/newIcons/Custom_Icons/Custom_Icons-54.svg" alt="Customisation" width={18} height={18} className={styles.detailsIcon} />
+            Customisation
+          </div>
+          <div className={styles.detailsSubHeader}>Can choose up to X3 Custom Options</div>
+          {CUSTOMIZATION_OPTIONS.map((cu) => {
+            const icon = getIconPath('customization', cu);
+            return (
+              <label key={cu} className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={selectedCustomisation.includes(cu)}
+                  onChange={() => handleCheckboxChange(selectedCustomisation, setSelectedCustomisation, cu, 3)}
+                  className={styles.checkboxInput}
+                />
+                {icon && <Image src={icon} alt={`${cu} icon`} width={22} height={22} className={styles.checkboxIcon} />}
+                <span>{cu}</span>
+              </label>
+            );
+          })}
+        </div>
+        {/* Modal for max selection warning */}
+        {modalOpen && (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modalContent}>
+              <div className={styles.modalText}>{modalMsg}</div>
+              <button onClick={() => setModalOpen(false)} className={styles.modalButton}>OK</button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Additional Product Details Section Header */}
-      <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px ", marginBottom: 0, letterSpacing: 0.5, display: 'flex', alignItems: 'center' }}>
-        <span style={{ marginRight: 8 }}>ADDITIONAL PRODUCT DETAILS</span>
+      <div className={`${styles.sectionHeaderGray} ${styles.sectionHeaderFlex}`}>
+        <span className={styles.sectionHeaderTitle}>ADDITIONAL PRODUCT DETAILS</span>
       </div>
-      <div style={{ height: 12 }} />
+      <div className={styles.spacer12} />
 
-      {/* Additional Product Details Content (updated to checkbox groups) */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 32 }}>
+      {/* Additional Product Details Content */}
+      <div className={styles.additionalDetailsGrid}>
         {/* 1. TRANSPORT AND INSTALLATION (max 2) */}
         <div>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>1. TRANSPORT AND INSTALLATION</div>
-          <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X2 Transport and Installation Options)</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {[
-              "FREE TRANSPORT AND INSTALLATION WITHIN 5KM OF FACTORY",
-              "FREE TRANSPORT AND INSTALLATION WITHIN 20KM OF FACTORY",
-              "FREE TRANSPORT AND INSTALLATION WITHIN 50KM OF FACTORY",
-              "FREE TRANSPORT AND INSTALLATION WITHIN 100KM OF FACTORY",
-              "FREE TRANSPORT AND INSTALLATION",
-              "DISCOUNTED TRANSPORT AND INSTALLATION COST INCLUDED IN SALE",
-              "FINAL TRANSPORT AND INSTALLATION COST TO BE CONFIRMED BY MANUFACTURER",
-            ].map((option) => (
-              <label key={option} style={{ display: "block", fontSize: 13 }}>
+          <div className={styles.additionalDetailsHeader}>1. TRANSPORT AND INSTALLATION</div>
+          <div className={styles.additionalDetailsSubHeader}>(Can choose up to X2 Transport and Installation Options)</div>
+          <div className={styles.checkboxGroup}>
+            {TRANSPORT_OPTIONS.map((option) => (
+              <label key={option} className={styles.checkboxBlockLabel}>
                 <input
                   type="checkbox"
                   checked={selectedTransport.includes(option)}
                   onChange={() => handleCheckboxChange(selectedTransport, setSelectedTransport, option, 2)}
-                  style={{ marginRight: 6 }}
+                  className={styles.checkboxInputSmallMargin}
                 />
                 {option}
               </label>
@@ -1000,27 +832,16 @@ export default function UpdateListingPage() {
 
         {/* 2. FOUNDATION OPTIONS (max 3) */}
         <div>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>2. FOUNDATION OPTIONS</div>
-          <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X3 Foundation Options)</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {[
-              "NO FOUNDATION COSTS INCLUDED IN PRICE",
-              "GRAVESITE CLEARING COST NOT INCLUDED IN PRICE",
-              "GRAVESITE CLEARING COST INCLUDED IN PRICE",
-              "CEMENT FOUNDATION COST NOT INCLUDED IN PRICE",
-              "CEMENT FOUNDATION COST INCLUDED IN PRICE",
-              "BRICK FOUNDATION COST NOT INCLUDED IN PRICE",
-              "BRICK FOUNDATION COST INCLUDED IN PRICE",
-              "X1 LAYER BRICK FOUNDATION COST INCLUDED IN PRICE",
-              "X2 LAYER BRICK FOUNDATION COST INCLUDED IN PRICE",
-              "X3 LAYER BRICK FOUNDATION COST INCLUDED IN PRICE",
-            ].map((option) => (
-              <label key={option} style={{ display: "block", fontSize: 13 }}>
+          <div className={styles.additionalDetailsHeader}>2. FOUNDATION OPTIONS</div>
+          <div className={styles.additionalDetailsSubHeader}>(Can choose up to X3 Foundation Options)</div>
+          <div className={styles.checkboxGroup}>
+            {FOUNDATION_OPTIONS.map((option) => (
+              <label key={option} className={styles.checkboxBlockLabel}>
                 <input
                   type="checkbox"
                   checked={selectedFoundation.includes(option)}
                   onChange={() => handleCheckboxChange(selectedFoundation, setSelectedFoundation, option, 3)}
-                  style={{ marginRight: 6 }}
+                  className={styles.checkboxInputSmallMargin}
                 />
                 {option}
               </label>
@@ -1030,27 +851,16 @@ export default function UpdateListingPage() {
 
         {/* 3. WARRANTY/GUARANTEE (max 1) */}
         <div>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>3. WARRANTY/GUARANTEE</div>
-          <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X1 Warranty/Guarantee Options)</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {[
-              "5   YEAR MANUFACTURES WARRANTY",
-              "5   YEAR MANUFACTURES GUARANTEE",
-              "10 YEAR MANUFACTURES WARRANTY",
-              "10 YEAR MANUFACTURES GUARANTEE",
-              "15 YEAR MANUFACTURES WARRANTY",
-              "15 YEAR MANUFACTURES GUARANTEE",
-              "20 YEAR MANUFACTURES WARRANTY",
-              "20 YEAR MANUFACTURES GUARANTEE",
-              "LIFETIME MANUFACTURERS WARRANTY",
-              "LIFETIME MANUFACTURERS GUARANTEE",
-            ].map((option) => (
-              <label key={option} style={{ display: "block", fontSize: 13 }}>
+          <div className={styles.additionalDetailsHeader}>3. WARRANTY/GUARANTEE</div>
+          <div className={styles.additionalDetailsSubHeader}>(Can choose up to X1 Warranty/Guarantee Options)</div>
+          <div className={styles.checkboxGroup}>
+            {WARRANTY_OPTIONS.map((option) => (
+              <label key={option} className={styles.checkboxBlockLabel}>
                 <input
                   type="checkbox"
                   checked={selectedWarranty.includes(option)}
                   onChange={() => handleCheckboxChange(selectedWarranty, setSelectedWarranty, option, 1)}
-                  style={{ marginRight: 6 }}
+                  className={styles.checkboxInputSmallMargin}
                 />
                 {option}
               </label>
@@ -1060,19 +870,19 @@ export default function UpdateListingPage() {
 
         {/* 4. MANUFACTURING LEAD TIME (single select via checkbox) */}
         <div>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>4. MANUFACTURING LEAD TIME</div>
-          <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X1 Manufacturing Lead Time)</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {manufacturingLeadTimeOptions.map((days) => {
+          <div className={styles.additionalDetailsHeader}>4. MANUFACTURING LEAD TIME</div>
+          <div className={styles.additionalDetailsSubHeader}>(Can choose up to X1 Manufacturing Lead Time)</div>
+          <div className={styles.checkboxGroup}>
+            {MANUFACTURING_LEAD_TIME_OPTIONS.map((days) => {
               const str = String(days);
               const checked = manufacturingTimeframe === str;
               return (
-                <label key={str} style={{ display: "block", fontSize: 13 }}>
+                <label key={str} className={styles.checkboxBlockLabel}>
                   <input
                     type="checkbox"
                     checked={checked}
                     onChange={() => handleManufacturingLeadTimeToggle(days)}
-                    style={{ marginRight: 6 }}
+                    className={styles.checkboxInputSmallMargin}
                   />
                   {formatManufacturingLeadTimeText(days)}
                 </label>
@@ -1082,21 +892,20 @@ export default function UpdateListingPage() {
         </div>
       </div>
  
-      {/* PRICING & ADFLASHER state and helpers */}
       {/* PRICING & ADFLASHER */}
-      <div style={{ background: "#ededed", fontWeight: 700, fontSize: 13, padding: "6px 12px ", marginTop: 0, marginBottom: 0, letterSpacing: 0.5, display: 'flex', alignItems: 'center' }}>
-        <span style={{ marginRight: 8 }}>PRICING & ADFLASHER</span>
+      <div className={`${styles.sectionHeaderGray} ${styles.sectionHeaderFlex} ${styles.marginTopZero}`}>
+        <span className={styles.sectionHeaderTitle}>PRICING & ADFLASHER</span>
       </div>
-      <div style={{ height: 12 }} />
+      <div className={styles.spacer12} />
       
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 32 }}>
+      <div className={styles.pricingGrid}>
         {/* LEFT: ADVERT FLASHER */}
         <div>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>ADVERT FLASHER</div>
-          <div style={{ fontSize: 12, color: '#555', marginBottom: 8 }}>(Can only choose X1 Advert Flasher per Ad)</div>
+          <div className={styles.additionalDetailsHeader}>ADVERT FLASHER</div>
+          <div className={styles.additionalDetailsSubHeader}>(Can only choose X1 Advert Flasher per Ad)</div>
 
           {/* Categories grid: [name | arrow] */}
-          <div style={{ display: "grid", gridTemplateColumns: "max-content 16px", columnGap: 8, rowGap: 6, alignItems: "start" }}>
+          <div className={styles.adFlasherGrid}>
             {Object.entries(adFlasherOptionsMap).map(([category, cfg]) => {
               const options = Array.isArray(cfg) ? cfg : (cfg?.options || []);
 
@@ -1107,25 +916,14 @@ export default function UpdateListingPage() {
                     onClick={() => handleToggleAdFlasherCategory(category)}
                     aria-expanded={expandedAdFlasherCategory === category}
                     aria-controls={`adflasher-panel-${category}`}
-                    style={{ display: "contents" }}
+                    className={styles.adFlasherButton}
                   >
                     {/* Column 1: name */}
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#222", alignSelf: "start" }}>
+                    <span className={styles.adFlasherCategoryName}>
                       {category.replace(/_/g, " ")}
                     </span>
                     {/* Column 2: arrow */}
-                    <span
-                      style={{
-                        fontSize: 12,
-                        color: "#111",
-                        lineHeight: 1,
-                        alignSelf: "start",
-                        justifySelf: "end",
-                        display: "inline-block",
-                        width: 16,
-                        textAlign: "center",
-                      }}
-                    >
+                    <span className={styles.adFlasherArrow}>
                       {expandedAdFlasherCategory === category ? "▼" : "▶"}
                     </span>
                   </button>
@@ -1134,19 +932,19 @@ export default function UpdateListingPage() {
                   {expandedAdFlasherCategory === category && (
                     <div
                       id={`adflasher-panel-${category}`}
-                      style={{ gridColumn: "1 / -1", padding: "4px 0 8px 18px" }}
+                      className={styles.adFlasherPanel}
                     >
                       {options.map((option) => (
                         <label
                           key={option}
-                          style={{ display: "flex", alignItems: "center", fontSize: 13, marginBottom: 6 }}
+                          className={styles.checkboxLabel}
                         >
                           <input
                             type="radio"
                             name="adFlasherRadio"
                             checked={flasher === option}
                             onChange={() => handleSelectAdFlasher(category, option)}
-                            style={{ marginRight: 8 }}
+                            className={styles.checkboxInput}
                           />
                           <span>{option}</span>
                         </label>
@@ -1158,29 +956,12 @@ export default function UpdateListingPage() {
             })}
           </div>
 
-          {/* Selection preview box (always visible; color updates by category) */}
-          <div
-            style={{
-              marginTop: 12,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 10px",
-              border: "1px dashed #C8C8C8",
-              borderRadius: 8,
-              background: "#fff",
-            }}
-          >
-            <span style={{ fontSize: 12, color: "#444" }}>Selection</span>
+          {/* Selection preview box */}
+          <div className={styles.selectionPreview}>
+            <span className={styles.selectionLabel}>Selection</span>
             <span
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "#fff",
-                background: selectedAdFlasherColor,
-                padding: "4px 10px",
-                borderRadius: 999,
-              }}
+              className={styles.selectionValue}
+              style={{ background: selectedAdFlasherColor }}
             >
               {flasher || "None"}
             </span>
@@ -1189,8 +970,7 @@ export default function UpdateListingPage() {
 
         {/* RIGHT: ADVERTISED PRICE */}
         <div>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>ADVERTISED PRICE</div>
-          {/* Removed helper rule text */}
+          <div className={styles.additionalDetailsHeader}>ADVERTISED PRICE</div>
           <input
             type="text"
             name="price"
@@ -1198,53 +978,55 @@ export default function UpdateListingPage() {
             value={price}
             onChange={handlePriceChange}
             onBlur={handlePriceBlur}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              borderRadius: 8,
-              border: '1px solid #ccc',
-              fontSize: 14,
-              outline: 'none'
-            }}
+            className={styles.priceInput}
           />
+          
+          {/* BRANCH PRICES */}
+          {listing?.company?.branches?.length > 0 && (
+            <div style={{ marginTop: 24 }}>
+               <div className={styles.additionalDetailsHeader}>BRANCH PRICES</div>
+               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                 {listing.company.branches.map(branch => (
+                   <div key={branch.documentId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 14, fontWeight: 500 }}>{branch.name}</span>
+                      <input
+                        type="text"
+                        placeholder="Price"
+                        value={branchPrices[branch.documentId] || ""}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9.]/g, "");
+                          setBranchPrices(prev => ({ ...prev, [branch.documentId]: val }));
+                        }}
+                        style={{
+                          width: "120px",
+                          padding: "8px",
+                          border: "1px solid #ccc",
+                          borderRadius: 4,
+                          textAlign: "right"
+                        }}
+                      />
+                   </div>
+                 ))}
+               </div>
+            </div>
+          )}
         </div>
       </div>
       
       {/* Action Buttons */}
-      <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", justifyContent: "flex-end", gap: 12, padding: "12px 0 24px 0" }}>
+      <div className={styles.actionButtons}>
         <button
           type="button"
           onClick={(e) => handleSubmit(e)}
           disabled={isSubmitting}
-          style={{
-            background: "#005bac",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            padding: "10px 16px",
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-            cursor: "pointer",
-            opacity: isSubmitting ? 0.7 : 1
-          }}
+          className={`${styles.saveButton} ${isSubmitting ? styles.saveButtonDisabled : ''}`}
         >
           {isSubmitting ? "SAVING..." : "SAVE CHANGES"}
         </button>
         <button
           type="button"
           onClick={() => router.push("/manufacturers/manufacturers-Profile-Page")}
-          style={{
-            background: "#d9d9d9",
-            color: "#333",
-            border: "none",
-            borderRadius: 8,
-            padding: "10px 16px",
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-            cursor: "pointer"
-          }}
+          className={styles.cancelButton}
         >
           CANCEL
         </button>

@@ -11,6 +11,7 @@ import { GET_LISTINGS } from '@/graphql/queries/getListings'
 import { useListingCategories } from '@/hooks/use-ListingCategories'
 import { desiredOrder } from '@/lib/categories'
 import { AlertTriangle } from 'lucide-react'
+import { addListingToBranch, addListingToBranchListing } from '@/lib/addListingToBranch'
 
 const colorOptions = [
   'Black',
@@ -220,6 +221,7 @@ export default function CreateListingForm() {
   const [priceMajor, setPriceMajor] = useState('')
   const [priceMinor, setPriceMinor] = useState('00')
   const [priceInput, setPriceInput] = useState('')
+  const [branchPrices, setBranchPrices] = useState({})
 
   // Optional preload of price display from existing formData.price
   useEffect(() => {
@@ -661,6 +663,31 @@ export default function CreateListingForm() {
       if (res.ok) {
         const responseData = await res.json()
         
+        // Process Branch Prices
+        if (company?.branches && Object.keys(branchPrices).length > 0) {
+           const listingId = responseData.data.documentId;
+           const branchPromises = company.branches.map(async (branch) => {
+              const branchId = branch.documentId;
+              const priceVal = branchPrices[branchId];
+              
+              if (priceVal && priceVal !== "") {
+                 const numericPrice = parseFloat(priceVal);
+                 if (!isNaN(numericPrice)) {
+                     try {
+                        await addListingToBranch(branchId, listingId);
+                        await addListingToBranchListing({
+                           listingDocumentId: listingId,
+                           branchDocumentId: branchId,
+                           price: numericPrice
+                        });
+                     } catch (err) {
+                        console.error(`Failed to add branch price for ${branch.name}`, err);
+                     }
+                 }
+              }
+           });
+           await Promise.all(branchPromises);
+        }
         
         // Update Apollo cache to include the new listing
         try {
@@ -1450,6 +1477,40 @@ export default function CreateListingForm() {
                 placeholder="000 000.00"
               />
             </div>
+             {/* Branch Prices */}
+            {company?.branches?.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>Branch Prices (Optional)</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {company.branches.map(branch => (
+                    <div key={branch.documentId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 13, color: "#333" }}>{branch.name}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: 13, color: "#555" }}>R</span>
+                        <input
+                          type="text"
+                          placeholder="0.00"
+                          value={branchPrices[branch.documentId] || ""}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9.]/g, "");
+                            setBranchPrices(prev => ({ ...prev, [branch.documentId]: val }));
+                          }}
+                          style={{
+                            width: "100px",
+                            padding: "6px",
+                            border: "1px solid #ccc",
+                            borderRadius: 4,
+                            textAlign: "right",
+                            fontSize: 13,
+                            outline: "none"
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

@@ -74,8 +74,9 @@ export const GET_COMPANY_BY_USER = gql`
         }
         documentId
           listing_category {
-      name
-    }
+            documentId
+            name
+          }
         title
         slug
         price
