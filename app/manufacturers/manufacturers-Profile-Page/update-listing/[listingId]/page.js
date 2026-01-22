@@ -11,6 +11,7 @@ import { uploadToCloudinary } from "@/lib/cloudinary";
 import pricingAdFlasher from '../../../../../pricingAdFlasher.json';
 import { useToast } from "../../../../../hooks/use-toast";
 import { useListingCategories } from '@/hooks/use-ListingCategories';
+import { addListingToBranch, addListingToBranchListing, updateBranchListing } from "../../../../../lib/addListingToBranch";
 import { desiredOrder } from '@/lib/categories';
 import styles from "../UpdateListing.module.css";
 import { 
@@ -79,6 +80,7 @@ export default function UpdateListingPage() {
   const [price, setPrice] = useState("");
   const [flasher, setFlasher] = useState("");
   const [manufacturingTimeframe, setManufacturingTimeframe] = useState("1");
+  const [branchPrices, setBranchPrices] = useState({});
 
   const handleManufacturingLeadTimeToggle = (days) => {
     const str = String(days);
@@ -179,6 +181,16 @@ export default function UpdateListingPage() {
       setPrice(listing.price?.toString() || "");
       setFlasher(listing.adFlasher || "");
       setManufacturingTimeframe(listing.manufacturingTimeframe || "1");
+
+      if (listing.branch_listings) {
+        const prices = {};
+        listing.branch_listings.forEach(bl => {
+          if (bl.branch) {
+            prices[bl.branch.documentId] = bl.price;
+          }
+        });
+        setBranchPrices(prices);
+      }
 
       setExistingPublicIds({
         main: listing?.mainImagePublicId || null,
@@ -390,6 +402,36 @@ export default function UpdateListingPage() {
       // Clean up orphaned references
       client.cache.gc();
       
+      // Process Branch Prices
+      if (listing?.company?.branches) {
+         const branchPromises = listing.company.branches.map(async (branch) => {
+            const branchId = branch.documentId;
+            const newPrice = branchPrices[branchId];
+            const existingBranchListing = listing.branch_listings?.find(bl => bl.branch?.documentId === branchId);
+            const existingPrice = existingBranchListing?.price;
+            const existingBranchListingId = existingBranchListing?.documentId;
+
+            if (newPrice && newPrice !== "") {
+               const numericPrice = parseFloat(newPrice);
+               if (existingBranchListingId) {
+                  // Update existing
+                  if (numericPrice !== existingPrice) {
+                     await updateBranchListing({ branchListingDocumentId: existingBranchListingId, price: numericPrice });
+                  }
+               } else {
+                  // Create new
+                   await addListingToBranch(branchId, listing.documentId);
+                   await addListingToBranchListing({
+                     listingDocumentId: listing.documentId,
+                     branchDocumentId: branchId,
+                     price: numericPrice
+                   });
+               }
+            }
+         });
+         await Promise.all(branchPromises);
+      }
+
       // Show success message
       setMessage("Listing updated successfully!");
       setIsSuccess(true);
@@ -938,6 +980,36 @@ export default function UpdateListingPage() {
             onBlur={handlePriceBlur}
             className={styles.priceInput}
           />
+          
+          {/* BRANCH PRICES */}
+          {listing?.company?.branches?.length > 0 && (
+            <div style={{ marginTop: 24 }}>
+               <div className={styles.additionalDetailsHeader}>BRANCH PRICES</div>
+               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                 {listing.company.branches.map(branch => (
+                   <div key={branch.documentId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 14, fontWeight: 500 }}>{branch.name}</span>
+                      <input
+                        type="text"
+                        placeholder="Price"
+                        value={branchPrices[branch.documentId] || ""}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9.]/g, "");
+                          setBranchPrices(prev => ({ ...prev, [branch.documentId]: val }));
+                        }}
+                        style={{
+                          width: "120px",
+                          padding: "8px",
+                          border: "1px solid #ccc",
+                          borderRadius: 4,
+                          textAlign: "right"
+                        }}
+                      />
+                   </div>
+                 ))}
+               </div>
+            </div>
+          )}
         </div>
       </div>
       
