@@ -1,12 +1,17 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 export const useGuestLocation = () => {
   const [location, setLocation] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const mounted = useRef(false);
 
   // ✅ Prefer saved location from localStorage; fallback to Geolocation API
   useEffect(() => {
+    // Prevent double-invocation in Strict Mode or re-mounts if undesired
+    if (mounted.current) return; 
+    mounted.current = true;
+
     if (typeof window === "undefined") {
       setLoading(false);
       return;

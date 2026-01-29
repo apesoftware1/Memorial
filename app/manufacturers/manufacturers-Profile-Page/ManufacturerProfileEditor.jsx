@@ -1717,7 +1717,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
             boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
             padding: 20,
             maxWidth: 1200,
-            margin: "24px auto 0 auto",
+            margin: (mobile && !isOwner) ? "24px 16px" : "24px auto 0 auto",
             display: "flex",
             flexDirection: mobile ? "column" : "row",
             gap: mobile ? 16 : 32,
@@ -3005,7 +3005,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         </div>
 
         {/* Product Grid - Virtualized */}
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: mobile && !isOwner ? "0 16px" : 0 }}>
           {/* Display branch information if filtering by branch */}
           {branchFromUrl && (
             <>

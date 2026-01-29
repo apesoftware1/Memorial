@@ -34,6 +34,7 @@ export function PremiumListingCard({
   isOwner = false,
   onPrimaryClick,
   compact = false,
+  maxThumbnails = 3,
 }: PremiumListingCardProps): React.ReactElement {
   const router = useRouter();
   const [distanceInfo, setDistanceInfo] = useState<DistanceInfo | null>(null);
@@ -276,14 +277,14 @@ export function PremiumListingCard({
         {/* Thumbnails Row Below Main Image (Mobile) */}
         <div className="bg-white px-3 pb-3">
           <div className="relative">
-            <div className="flex flex-row gap-1 justify-start">
+            <div className="grid grid-cols-3 gap-1">
               {Array.isArray(listing.thumbnailUrls)
                 ? listing.thumbnailUrls
                     .slice(0, 3)
                     .map((src: string, index: number) => (
                       <button
                         key={index}
-                        className="relative w-40 h-30 sm:w-24 sm:h-20 flex-shrink-0 aspect-[4/3] rounded overflow-hidden border border-gray-200 hover:border-gray-400 transition-colors"
+                        className="relative aspect-[4/3] rounded overflow-hidden border border-gray-200 hover:border-gray-400 transition-colors"
                         aria-label={`View image ${index + 1}`}
                         type="button"
                         tabIndex={-1}

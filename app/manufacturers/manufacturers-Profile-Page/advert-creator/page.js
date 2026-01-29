@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/navigation'
 import Image from "next/image"
+import { addListingToBranchListing } from "@/lib/addListingToBranch"
 import adFlasherOptions from '../../../../adFlasher.json'
 import pricingAdFlasher from '../../../../pricingAdFlasher.json'
 import { useApolloClient } from '@apollo/client'
@@ -11,7 +12,6 @@ import { GET_LISTINGS } from '@/graphql/queries/getListings'
 import { useListingCategories } from '@/hooks/use-ListingCategories'
 import { desiredOrder } from '@/lib/categories'
 import { AlertTriangle } from 'lucide-react'
-import { addListingToBranch, addListingToBranchListing } from '@/lib/addListingToBranch'
 
 const colorOptions = [
   'Black',
@@ -241,6 +241,26 @@ export default function CreateListingForm() {
       [name]: type === 'checkbox' ? checked : value
     }))
   }
+
+  const handleBranchPriceChange = (branchId, value) => {
+    const raw = value.replace(/[^0-9.]/g, "");
+    setBranchPrices(prev => ({
+      ...prev,
+      [branchId]: raw
+    }));
+  };
+
+  const applyMainPriceToAllBranches = () => {
+    if (!formData.price) return;
+    
+    const newBranchPrices = {};
+    if (company?.branches) {
+      company.branches.forEach(branch => {
+        newBranchPrices[branch.documentId] = formData.price;
+      });
+    }
+    setBranchPrices(newBranchPrices);
+  };
 
   const handleDropdownChange = (section, field, value) => {
     setFormData((prev) => {
@@ -663,30 +683,22 @@ export default function CreateListingForm() {
       if (res.ok) {
         const responseData = await res.json()
         
-        // Process Branch Prices
-        if (company?.branches && Object.keys(branchPrices).length > 0) {
-           const listingId = responseData.data.documentId;
-           const branchPromises = company.branches.map(async (branch) => {
-              const branchId = branch.documentId;
-              const priceVal = branchPrices[branchId];
-              
-              if (priceVal && priceVal !== "") {
-                 const numericPrice = parseFloat(priceVal);
-                 if (!isNaN(numericPrice)) {
-                     try {
-                        await addListingToBranch(branchId, listingId);
-                        await addListingToBranchListing({
-                           listingDocumentId: listingId,
-                           branchDocumentId: branchId,
-                           price: numericPrice
-                        });
-                     } catch (err) {
-                        console.error(`Failed to add branch price for ${branch.name}`, err);
-                     }
-                 }
+        // Handle Branch Listings
+        if (company?.branches) {
+          for (const branch of company.branches) {
+            const branchPrice = branchPrices[branch.documentId];
+            if (branchPrice) {
+              try {
+                await addListingToBranchListing({
+                  listingDocumentId: responseData.data.documentId,
+                  branchDocumentId: branch.documentId,
+                  price: parseFloat(branchPrice)
+                });
+              } catch (err) {
+                console.error(`Failed to add listing to branch ${branch.name}`, err);
               }
-           });
-           await Promise.all(branchPromises);
+            }
+          }
         }
         
         // Update Apollo cache to include the new listing
@@ -1477,43 +1489,43 @@ export default function CreateListingForm() {
                 placeholder="000 000.00"
               />
             </div>
-             {/* Branch Prices */}
-            {company?.branches?.length > 0 && (
-              <div style={{ marginTop: 16 }}>
-                <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>Branch Prices (Optional)</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {company.branches.map(branch => (
-                    <div key={branch.documentId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 13, color: "#333" }}>{branch.name}</span>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ fontSize: 13, color: "#555" }}>R</span>
-                        <input
-                          type="text"
-                          placeholder="0.00"
-                          value={branchPrices[branch.documentId] || ""}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/[^0-9.]/g, "");
-                            setBranchPrices(prev => ({ ...prev, [branch.documentId]: val }));
-                          }}
-                          style={{
-                            width: "100px",
-                            padding: "6px",
-                            border: "1px solid #ccc",
-                            borderRadius: 4,
-                            textAlign: "right",
-                            fontSize: 13,
-                            outline: "none"
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+
+            {/* BRANCH PRICING COMPONENT */}
+            <div style={{ marginTop: 20 }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ fontSize: 12, color: "#555" }}>Branch Specific Prices</label>
+                  <button
+                    type="button"
+                    onClick={applyMainPriceToAllBranches}
+                    style={{ fontSize: '12px', color: '#005bac', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer' }}
+                  >
+                    Apply Main Price to All
+                  </button>
+               </div>
+               <div style={{ maxHeight: '400px', overflowY: 'auto', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                 {company?.branches?.length > 0 ? (
+                   company.branches.map(branch => (
+                     <div key={branch.documentId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                       <span style={{ fontSize: '14px', color: '#374151' }}>{branch.name}</span>
+                       <div style={{ display: 'flex', alignItems: 'center' }}>
+                         <span style={{ color: '#6b7280', marginRight: '4px' }}>R</span>
+                         <input
+                           type="text"
+                           style={{ width: '100px', margin: 0, border: "1px solid #ccc", borderRadius: 4, padding: "4px 8px" }}
+                           value={branchPrices[branch.documentId] || ""}
+                           onChange={(e) => handleBranchPriceChange(branch.documentId, e.target.value)}
+                           placeholder="Same as main"
+                         />
+                       </div>
+                     </div>
+                   ))
+                 ) : (
+                    <div style={{ padding: '8px', color: '#666', fontSize: '13px' }}>No branches available for this company.</div>
+                 )}
+               </div>
+            </div>
           </div>
         </div>
-
 
         {/* Action Buttons */}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
