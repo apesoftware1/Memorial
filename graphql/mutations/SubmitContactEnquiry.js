@@ -1,6 +1,6 @@
 export async function submitContactEnquiry(payload) {
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
+    const apiUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL;
     
     const response = await fetch(`${apiUrl}/enquiries`, {
       method: "POST",

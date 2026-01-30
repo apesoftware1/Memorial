@@ -34,10 +34,8 @@ export function StandardListingCard({
 }: StandardListingCardProps): React.ReactElement {
   const router = useRouter();
   // Remove the useEffect and replace with direct calculation
-  // const [distance, setDistance] = useState<number | null>(null);
-  const { location, error, loading, calculateDistanceFrom } =
+  const { location, error, loading, calculateDistanceFrom, getDistanceFrom } =
     useGuestLocation();
-  const [distanceInfo, setDistanceInfo] = useState<DistanceInfo | null>(null);
 
   // Calculate total image count
   const getImageCount = () => {
@@ -99,16 +97,10 @@ export function StandardListingCard({
     lng: Number(listing?.company?.longitude),
   };
 
-  // UPDATED: async distance fetch similar to premium-listing-card
-  useEffect(() => {
-    const fetchDistance = async () => {
-      if (companyLocation.lat && companyLocation.lng) {
-        const result = await calculateDistanceFrom(companyLocation);
-        setDistanceInfo(result);
-      }
-    };
-    fetchDistance();
-  }, [companyLocation.lat, companyLocation.lng, calculateDistanceFrom]);
+  const distanceInfo = React.useMemo(() => {
+    if (!companyLocation.lat || !companyLocation.lng || !getDistanceFrom) return null;
+    return getDistanceFrom(companyLocation);
+  }, [companyLocation.lat, companyLocation.lng, getDistanceFrom]);
 
   return (
     <div

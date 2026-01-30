@@ -23,7 +23,7 @@ const handler = NextAuth({
       async authorize(credentials) {
         try {
           try {
-            const baseUrl = process.env.STRAPI_API_URL || "https://api.tombstonesfinder.co.za";
+            const baseUrl = process.env.STRAPI_API_URL;
             const res = await fetch(`${baseUrl}/api/auth/local`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },

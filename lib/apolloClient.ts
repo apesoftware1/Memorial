@@ -34,7 +34,7 @@ const cache = new InMemoryCache({
 export function createApolloClient(): ApolloClient<NormalizedCacheObject> {
   return new ApolloClient({
     link: createHttpLink({
-      uri: process.env.NEXT_PUBLIC_STRAPI_GRAPHQL_URL || 'https://api.tombstonesfinder.co.za/graphql',
+      uri: process.env.NEXT_PUBLIC_STRAPI_GRAPHQL_URL,
       headers: {
         'Content-Type': 'application/json',
       },

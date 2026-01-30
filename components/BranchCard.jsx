@@ -20,9 +20,7 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
 
   // Distance calculation state and hooks (consistent with PremiumListingCard)
   const cardRef = useRef(null);
-  const [distanceInfo, setDistanceInfo] = useState(null);
-  const [hasFetchedDistance, setHasFetchedDistance] = useState(false);
-  const { location, error, loading, calculateDistanceFrom } = useGuestLocation();
+  const { location, error, loading, calculateDistanceFrom, getDistanceFrom } = useGuestLocation();
 
   // Robust branch lat/lng extraction (supports multiple shapes)
   const branchLocation = {
@@ -34,69 +32,10 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
     ),
   };
 
-  // Defer distance calculation until visible and main thread is idle
-  useEffect(() => {
-    if (!cardRef.current || hasFetchedDistance) return;
-
-    const node = cardRef.current;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (
-          entry &&
-          entry.isIntersecting &&
-          branchLocation.lat &&
-          branchLocation.lng
-        ) {
-          const schedule = (cb) => {
-            if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
-              window.requestIdleCallback(cb, { timeout: 2000 });
-            } else {
-              setTimeout(cb, 1200);
-            }
-          };
-
-          schedule(async () => {
-            try {
-              const result = await calculateDistanceFrom(branchLocation);
-              if (result) {
-                setDistanceInfo(result);
-                setHasFetchedDistance(true);
-              }
-            } catch (_) {
-              // Silent failure — keep UI responsive
-            }
-          });
-
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "0px 0px 200px 0px", threshold: 0.01 }
-    );
-
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [branchLocation.lat, branchLocation.lng, calculateDistanceFrom, hasFetchedDistance]);
-
-  // Re-attempt distance calculation once user location becomes available.
-  // This fixes the first card missing distance when geolocation is not ready on initial render.
-  useEffect(() => {
-    if (hasFetchedDistance) return;
-    if (!branchLocation.lat || !branchLocation.lng) return;
-    if (!location) return; // wait until location is detected or loaded from storage
-
-    (async () => {
-      try {
-        const result = await calculateDistanceFrom(branchLocation);
-        if (result) {
-          setDistanceInfo(result);
-          setHasFetchedDistance(true);
-        }
-      } catch (_) {
-        // Silent failure
-      }
-    })();
-  }, [location, branchLocation.lat, branchLocation.lng, calculateDistanceFrom, hasFetchedDistance]);
+  const distanceInfo = React.useMemo(() => {
+    if (!branchLocation.lat || !branchLocation.lng || !getDistanceFrom) return null;
+    return getDistanceFrom(branchLocation);
+  }, [branchLocation.lat, branchLocation.lng, getDistanceFrom]);
 
   // Create product object for FavoriteButton
   const favoriteProduct = {

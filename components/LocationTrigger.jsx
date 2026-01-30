@@ -6,7 +6,7 @@ import { useGuestLocation } from '@/hooks/useGuestLocation'
 import LocationPermissionModal from './LocationPermissionModal'
 
 export default function LocationTrigger({ listing, className = "" }) {
-  const { location, error, loading, calculateDistanceFrom } = useGuestLocation()
+  const { location, error, loading, getDistanceFrom } = useGuestLocation()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [hasCheckedFirstVisit, setHasCheckedFirstVisit] = useState(false)
 
@@ -58,11 +58,11 @@ export default function LocationTrigger({ listing, className = "" }) {
       return 'location not set'
     }
     
-    if (location && calculateDistanceFrom) {
+    if (location && getDistanceFrom) {
       try {
-        const distance = calculateDistanceFrom({ lat: listingLat, lng: listingLon })
-        if (distance !== null) {
-          return `${Math.round(distance)} km from you`
+        const result = getDistanceFrom({ lat: listingLat, lng: listingLon })
+        if (result && result.distance) {
+          return `${result.distance.text} from you`
         }
       } catch (error) {
         console.error('Error calculating distance:', error)

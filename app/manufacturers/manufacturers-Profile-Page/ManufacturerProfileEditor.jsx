@@ -152,6 +152,14 @@ function parsePrice(val) {
 
 import { addListingToBranchListing, addListingToBranch } from "@/lib/addListingToBranch";
 
+// Helper to slugify text
+const slugify = (s) =>
+  String(s || "")
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+
 export default function ManufacturerProfileEditor({
   isOwner,
   company: initialCompany,
@@ -202,6 +210,8 @@ export default function ManufacturerProfileEditor({
   };
   const [branchFromUrl, setBranchFromUrl] = useState(null);
   const [filteredListings, setFilteredListings] = useState(listings);
+  const [companyListings, setCompanyListings] = useState(listings || []);
+  const [notificationCount, setNotificationCount] = useState(0);
   // Single-step Operating Hours editor state
 
   const [operatingDayIndex, setOperatingDayIndex] = useState(0); // 0..3
@@ -453,14 +463,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
 
   const client = useApolloClient();
   const [isDuplicating, setIsDuplicating] = useState(false);
-  const slugify = (s) =>
-    String(s || "")
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, "")
-      .trim()
-      .replace(/\s+/g, "-");
-
-  async function handleDuplicate(listing) {
+  const handleDuplicate = useCallback(async (listing) => {
     if (!listing?.documentId) {
       toast({
         title: "Duplicate failed",
@@ -688,7 +691,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     } finally {
       setIsDuplicating(false);
     }
-  }
+  }, [client, company, toast, setFilteredListings, setCompanyListings, onRefresh]);
 
   // Bulk Selection Handlers
   const toggleSelectionMode = () => {
@@ -1027,8 +1030,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
   }, []);
 
   // Notification state management
-  const [companyListings, setCompanyListings] = useState(listings || []);
-  const [notificationCount, setNotificationCount] = useState(0);
+
   
 
 
@@ -1285,7 +1287,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       for (const inquiry of newInquiries) {
         try {
           const inquiryId = inquiry.documentId || inquiry.id;
-          const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
+          const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL;
           await fetch(
             `${baseUrl}/inquiries/${inquiryId}`,
             {
@@ -3021,7 +3023,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
           <VirtuosoGrid
             useWindowScroll
             totalCount={sortedAndFilteredListings.length}
-            components={{
+            components={useMemo(() => ({
               List: forwardRef(({ style, children, ...props }, ref) => (
                 <div
                   ref={ref}
@@ -3037,7 +3039,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                   {children}
                 </div>
               ))
-            }}
+            }), [mobile])}
             itemContent={(index) => {
               const listing = sortedAndFilteredListings[index];
               return (

@@ -14,20 +14,15 @@ type FavoriteButtonProps = {
 export function FavoriteButton({ product, className = "", size = "md" }: FavoriteButtonProps) {
   const { isFavorite, addFavorite, removeFavorite } = useFavorites()
   const [isClient, setIsClient] = useState(false)
-  const [isFav, setIsFav] = useState(false)
 
-  // Set client state and check favorite status
+  // Set client state to handle hydration
   useEffect(() => {
     setIsClient(true)
-    setIsFav(isFavorite(product.id))
-  }, [isFavorite, product.id])
+  }, [])
 
-  // Update favorite status when it changes in context
-  useEffect(() => {
-    if (isClient) {
-      setIsFav(isFavorite(product.id))
-    }
-  }, [isClient, isFavorite, product.id])
+  // Derive favorite status directly from context
+  // This avoids the infinite render loop caused by useEffect state syncing
+  const isFav = isClient ? isFavorite(product.id) : false
 
   const handleToggleFavorite = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -37,10 +32,8 @@ export function FavoriteButton({ product, className = "", size = "md" }: Favorit
 
     if (isFav) {
       removeFavorite(product.id)
-      setIsFav(false)
     } else {
       addFavorite(product)
-      setIsFav(true)
     }
   }
 

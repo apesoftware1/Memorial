@@ -671,7 +671,7 @@ export default function CreateListingForm() {
 
 
 
-      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
+      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL;
       const res = await fetch(`${baseUrl}/listings`, {
         method: 'POST',
         headers: {

@@ -60,97 +60,50 @@ export const useGuestLocation = () => {
     );
   }, []);
 
-  const calculateDistanceFrom = useCallback(
-    async (destination) => {
-      if (!location) {
-        console.warn("User location not yet detected.");
-        return null;
-      }
+  // Synchronous distance calculation
+  const getDistanceFrom = useCallback((destination) => {
+    if (!location) return null;
+    
+    const destLat = Number(destination?.lat);
+    const destLng = Number(destination?.lng);
+    
+    if (Number.isNaN(destLat) || Number.isNaN(destLng)) return null;
+    
+    const haversineKm = (lat1, lon1, lat2, lon2) => {
+      const R = 6371;
+      const toRad = (v) => (v * Math.PI) / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) *
+          Math.cos(toRad(lat2)) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
 
-      const destLat = Number(destination?.lat);
-      const destLng = Number(destination?.lng);
+    const km = haversineKm(location.lat, location.lng, destLat, destLng);
+    
+    if (!km || !Number.isFinite(km)) return null;
+    
+    const valueMeters = Math.round(km * 1000);
+    return {
+      distance: {
+        value: valueMeters,
+        text: `${Math.round(km)} km`,
+      },
+      origin: { lat: location.lat, lng: location.lng },
+      destination: { lat: destLat, lng: destLng },
+      source: "haversine-local",
+    };
+  }, [location]);
 
-      if (Number.isNaN(destLat) || Number.isNaN(destLng)) {
-        return null;
-      }
+  // Async wrapper for backward compatibility
+  const calculateDistanceFrom = useCallback(async (destination) => {
+    return getDistanceFrom(destination);
+  }, [getDistanceFrom]);
 
-      // Use Haversine client-side calculation to prevent 429 API storms
-      const haversineKm = (lat1, lon1, lat2, lon2) => {
-        const R = 6371;
-        const toRad = (v) => (v * Math.PI) / 180;
-        const dLat = toRad(lat2 - lat1);
-        const dLon = toRad(lon2 - lon1);
-        const a =
-          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos(toRad(lat1)) *
-            Math.cos(toRad(lat2)) *
-            Math.sin(dLon / 2) *
-            Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-      };
-
-      const km = haversineKm(location.lat, location.lng, destLat, destLng);
-      
-      if (!km || !Number.isFinite(km)) {
-        return null;
-      }
-      
-      const valueMeters = Math.round(km * 1000);
-      return {
-        distance: {
-          value: valueMeters,
-          text: `${Math.round(km)} km`,
-        },
-        origin: { lat: location.lat, lng: location.lng },
-        destination: { lat: destLat, lng: destLng },
-        source: "haversine-local",
-      };
-      
-      /* 
-       * DISABLED: API Call to prevent 429 errors during mass listing
-       * 
-      try {
-        const res = await fetch("/api/distance", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userLat: location.lat,
-            userLng: location.lng,
-            destLat,
-            destLng,
-          }),
-        });
-
-        if (!res.ok) {
-          throw new Error(`Distance API error: HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-        return data;
-      } catch (err) {
-        console.error("Error calculating distance:", err);
-        const km = haversineKm(location.lat, location.lng, destLat, destLng);
-        if (!km || !Number.isFinite(km)) {
-          return null;
-        }
-        const valueMeters = Math.round(km * 1000);
-        return {
-          distance: {
-            value: valueMeters,
-            text: `${Math.round(km)} km`,
-          },
-          origin: { lat: location.lat, lng: location.lng },
-          destination: { lat: destLat, lng: destLng },
-          source: "haversine",
-        };
-      }
-      */
-    },
-    [location]
-  );
-
-  return { location, error, loading, calculateDistanceFrom };
+  return { location, error, loading, calculateDistanceFrom, getDistanceFrom };
 };

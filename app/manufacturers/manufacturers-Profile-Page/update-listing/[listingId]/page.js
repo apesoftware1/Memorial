@@ -372,7 +372,7 @@ export default function UpdateListingPage() {
         }
       };
 
-      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
+      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL;
       const response = await fetch(`${baseUrl}/listings/${listing.documentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
