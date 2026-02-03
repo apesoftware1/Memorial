@@ -58,11 +58,11 @@ export default function LocationTrigger({ listing, className = "" }) {
       return 'location not set'
     }
     
-    if (location && getDistanceFrom) {
+    if (location && calculateDistanceFrom) {
       try {
-        const result = getDistanceFrom({ lat: listingLat, lng: listingLon })
-        if (result && result.distance) {
-          return `${result.distance.text} from you`
+        const distance = calculateDistanceFrom({ lat: listingLat, lng: listingLon })
+        if (distance !== null) {
+          return `${Math.round(distance)} km from you`
         }
       } catch (error) {
         console.error('Error calculating distance:', error)

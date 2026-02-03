@@ -37,20 +37,13 @@ export function PremiumListingCard({
   maxThumbnails = 3,
 }: PremiumListingCardProps): React.ReactElement {
   const router = useRouter();
+  const [distanceInfo, setDistanceInfo] = useState<DistanceInfo | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
-  const { location, error, loading, calculateDistanceFrom, getDistanceFrom } =
+  const [hasFetchedDistance, setHasFetchedDistance] = useState(false);
+  // Remove the useEffect and replace with direct calculation
+  // const [distance, setDistance] = useState<number | null>(null);
+  const { location, error, loading, calculateDistanceFrom } =
     useGuestLocation();
-
-  // Calculate distance when component mounts or listing changes
-  const companyLocation = {
-    lat: Number(listing?.company?.latitude),
-    lng: Number(listing?.company?.longitude),
-  };
-
-  const distanceInfo = React.useMemo(() => {
-    if (!companyLocation.lat || !companyLocation.lng || !getDistanceFrom) return null;
-    return getDistanceFrom(companyLocation);
-  }, [companyLocation.lat, companyLocation.lng, getDistanceFrom]);
  
 
   // Calculate total image count using new Cloudinary fields
@@ -160,6 +153,46 @@ export function PremiumListingCard({
     e.preventDefault(); // Prevent any default behavior
     router.push(productUrl);
   };
+
+  // Calculate distance when component mounts or listing changes
+  const companyLocation = {
+    lat: Number(listing?.company?.latitude),
+    lng: Number(listing?.company?.longitude),
+  };
+
+  // Defer distance calculation until the card is visible and the main thread is idle
+  useEffect(() => {
+    if (!cardRef.current || hasFetchedDistance || !location) return;
+
+    const node = cardRef.current;
+    const observer = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (entry && entry.isIntersecting && companyLocation.lat && companyLocation.lng) {
+        const schedule = (cb: () => void) => {
+          if (typeof (window as any).requestIdleCallback === 'function') {
+            (window as any).requestIdleCallback(cb, { timeout: 2000 });
+          } else {
+            setTimeout(cb, 1200); // defer ~1.2s to avoid blocking LCP
+          }
+        };
+
+        schedule(async () => {
+          try {
+            const result = await calculateDistanceFrom(companyLocation);
+            setDistanceInfo(result);
+            setHasFetchedDistance(true);
+          } catch (_) {
+            // Silent failure; do not block render
+          }
+        });
+
+        observer.disconnect();
+      }
+    }, { rootMargin: '0px 0px 200px 0px', threshold: 0.01 });
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [companyLocation.lat, companyLocation.lng, calculateDistanceFrom, hasFetchedDistance, location]);
   // Handle keyboard navigation for accessibility
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -181,7 +214,6 @@ export function PremiumListingCard({
   
   // Check if we're on the tombstones-for-sale page and not on the home page
   const isTombstonesForSalePage = pathname?.includes('tombstones-for-sale') && pathname !== '/';
-  const isSpecialPage = pathname?.includes('tombstones-on-special');
   
   return (
     <div className="relative mt-7" ref={cardRef} onContextMenu={(e) => e.preventDefault()} onDragStart={(e) => e.preventDefault()}>
@@ -277,7 +309,7 @@ export function PremiumListingCard({
               {formatPrice(listing.price)}
             </div>
               {/* Special badge overlay */}
-            {isSpecialPage && (
+            {typeof window !== 'undefined' && window.location.pathname.includes('tombstones-on-special') && (
               <div className="absolute top-0 left-0 z-20">
                 <Image
                   src="/special badge/Specials_Badge.svg"
@@ -508,7 +540,7 @@ export function PremiumListingCard({
               <FavoriteButton product={favoriteProduct} size="md" />
             </div>
             {/* Special badge overlay for desktop */}
-            {isSpecialPage && (
+            {typeof window !== 'undefined' && window.location.pathname.includes('tombstones-on-special') && (
               <div className="absolute top-0 left-0 z-20">
                 <Image
                   src="/special badge/Specials_Badge.svg"
