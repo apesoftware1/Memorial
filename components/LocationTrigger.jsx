@@ -6,7 +6,7 @@ import { useGuestLocation } from '@/hooks/useGuestLocation'
 import LocationPermissionModal from './LocationPermissionModal'
 
 export default function LocationTrigger({ listing, className = "" }) {
-  const { location, error, loading, calculateDistanceFrom } = useGuestLocation()
+  const { location, error, loading, getDistanceFrom } = useGuestLocation()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [hasCheckedFirstVisit, setHasCheckedFirstVisit] = useState(false)
 

@@ -1,52 +1,55 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const handler = NextAuth({
+  trustHost: true,
+  secret: process.env.NEXTAUTH_SECRET,
   cookies: {
     sessionToken: {
-      name: `next-auth.session-token`,
+      name: isProduction ? "__Secure-next-auth.session-token" : "next-auth.session-token",
       options: {
         httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production'
-      }
-    }
+        sameSite: "lax",
+        path: "/",
+        secure: isProduction,
+      },
+    },
   },
   providers: [
     CredentialsProvider({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         try {
           try {
-            const baseUrl = process.env.STRAPI_API_URL || "https://api.tombstonesfinder.co.za";
+            const baseUrl = process.env.STRAPI_API_URL;
             const res = await fetch(`${baseUrl}/api/auth/local`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 identifier: credentials.email,
-                password: credentials.password
+                password: credentials.password,
               }),
             });
-            
+
             if (!res.ok) {
-             
               return null;
             }
-            
+
             const contentType = res.headers.get("content-type");
             if (!contentType || !contentType.includes("application/json")) {
-             
               return null;
             }
-            
+
             const user = await res.json();
             if (user.jwt) {
-              const isAdmin = String(user?.user?.username || "").toLowerCase() === "superadmin";
+              const isAdmin =
+                String(user?.user?.username || "").toLowerCase() === "superadmin";
               return {
                 id: user.user.id,
                 documentId: user.user.documentId || user.user.id,
@@ -54,20 +57,18 @@ const handler = NextAuth({
                 email: user.user.email,
                 role: isAdmin ? "admin" : "manufacturer",
                 isAdmin,
-                jwt: user.jwt
+                jwt: user.jwt,
               };
             }
             return null;
           } catch (error) {
-           
             return null;
           }
         } catch (error) {
-         
           return null;
         }
-      }
-    })
+      },
+    }),
   ],
   session: {
     strategy: "jwt",
@@ -76,12 +77,10 @@ const handler = NextAuth({
   events: {
     async signIn({ user, account, profile }) {
       // Session token will be automatically stored in cookies by NextAuth
-      
     },
     async signOut({ session, token }) {
       // Session token will be automatically removed from cookies by NextAuth
-     
-    }
+    },
   },
   callbacks: {
     async jwt({ token, user }) {
@@ -101,12 +100,12 @@ const handler = NextAuth({
         session.user.isAdmin = token.isAdmin;
       }
       return session;
-    }
+    },
   },
   pages: {
-    signIn: '/manufacturers/login-page',
-    signOut: '/manufacturers/login-page',
-    error: '/manufacturers/login-page',
+    signIn: "/manufacturers/login-page",
+    signOut: "/manufacturers/login-page",
+    error: "/manufacturers/login-page",
   },
   debug: false,
 });

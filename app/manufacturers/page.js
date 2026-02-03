@@ -333,7 +333,7 @@ export default function ManufacturersPage() {
   const paginatedManufacturers = visibleManufacturers.slice(startIdx, endIdx);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       {/* Header */}
       <div className="relative z-50 w-full">
         <Header

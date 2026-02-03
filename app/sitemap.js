@@ -12,7 +12,7 @@ export default async function sitemap() {
   const dynamicRoutes = [];
 
   try {
-    const strapiBase = process.env.STRAPI_API_URL || "https://api.tombstonesfinder.co.za";
+    const strapiBase = process.env.STRAPI_API_URL;
     const res = await fetch(`${strapiBase}/graphql`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

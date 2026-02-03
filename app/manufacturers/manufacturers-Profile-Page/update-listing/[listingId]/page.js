@@ -9,9 +9,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import pricingAdFlasher from '../../../../../pricingAdFlasher.json';
+import { addListingToBranchListing, updateBranchListing } from "@/lib/addListingToBranch";
 import { useToast } from "../../../../../hooks/use-toast";
 import { useListingCategories } from '@/hooks/use-ListingCategories';
-import { addListingToBranch, addListingToBranchListing, updateBranchListing } from "../../../../../lib/addListingToBranch";
 import { desiredOrder } from '@/lib/categories';
 import styles from "../UpdateListing.module.css";
 import { 
@@ -78,9 +78,10 @@ export default function UpdateListingPage() {
   const [selectedFoundation, setSelectedFoundation] = useState([]);
   const [selectedWarranty, setSelectedWarranty] = useState([]);
   const [price, setPrice] = useState("");
+  const [branchPrices, setBranchPrices] = useState({});
+  const [branchListingIds, setBranchListingIds] = useState({});
   const [flasher, setFlasher] = useState("");
   const [manufacturingTimeframe, setManufacturingTimeframe] = useState("1");
-  const [branchPrices, setBranchPrices] = useState({});
 
   const handleManufacturingLeadTimeToggle = (days) => {
     const str = String(days);
@@ -146,6 +147,28 @@ export default function UpdateListingPage() {
     }
   };
 
+  const handleBranchPriceChange = (branchId, value) => {
+    // allow digits and a single dot
+    const raw = value.replace(/[^0-9.]/g, "");
+    setBranchPrices(prev => ({
+      ...prev,
+      [branchId]: raw
+    }));
+  };
+
+  const applyMainPriceToAllBranches = () => {
+    if (!price) return;
+    
+    const newBranchPrices = {};
+    if (listing?.company?.branches) {
+      listing.company.branches.forEach(branch => {
+        newBranchPrices[branch.documentId] = price;
+      });
+    }
+    
+    setBranchPrices(newBranchPrices);
+  };
+
   // Loading and success states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
@@ -179,18 +202,24 @@ export default function UpdateListingPage() {
       setSelectedFoundation((listing.additionalProductDetails?.foundationOptions || []).map(o => o.value));
       setSelectedWarranty((listing.additionalProductDetails?.warrantyOrGuarantee || []).map(o => o.value));
       setPrice(listing.price?.toString() || "");
-      setFlasher(listing.adFlasher || "");
-      setManufacturingTimeframe(listing.manufacturingTimeframe || "1");
-
-      if (listing.branch_listings) {
-        const prices = {};
+      
+      // Initialize branch prices
+      const initialBranchPrices = {};
+      const initialBranchListingIds = {};
+      
+      if (listing.branch_listings && Array.isArray(listing.branch_listings)) {
         listing.branch_listings.forEach(bl => {
-          if (bl.branch) {
-            prices[bl.branch.documentId] = bl.price;
+          if (bl.branch && bl.branch.documentId) {
+            initialBranchPrices[bl.branch.documentId] = bl.price;
+            initialBranchListingIds[bl.branch.documentId] = bl.documentId;
           }
         });
-        setBranchPrices(prices);
       }
+      setBranchPrices(initialBranchPrices);
+      setBranchListingIds(initialBranchListingIds);
+
+      setFlasher(listing.adFlasher || "");
+      setManufacturingTimeframe(listing.manufacturingTimeframe || "1");
 
       setExistingPublicIds({
         main: listing?.mainImagePublicId || null,
@@ -343,7 +372,7 @@ export default function UpdateListingPage() {
         }
       };
 
-      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
+      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL;
       const response = await fetch(`${baseUrl}/listings/${listing.documentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -369,6 +398,40 @@ export default function UpdateListingPage() {
 
       const result = await response.json();
       
+      // Handle Branch Listings
+      if (listing?.company?.branches) {
+        for (const branch of listing.company.branches) {
+          const branchPrice = branchPrices[branch.documentId];
+          const branchListingId = branchListingIds[branch.documentId];
+          
+          if (branchPrice) {
+            // Price is set for this branch
+            if (branchListingId) {
+              // Update existing
+              try {
+                await updateBranchListing({
+                  branchListingDocumentId: branchListingId,
+                  price: parseFloat(branchPrice)
+                });
+              } catch (err) {
+                console.error(`Failed to update branch listing for ${branch.name}`, err);
+              }
+            } else {
+              // Create new
+              try {
+                await addListingToBranchListing({
+                  listingDocumentId: listing.documentId,
+                  branchDocumentId: branch.documentId,
+                  price: parseFloat(branchPrice)
+                });
+              } catch (err) {
+                console.error(`Failed to create branch listing for ${branch.name}`, err);
+              }
+            }
+          }
+        }
+      }
+
       // Invalidate this specific listing in Apollo cache to ensure fresh data
       if (listing?.documentId) {
         client.cache.evict({
@@ -402,36 +465,6 @@ export default function UpdateListingPage() {
       // Clean up orphaned references
       client.cache.gc();
       
-      // Process Branch Prices
-      if (listing?.company?.branches) {
-         const branchPromises = listing.company.branches.map(async (branch) => {
-            const branchId = branch.documentId;
-            const newPrice = branchPrices[branchId];
-            const existingBranchListing = listing.branch_listings?.find(bl => bl.branch?.documentId === branchId);
-            const existingPrice = existingBranchListing?.price;
-            const existingBranchListingId = existingBranchListing?.documentId;
-
-            if (newPrice && newPrice !== "") {
-               const numericPrice = parseFloat(newPrice);
-               if (existingBranchListingId) {
-                  // Update existing
-                  if (numericPrice !== existingPrice) {
-                     await updateBranchListing({ branchListingDocumentId: existingBranchListingId, price: numericPrice });
-                  }
-               } else {
-                  // Create new
-                   await addListingToBranch(branchId, listing.documentId);
-                   await addListingToBranchListing({
-                     listingDocumentId: listing.documentId,
-                     branchDocumentId: branchId,
-                     price: numericPrice
-                   });
-               }
-            }
-         });
-         await Promise.all(branchPromises);
-      }
-
       // Show success message
       setMessage("Listing updated successfully!");
       setIsSuccess(true);
@@ -980,39 +1013,45 @@ export default function UpdateListingPage() {
             onBlur={handlePriceBlur}
             className={styles.priceInput}
           />
-          
-          {/* BRANCH PRICES */}
-          {listing?.company?.branches?.length > 0 && (
-            <div style={{ marginTop: 24 }}>
-               <div className={styles.additionalDetailsHeader}>BRANCH PRICES</div>
-               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                 {listing.company.branches.map(branch => (
-                   <div key={branch.documentId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 14, fontWeight: 500 }}>{branch.name}</span>
+
+          {/* BRANCH PRICING */}
+          <div style={{ marginTop: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <label className={styles.inputLabel}>Branch Specific Prices</label>
+              <button
+                type="button"
+                onClick={applyMainPriceToAllBranches}
+                style={{ fontSize: '12px', color: '#005bac', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer' }}
+              >
+                Apply Main Price to All
+              </button>
+            </div>
+            <div style={{ maxHeight: '400px', overflowY: 'auto', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+              {listing?.company?.branches?.length > 0 ? (
+                listing.company.branches.map(branch => (
+                  <div key={branch.documentId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '14px', color: '#374151' }}>{branch.name}</span>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <span style={{ color: '#6b7280', marginRight: '4px' }}>R</span>
                       <input
                         type="text"
-                        placeholder="Price"
+                        className={styles.inputField}
+                        style={{ width: '100px', margin: 0 }}
                         value={branchPrices[branch.documentId] || ""}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9.]/g, "");
-                          setBranchPrices(prev => ({ ...prev, [branch.documentId]: val }));
-                        }}
-                        style={{
-                          width: "120px",
-                          padding: "8px",
-                          border: "1px solid #ccc",
-                          borderRadius: 4,
-                          textAlign: "right"
-                        }}
+                        onChange={(e) => handleBranchPriceChange(branch.documentId, e.target.value)}
+                        placeholder="Same as main"
                       />
-                   </div>
-                 ))}
-               </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                 <div style={{ padding: '8px', color: '#666', fontSize: '13px' }}>No branches available for this company.</div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
-      
+
       {/* Action Buttons */}
       <div className={styles.actionButtons}>
         <button

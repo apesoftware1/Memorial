@@ -5,7 +5,7 @@ export async function updateListingField(documentId, updateObj) {
   }
   
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
+    const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL;
     const res = await fetch(`${baseUrl}/listings/${documentId}`, {
       method: 'PUT',
       headers: {

@@ -88,8 +88,8 @@ export const GET_LISTING_BY_ID_LIGHT = gql`
         documentId
         price
         branch {
-          documentId
-          name
+            documentId
+            name
         }
       }
     }
