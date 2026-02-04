@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Image from "next/image";
+import { cloudinaryOptimized } from "@/lib/cloudinary";
 import { FavoriteButton } from "./favorite-button";
 import ImageModal from "./ImageModal";
 import PropTypes from "prop-types";
@@ -34,11 +35,12 @@ export default function ProductGallery({
         onDragStart={(e) => e.preventDefault()}
       >
         <Image
-          src={images[selectedIndex] || "/placeholder.svg"}
+          src={cloudinaryOptimized(images[selectedIndex], 800) || "/placeholder.svg"}
           alt={productTitle}
           fill
           className="object-contain hover:scale-105 transition-transform duration-300"
           sizes="(max-width: 768px) 100vw, 700px"
+          unoptimized
         />
         <div className="absolute top-3 right-3 z-10">
           {favoriteProduct && (
@@ -86,10 +88,11 @@ export default function ProductGallery({
             onClick={() => onSelect(index)}
           >
             <Image
-              src={image || "/placeholder.svg"}
+              src={cloudinaryOptimized(image, 200) || "/placeholder.svg"}
               alt={`Thumbnail ${index + 1}`}
               fill
               className="object-cover"
+              unoptimized
             />
           </div>
         ))}

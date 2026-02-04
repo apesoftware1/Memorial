@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { cloudinaryOptimized } from "@/lib/cloudinary"
 import { Facebook, Twitter, Linkedin, Mail, Loader2, AlertCircle, RefreshCw, Trash2, MessageCircle, Instagram } from "lucide-react"
 import { useFavorites } from "@/context/favorites-context.jsx"
 import { ConfirmationModal } from "@/components/ConfirmationModal.jsx"
@@ -238,11 +239,12 @@ export function FavoritesClientContent() {
               {/* Product Image */}
               <div className="relative w-full h-48 bg-gray-50">
                 <Image
-                  src={favorite.mainImageUrl || favorite.image || "/placeholder.svg"}
+                  src={cloudinaryOptimized(favorite.mainImageUrl || favorite.image, 400) || "/placeholder.svg"}
                   alt={favorite.title || favorite.name || "Product"}
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                  unoptimized
                 />
                 
                 {/* Remove button overlay */}

@@ -60,7 +60,7 @@ export const COMPANY_INITIAL_QUERY = gql`
         whatsappNumber
         phoneNumber
       }
-      listings(pagination: { limit: 5 }) {
+      listings(pagination: { limit: 50 }) {
         createdAt
         listing_category {
           name

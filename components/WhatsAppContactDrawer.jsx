@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Image from "next/image";
+import { cloudinaryOptimized } from "@/lib/cloudinary";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { sendInquiryRest } from "@/graphql/queries/sendInquiry";
 import { formatPhoneNumber } from "@/lib/formatPhoneNumber";
@@ -179,11 +180,12 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
                           {reps[selectedRepIndex]?.avatar?.url ? (
                             <div className="w-6 h-6 rounded-full overflow-hidden mr-1">
                               <Image 
-                                src={reps[selectedRepIndex].avatar.url} 
+                                src={cloudinaryOptimized(reps[selectedRepIndex].avatar.url, 100)} 
                                 width={24} 
                                 height={24} 
                                 alt={reps[selectedRepIndex]?.name || "Representative"} 
                                 className="rounded-full object-cover"
+                                unoptimized
                               />
                             </div>
                           ) : (
@@ -221,7 +223,14 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
                           <div className="flex items-center gap-2">
                             <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                               {avatarUrl ? (
-                                <Image src={avatarUrl} width={40} height={40} alt={r?.name || "Rep"} />
+                                <Image 
+                                  src={cloudinaryOptimized(avatarUrl, 100)} 
+                                  width={40} 
+                                  height={40} 
+                                  alt={r?.name || "Rep"} 
+                                  className="object-cover"
+                                  unoptimized
+                                />
                               ) : (
                                 <span className="text-sm text-gray-500">IMG</span>
                               )}

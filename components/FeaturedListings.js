@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/priceUtils';
+import { cloudinaryOptimized } from '@/lib/cloudinary';
 
 // Helper to map listing category fields to a user-friendly label
 function getCategoryLabel(listing) {
@@ -40,10 +41,11 @@ const FeaturedListings = ({ listing }) => (
       {/* Image Container */}
       <div className="relative h-56 bg-gray-100">
         <Image
-          src={listing.mainImageUrl || '/placeholder.svg'}
+          src={cloudinaryOptimized(listing.mainImageUrl, 800) || '/placeholder.svg'}
           alt={listing.title}
           fill
           className="object-cover"
+          unoptimized
         />
       </div>
       

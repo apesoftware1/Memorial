@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState } from 'react'
+import { cloudinaryOptimized } from '@/lib/cloudinary'
 
 const BannerAd = ({
   bannerAd, // can be a string URL or an object with fields { url, documentId, alt }
@@ -68,7 +69,7 @@ const BannerAd = ({
           {/* Desktop Banner */}
           <div className={`hidden md:flex relative bg-gray-100 items-center justify-center ${desktopContainerClasses}`}>
             {resolvedDesktopSrc ? (
-              <Image src={resolvedDesktopSrc} alt={resolvedAlt} fill className="object-cover" unoptimized />
+              <Image src={cloudinaryOptimized(resolvedDesktopSrc, 1600)} alt={resolvedAlt} fill className="object-cover" unoptimized />
             ) : (
               <p className="text-gray-500 text-sm">Desktop Banner Ad (Animated Gif - Linked)</p>
             )}
@@ -86,7 +87,7 @@ const BannerAd = ({
           >
             {resolvedMobileSrc ? (
               <Image
-                src={resolvedMobileSrc}
+                src={cloudinaryOptimized(resolvedMobileSrc, 800)}
                 alt={resolvedAlt}
                 fill
                 className="object-contain object-center"

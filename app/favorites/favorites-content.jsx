@@ -31,7 +31,13 @@ export function FavoritesContent() {
           <Link href={`/tombstones-for-sale/${product.id}`}>
             {/* Image Container */}
             <div className="relative h-56 bg-gray-100">
-              <Image src={product.image || "/placeholder.svg"} alt={product.title} fill className="object-cover" />
+              <Image 
+                src={cloudinaryOptimized(product.image, 400) || "/placeholder.svg"} 
+                alt={product.title} 
+                fill 
+                className="object-cover"
+                unoptimized
+              />
             </div>
             
             {/* Content */}

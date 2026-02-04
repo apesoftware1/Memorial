@@ -55,6 +55,9 @@ export const LISTINGS_FULL_QUERY = gql`
           latitude
           longitude
           mapUrl
+          province
+          city
+          town
         }
       }
       title
@@ -125,6 +128,9 @@ export const LISTINGS_DELTA_QUERY = gql`
           latitude
           longitude
           mapUrl
+          province
+          city
+          town
         }
       }
       title

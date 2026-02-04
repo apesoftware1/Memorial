@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { cloudinaryOptimized } from "@/lib/cloudinary"
 import { FavoriteButton } from "./favorite-button"
 import { useFavorites } from "@/context/favorites-context.jsx"
 import { formatPrice } from "@/lib/priceUtils"
@@ -40,10 +41,11 @@ export function ProductCard(props) {
       <Link href={`/product/${id}`} className="block">
         <div className="relative h-48 w-full">
           <Image 
-            src={image || "/placeholder.jpg"} 
+            src={cloudinaryOptimized(image, 400) || "/placeholder.jpg"} 
             alt={name}
             fill
             className="object-cover"
+            unoptimized
           />
           {tag && (
             <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
@@ -66,4 +68,4 @@ export function ProductCard(props) {
     </div>
   )
 }
-
+

@@ -1,7 +1,7 @@
 "use client"
 
-import { ChevronDown, Check, Square } from "lucide-react"
-import { useRef, useState } from "react"
+import { ChevronDown, ChevronRight, Check, Square } from "lucide-react"
+import { useRef, useState, useEffect } from "react"
 import Image from "next/image"
 
 // Helper function to fix icon paths
@@ -143,6 +143,127 @@ const customIcons = {
   "QR Code": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_QRCode.svg",
 }
 
+const HierarchyItem = ({ item, level = 0, selectedValues, onSelect, getIconSrc, name }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const hasChildren = item.cities && item.cities.length > 0;
+  const isSelected = selectedValues.includes(item.name);
+  const paddingLeft = `${level * 16 + 12}px`;
+
+  const toggleOpen = (e) => {
+    e.stopPropagation();
+    setIsOpen(!isOpen);
+  };
+
+  return (
+    <div>
+      <div 
+        className="px-3 py-2 text-sm text-gray-300 hover:bg-[#111111] hover:text-[#D4AF37] transition-colors flex justify-between items-center cursor-pointer"
+        style={{ paddingLeft }}
+        onClick={() => onSelect(item.name)}
+      >
+        <div className="flex items-center gap-2">
+          <div className={`h-4 w-4 flex items-center justify-center border border-gray-500 rounded ${isSelected ? 'bg-[#D4AF37] border-[#D4AF37]' : ''}`}>
+             {isSelected && <Check className="h-3 w-3 text-white" />}
+          </div>
+          
+          <span>{item.name} {item.name !== 'Any' && `(${item.count || 0})`}</span>
+        </div>
+
+        {hasChildren && (
+          <div onClick={toggleOpen} className="p-1 hover:bg-gray-700 rounded cursor-pointer">
+            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </div>
+        )}
+      </div>
+
+      {isOpen && hasChildren && (
+        <div>
+          {item.cities.map((city, idx) => (
+             <CityItem 
+               key={idx} 
+               city={city} 
+               level={level + 1} 
+               selectedValues={selectedValues} 
+               onSelect={onSelect}
+             />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const CityItem = ({ city, level, selectedValues, onSelect }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const hasChildren = city.towns && city.towns.length > 0;
+  const isSelected = selectedValues.includes(city.name);
+  const paddingLeft = `${level * 16 + 12}px`;
+
+  const toggleOpen = (e) => {
+    e.stopPropagation();
+    setIsOpen(!isOpen);
+  };
+
+  return (
+    <div>
+      <div 
+        className="px-3 py-2 text-sm text-gray-300 hover:bg-[#111111] hover:text-[#D4AF37] transition-colors flex justify-between items-center cursor-pointer"
+        style={{ paddingLeft }}
+        onClick={() => onSelect(city.name)}
+      >
+         <div className="flex items-center gap-2">
+          <div className={`h-4 w-4 flex items-center justify-center border border-gray-500 rounded ${isSelected ? 'bg-[#D4AF37] border-[#D4AF37]' : ''}`}>
+             {isSelected && <Check className="h-3 w-3 text-white" />}
+          </div>
+          
+          <span>{city.name} ({city.count || 0})</span>
+        </div>
+
+        {hasChildren && (
+          <div onClick={toggleOpen} className="p-1 hover:bg-gray-700 rounded cursor-pointer">
+            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </div>
+        )}
+      </div>
+
+      {isOpen && hasChildren && (
+        <div>
+          {city.towns.map((town, idx) => (
+             <TownItem 
+               key={idx} 
+               town={town} 
+               level={level + 1} 
+               selectedValues={selectedValues} 
+               onSelect={onSelect}
+             />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const TownItem = ({ town, level, selectedValues, onSelect }) => {
+  const isSelected = selectedValues.includes(town.name);
+  const paddingLeft = `${level * 16 + 12}px`; // No extra indentation needed as arrow is gone
+
+  return (
+    <div 
+      className="px-3 py-2 text-sm text-gray-300 hover:bg-[#111111] hover:text-[#D4AF37] transition-colors flex justify-between items-center cursor-pointer"
+      style={{ paddingLeft }}
+      onClick={() => onSelect(town.name)}
+    >
+      <div className="flex items-center gap-2">
+        <div className={`h-4 w-4 flex items-center justify-center border border-gray-500 rounded ${isSelected ? 'bg-[#D4AF37] border-[#D4AF37]' : ''}`}>
+            {isSelected && <Check className="h-3 w-3 text-white" />}
+        </div>
+        <span>{town.name} ({town.count || 0})</span>
+      </div>
+    </div>
+  );
+}
+
+
 export default function FilterDropdown({
   name,
   label,
@@ -154,7 +275,14 @@ export default function FilterDropdown({
   dropdownRefs
 }) {
   const SORTED_MENUS = new Set(["style", "slabStyle", "stoneType", "colour", "custom"]);
-  const displayOptions = SORTED_MENUS.has(name)
+  
+  // Determine if this is a hierarchical option list (contains objects)
+  const isHierarchical = options.length > 0 && typeof options[0] === 'object';
+  
+  // Determine if multi-select is allowed
+  const isMultiSelect = !['minPrice', 'maxPrice'].includes(name);
+
+  const displayOptions = (!isHierarchical && SORTED_MENUS.has(name))
     ? [...options].sort((a, b) => {
         // Always keep "Any" at the top
         if (a === "Any") return -1;
@@ -163,12 +291,11 @@ export default function FilterDropdown({
       })
     : options;
 
-  // Local selection to allow visual checkmark on "Any" without altering filters
-  const [localSelection, setLocalSelection] = useState(null);
-
   // Get icon src from pre-encoded paths
   const getIconSrc = (menuName, option) => {
     let iconPath = null;
+    if (typeof option !== 'string') return null;
+
     if (menuName === "bodyType" && bodyTypeIcons[option]) iconPath = bodyTypeIcons[option];
     if (menuName === "style" && headStyleIcons[option]) iconPath = headStyleIcons[option];
     if (menuName === "slabStyle" && slabStyleIcons[option]) iconPath = slabStyleIcons[option];
@@ -182,6 +309,52 @@ export default function FilterDropdown({
     return fixedPath;
   };
 
+  const currentVal = filters[name];
+  // Parse current selected values into an array
+  const getSelectedValues = () => {
+    if (!currentVal || currentVal === 'Any') return [];
+    return Array.isArray(currentVal) ? currentVal : [currentVal];
+  };
+  
+  const selectedValues = getSelectedValues();
+
+  const handleSelect = (val) => {
+    console.log('FilterDropdown handleSelect called:', val, 'name:', name, 'isMultiSelect:', isMultiSelect);
+    if (val === 'Any') {
+      console.log('Selecting Any');
+      selectOption(name, 'Any', false); // Close on 'Any'
+      return;
+    }
+
+    if (isMultiSelect) {
+      let newValues = [...selectedValues];
+      if (newValues.includes(val)) {
+        newValues = newValues.filter(v => v !== val);
+      } else {
+        newValues.push(val);
+      }
+      if (newValues.length === 0) newValues = 'Any';
+      console.log('Selecting multi:', newValues);
+      selectOption(name, newValues, true); // Keep open
+    } else {
+      console.log('Selecting single:', val);
+      selectOption(name, val, false); // Close for single select
+    }
+  };
+
+  const getLabel = () => {
+    if (!currentVal || currentVal === 'Any') return label;
+    if (Array.isArray(currentVal)) {
+      if (currentVal.length === 0) return label;
+      // Also handle case where array contains only 'Any'
+      if (currentVal.length === 1 && currentVal[0] === 'Any') return label;
+      
+      if (currentVal.length === 1) return currentVal[0];
+      return `${currentVal.length} Selected`;
+    }
+    return currentVal || label;
+  };
+
   return (
     <div className="relative w-full" ref={(el) => (dropdownRefs.current[name] = el)}>
       <button
@@ -191,7 +364,7 @@ export default function FilterDropdown({
         aria-expanded={openDropdown === name}
         aria-haspopup="true"
       >
-        <span>{(localSelection === 'Any' || filters[name] === 'Any') ? 'Any' : (filters[name] || label)}</span>
+        <span className="truncate">{getLabel()}</span>
         <ChevronDown
           className={`h-4 w-4 transition-transform duration-200 ${openDropdown === name ? "transform rotate-180" : ""}`}
         />
@@ -202,86 +375,66 @@ export default function FilterDropdown({
           className="absolute left-0 top-full z-[300] mt-1 w-full bg-[#2E2E30] shadow-lg border border-gray-700"
           style={{ borderRadius: '2px' }}
         >
-          <ul className="py-1 max-h-60 overflow-auto" role="menu" aria-orientation="vertical">
-            {displayOptions.map((option, index) => {
-              const iconSrc = getIconSrc(name, option);
-              return (
-                <li
-                  key={index}
-                  onClick={() => {
-                    if (option === 'Any') {
-                      // Visually select 'Any' and close the dropdown without altering filters
-                      setLocalSelection('Any');
-                      toggleDropdown(name);
-                      return;
-                    }
-                    // Clear local selection when choosing a functional option
-                    setLocalSelection(null);
-                    selectOption(name, option);
-                  }}
-                  className="px-3 py-2 text-sm text-gray-300 hover:bg-[#111111] hover:text-[#D4AF37] transition-colors flex justify-between items-center cursor-pointer"
-                  role="menuitem"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-5 w-5 flex items-center justify-center">
-                      {option === 'Any' ? (
-                        <Square className="h-5 w-5 text-gray-300" aria-hidden="true" />
-                      ) : (
-                        <img
-                          src={iconSrc || '/placeholder.svg'}
-                          alt={`${option} icon`}
-                          width={20}
-                          height={20}
-                          className="h-5 w-5 object-contain inline-block visible opacity-100"
-                          style={{ 
-                            display: 'block',
-                            filter: name === 'colour' || name === 'slabStyle' ? 'none' : 'brightness(0) invert(0.9)'
-                          }}
-                          onError={(e) => {
-                           
-                            
-                            // Special handling for color icons
-                            if (name === 'colour') {
-                              const colorPath = `/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_${option}.svg`;
-                             
-                              
-                              const testImg = new Image();
-                              testImg.onload = () => {
+          <ul className="py-1 max-h-80 overflow-auto" role="menu" aria-orientation="vertical">
+            {isHierarchical ? (
+               displayOptions.map((item, idx) => (
+                 <HierarchyItem 
+                   key={idx} 
+                   item={item} 
+                   selectedValues={selectedValues} 
+                   onSelect={handleSelect} 
+                   getIconSrc={getIconSrc}
+                   name={name}
+                 />
+               ))
+            ) : (
+              displayOptions.map((option, index) => {
+                const iconSrc = getIconSrc(name, option);
+                const isSelected = selectedValues.includes(option);
+                
+                return (
+                  <li
+                    key={index}
+                    onClick={() => handleSelect(option)}
+                    className="px-3 py-2 text-sm text-gray-300 hover:bg-[#111111] hover:text-[#D4AF37] transition-colors flex justify-between items-center cursor-pointer"
+                    role="menuitem"
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Checkbox for all items */}
+                      <div className={`h-4 w-4 flex items-center justify-center border border-gray-500 rounded ${isSelected ? 'bg-[#D4AF37] border-[#D4AF37]' : ''}`}>
+                          {isSelected && <Check className="h-3 w-3 text-white" />}
+                      </div>
+
+                      <div className="h-5 w-5 flex items-center justify-center">
+                        {option === 'Any' ? (
+                          <Square className="h-5 w-5 text-gray-300" aria-hidden="true" />
+                        ) : (
+                          <img
+                            src={iconSrc || '/placeholder.svg'}
+                            alt={`${option} icon`}
+                            width={20}
+                            height={20}
+                            className="h-5 w-5 object-contain inline-block visible opacity-100"
+                            style={{ 
+                              display: 'block',
+                              filter: name === 'colour' || name === 'slabStyle' ? 'none' : 'brightness(0) invert(0.9)'
+                            }}
+                            onError={(e) => {
+                              // Fallback logic
+                              if (name === 'colour') {
+                                const colorPath = `/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_${option}.svg`;
                                 e.currentTarget.src = colorPath;
-                              };
-                              testImg.onerror = () => {
-                                e.currentTarget.src = '/placeholder.svg';
-                              };
-                              testImg.src = colorPath;
-                            } else {
-                              // Try direct path as fallback for other icon types
-                              const directPath = `/last_icons/${name === 'style' ? 'AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons' : 
-                                                 name === 'slabStyle' ? 'AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons' : 
-                                                 name === 'stoneType' ? 'AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons' : 
-                                                 name === 'custom' ? 'AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons' : 
-                                                 ''}/AdvertCreator_${name === 'style' ? 'HeadStyle' : name === 'slabStyle' ? 'SlabStyle' : name === 'stoneType' ? 'StoneType' : 'Customisation'}_Icon_${option.replace(/\s+/g, '')}.svg`;
-                              
-                              // Try the direct path first
-                              const testImg = new Image();
-                              testImg.onload = () => {
-                                e.currentTarget.src = directPath;
-                              };
-                              testImg.onerror = () => {
-                                e.currentTarget.src = '/placeholder.svg';
-                              };
-                              testImg.src = directPath;
-                            }
-                          }}
-                          key={`${name}-${option}-${Math.random()}`}
-                        />
-                      )}
+                              }
+                            }}
+                          />
+                        )}
+                      </div>
+                      <span>{option}</span>
                     </div>
-                    <span>{option}</span>
-                  </div>
-                  {((localSelection ?? filters[name]) === option) && <Check className="h-4 w-4 text-green-500" />}
-                </li>
-              );
-            })}
+                  </li>
+                );
+              })
+            )}
           </ul>
         </div>
       )}

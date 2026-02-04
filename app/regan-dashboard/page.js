@@ -321,10 +321,11 @@ function ManufacturerCard({ manufacturer }) {
         {/* Logo */}
         <div className="relative h-48 bg-white border-b">
           <Image
-            src={manufacturer.logoUrl || '/placeholder-logo.png'}
+            src={cloudinaryOptimized(manufacturer.logoUrl, 300) || '/placeholder-logo.png'}
             alt={manufacturer.name}
             fill
             className="object-contain p-4"
+            unoptimized
           />
         </div>
         
