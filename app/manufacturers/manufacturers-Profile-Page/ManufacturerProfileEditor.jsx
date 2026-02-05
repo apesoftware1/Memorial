@@ -2903,7 +2903,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                 </div>
               </div>
             )}
-{/* Search moved */}
+              {/* Search moved */}
 
             {/* Desktop Bulk Selection */}
             {isOwner && (
