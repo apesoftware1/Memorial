@@ -38,4 +38,5 @@ jobs:
             cd ~/frontend
             git pull origin main
             npm ci
-            pm2 restart frontend
+            npm run build
+            pm2 reload frontend
