@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { formatPrice } from "@/lib/priceUtils";
 import { Input } from "@/components/ui/input";
+import { cloudinaryOptimized } from "@/lib/cloudinary";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import React, { useEffect, useState } from "react";
@@ -415,10 +416,11 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                 <div className="flex flex-col items-center justify-start text-center md:w-64 md:ml-4 md:mt-0 mt-8">
                   <div className="relative h-24 w-48 mb-2">
                     <Image
-                      src={info.logo}
+                      src={cloudinaryOptimized(info.logo, 300)}
                       alt={listing.company?.name || "Manufacturer Logo"}
                       fill
                       className="object-contain"
+                      unoptimized
                     />
                   </div>
                   {listing.selectedBranch && (
@@ -633,10 +635,11 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                   <div className="flex justify-center mb-2">
                     <div className="relative h-32 w-64">
                       <Image
-                        src={info.logo}
+                        src={cloudinaryOptimized(info.logo, 300)}
                         alt={listing.company?.name || "Manufacturer Logo"}
                         fill
                         className="object-contain"
+                        unoptimized
                       />
                     </div>
                   </div>
@@ -691,10 +694,11 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                       <div className="flex border-b border-gray-200 py-3 hover:bg-gray-50 transition">
                         <div className="relative h-20 w-20 flex-shrink-0">
                           <Image
-                            src={product.mainImageUrl || "/placeholder.svg"}
+                            src={cloudinaryOptimized(product.mainImageUrl, 200) || "/placeholder.svg"}
                             alt={product.title}
                             fill
                             className="object-contain"
+                            unoptimized
                           />
                         </div>
                         <div className="ml-3 flex-grow">

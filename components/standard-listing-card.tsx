@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { cloudinaryOptimized } from "@/lib/cloudinary";
 import { Heart, MapPin, Camera, Check, User2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -132,11 +133,12 @@ export function StandardListingCard({
               aria-label={`View ${listing?.company?.name || listing.manufacturer} profile`}
             >
               <Image
-                src={listing?.company?.logoUrl || "/placeholder.svg"}
+                src={cloudinaryOptimized(listing?.company?.logoUrl, 200) || "/placeholder.svg"}
                 alt={`${listing?.company?.name || listing.manufacturer} Logo`}
                 width={96}
                 height={96}
                 className="object-contain"
+                unoptimized
               />
             </a>
           </div>
@@ -145,11 +147,12 @@ export function StandardListingCard({
         <div className="bg-white px-3 py-3">
           <div className="relative h-[350px] w-full rounded-lg overflow-hidden border border-gray-200">
             <Image
-              src={listing?.mainImageUrl || "/placeholder.svg"}
+              src={cloudinaryOptimized(listing?.mainImageUrl, 800) || "/placeholder.svg"}
               alt={listing?.title || "Listing Image"}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw"
+              unoptimized
             />
             {/* Heart icon overlay - top right corner */}
             <div className="absolute top-3 right-2 z-20" onClick={(e) => e.stopPropagation()}>
@@ -178,10 +181,11 @@ export function StandardListingCard({
                         tabIndex={-1}
                       >
                         <Image
-                          src={src}
+                          src={cloudinaryOptimized(src, 400)}
                           alt={`Thumbnail ${index + 1}`}
                           fill
                           className="object-cover"
+                          unoptimized
                         />
                       </button>
                     ))
@@ -404,11 +408,12 @@ export function StandardListingCard({
         <div className="w-1/2 flex-shrink-0">
           <div className="relative h-full">
             <Image
-              src={listing.mainImageUrl || "/placeholder.svg"}
+              src={cloudinaryOptimized(listing.mainImageUrl, 1600) || "/placeholder.svg"}
               alt={listing.title}
               fill
               className="object-cover"
               sizes="(min-width: 768px) 50vw"
+              unoptimized
             />
             {/* Heart icon overlay - top right corner */}
             <div className="absolute top-3 right-2 z-20" onClick={(e) => e.stopPropagation()}>
@@ -633,11 +638,12 @@ export function StandardListingCard({
             {listing.company.hideStandardCompanyLogo !== true && hideCompanyLogo !== true && (
               <div className="w-1/3 flex-shrink-0 flex flex-col items-end justify-end hidden md:flex">
                 <Image
-                  src={listing.company.logoUrl || "/placeholder-logo.svg"}
+                  src={cloudinaryOptimized(listing.company.logoUrl, 300) || "/placeholder-logo.svg"}
                   alt={listing.company.name + " Logo"}
                   width={150}
                   height={100}
                   className="object-contain mt-auto mb-2"
+                  unoptimized
                 />
               </div>
             )}

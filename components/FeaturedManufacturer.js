@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import { cloudinaryOptimized } from '@/lib/cloudinary'
 
 // Removed the old import for ProductCard
 // import { ProductCard } from '@/components/product-card'
@@ -86,11 +87,12 @@ const FeaturedManufacturer = ({ manufacturer }) => {
               </div>
               <div>
                 <Image
-                  src={manufacturer.logo || "/placeholder.svg?height=80&width=80"}
+                  src={cloudinaryOptimized(manufacturer.logo, 100) || "/placeholder.svg?height=80&width=80"}
                   alt={`${manufacturer.name} Logo`}
                   width={80}
                   height={80}
                   className="rounded-full"
+                  unoptimized
                 />
               </div>
             </div>
@@ -147,10 +149,11 @@ const ProductCard = ({ product }) => (
     {/* Image Container */}
     <div className="relative h-56 bg-gray-100">
       <Image
-        src={product.image || "/placeholder.svg"}
+        src={cloudinaryOptimized(product.image, 400) || "/placeholder.svg"}
         alt={product.title}
         fill
         className="object-cover"
+        unoptimized
       />
     </div>
 
@@ -179,4 +182,4 @@ const ProductCard = ({ product }) => (
   </div>
 )
 
-export default FeaturedManufacturer
+export default FeaturedManufacturer

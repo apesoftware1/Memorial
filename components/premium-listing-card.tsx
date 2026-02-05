@@ -7,6 +7,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Heart, MapPin, Camera, Check, User2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { cloudinaryOptimized } from "@/lib/cloudinary";
 import type { FavoriteProduct } from "@/context/favorites-context.jsx";
 import { FavoriteButton } from "./favorite-button";
 import LocationTrigger from "./LocationTrigger";
@@ -241,11 +242,12 @@ export function PremiumListingCard({
             } profile`}
           >
             <Image
-              src={listing.company?.logoUrl || "/placeholder-logo.svg"}
+              src={cloudinaryOptimized(listing.company?.logoUrl, 200) || "/placeholder-logo.svg"}
               alt={`${listing.manufacturer || listing.company?.name} Logo`}
               width={96}
               height={96}
               className="object-contain"
+              unoptimized
             />
           </div>
         </div>
@@ -256,12 +258,13 @@ export function PremiumListingCard({
             compact ? "h-[240px]" : "h-[350px]"
           )}>
             <Image
-              src={listing.mainImageUrl || "/placeholder.svg"}
+              src={cloudinaryOptimized(listing.mainImageUrl, 800) || "/placeholder.svg"}
               alt={listing.title}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 50vw"
               priority={isFirstCard}
+              unoptimized
             />
             {/* Heart icon overlay - top right corner */}
             <div className="absolute top-4 right-2 z-20" onClick={(e) => e.stopPropagation()}>
@@ -290,10 +293,11 @@ export function PremiumListingCard({
                         tabIndex={-1}
                       >
                         <Image
-                          src={src}
+                          src={cloudinaryOptimized(src, 400)}
                           alt={`Thumbnail ${index + 1}`}
                           fill
                           className="object-cover"
+                          unoptimized
                         />
                       </button>
                     ))
@@ -529,11 +533,12 @@ export function PremiumListingCard({
         <div className="w-1/2 flex-shrink-0 flex flex-col">
           <div className={cn("relative flex-1", compact ? "min-h-[240px]" : "min-h-[300px]")}> 
             <Image
-              src={listing.mainImageUrl || "/placeholder.svg"}
+              src={cloudinaryOptimized(listing.mainImageUrl, 1600) || "/placeholder.svg"}
               alt={listing.title}
               fill
               className="object-cover"
               priority
+              unoptimized
             />
             {/* Heart icon overlay - top right corner */}
             <div className="absolute top-4 right-2 z-20" onClick={(e) => e.stopPropagation()}>
@@ -790,11 +795,12 @@ export function PremiumListingCard({
                       aria-label={`View ${manufacturerName} profile`}
                     >
                       <Image
-                        src={logoSrc}
+                        src={cloudinaryOptimized(logoSrc, 300)}
                         alt={`${manufacturerName} Logo`}
                         width={150}
                         height={300}
                         className="object-contain mt-auto mb-2"
+                        unoptimized
                       />
                     </Link>
                   </div>
@@ -818,11 +824,12 @@ export function PremiumListingCard({
                     aria-label={`View image ${index + 1}`}
                   >
                     <Image
-                      src={src}
+                      src={cloudinaryOptimized(src, 400)}
                       alt={`Thumbnail ${index + 1}`}
                       fill
                       className="object-cover"
                       sizes="(max-width: 768px) 50vw, 200px"
+                      unoptimized
                     />
                   </button>
                 ))

@@ -36,8 +36,9 @@ import { updateBranch } from "@/graphql/mutations/updateBranch";
 import { useGuestLocation } from "@/hooks/useGuestLocation";
 import ListingCardItem from "./ListingCardItem";
 import { getIconPath, OPERATING_DAY_ORDER, SOCIAL_ICON_MAP } from "./constants";
+import { useDebounce } from "@/hooks/useDebounce";
 
-// Helper function to find a branch by name
+  // Helper function to find a branch by name
 const findBranchByName = (branchName, branches) => {
   if (!branchName || !branches || !branches.length) return null;
   return branches.find(branch => branch.name === branchName) || null;
@@ -177,6 +178,8 @@ export default function ManufacturerProfileEditor({
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const sortModalRef = useRef();
   const [sortBy, setSortBy] = useState("Price");
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const isMounted = useRef(false);
 
   // Load persisted sort option on mount
@@ -352,9 +355,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         // Apply category filter
         if (categoryFilter !== "All Categories") {
           branchListings = branchListings.filter(listing => {
-            // Try multiple possible category field structures
-            const categoryName = listing.listing_category?.name
-            return categoryName === categoryFilter;
+            const categoryName = listing.listing_category?.name || listing.category;
+            return (categoryName || "").toLowerCase() === categoryFilter.toLowerCase();
           });
         }
         
@@ -364,10 +366,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         let filteredByCategory = listings;
         if (categoryFilter !== "All Categories") {
           filteredByCategory = listings.filter(listing => {
-            // Try multiple possible category field structures
-            const categoryName =  listing.listing_category?.name
-
-            return categoryName === categoryFilter;
+            const categoryName = listing.listing_category?.name || listing.category;
+            return (categoryName || "").toLowerCase() === categoryFilter.toLowerCase();
           });
         }
         setFilteredListings(filteredByCategory);
@@ -376,10 +376,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       let filteredByCategory = listings;
       if (categoryFilter !== "All Categories") {
         filteredByCategory = listings.filter(listing => {
-          // Try multiple possible category field structures
-          const categoryName = listing.listing_category?.name
-            
-          return categoryName === categoryFilter;
+          const categoryName = listing.listing_category?.name || listing.category;
+          return (categoryName || "").toLowerCase() === categoryFilter.toLowerCase();
         });
       }
       setFilteredListings(filteredByCategory);
@@ -389,8 +387,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     let filteredCompanyListings = listings || [];
     if (categoryFilter !== "All Categories") {
       filteredCompanyListings = filteredCompanyListings.filter(listing => {
-        const categoryName = listing.listing_category?.name;
-        return categoryName === categoryFilter;
+        const categoryName = listing.listing_category?.name || listing.category;
+        return (categoryName || "").toLowerCase() === categoryFilter.toLowerCase();
       });
     }
     setCompanyListings(filteredCompanyListings);
@@ -1070,7 +1068,25 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
 
   // Memoize sorted and filtered listings to avoid expensive re-sorting on every render
   const sortedAndFilteredListings = useMemo(() => {
-    const baseListings = branchFromUrl ? filteredListings : companyListings;
+    let baseListings = branchFromUrl ? filteredListings : companyListings;
+
+    // Apply category filter
+    if (categoryFilter !== "All Categories") {
+      baseListings = baseListings.filter(listing => {
+        const catName = listing.listing_category?.name || listing.category;
+        return (catName || "").toLowerCase() === categoryFilter.toLowerCase();
+      });
+    }
+
+    // Apply search filter
+    if (debouncedSearchQuery) {
+      const lowerQuery = debouncedSearchQuery.toLowerCase();
+      baseListings = baseListings.filter(listing => 
+        (listing.title || "").toLowerCase().includes(lowerQuery) ||
+        (listing.slug || "").toLowerCase().includes(lowerQuery)
+      );
+    }
+
     return [...baseListings].sort((a, b) => {
       if (sortBy === "Price") {
         return parsePrice(a.price) - parsePrice(b.price);
@@ -1084,7 +1100,17 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       }
       return 0;
     });
-  }, [branchFromUrl, filteredListings, companyListings, sortBy]);
+  }, [branchFromUrl, filteredListings, companyListings, sortBy, debouncedSearchQuery, categoryFilter]);
+
+  const handleSelectAll = useCallback((checked) => {
+    if (checked) {
+      if (!selectionMode) setSelectionMode(true);
+      const allIds = new Set(sortedAndFilteredListings.map(l => l.documentId || l.id));
+      setSelectedListingIds(allIds);
+    } else {
+      setSelectedListingIds(new Set());
+    }
+  }, [selectionMode, sortedAndFilteredListings]);
 
   // Location check hook with company update callback
   const locationUpdateCallback = useCallback((updatedCompany) => {
@@ -2714,8 +2740,23 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
               </Link>
             </div>
           )}
-          <div style={{ fontSize: 15, fontWeight: 700 }}>
-            {companyListings.length} Active Listings
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {isOwner && (
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <Checkbox 
+                  id="select-all-header"
+                  checked={selectionMode && selectedListingIds.size === sortedAndFilteredListings.length && sortedAndFilteredListings.length > 0}
+                  onCheckedChange={handleSelectAll}
+                  style={{ marginRight: 8 }}
+                />
+                <label htmlFor="select-all-header" style={{ fontSize: 13, cursor: 'pointer', userSelect: 'none', color: '#555', fontWeight: 600 }}>
+                  Select All
+                </label>
+              </div>
+            )}
+            <div style={{ fontSize: 15, fontWeight: 700 }}>
+              {companyListings.length} Active Listings
+            </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* Mobile Selection Button */}
@@ -2862,6 +2903,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                 </div>
               </div>
             )}
+              {/* Search moved */}
+
             {/* Desktop Bulk Selection */}
             {isOwner && (
               <div className="hidden sm:flex items-center mr-4">
@@ -3004,6 +3047,25 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                </select>
             </div>
           </div>
+        </div>
+
+        {/* Search Input - Moved below toolbar */}
+        <div style={{ maxWidth: 1200, margin: "0 auto 20px auto", padding: "0 16px" }}>
+           <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by title..."
+            className="focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{
+              fontSize: 14,
+              border: "1px solid #e0e0e0",
+              borderRadius: 4,
+              padding: "8px 12px",
+              width: "100%",
+              maxWidth: "300px"
+            }}
+          />
         </div>
 
         {/* Product Grid - Virtualized */}

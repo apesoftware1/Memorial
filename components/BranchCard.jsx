@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { cloudinaryOptimized } from "@/lib/cloudinary";
 import { MapPin, Camera, Check, User2, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/priceUtils";
@@ -195,12 +196,13 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
       <div className="absolute md:top-2 md:right-2 bottom-2 right-2 z-50">
         <div className="bg-white rounded-full" style={{ width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Image
-            src={listing?.company?.logoUrl || "/placeholder-logo.svg"}
+            src={cloudinaryOptimized(listing?.company?.logoUrl, 200) || "/placeholder-logo.svg"}
             alt={`${listing?.company?.name || 'Company'} logo`}
             width={80}
             height={80}
             className="rounded-full object-contain"
             aria-label="Company Logo"
+            unoptimized
           />
         </div>
       </div>
@@ -210,11 +212,12 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
         <div className="bg-white px-3 py-3">
           <div className="relative h-[350px] w-full rounded-lg overflow-hidden border border-gray-200">
             <Image
-              src={listing?.mainImageUrl || "/placeholder.svg"}
+              src={cloudinaryOptimized(listing?.mainImageUrl, 800) || "/placeholder.svg"}
               alt={listing?.title || "Listing image"}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw"
+              unoptimized
             />
             {/* Camera icon and counter overlay for main image */}
             <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/80 text-white px-2 py-0.5 rounded text-xs font-medium z-10">
@@ -238,10 +241,11 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Image
-                          src={src}
+                          src={cloudinaryOptimized(src, 400)}
                           alt={`Thumbnail ${index + 1}`}
                           fill
                           className="object-cover"
+                          unoptimized
                         />
                       </button>
                     ))
@@ -310,11 +314,12 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
         <div className="w-1/3 relative">
           <div className="relative h-full w-full">
             <Image
-              src={listing?.mainImageUrl || "/placeholder.svg"}
+              src={cloudinaryOptimized(listing?.mainImageUrl, 800) || "/placeholder.svg"}
               alt={listing?.title || "Listing image"}
               fill
               className="object-cover"
               sizes="(min-width: 768px) 33vw"
+              unoptimized
             />
             {/* Camera icon and counter overlay */}
             <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/80 text-white px-2 py-0.5 rounded text-xs font-medium z-10">

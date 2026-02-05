@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ChevronDown, Search, ChevronRight, Camera } from "lucide-react"
+import { cloudinaryOptimized } from "@/lib/cloudinary"
 import CountdownTimer from "@/components/countdown-timer"
 import Header from "@/components/Header"
 import { useRouter } from "next/navigation"
@@ -296,7 +297,13 @@ export default function TombstonesOnSpecial() {
       <div className="bg-white border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
         {/* Image Container */}
         <div className="relative h-56 bg-gray-100">
-          <Image src={product.image || "/placeholder.svg"} alt={product.title} fill className="object-cover" />
+          <Image 
+            src={cloudinaryOptimized(product.image, 400) || "/placeholder.svg"} 
+            alt={product.title} 
+            fill 
+            className="object-cover" 
+            unoptimized
+          />
           <FavoriteButton product={favoriteProduct} className="absolute top-2 right-2" />
           <div className={`absolute top-2 left-2 ${product.tagColor} text-white text-xs px-2 py-1 rounded`}>
             {product.tag}
@@ -449,10 +456,11 @@ export default function TombstonesOnSpecial() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="relative h-48 md:h-auto">
             <Image
-              src={product.image || "/placeholder.svg"}
+              src={cloudinaryOptimized(product.image, 800) || "/placeholder.svg"}
               alt={product.title}
               fill
               className="object-cover rounded"
+              unoptimized
             />
             <FavoriteButton product={favoriteProduct} size="lg" className="absolute top-2 right-2" />
             <div className={`absolute top-2 left-2 ${product.tagColor} text-white text-xs px-2 py-1 rounded`}>

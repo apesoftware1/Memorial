@@ -1,53 +1,75 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import PropTypes from "prop-types";
-import { formatPrice } from "@/lib/priceUtils";
+import { cloudinaryOptimized } from "@/lib/cloudinary";
 
-export default function RelatedProducts({ products = [] }) {
-  if (!Array.isArray(products)) products = [];
+export default function RelatedProducts({ currentProductId, categoryId }) {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRelated = async () => {
+      if (!categoryId) return;
+
+      try {
+        // Fetch products from same category, excluding current one
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_STRAPI_URL}/api/listings?filters[category][id][$eq]=${categoryId}&filters[id][$ne]=${currentProductId}&populate=images&pagination[limit]=4`
+        );
+        const data = await response.json();
+        
+        const formattedProducts = data.data.map(item => ({
+          id: item.id,
+          title: item.attributes.title,
+          price: item.attributes.price,
+          // Get first image
+          mainImageUrl: item.attributes.images?.data?.[0]?.attributes?.url
+        }));
+
+        setProducts(formattedProducts);
+      } catch (error) {
+        console.error("Error fetching related products:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRelated();
+  }, [currentProductId, categoryId]);
+
+  if (loading || products.length === 0) return null;
 
   return (
-    <div>
-      <h3 className="text-sm font-medium mb-3">More Tombstones from this Manufacturer</h3>
-      {products.length > 0 ? (
-        products.slice(0, 3).map((product) => (
-          <Link key={product.documentId} href={`/tombstones-for-sale/${product.documentId}`} className="block">
-            <div 
-              className="flex border-b border-gray-200 py-3 hover:bg-gray-50 transition"
-              onContextMenu={(e) => e.preventDefault()}
-              onDragStart={(e) => e.preventDefault()}
-            >
-              <div className="relative h-20 w-20 flex-shrink-0">
-                <Image
-                  src={product.mainImageUrl || "/placeholder.svg"}
-                  alt={product.title}
-                  fill
-                  className="object-contain"
-                />
-              </div>
-              <div className="ml-3 flex-grow">
-                <div className="text-blue-600 font-medium">{formatPrice(product.price)}</div>
-                <div className="text-sm">{product.title}</div>
-                <div className="text-xs text-gray-600">
-                  {product?.productDetails?.stoneType?.[0]?.value || "N/A"}
-                </div>
-              </div>
+    <div className="mt-12 border-t pt-8">
+      <h2 className="text-2xl font-bold mb-6">Related Products</h2>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {products.map((product) => (
+          <Link 
+            key={product.id} 
+            href={`/product/${product.id}`}
+            className="group block border rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+          >
+            <div className="relative h-48 bg-gray-100">
+              <Image
+                src={cloudinaryOptimized(product.mainImageUrl, 400) || "/placeholder.svg"}
+                alt={product.title}
+                fill
+                className="object-contain group-hover:scale-105 transition-transform duration-300"
+                sizes="(max-width: 768px) 50vw, 25vw"
+                unoptimized
+              />
+            </div>
+            <div className="p-4">
+              <h3 className="font-medium truncate">{product.title}</h3>
+              {product.price && (
+                <p className="text-primary font-bold mt-1">
+                  R {product.price.toLocaleString()}
+                </p>
+              )}
             </div>
           </Link>
-        ))
-      ) : (
-        <div className="text-sm text-gray-600">No similar products available.</div>
-      )}
-      <div className="mt-3">
-        <Link href="#" className="text-blue-600 hover:underline text-sm">
-          View All Products from this Manufacturer &gt;
-        </Link>
+        ))}
       </div>
     </div>
   );
 }
-
-RelatedProducts.propTypes = {
-  products: PropTypes.arrayOf(PropTypes.object),
-};

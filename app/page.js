@@ -32,6 +32,7 @@ import { GET_MANUFACTURERS } from "@/graphql/queries/getManufacturers"
 import FeaturedListings from "@/components/FeaturedListings";
 import FeaturedManufacturer from "@/components/FeaturedManufacturer";
 import BannerAd from "@/components/BannerAd"
+import { cloudinaryOptimized } from "@/lib/cloudinary"
 
 import IndexRender from "./indexRender";
 import { useListingCategories } from "@/hooks/use-ListingCategories"
@@ -110,6 +111,10 @@ export default function Home() {
     culture: null,
     custom: null,
   });
+
+  useEffect(() => {
+    console.log('Home page filters state updated:', filters);
+  }, [filters]);
   const [selectedCategory, setSelectedCategory] = useState("FULL");
   const [selectedTown, setSelectedTown] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -286,13 +291,14 @@ useEffect(() => {
         {/* Background Image - Shown on mobile too */}
         <div className="absolute top-0 left-0 w-full h-28 md:h-full md:inset-0 z-0 block">
           <Image
-            src={activeCategory?.backgroundImage?.url || "/placeholder.svg"}
+            src={cloudinaryOptimized(activeCategory?.backgroundImage?.url, 1600) || "/placeholder.svg"}
             alt= {activeCategory?.name || "Category background"}
             fill
             className="object-cover"
             priority
             fetchPriority="high"
             sizes="100vw"
+            unoptimized
           />
         </div>
         

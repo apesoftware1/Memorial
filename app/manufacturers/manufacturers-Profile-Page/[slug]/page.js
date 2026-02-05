@@ -22,10 +22,10 @@ export default function ManufacturerProfilePage() {
   const { loading, error, data } = useProgressiveQuery({
         initialQuery: COMPANY_INITIAL_QUERY,
         fullQuery: COMPANY_FULL_QUERY,
-        deltaQuery: COMPANY_DELTA_QUERY,
-        variables: { limit: 5 ,documentId: documentId },
-        storageKey: 'manufacturers:lastUpdated',
-        refreshInterval: 3000,
+          deltaQuery: COMPANY_DELTA_QUERY,
+          variables: { limit: 50 ,documentId: documentId },
+          storageKey: 'manufacturers:lastUpdated',
+          refreshInterval: 3000,
       });
 
   if (loading) return <PageLoader text="Loading company data..." />;

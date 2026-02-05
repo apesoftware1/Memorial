@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Star, MapPin } from "lucide-react";
+import { cloudinaryOptimized } from "@/lib/cloudinary";
 
 
 const ManufacturerCard = ({ manufacturer }) => {
@@ -14,10 +15,11 @@ const ManufacturerCard = ({ manufacturer }) => {
         <Link href={profileUrl} prefetch={false} aria-label={`View ${manufacturer.name} profile`}>
           {typeof manufacturer.logoUrl === 'string' && manufacturer.logoUrl.trim() !== '' ? (
             <Image
-              src={manufacturer.logoUrl}
+              src={cloudinaryOptimized(manufacturer.logoUrl, 300)}
               alt={manufacturer.name || 'Manufacturer logo'}
               fill
               className="object-contain"
+              unoptimized
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-50">

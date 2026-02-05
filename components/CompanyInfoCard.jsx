@@ -1,6 +1,7 @@
 import React from "react";
 import Image from "next/image";
 import PropTypes from "prop-types";
+import { cloudinaryOptimized } from "@/lib/cloudinary";
 
 export default function CompanyInfoCard({ logo, rating, operatingHours, companyName }) {
   return (
@@ -12,10 +13,11 @@ export default function CompanyInfoCard({ logo, rating, operatingHours, companyN
       <div className="flex justify-center mb-2">
         <div className="relative h-32 w-64">
           <Image
-            src={logo}
+            src={cloudinaryOptimized(logo, 300)}
             alt={companyName || "Manufacturer Logo"}
             fill
             className="object-contain"
+            unoptimized
           />
         </div>
       </div>
