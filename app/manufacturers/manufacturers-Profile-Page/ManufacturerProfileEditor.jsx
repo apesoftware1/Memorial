@@ -276,6 +276,9 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
   // Logo upload state
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
+  // Banner Ad upload state
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const bannerInputRef = useRef(null);
   // Profile picture upload state + Video modal
   const profilePicInputRef = useRef(null);
   const [isUploadingProfilePic, setIsUploadingProfilePic] = useState(false);
@@ -1494,6 +1497,66 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       setIsUploading(false);
     }
   };
+
+  // Function to handle banner ad upload
+  const handleBannerAdUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingBanner(true);
+
+      // Upload to Cloudinary using shared util (with folder by company)
+      const uploadedImage = await uploadToCloudinary(file, company?.name);
+
+      // Update company with new banner information
+      const bannerUpdate = {
+        bannerAdUrl: uploadedImage.secure_url,
+        bannerAdPublicId: uploadedImage.public_id,
+      };
+
+      // Update the field in the API
+      const updatedData = await updateCompanyField(
+        company.documentId,
+        bannerUpdate
+      );
+
+      if (updatedData) {
+        // Update local state with the new banner
+        setCompany((prevCompany) => ({
+          ...prevCompany,
+          bannerAdUrl: uploadedImage.secure_url,
+          bannerAdPublicId: uploadedImage.public_id,
+        }));
+
+        toast({
+          title: "Banner Ad updated successfully",
+          description: "Your company banner ad has been updated.",
+          variant: "success",
+        });
+
+        // Auto-refresh the page to display the updated banner
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500); // Wait 1.5 seconds to show the success message before refreshing
+      } else {
+        // Handle error
+        toast({
+          title: "Failed to update banner ad",
+          description: "Please try again later.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error updating banner ad",
+        description: "An error occurred while updating your banner ad.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingBanner(false);
+    }
+  };
   const handleEditListing = useCallback((listing) => {
     window.location.href = `/manufacturers/manufacturers-Profile-Page/update-listing/${listing.documentId || listing.id}`;
   }, []);
@@ -2491,6 +2554,94 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                 }}
               >
                 {isUploading ? "Uploading..." : "Click to update logo"}
+              </div>
+            )}
+
+            {/* Banner Ad Section */}
+            {isOwner && (
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#888",
+                  fontWeight: 700,
+                  marginBottom: 6,
+                  textAlign: "center",
+                  width: "100%",
+                  display: mobile ? "none" : "block",
+                  marginTop: 16,
+                }}
+              >
+                Banner Ad
+              </div>
+            )}
+            <div
+              style={{
+                border: isOwner ? "2px solid #00baff" : "#e0e0e0",
+                borderRadius: 8,
+                background: "#fff",
+                padding: 8,
+                display: mobile ? "none" : "inline-block",
+                position: "relative",
+                minWidth: 240,
+                minHeight: 120,
+                marginBottom: 16,
+                cursor: isOwner ? "pointer" : "default",
+              }}
+              onClick={() => isOwner && bannerInputRef.current?.click()}
+            >
+              <div
+                style={{ position: "relative", width: "100%", height: "100%" }}
+              >
+                <Image
+                  src={`${
+                    company.bannerAdUrl || company.bannerAd?.url || "/placeholder-logo.svg"
+                  }?t=${Date.now()}`}
+                  alt="Banner Ad"
+                  width={220}
+                  height={110}
+                  key={company.bannerAdUrl || company.bannerAd?.url}
+                  style={{
+                    objectFit: "contain",
+                    display: "block",
+                    margin: "0 auto",
+                  }}
+                />
+                {isOwner && isUploadingBanner && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "rgba(0,0,0,0.3)",
+                    }}
+                  >
+                    <Upload style={{ width: 24, height: 24, color: "white" }} />
+                  </div>
+                )}
+              </div>
+              <input
+                type="file"
+                ref={bannerInputRef}
+                style={{ display: "none" }}
+                accept="image/*"
+                onChange={handleBannerAdUpload}
+              />
+            </div>
+            {isOwner && !mobile && (
+              <div
+                style={{
+                  textAlign: "center",
+                  fontSize: 12,
+                  color: "#666",
+                  marginBottom: 8,
+                }}
+              >
+                {isUploadingBanner ? "Uploading..." : "Click to update banner ad"}
               </div>
             )}
 

@@ -15,7 +15,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import ListingCategoryManager from "./ListingCategoryManager";
 import { useProgressiveQuery } from "@/hooks/useProgressiveQuery"
+import { cloudinaryOptimized } from "@/lib/cloudinary";
 import {
   MANUFACTURERS_INITIAL_QUERY,
   MANUFACTURERS_FULL_QUERY,
@@ -60,6 +62,7 @@ export default function DashboardPage() {
   const [isDark, setIsDark] = useState(false);
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [maintenanceLoading, setMaintenanceLoading] = useState(false);
+  const [currentView, setCurrentView] = useState('manufacturers');
 
   // Initialize theme from localStorage so it controls both pages
   useEffect(() => {
@@ -239,68 +242,96 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Search Bar */}
-            <div className="bg-gray-800 py-6 shadow-inner">
-              <div className="container mx-auto px-4">
-                <form onSubmit={handleSearchSubmit} className="max-w-4xl mx-auto">
-                  <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative">
-                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        type="text"
-                        name="manufacturerName"
-                        value={searchFilters.manufacturerName}
-                        onChange={handleSearchChange}
-                        placeholder="Search by manufacturer name"
-                        className="pl-10"
-                      />
+            {/* View Switcher */}
+            <div className="bg-white border-b dark:bg-gray-900 dark:border-gray-700">
+                <div className="container mx-auto px-4">
+                    <div className="flex space-x-4">
+                        <button
+                            className={`py-4 px-2 border-b-2 font-medium ${currentView === 'manufacturers' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            onClick={() => setCurrentView('manufacturers')}
+                        >
+                            Manufacturers
+                        </button>
+                        <button
+                            className={`py-4 px-2 border-b-2 font-medium ${currentView === 'categories' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            onClick={() => setCurrentView('categories')}
+                        >
+                            Listing Categories
+                        </button>
                     </div>
-                    <div className="flex-1 relative">
-                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        type="text"
-                        name="location"
-                        value={searchFilters.location}
-                        onChange={handleSearchChange}
-                        placeholder="Filter by location"
-                        className="pl-10"
-                      />
-                    </div>
-                    <Button type="submit" className="md:w-auto">
-                      Search
-                    </Button>
-                  </div>
-                </form>
-              </div>
-            </div>
-
-            {/* Main Content */}
-            <div className="container mx-auto px-4 py-8">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold">
-                  {filteredManufacturers.length} Manufacturers Found
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {displayedManufacturers.map((manufacturer) => (
-                  <ManufacturerCard key={manufacturer.documentId} manufacturer={manufacturer} />
-                ))}
-              </div>
-
-              {displayedManufacturers.length < filteredManufacturers.length && (
-                <div className="flex justify-center mt-8">
-                  <Button 
-                    onClick={handleLoadMore}
-                    variant="outline"
-                    size="lg"
-                    className="border-primary/20 hover:border-primary"
-                  >
-                    Load More
-                  </Button>
                 </div>
-              )}
             </div>
+
+            {currentView === 'manufacturers' ? (
+              <>
+                {/* Search Bar */}
+                <div className="bg-gray-800 py-6 shadow-inner">
+                  <div className="container mx-auto px-4">
+                    <form onSubmit={handleSearchSubmit} className="max-w-4xl mx-auto">
+                      <div className="flex flex-col md:flex-row gap-4">
+                        <div className="flex-1 relative">
+                          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="text"
+                            name="manufacturerName"
+                            value={searchFilters.manufacturerName}
+                            onChange={handleSearchChange}
+                            placeholder="Search by manufacturer name"
+                            className="pl-10"
+                          />
+                        </div>
+                        <div className="flex-1 relative">
+                          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="text"
+                            name="location"
+                            value={searchFilters.location}
+                            onChange={handleSearchChange}
+                            placeholder="Filter by location"
+                            className="pl-10"
+                          />
+                        </div>
+                        <Button type="submit" className="md:w-auto">
+                          Search
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+
+                {/* Main Content */}
+                <div className="container mx-auto px-4 py-8">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-semibold">
+                      {filteredManufacturers.length} Manufacturers Found
+                    </h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {displayedManufacturers.map((manufacturer) => (
+                      <ManufacturerCard key={manufacturer.documentId} manufacturer={manufacturer} />
+                    ))}
+                  </div>
+
+                  {displayedManufacturers.length < filteredManufacturers.length && (
+                    <div className="flex justify-center mt-8">
+                      <Button 
+                        onClick={handleLoadMore}
+                        variant="outline"
+                        size="lg"
+                        className="border-primary/20 hover:border-primary"
+                      >
+                        Load More
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="container mx-auto px-4 py-8">
+                <ListingCategoryManager />
+              </div>
+            )}
             {/* FAB */}
             <FloatingBlogsButton />
           </>

@@ -8,9 +8,8 @@ export const GET_LISTING_CATEGORY = gql`
       icon
       slug
       order
-      backgroundImage {
-        url
-      }
+      imageUrl
+      imagePublicId
     }
     listings {
       title

@@ -47,7 +47,9 @@ const ListingCardItem = memo(({
   onDelete,
   onEdit,
   onCreateSpecial,
-  onAddToBranch
+  onAddToBranch,
+  onSelectAll,
+  allSelected
 }) => {
     const handleToggle = useCallback(() => {
         onToggleSelection(listing.documentId || listing.id);
@@ -57,12 +59,56 @@ const ListingCardItem = memo(({
         <div
             style={{ width: "100%", height: "100%", position: "relative" }}
         >
+            {/* Select All Checkbox - Only on First Card */}
+            {isFirstCard && onSelectAll && (
+                <div 
+                    style={{
+                        position: 'absolute',
+                        top: 10,
+                        left: 10,
+                        zIndex: 30,
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        borderRadius: '6px',
+                        padding: '6px 10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        border: '1px solid #e5e7eb',
+                        cursor: 'pointer'
+                    }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        // Prevent triggering card click
+                    }}
+                >
+                    <Checkbox 
+                        checked={allSelected}
+                        onCheckedChange={(checked) => onSelectAll(checked)}
+                        style={{ width: 18, height: 18 }}
+                        id="select-all-checkbox"
+                    />
+                    <label 
+                        htmlFor="select-all-checkbox" 
+                        style={{ 
+                            fontSize: '13px', 
+                            fontWeight: '600', 
+                            color: '#1f2937',
+                            cursor: 'pointer',
+                            userSelect: 'none'
+                        }}
+                    >
+                        Select All
+                    </label>
+                </div>
+            )}
+
             {/* Selection Checkbox Overlay */}
             {selectionMode && (
                 <div 
                     style={{
                         position: 'absolute',
-                        top: 10,
+                        top: isFirstCard ? 54 : 10, // Move down if first card has Select All header
                         left: 10,
                         zIndex: 20,
                         backgroundColor: 'rgba(255,255,255,0.8)',

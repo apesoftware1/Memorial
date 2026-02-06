@@ -218,17 +218,17 @@ export default function SearchForm({
         {/* Searching status */}
         {isSearching && <div className="mt-2 text-sm text-gray-500">Searching...</div>}
 
-        {/* Search results count */}
-        {!isSearching && searchQuery.trim() && (
+        {/* Search results count - Removed as per request */}
+        {/* {!isSearching && searchQuery.trim() && (
           <div className="mt-2 text-sm text-[#1A1D23]">
             Found {searchResults.length} results for "{searchQuery}"
           </div>
-        )}
+        )} */}
       </form>
 
       {/* Animated button below the form when typing */}
       <div
-        className={`mt-2 flex justify-start transition-all duration-300 ${
+        className={`mt-6 flex justify-start transition-all duration-300 ${
           isTyping ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none h-0 overflow-hidden'
         }`}
       >
