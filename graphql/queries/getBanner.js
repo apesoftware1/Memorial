@@ -1,7 +1,14 @@
 import { gql } from '@apollo/client';
 
 export const GET_BANNER = gql`
-  query BannerAd {bannerAd{
+  query BannerAd {
+    companies {
+      documentId
+      name
+      bannerAd {
         url
       }
-        documentId}`
+      bannerAdUrl
+    }
+  }
+`;
