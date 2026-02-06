@@ -21,6 +21,8 @@ export const MANUFACTURERS_INITIAL_QUERY = gql`
       longitude
       logoUrl
       isFeatured
+      bannerAdUrl
+      bannerAdPublicId
       bannerAd { url }
     }
   }
@@ -42,6 +44,8 @@ export const MANUFACTURERS_FULL_QUERY = gql`
       description
       logoUrl
       logoUrlPublicId
+      bannerAdUrl
+      bannerAdPublicId
       bannerAd { url }
       branches { documentId }
       operatingHours { id monToFri saturday sunday publicHoliday }
@@ -74,6 +78,8 @@ export const MANUFACTURERS_DELTA_QUERY = gql`
       description
       logoUrl
       logoUrlPublicId
+      bannerAdUrl
+      bannerAdPublicId
       bannerAd { url }
       branches { documentId }
       operatingHours { id monToFri saturday sunday publicHoliday }

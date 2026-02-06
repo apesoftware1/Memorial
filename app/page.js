@@ -32,7 +32,7 @@ import { GET_MANUFACTURERS } from "@/graphql/queries/getManufacturers"
 import FeaturedListings from "@/components/FeaturedListings";
 import FeaturedManufacturer from "@/components/FeaturedManufacturer";
 import BannerAd from "@/components/BannerAd"
-import { cloudinaryOptimized } from "@/lib/cloudinary"
+
 
 import IndexRender from "./indexRender";
 import { useListingCategories } from "@/hooks/use-ListingCategories"
@@ -190,7 +190,7 @@ export default function Home() {
     initialQuery: LISTINGS_INITIAL_QUERY,
     fullQuery: LISTINGS_FULL_QUERY,
     deltaQuery: LISTINGS_DELTA_QUERY,
-    variables: { limit: 5 },
+    variables: {},
     storageKey: 'listings:lastUpdated',
     refreshInterval: 60000, // Reduced from 3000ms to 60s to save bandwidth
     staleTime: 1000 * 60 * 5, // 5 minutes staleness
@@ -198,32 +198,35 @@ export default function Home() {
   // Filter and populate the arrays after fetching listings
 
 // Memoize listings to avoid re-processing on each render
-const strapiListings = useMemo(() => data?.listings || [], [data]);
+  const strapiListings = useMemo(() => data?.listings || [], [data]);
 
-useEffect(() => {
-  if (!Array.isArray(strapiListings) || loading || error) return;
+  // Filter out listings with active specials - Memoized for use in SearchContainer and effect
+  const nonSpecialListings = useMemo(() => {
+    if (!Array.isArray(strapiListings)) return [];
+    return strapiListings.filter(listing => {
+      // Check if listing has specials array and if any special is active
+      return !(listing.specials && 
+               Array.isArray(listing.specials) && 
+               listing.specials.length > 0 && 
+               listing.specials.some(special => special?.active));
+    });
+  }, [strapiListings]);
 
-  // Filter out listings with active specials
-  const nonSpecialListings = strapiListings.filter(listing => {
-    // Check if listing has specials array and if any special is active
-    return !(listing.specials && 
-             Array.isArray(listing.specials) && 
-             listing.specials.length > 0 && 
-             listing.specials.some(special => special?.active));
-  });
+  useEffect(() => {
+    if (loading || error) return;
 
-  const premium = nonSpecialListings.filter(l => l.isPremium);
-  const featured = nonSpecialListings.filter(l => l.isFeatured);
-  const standard = nonSpecialListings.filter(l =>
-    typeof l.isStandard === 'boolean'
-      ? l.isStandard
-      : !l.isPremium && !l.isFeatured
-  );
+    const premium = nonSpecialListings.filter(l => l.isPremium);
+    const featured = nonSpecialListings.filter(l => l.isFeatured);
+    const standard = nonSpecialListings.filter(l =>
+      typeof l.isStandard === 'boolean'
+        ? l.isStandard
+        : !l.isPremium && !l.isFeatured
+    );
 
-  setPremListings(premium);
-  setFeaturedListings(featured);
-  setStdListings(standard);
-}, [strapiListings, loading, error]);
+    setPremListings(premium);
+    setFeaturedListings(featured);
+    setStdListings(standard);
+  }, [nonSpecialListings, loading, error]);
 
   // Fetch companies for FAQ banner (must be above return)
   
@@ -239,7 +242,7 @@ useEffect(() => {
     () =>
       (manufacturersData?.companies || [])
         .map((c) => {
-          const url = typeof c?.bannerAd?.url === "string" ? c.bannerAd.url.trim() : null;
+          const url = c?.bannerAdUrl || (typeof c?.bannerAd?.url === "string" ? c.bannerAd.url.trim() : null);
           const documentId = c?.documentId;
           if (url && documentId) {
             return {
@@ -291,7 +294,7 @@ useEffect(() => {
         {/* Background Image - Shown on mobile too */}
         <div className="absolute top-0 left-0 w-full h-28 md:h-full md:inset-0 z-0 block">
           <Image
-            src={cloudinaryOptimized(activeCategory?.backgroundImage?.url, 1600) || "/placeholder.svg"}
+            src={activeCategory?.imageUrl || "/placeholder.svg"}
             alt= {activeCategory?.name || "Category background"}
             fill
             className="object-cover"
@@ -311,9 +314,9 @@ useEffect(() => {
           categories={categories}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          totalListings={strapiListings.length}
+          totalListings={nonSpecialListings.length}
           onNavigateToResults={handleNavigateToResults}
-          allListings={strapiListings}
+          allListings={nonSpecialListings}
           filters={filters}
           setFilters={setFilters}
         />

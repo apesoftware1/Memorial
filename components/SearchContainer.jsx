@@ -429,6 +429,33 @@ const SearchContainer = ({
       });
     }
 
+    // Force Durban City structure with specific towns as requested
+    const kznKey = 'kwazulu-natal';
+    if (hierarchy[kznKey]) {
+      // Ensure Durban exists (using "Durban" as name per request, key normalized to 'durban')
+      const durbanKey = 'durban';
+      if (!hierarchy[kznKey].cities[durbanKey]) {
+        hierarchy[kznKey].cities[durbanKey] = { name: 'Durban', count: 0, towns: {} };
+      } else {
+        // Update name if it exists but might be just "Durban"
+        hierarchy[kznKey].cities[durbanKey].name = 'Durban';
+      }
+      
+      const durbanTowns = ['Durban North', 'Durban South', 'Durban West', 'Durban CBD'];
+      durbanTowns.forEach(town => {
+        const townKey = town.toLowerCase();
+        if (!hierarchy[kznKey].cities[durbanKey].towns[townKey]) {
+          hierarchy[kznKey].cities[durbanKey].towns[townKey] = { name: town, count: 0 };
+        }
+      });
+
+      // Remove "Durban CBD" if it appears as a separate city
+      const durbanCbdKey = 'durban cbd';
+      if (hierarchy[kznKey].cities[durbanCbdKey]) {
+         delete hierarchy[kznKey].cities[durbanCbdKey];
+      }
+    }
+
     // Convert to array structure for FilterDropdown
     return Object.values(hierarchy).map(prov => ({
       name: prov.name,
@@ -510,13 +537,24 @@ const SearchContainer = ({
     // Build filtered array using case-insensitive partial matches and numeric ranges
     let next = [...allListings];
 
-    // Search content (against title and company name)
+    // Search content (against title, company name, and product IDs)
     if (paramSearch) {
       const q = paramSearch.toLowerCase();
       next = next.filter((listing) => {
         const title = (listing?.title || "").toLowerCase();
         const companyName = (listing?.company?.name || "").toLowerCase();
-        return title.includes(q) || companyName.includes(q);
+        const documentId = (listing?.documentId || "").toLowerCase();
+        const id = (listing?.id || "").toString().toLowerCase();
+        const productId = (listing?.productDetails?.id || "").toLowerCase();
+        const listingSlug = (listing?.slug || "").toLowerCase();
+        return (
+          title.includes(q) || 
+          companyName.includes(q) || 
+          documentId.includes(q) || 
+          id.includes(q) ||
+          productId.includes(q) ||
+          listingSlug.includes(q)
+        );
       });
     }
 
@@ -632,8 +670,6 @@ const SearchContainer = ({
         return [];
       const f = currentFilters || filters || {};
       
-      console.log('filterListingsFrom called with filters:', f);
-
       // Determine selected category from tabs
       let selectedCategoryName = "";
       if (Array.isArray(categories) && categories.length > 0) {
@@ -658,17 +694,27 @@ const SearchContainer = ({
 
       return (
         sourceListings
-          // Search content (against title and company name)
-          .filter((listing) =>
-            f.search && f.search !== ""
-              ? (listing?.title || "")
-                  .toLowerCase()
-                  .includes(f.search.toLowerCase()) ||
-                (listing?.company?.name || "")
-                  .toLowerCase()
-                  .includes(f.search.toLowerCase())
-              : true
-          )
+          // Search content (against title, company name, ID, and documentId)
+          .filter((listing) => {
+            if (!f.search || f.search === "") return true;
+            
+            const searchQuery = String(f.search).toLowerCase();
+            const title = (listing?.title || "").toLowerCase();
+            const companyName = (listing?.company?.name || "").toLowerCase();
+            const documentId = (listing?.documentId || "").toLowerCase();
+          const id = (listing?.id || "").toString().toLowerCase();
+          const productId = (listing?.productDetails?.id || "").toLowerCase();
+          const listingSlug = (listing?.slug || "").toLowerCase();
+
+          return (
+            title.includes(searchQuery) ||
+            companyName.includes(searchQuery) ||
+            documentId.includes(searchQuery) ||
+            id.includes(searchQuery) ||
+            productId.includes(searchQuery) ||
+            listingSlug.includes(searchQuery)
+          );
+        })
           // Category
           .filter((listing) =>
             selectedCategoryName
@@ -683,46 +729,45 @@ const SearchContainer = ({
               : true
           )
           // Stone Type (partial)
-          .filter((listing) =>
-            f.stoneType && f.stoneType !== "All" && f.stoneType !== ""
-              ? (listing?.productDetails?.stoneType?.[0]?.value || "")
-                  .toLowerCase()
-                  .includes(f.stoneType.toLowerCase())
-              : true
-          )
+          .filter((listing) => {
+            const filterVal = f.stoneType;
+            if (!filterVal || filterVal === "All" || filterVal === "") return true;
+            const itemVal = (listing?.productDetails?.stoneType?.[0]?.value || "").toLowerCase();
+            if (Array.isArray(filterVal)) return filterVal.some(v => itemVal.includes(String(v).toLowerCase()));
+            return itemVal.includes(String(filterVal).toLowerCase());
+          })
           // Colour/Color (partial)
           .filter((listing) => {
             const query = f.color || f.colour;
             if (!query || query === "All" || query === "") return true;
-            const colour = (
-              listing?.productDetails?.color?.[0]?.value || ""
-            ).toLowerCase();
-            return colour.includes(query.toLowerCase());
+            const colour = (listing?.productDetails?.color?.[0]?.value || "").toLowerCase();
+            if (Array.isArray(query)) return query.some(v => colour.includes(String(v).toLowerCase()));
+            return colour.includes(String(query).toLowerCase());
           })
           // Head style (partial)
-          .filter((listing) =>
-            f.style && f.style !== "All" && f.style !== ""
-              ? (listing?.productDetails?.style?.[0]?.value || "")
-                  .toLowerCase()
-                  .includes(f.style.toLowerCase())
-              : true
-          )
+          .filter((listing) => {
+            const filterVal = f.style;
+            if (!filterVal || filterVal === "All" || filterVal === "") return true;
+            const itemVal = (listing?.productDetails?.style?.[0]?.value || "").toLowerCase();
+            if (Array.isArray(filterVal)) return filterVal.some(v => itemVal.includes(String(v).toLowerCase()));
+            return itemVal.includes(String(filterVal).toLowerCase());
+          })
           // Slab style (partial)
-          .filter((listing) =>
-            f.slabStyle && f.slabStyle !== "All" && f.slabStyle !== ""
-              ? (listing?.productDetails?.slabStyle?.[0]?.value || "")
-                  .toLowerCase()
-                  .includes(f.slabStyle.toLowerCase())
-              : true
-          )
+          .filter((listing) => {
+            const filterVal = f.slabStyle;
+            if (!filterVal || filterVal === "All" || filterVal === "") return true;
+            const itemVal = (listing?.productDetails?.slabStyle?.[0]?.value || "").toLowerCase();
+            if (Array.isArray(filterVal)) return filterVal.some(v => itemVal.includes(String(v).toLowerCase()));
+            return itemVal.includes(String(filterVal).toLowerCase());
+          })
           // Customization (partial)
-          .filter((listing) =>
-            f.custom && f.custom !== "All" && f.custom !== ""
-              ? (listing?.productDetails?.customization?.[0]?.value || "")
-                  .toLowerCase()
-                  .includes(f.custom.toLowerCase())
-              : true
-          )
+          .filter((listing) => {
+            const filterVal = f.custom;
+            if (!filterVal || filterVal === "All" || filterVal === "") return true;
+            const itemVal = (listing?.productDetails?.customization?.[0]?.value || "").toLowerCase();
+            if (Array.isArray(filterVal)) return filterVal.some(v => itemVal.includes(String(v).toLowerCase()));
+            return itemVal.includes(String(filterVal).toLowerCase());
+          })
           // Min Price
           .filter((listing) =>
             f.minPrice && f.minPrice !== "Min Price" && f.minPrice !== ""
@@ -744,7 +789,6 @@ const SearchContainer = ({
 
   // Calculate filtered count for search button using the shared filter logic
   const searchButtonCount = useMemo(() => {
-    console.log('Calculating searchButtonCount with filters:', filters);
     const filteredListings = filterListingsFrom(allListings, filters);
     
     // If a category is selected via prop (and not activeTab handling it), filter here.
@@ -793,9 +837,20 @@ const SearchContainer = ({
       filtered = filtered.filter((listing) => {
         const title = (listing?.title || "").toLowerCase();
         const companyName = (listing?.company?.name || "").toLowerCase();
+        const documentId = (listing?.documentId || "").toLowerCase();
+        const id = (listing?.id || "").toString().toLowerCase();
+        const productId = (listing?.productDetails?.id || "").toLowerCase();
+        const listingSlug = (listing?.slug || "").toLowerCase();
+        
+        const searchQuery = String(filters.search).toLowerCase();
+
         return (
-          title.includes(filters.search.toLowerCase()) ||
-          companyName.includes(filters.search.toLowerCase())
+          title.includes(searchQuery) ||
+          companyName.includes(searchQuery) ||
+          documentId.includes(searchQuery) ||
+          id.includes(searchQuery) ||
+          productId.includes(searchQuery) ||
+          listingSlug.includes(searchQuery)
         );
       });
     }
@@ -840,7 +895,7 @@ const SearchContainer = ({
 
         return listingColor
           ?.toLowerCase()
-          .includes(filters.colour.toLowerCase());
+          .includes(String(filters.colour).toLowerCase());
       });
     }
 
@@ -853,7 +908,7 @@ const SearchContainer = ({
 
         return listingMaterial
           ?.toLowerCase()
-          .includes(filters.stoneType.toLowerCase());
+          .includes(String(filters.stoneType).toLowerCase());
       });
     }
 
@@ -865,7 +920,7 @@ const SearchContainer = ({
           listing.title?.toLowerCase();
         return listingStyle
           ?.toLowerCase()
-          .includes(filters.style.toLowerCase());
+          .includes(String(filters.style).toLowerCase());
       });
     }
 
@@ -877,7 +932,7 @@ const SearchContainer = ({
           listing.title?.toLowerCase();
         return listingSlabStyle
           ?.toLowerCase()
-          .includes(filters.slabStyle.toLowerCase());
+          .includes(String(filters.slabStyle).toLowerCase());
       });
     }
 
@@ -890,7 +945,7 @@ const SearchContainer = ({
 
         return listingCustom
           ?.toLowerCase()
-          .includes(filters.custom.toLowerCase());
+          .includes(String(filters.custom).toLowerCase());
       });
     }
 
@@ -1056,15 +1111,15 @@ const SearchContainer = ({
   // Select option from dropdown
   const selectOption = useCallback(
     (name, value, keepOpen = false) => {
-      console.log('selectOption called:', name, value, keepOpen);
+    
       if (setFilters) {
         setFilters((prev) => {
-          console.log('setFilters prev state:', prev);
+        
           const newFilters = {
             ...prev,
             [name]: value,
           };
-          console.log('setFilters updating:', newFilters);
+
           return newFilters;
         });
       }
@@ -1077,11 +1132,6 @@ const SearchContainer = ({
     },
     [setFilters]
   );
-
-  useEffect(() => {
-    console.log('SearchContainer filters updated:', filters);
-    console.log('SearchContainer searchButtonCount:', searchButtonCount);
-  }, [filters, searchButtonCount]);
 
   return (
     <div className="w-full mt-28 md:mt-20">

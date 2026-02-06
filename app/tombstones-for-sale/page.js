@@ -36,7 +36,7 @@ export default function Home() {
   // Derive a stable key from search params to avoid re-running effects due to object identity changes
   const searchParamsKey = searchParams ? searchParams.toString() : '';
   // Memoize GraphQL variables to avoid effect re-subscriptions and render loops
-  const queryVariables = useMemo(() => ({ limit: 10 }), []);
+  const queryVariables = useMemo(() => ({}), []);
   
   // GraphQL data
   // Replace Apollo useQuery(GET_LISTINGS) with progressive hook
@@ -297,61 +297,23 @@ export default function Home() {
       return exact ? iStr === fStr : iStr.includes(fStr);
     };
     
-    // Search parameter (against comprehensive product details)
+    // Search parameter (matches SearchContainer.jsx logic: Title, Company Name, IDs)
     if (f.search && f.search !== '') {
       const searchQuery = f.search.toLowerCase();
       filtered = filtered.filter(listing => {
-        // Basic listing information
         const title = (listing?.title || '').toLowerCase();
-        const description = (listing?.description || '').toLowerCase();
         const companyName = (listing?.company?.name || '').toLowerCase();
-        const companyLocation = (listing?.company?.location || '').toLowerCase();
+        const documentId = (listing?.documentId || '').toLowerCase();
+        const id = (listing?.id || '').toString().toLowerCase();
+        const productId = (listing?.productDetails?.id || '').toLowerCase();
+        const listingSlug = (listing?.slug || '').toLowerCase();
         
-        // Product details from productDetails object
-        const stoneType = ((listing?.productDetails?.stoneType || [])
-          .map(item => item?.value || '')
-          .join(' ')).toLowerCase();
-        
-        const color = ((listing?.productDetails?.color || [])
-          .map(item => item?.value || '')
-          .join(' ')).toLowerCase();
-          
-        const style = ((listing?.productDetails?.style || [])
-          .map(item => item?.value || '')
-          .join(' ')).toLowerCase();
-          
-        const slabStyle = ((listing?.productDetails?.slabStyle || [])
-          .map(item => item?.value || '')
-          .join(' ')).toLowerCase();
-          
-        const customization = ((listing?.productDetails?.customization || [])
-          .map(item => item?.value || '')
-          .join(' ')).toLowerCase();
-          
-        // Additional details that might be present
-        const dimensions = ((listing?.productDetails?.dimensions || [])
-          .map(item => item?.value || '')
-          .join(' ')).toLowerCase();
-          
-        const material = ((listing?.productDetails?.material || [])
-          .map(item => item?.value || '')
-          .join(' ')).toLowerCase();
-          
-        const category = (listing?.listing_category?.name || '').toLowerCase();
-        
-        // Check if search query matches any of the fields
         return title.includes(searchQuery) || 
-               description.includes(searchQuery) || 
                companyName.includes(searchQuery) || 
-               companyLocation.includes(searchQuery) || 
-               stoneType.includes(searchQuery) || 
-               color.includes(searchQuery) || 
-               style.includes(searchQuery) || 
-               slabStyle.includes(searchQuery) || 
-               customization.includes(searchQuery) || 
-               dimensions.includes(searchQuery) || 
-               material.includes(searchQuery) || 
-               category.includes(searchQuery);
+               documentId.includes(searchQuery) ||
+               id.includes(searchQuery) ||
+               productId.includes(searchQuery) ||
+               listingSlug.includes(searchQuery);
       });
     }
     
@@ -918,7 +880,7 @@ export default function Home() {
           {/* Background Image - Hidden on mobile to mirror homepage */}
           <div className="absolute inset-0 z-0 hidden sm:block">
             <Image
-              src={activeCategory?.backgroundImage?.url || "/2560(w)x400px(h)_Banner_OldYoungCouple.jpg"}
+              src={activeCategory?.imageUrl || "/2560(w)x400px(h)_Banner_OldYoungCouple.jpg"}
               alt={activeCategory?.name || "Category background"}
               fill
               className="object-cover"

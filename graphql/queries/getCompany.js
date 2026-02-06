@@ -28,6 +28,11 @@ export const GET_COMPANY_BY_USER = gql`
       description
       logoUrl
       logoUrlPublicId
+      bannerAdUrl
+      bannerAdPublicId
+      bannerAd {
+        url
+      }
       operatingHours {
         id
         monToFri

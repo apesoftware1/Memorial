@@ -127,7 +127,7 @@ const IndexRender = ({
     () =>
       (manufacturersData?.companies || [])
         .map((c) => {
-          const url = typeof c?.bannerAd?.url === "string" ? c.bannerAd.url.trim() : null;
+          const url = c?.bannerAdUrl || (typeof c?.bannerAdUrl === "string" ? c.bannerAdUrl.trim() : null);
           const documentId = c?.documentId;
           if (url && documentId) {
             return {
