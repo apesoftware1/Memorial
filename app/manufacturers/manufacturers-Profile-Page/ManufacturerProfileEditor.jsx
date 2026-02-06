@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Star, MapPin, Edit2, Upload, Lock, RefreshCw, Activity, Trash2 } from "lucide-react";
+import { Star, MapPin, Edit2, Upload, Lock, RefreshCw, Activity, Trash2, X } from "lucide-react";
 import React, { useState, useEffect, useRef, useCallback, useMemo, forwardRef } from "react";
 import { VirtuosoGrid } from 'react-virtuoso';
 import { useRouter, useSearchParams } from "next/navigation";
@@ -2597,6 +2597,32 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                   }}
                   onClick={() => isOwner && bannerInputRef.current?.click()}
                 >
+                  {isOwner && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowBannerAdUpdate(false);
+                      }}
+                      style={{
+                        position: "absolute",
+                        top: -12,
+                        right: -12,
+                        background: "#ff4444",
+                        borderRadius: "50%",
+                        border: "2px solid #fff",
+                        width: 28,
+                        height: 28,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        zIndex: 100,
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.3)"
+                      }}
+                    >
+                      <X size={16} color="#fff" />
+                    </button>
+                  )}
                   <div
                     style={{ position: "relative", width: "100%", height: "100%" }}
                   >
