@@ -460,6 +460,8 @@ const SearchContainer = ({
     return Object.values(hierarchy).map(prov => ({
       name: prov.name,
       count: prov.count,
+      lat: getCityCoordinates(prov.name)?.lat,
+      lng: getCityCoordinates(prov.name)?.lng,
       cities: Object.values(prov.cities).map(city => ({
         name: city.name,
         count: city.count,
@@ -1351,7 +1353,7 @@ const SearchContainer = ({
               <LocationModal
                 isOpen={showLocationModal}
                 onClose={() => setShowLocationModal(false)}
-                locationsData={mobileLocationsData}
+                locationsData={locationHierarchy}
                 onSelectLocation={(loc) => {
                   if (setFilters) {
                     setFilters((prev) => ({

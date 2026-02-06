@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { X, MapPin, Loader } from "lucide-react"
+import { X, MapPin, Loader, ChevronDown, ChevronUp } from "lucide-react"
 import { useGuestLocation } from "@/hooks/useGuestLocation"
 
 export default function LocationModal({ isOpen, onClose, locationsData, onSelectLocation }) {
@@ -9,9 +9,30 @@ export default function LocationModal({ isOpen, onClose, locationsData, onSelect
   const [isDesktop, setIsDesktop] = useState(true);
   const [geolocationStatus, setGeolocationStatus] = useState('idle');
   const [geolocationError, setGeolocationError] = useState(null);
+  const [expandedProvinces, setExpandedProvinces] = useState({});
+
+  const toggleProvince = (e, provinceName) => {
+    e.stopPropagation();
+    setExpandedProvinces(prev => ({
+      ...prev,
+      [provinceName]: !prev[provinceName]
+    }));
+  };
   
   // Use real location data from the hook
-  const { location: userLocation, calculateDistanceFrom } = useGuestLocation();
+  const { location: userLocation } = useGuestLocation();
+
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
+  };
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -33,7 +54,7 @@ export default function LocationModal({ isOpen, onClose, locationsData, onSelect
       // If location has coordinates, calculate distance from user
       if (location.lat && location.lng && userLocation) {
         coordinates = { lat: location.lat, lng: location.lng };
-        distance = calculateDistanceFrom(coordinates);
+        distance = calculateDistance(userLocation.lat, userLocation.lng, location.lat, location.lng);
       }
       
       // If location has a company with coordinates, use those
@@ -42,17 +63,18 @@ export default function LocationModal({ isOpen, onClose, locationsData, onSelect
           lat: parseFloat(location.company.latitude), 
           lng: parseFloat(location.company.longitude) 
         };
-        distance = calculateDistanceFrom(coordinates);
+        distance = calculateDistance(userLocation.lat, userLocation.lng, coordinates.lat, coordinates.lng);
       }
       
       return {
+        id: location.id || location.name,
         ...location,
         coordinates,
         distance,
-        displayDistance: distance ? `${Math.round(distance)}km` : null
+        displayDistance: distance && !isNaN(distance) ? `${Math.round(distance)}km` : null
       };
     });
-  }, [locationsData, userLocation, calculateDistanceFrom]);
+  }, [locationsData, userLocation]);
 
   // Filter locations based on search term and sort by distance
   const filteredLocations = useMemo(() => {
@@ -178,30 +200,61 @@ export default function LocationModal({ isOpen, onClose, locationsData, onSelect
           )}
         </button>
         {filteredLocations.map((location) => (
-          <button
-            key={location.id}
-            onClick={() => onSelectLocation(location.name)}
-            className="w-full text-left py-3 px-4 border-b border-gray-100 hover:bg-gray-50 focus:outline-none transition-colors"
-          >
-            <div className="flex justify-between items-center">
-              <div>
-                <div className="text-gray-800 text-base font-medium">
-                  {location.name} 
-                  {location.displayDistance && (
-                    <span className="text-blue-500 text-sm font-normal ml-2">• {location.displayDistance}</span>
-                  )}
-                  {location.count !== undefined && (
-                    <span className="text-gray-500 text-sm font-normal">({location.count})</span>
-                  )}
+          <div key={location.id} className="border-b border-gray-100">
+            <div className="flex w-full items-center hover:bg-gray-50 transition-colors">
+              <button
+                onClick={() => onSelectLocation(location.name)}
+                className="flex-grow text-left py-3 px-4 focus:outline-none"
+              >
+                <div className="flex justify-between items-center">
+                  <div>
+                    <div className="text-gray-800 text-base font-medium">
+                      {location.name} 
+                      {location.count !== undefined && (
+                        <span className="text-gray-500 text-sm font-normal ml-1">({location.count})</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-gray-500 text-sm mr-2">
+                    {location.id !== 'all' && !location.cities ? 'Province' : ''}
+                    {location.displayDistance && location.id !== 'all' && (
+                      <span className="text-blue-500 font-medium"> • {location.displayDistance}</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="text-gray-500 text-sm">
-                {location.id !== 'all' ? 'Province' : ''}
-                {location.displayDistance && location.id !== 'all' && ' • '}
-                {location.displayDistance && location.id !== 'all' && location.displayDistance}
-              </div>
+              </button>
+              
+              {/* Expand Button for Cities */}
+              {location.cities && location.cities.length > 0 && (
+                <button
+                  onClick={(e) => toggleProvince(e, location.name)}
+                  className="p-3 mr-1 text-gray-500 hover:text-gray-700 focus:outline-none"
+                >
+                  {expandedProvinces[location.name] ? (
+                    <ChevronUp className="h-5 w-5" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5" />
+                  )}
+                </button>
+              )}
             </div>
-          </button>
+            
+            {/* Cities List */}
+            {expandedProvinces[location.name] && location.cities && (
+              <div className="bg-gray-50 border-t border-gray-100">
+                {location.cities.map((city) => (
+                  <button
+                    key={city.name}
+                    onClick={() => onSelectLocation(city.name)}
+                    className="w-full text-left py-2.5 pl-8 pr-4 border-b border-gray-100 hover:bg-gray-100 focus:outline-none transition-colors flex justify-between items-center"
+                  >
+                    <span className="text-gray-700 text-sm font-medium">{city.name}</span>
+                    <span className="text-gray-400 text-xs">({city.count})</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
       </div>
     </div>
