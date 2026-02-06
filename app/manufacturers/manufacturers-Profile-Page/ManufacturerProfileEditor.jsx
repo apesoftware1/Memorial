@@ -175,6 +175,7 @@ export default function ManufacturerProfileEditor({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mobile, setMobile] = useState(false);
+  const [showBannerAdUpdate, setShowBannerAdUpdate] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const sortModalRef = useRef();
   const [sortBy, setSortBy] = useState("Price");
@@ -1528,6 +1529,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
           bannerAdUrl: uploadedImage.secure_url,
           bannerAdPublicId: uploadedImage.public_id,
         }));
+        
+        setShowBannerAdUpdate(false);
 
         toast({
           title: "Banner Ad updated successfully",
@@ -1795,6 +1798,9 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleCreateListing}>
                   + Create Listing
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowBannerAdUpdate(true)}>
+                  Update Banner Ad
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -2558,91 +2564,95 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
             )}
 
             {/* Banner Ad Section */}
-            {isOwner && (
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "#888",
-                  fontWeight: 700,
-                  marginBottom: 6,
-                  textAlign: "center",
-                  width: "100%",
-                  display: mobile ? "none" : "block",
-                  marginTop: 16,
-                }}
-              >
-                Banner Ad
-              </div>
-            )}
-            <div
-              style={{
-                border: isOwner ? "2px solid #00baff" : "#e0e0e0",
-                borderRadius: 8,
-                background: "#fff",
-                padding: 8,
-                display: mobile ? "none" : "inline-block",
-                position: "relative",
-                minWidth: 240,
-                minHeight: 120,
-                marginBottom: 16,
-                cursor: isOwner ? "pointer" : "default",
-              }}
-              onClick={() => isOwner && bannerInputRef.current?.click()}
-            >
-              <div
-                style={{ position: "relative", width: "100%", height: "100%" }}
-              >
-                <Image
-                  src={`${
-                    company.bannerAdUrl || company.bannerAd?.url || "/placeholder-logo.svg"
-                  }?t=${Date.now()}`}
-                  alt="Banner Ad"
-                  width={220}
-                  height={110}
-                  key={company.bannerAdUrl || company.bannerAd?.url}
-                  style={{
-                    objectFit: "contain",
-                    display: "block",
-                    margin: "0 auto",
-                  }}
-                />
-                {isOwner && isUploadingBanner && (
+            {((!isOwner && !mobile) || (isOwner && showBannerAdUpdate)) && (
+              <>
+                {isOwner && (
                   <div
                     style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: "rgba(0,0,0,0.3)",
+                      fontSize: 11,
+                      color: "#888",
+                      fontWeight: 700,
+                      marginBottom: 6,
+                      textAlign: "center",
+                      width: "100%",
+                      display: "block",
+                      marginTop: 16,
                     }}
                   >
-                    <Upload style={{ width: 24, height: 24, color: "white" }} />
+                    Banner Ad
                   </div>
                 )}
-              </div>
-              <input
-                type="file"
-                ref={bannerInputRef}
-                style={{ display: "none" }}
-                accept="image/*"
-                onChange={handleBannerAdUpload}
-              />
-            </div>
-            {isOwner && !mobile && (
-              <div
-                style={{
-                  textAlign: "center",
-                  fontSize: 12,
-                  color: "#666",
-                  marginBottom: 8,
-                }}
-              >
-                {isUploadingBanner ? "Uploading..." : "Click to update banner ad"}
-              </div>
+                <div
+                  style={{
+                    border: isOwner ? "2px solid #00baff" : "#e0e0e0",
+                    borderRadius: 8,
+                    background: "#fff",
+                    padding: 8,
+                    display: "inline-block",
+                    position: "relative",
+                    minWidth: 240,
+                    minHeight: 120,
+                    marginBottom: 16,
+                    cursor: isOwner ? "pointer" : "default",
+                  }}
+                  onClick={() => isOwner && bannerInputRef.current?.click()}
+                >
+                  <div
+                    style={{ position: "relative", width: "100%", height: "100%" }}
+                  >
+                    <Image
+                      src={`${
+                        company.bannerAdUrl || company.bannerAd?.url || "/placeholder-logo.svg"
+                      }?t=${Date.now()}`}
+                      alt="Banner Ad"
+                      width={220}
+                      height={110}
+                      key={company.bannerAdUrl || company.bannerAd?.url}
+                      style={{
+                        objectFit: "contain",
+                        display: "block",
+                        margin: "0 auto",
+                      }}
+                    />
+                    {isOwner && isUploadingBanner && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: "rgba(0,0,0,0.3)",
+                        }}
+                      >
+                        <Upload style={{ width: 24, height: 24, color: "white" }} />
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    ref={bannerInputRef}
+                    style={{ display: "none" }}
+                    accept="image/*"
+                    onChange={handleBannerAdUpload}
+                  />
+                </div>
+                {isOwner && (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      fontSize: 12,
+                      color: "#666",
+                      marginBottom: 8,
+                    }}
+                  >
+                    {isUploadingBanner ? "Uploading..." : "Click to update banner ad"}
+                  </div>
+                )}
+              </>
             )}
 
             {/* Socials label - conditionally show */}
@@ -2892,19 +2902,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
             </div>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            {isOwner && (
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <Checkbox 
-                  id="select-all-header"
-                  checked={selectionMode && selectedListingIds.size === sortedAndFilteredListings.length && sortedAndFilteredListings.length > 0}
-                  onCheckedChange={handleSelectAll}
-                  style={{ marginRight: 8 }}
-                />
-                <label htmlFor="select-all-header" style={{ fontSize: 13, cursor: 'pointer', userSelect: 'none', color: '#555', fontWeight: 600 }}>
-                  Select All
-                </label>
-              </div>
-            )}
+
             <div style={{ fontSize: 15, fontWeight: 700 }}>
               {companyListings.length} Active Listings
             </div>
@@ -3201,7 +3199,22 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         </div>
 
         {/* Search Input - Moved below toolbar */}
-        <div style={{ maxWidth: 1200, margin: "0 auto 20px auto", padding: "0 16px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto 20px auto", padding: "0 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+           <div>
+             {isOwner && (
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <Checkbox 
+                    id="select-all-search"
+                    checked={selectionMode && selectedListingIds.size === sortedAndFilteredListings.length && sortedAndFilteredListings.length > 0}
+                    onCheckedChange={handleSelectAll}
+                    style={{ marginRight: 8 }}
+                  />
+                  <label htmlFor="select-all-search" style={{ fontSize: 13, cursor: 'pointer', userSelect: 'none', color: '#555', fontWeight: 600 }}>
+                    Select All
+                  </label>
+                </div>
+             )}
+           </div>
            <input
             type="text"
             value={searchQuery}

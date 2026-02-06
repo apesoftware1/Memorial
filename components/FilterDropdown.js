@@ -196,6 +196,8 @@ const HierarchyItem = ({ item, level = 0, selectedValues, onSelect, getIconSrc, 
 const CityItem = ({ city, level, selectedValues, onSelect }) => {
   const [isOpen, setIsOpen] = useState(false);
   const hasChildren = city.towns && city.towns.length > 0;
+  // Hide dropdown if only 1 town and its name matches the city name
+  const showTownsDropdown = hasChildren && !(city.towns.length === 1 && city.towns[0].name === city.name);
   const isSelected = selectedValues.includes(city.name);
   const paddingLeft = `${level * 16 + 12}px`;
 
@@ -219,14 +221,14 @@ const CityItem = ({ city, level, selectedValues, onSelect }) => {
           <span>{city.name} ({city.count || 0})</span>
         </div>
 
-        {hasChildren && (
+        {showTownsDropdown && (
           <div onClick={toggleOpen} className="p-1 hover:bg-gray-700 rounded cursor-pointer">
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </div>
         )}
       </div>
 
-      {isOpen && hasChildren && (
+      {isOpen && showTownsDropdown && (
         <div>
           {city.towns.map((town, idx) => (
              <TownItem 
