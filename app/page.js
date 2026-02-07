@@ -50,6 +50,55 @@ import {
 
 
 
+// Helper to shuffle listings ensuring diversity of companies at the top
+const getDiverseShuffledListings = (listings) => {
+  if (!Array.isArray(listings) || listings.length === 0) return [];
+
+  // 1. Group by company
+  const companyMap = new Map();
+  listings.forEach(listing => {
+    // Handle cases where company might be missing or have different ID structure
+    const companyId = listing.company?.documentId || listing.company?.id || 'unknown';
+    if (!companyMap.has(companyId)) {
+      companyMap.set(companyId, []);
+    }
+    companyMap.get(companyId).push(listing);
+  });
+
+  // 2. Shuffle the order of companies
+  const companies = Array.from(companyMap.keys());
+  for (let i = companies.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [companies[i], companies[j]] = [companies[j], companies[i]];
+  }
+
+  // 3. Shuffle listings within each company (so we don't always pick the first one)
+  companyMap.forEach((list) => {
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+  });
+
+  // 4. Interleave listings: Pick one from each company, then loop again
+  const result = [];
+  let maxListings = 0;
+  companyMap.forEach(list => {
+    if (list.length > maxListings) maxListings = list.length;
+  });
+
+  for (let i = 0; i < maxListings; i++) {
+    for (const companyId of companies) {
+      const list = companyMap.get(companyId);
+      if (i < list.length) {
+        result.push(list[i]);
+      }
+    }
+  }
+
+  return result;
+};
+
 export default function Home() {
   
   const { categories, loading: _loading } = useListingCategories()
@@ -215,7 +264,10 @@ export default function Home() {
   useEffect(() => {
     if (loading || error) return;
 
-    const premium = nonSpecialListings.filter(l => l.isPremium);
+    // Filter premium listings and shuffle them to ensure company diversity (top 5 from different companies)
+    const premiumRaw = nonSpecialListings.filter(l => l.isPremium);
+    const premium = getDiverseShuffledListings(premiumRaw);
+
     const featured = nonSpecialListings.filter(l => l.isFeatured);
     const standard = nonSpecialListings.filter(l =>
       typeof l.isStandard === 'boolean'
