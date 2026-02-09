@@ -182,7 +182,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
   }
 
   // Helper for multi-select
-  const isMultiSelect = (name: string) => ['style', 'slabStyle', 'stoneType', 'colour', 'custom'].includes(name);
+  const isMultiSelect = (name: string) => ['style', 'slabStyle', 'stoneType', 'colour', 'custom', 'location'].includes(name);
 
   // Set filter value
   const setFilter = (category: string, value: string) => {

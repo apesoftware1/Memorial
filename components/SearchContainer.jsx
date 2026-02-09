@@ -10,6 +10,8 @@ import CategoryTabs from "@/components/CategoryTabs.jsx";
 import MobileFilterTags from "@/components/MobileFilterTags.jsx";
 import { SearchLoader } from "@/components/ui/loader";
 import { AnimatePresence, motion } from "framer-motion";
+import { useLocationHierarchy } from "@/hooks/useLocationHierarchy";
+import { checkListingLocation } from "@/lib/locationHelpers";
 
 // Default filter options with updated price ranges
 const defaultFilterOptions = {
@@ -198,282 +200,9 @@ const SearchContainer = ({
     return [];
   };
 
-  // Helper: normalize province name for consistent lookups
-  const normalizeProvince = (name) =>
-    (name || '').replace(/_/g, ' ').toLowerCase().trim().replace(/\s+/g, ' ');
-
-  // Helper function to get coordinates for major South African provinces (normalized keys)
-  const getCityCoordinates = (cityName) => {
-    const byProvince = {
-      'gauteng': { lat: -26.2041, lng: 28.0473 },
-      'western cape': { lat: -33.9249, lng: 18.4241 },
-      'kwazulu-natal': { lat: -29.8587, lng: 31.0218 },
-      'eastern cape': { lat: -32.2968, lng: 26.4194 },
-      'free state': { lat: -28.4545, lng: 26.7968 },
-      'mpumalanga': { lat: -25.4753, lng: 30.9694 },
-      'limpopo': { lat: -23.4013, lng: 29.4179 },
-      'north west': { lat: -25.4753, lng: 25.4753 },
-      'northern cape': { lat: -30.5595, lng: 22.9375 },
-    };
-    const key = normalizeProvince(cityName);
-    return byProvince[key] || null;
-  };
-
-  // Province synonyms to match common abbreviations and variants, including MAJOR CITIES for fallback matching
-  const provinceSynonyms = {
-    'gauteng': ['gauteng', 'gp', 'johannesburg', 'jhb', 'pretoria', 'centurion', 'sandton', 'midrand', 'soweto', 'randburg', 'roodepoort', 'krugersdorp', 'benoni', 'boksburg', 'kempton park', 'alberton', 'germiston', 'springs', 'brakpan', 'vanderbijlpark', 'vereeniging', 'meyerton', 'heidelberg', 'bronkhorstspruit', 'cullinan', 'hammanskraal'],
-    'western cape': ['western cape', 'wc', 'cape town', 'ct', 'stellenbosch', 'paarl', 'george', 'knysna', 'mossel bay', 'worcester', 'hermanus', 'oudtshoorn', 'bellville', 'durbanville', 'somerset west', 'strand', 'gordons bay', 'fish hoek', 'simons town', 'houte bay', 'camps bay', 'sea point', 'milnerton', 'table view', 'bloubergstrand', 'brackenfell', 'kraaifontein', 'kuils river', 'goodwood', 'parow'],
-    'kwazulu-natal': ['kwazulu-natal', 'kwazulu natal', 'kzn', 'durban', 'pietermaritzburg', 'pmb', 'richards bay', 'uvongo', 'kwamashu', 'newcastle', 'port shepstone', 'amanzimtoti', 'ballito', 'empangeni', 'esikhawini', 'estcourt', 'hillcrest', 'howick', 'kokstad', 'ladysmith', 'margate', 'mtunzini', 'phoenix', 'pinetown', 'pongola', 'port edward', 'scottburgh', 'stanger', 'kwadukuza', 'tongaat', 'ulundi', 'umhlanga', 'umdloti', 'umkomaas', 'underberg', 'verulam', 'vryheid', 'westville', 'kloof', 'chatsworth', 'umlazi', 'dalton', 'greytown', 'mooi river', 'dundee', 'glencoe', 'paulpietersburg', 'ehowa', 'mandini', 'mtubatuba', 'st lucia', 'hluhluwe', 'melmoth', 'eshawe', 'nkandla', 'ixopo', 'richmond', 'wartburg', 'harding', 'hibberdene', 'shelly beach', 'ramsia', 'southbroom', 'port edward'],
-    'eastern cape': ['eastern cape', 'ec', 'port elizabeth', 'pe', 'gqeberha', 'east london', 'el', 'mtatha', 'grahamstown', 'makhanda', 'uitenhage', 'kariega', 'king williams town', 'qonce', 'jeffreys bay', 'graaff-reinet', 'cradock', 'aliwal north', 'queenstown', 'komani', 'butterworth', 'mnquma'],
-    'free state': ['free state', 'fs', 'bloemfontein', 'welkom', 'sasolburg', 'kroonstad', 'bethlehem', 'harrismith', 'ficksburg', 'parys', 'virginia', 'odendaalsrus', 'phuthaditjhaba'],
-    'north west': ['north west', 'nw', 'rustenburg', 'mahikeng', 'mafikeng', 'klerksdorp', 'potchefstroom', 'brits', 'lichtenburg', 'vryburg', 'orkney', 'stilfontein', 'fiesland'],
-    'limpopo': ['limpopo', 'lp', 'polokwane', 'tzaneen', 'mokopane', 'thohoyandou', 'louis trichardt', 'phalaborwa', 'bela-bela', 'warmbaths', 'modimolle', 'nylstroom', 'lephalale', 'ellisras', 'musina'],
-    'mpumalanga': ['mpumalanga', 'mp', 'nelspruit', 'mbombela', 'witbank', 'emalahleni', 'middelburg', 'secunda', 'ermelo', 'standerton', 'piet retief', 'barberton', 'white river', 'lydenburg', 'mashishing', 'malelane', 'komatipoort'],
-    'northern cape': ['northern cape', 'nc', 'kimberley', 'upington', 'springbok', 'kuruman', 'de aar', 'kathu', 'postmasburg', 'calvinia', 'colesberg']
-  };
-
-  const matchesProvince = (companyLocation, selectedProvince) => {
-    // Normalize both inputs to ensure consistent matching
-    const normalizedLoc = normalizeProvince(companyLocation);
-    const key = normalizeProvince(selectedProvince);
-    
-    // Get synonyms for the selected province
-    const terms = provinceSynonyms[key] || (key ? [key] : []);
-    
-    if (!terms.length) return true;
-    
-    // Check if any synonym matches the normalized location
-    // We check both directions to handle partial matches safely, but ensure normalizedLoc is not empty/too short for reverse match
-    return terms.some(term => normalizedLoc.includes(term) || (normalizedLoc.length > 2 && term.includes(normalizedLoc)));
-  };
-
-  // Helper to check if listing matches location (strictly checks branch locations)
-  const checkListingLocation = (listing, locationFilter) => {
-    if (!locationFilter || locationFilter === 'Any' || (Array.isArray(locationFilter) && locationFilter.length === 0)) return true;
-    
-    const filters = Array.isArray(locationFilter) ? locationFilter : [locationFilter];
-
-    return filters.some(filter => {
-      if (filter === 'Any') return true;
-      
-      let matchFound = false;
-
-      // Check branches first
-      if (Array.isArray(listing?.branches) && listing.branches.length > 0) {
-        matchFound = listing.branches.some(branch => 
-          matchesProvince(branch?.location?.province, filter) ||
-          matchesProvince(branch?.location?.city, filter) ||
-          matchesProvince(branch?.location?.town, filter)
-        );
-      }
-      
-      // If no match found in branches (or no branches), check company location as fallback
-      // This ensures companies with 0 branches (e.g. only HQ) are included
-      if (!matchFound) {
-         matchFound = matchesProvince(listing.company?.location, filter);
-      }
-
-      return matchFound;
-    });
-  };
-
   // Build hierarchical location options from listings
-  const locationHierarchy = useMemo(() => {
-    const hierarchy = {};
-    
-    // Initialize with default provinces so they always appear
-    (defaultFilterOptions.location || []).forEach(prov => {
-      // Normalize to ensure matching
-      const key = normalizeProvince(prov);
-      hierarchy[key] = { name: prov, count: 0, cities: {} };
-    });
+  const locationHierarchy = useLocationHierarchy(allListings, categories, activeTab);
 
-    // Determine relevant listings based on current category (activeTab)
-    // This ensures the counts in the dropdown match the search results
-    let relevantListings = allListings;
-    if (Array.isArray(allListings) && categories && categories.length > 0 && activeTab !== undefined) {
-      const desiredOrder = [
-        "SINGLE",
-        "DOUBLE",
-        "CHILD",
-        "HEAD",
-        "PLAQUES",
-        "CREMATION",
-      ];
-      const sortedCategories = desiredOrder
-        .map((name) =>
-          categories.find((cat) => cat?.name && cat.name.toUpperCase() === name)
-        )
-        .filter(Boolean);
-      const selectedCategoryObj = sortedCategories[activeTab];
-      
-      if (selectedCategoryObj) {
-        relevantListings = allListings.filter(listing => 
-          (listing?.listing_category?.name || "").toLowerCase() === selectedCategoryObj.name.toLowerCase()
-        );
-      }
-    }
-
-    if (Array.isArray(relevantListings)) {
-      relevantListings.forEach(listing => {
-        // Track which locations this listing has already contributed to
-        // to avoid double counting if multiple branches are in same location
-        const visited = {
-          provinces: new Set(),
-          cities: new Set(),
-          towns: new Set()
-        };
-
-        let hasBranches = false;
-
-        listing.branches?.forEach(branch => {
-          hasBranches = true;
-          const loc = branch.location;
-          if (loc?.province) {
-             let provKey = normalizeProvince(loc.province);
-             
-             // Try to map to canonical province if it's a synonym (e.g. 'gp' -> 'gauteng')
-             for (const [canonical, synonyms] of Object.entries(provinceSynonyms)) {
-                if (synonyms.includes(provKey)) {
-                  provKey = canonical;
-                  break;
-                }
-             }
-
-             // Add province if not exists (though it should from defaults, but for safety)
-             if (!hierarchy[provKey]) {
-               hierarchy[provKey] = { name: loc.province.trim(), count: 0, cities: {} };
-             }
-
-             // Increment province count if this listing hasn't counted for this province yet
-             if (!visited.provinces.has(provKey)) {
-               hierarchy[provKey].count += 1;
-               visited.provinces.add(provKey);
-             }
-             
-             if (loc.city) {
-               let cityRaw = loc.city.trim();
-               let cityKey = String(cityRaw).toLowerCase();
-               let townRaw = loc.town ? loc.town.trim() : null;
-
-               // Check for Metro grouping (e.g. "Durban North" -> City: Durban, Town: Durban North)
-               // This ensures that "Durban North", "Durban South" etc appear under "Durban"
-               const metros = ['durban', 'cape town', 'johannesburg', 'pretoria', 'bloemfontein', 'port elizabeth', 'east london'];
-               
-               for (const metro of metros) {
-                  if (cityKey !== metro && cityKey.startsWith(metro + ' ')) {
-                      // If the city is "Durban North" and town is empty, treat "Durban" as City and "Durban North" as Town
-                      if (!townRaw) {
-                          townRaw = cityRaw; 
-                          cityRaw = metro.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                          cityKey = metro;
-                      }
-                  }
-               }
-
-               if (!hierarchy[provKey].cities[cityKey]) {
-                 hierarchy[provKey].cities[cityKey] = { name: cityRaw, count: 0, towns: {} };
-               }
-               
-               // Increment city count
-               if (!visited.cities.has(cityKey)) {
-                 hierarchy[provKey].cities[cityKey].count += 1;
-                 visited.cities.add(cityKey);
-               }
-               
-               if (townRaw) {
-                 const townKey = townRaw.toLowerCase();
-                 if (!hierarchy[provKey].cities[cityKey].towns[townKey]) {
-                    hierarchy[provKey].cities[cityKey].towns[townKey] = { name: townRaw, count: 0 };
-                 }
-
-                 // Increment town count
-                 if (!visited.towns.has(townKey)) {
-                   hierarchy[provKey].cities[cityKey].towns[townKey].count += 1;
-                   visited.towns.add(townKey);
-                 }
-               }
-             }
-          }
-        });
-
-        // Fallback/Supplementary: Check company location
-        // We check company location to ensure we count it if the user filters by that location,
-        // even if branches exist (but might be in different locations).
-        // This aligns with checkListingLocation which allows matching either branch OR company.
-        if (listing.company?.location) {
-           const normalizedLoc = normalizeProvince(listing.company.location);
-           
-           // Find matching province
-           for (const [canonical, synonyms] of Object.entries(provinceSynonyms)) {
-              // Check if the location string contains any of the synonyms OR vice versa
-              // Guard against empty/short location strings matching everything
-              if (synonyms.some(term => normalizedLoc.includes(term) || (normalizedLoc.length > 2 && term.includes(normalizedLoc)))) {
-                 const provKey = canonical;
-                 
-                 // Add province if not exists
-                 if (!hierarchy[provKey]) {
-                   const displayName = (defaultFilterOptions.location || []).find(p => normalizeProvince(p) === provKey) || listing.company.location;
-                   hierarchy[provKey] = { name: displayName, count: 0, cities: {} };
-                 }
-
-                 // Increment province count
-                 if (!visited.provinces.has(provKey)) {
-                   hierarchy[provKey].count += 1;
-                   visited.provinces.add(provKey);
-                 }
-                 break; // Only count for the first matching province
-              }
-           }
-        }
-      });
-    }
-
-    // Force Durban City structure with specific towns as requested
-    const kznKey = 'kwazulu-natal';
-    if (hierarchy[kznKey]) {
-      // Ensure Durban exists (using "Durban" as name per request, key normalized to 'durban')
-      const durbanKey = 'durban';
-      if (!hierarchy[kznKey].cities[durbanKey]) {
-        hierarchy[kznKey].cities[durbanKey] = { name: 'Durban', count: 0, towns: {} };
-      } else {
-        // Update name if it exists but might be just "Durban"
-        hierarchy[kznKey].cities[durbanKey].name = 'Durban';
-      }
-      
-      const durbanTowns = ['Durban North', 'Durban South', 'Durban West', 'Durban CBD'];
-      durbanTowns.forEach(town => {
-        const townKey = town.toLowerCase();
-        if (!hierarchy[kznKey].cities[durbanKey].towns[townKey]) {
-          hierarchy[kznKey].cities[durbanKey].towns[townKey] = { name: town, count: 0 };
-        }
-      });
-
-      // Remove "Durban CBD" if it appears as a separate city
-      const durbanCbdKey = 'durban cbd';
-      if (hierarchy[kznKey].cities[durbanCbdKey]) {
-         delete hierarchy[kznKey].cities[durbanCbdKey];
-      }
-    }
-
-    // Convert to array structure for FilterDropdown
-    return Object.values(hierarchy).map(prov => ({
-      name: prov.name,
-      count: prov.count,
-      lat: getCityCoordinates(prov.name)?.lat,
-      lng: getCityCoordinates(prov.name)?.lng,
-      cities: Object.values(prov.cities).map(city => ({
-        name: city.name,
-        count: city.count,
-        towns: Object.values(city.towns).sort((a, b) => a.name.localeCompare(b.name))
-      })).sort((a, b) => a.name.localeCompare(b.name))
-    })).sort((a, b) => {
-      // Ensure 'Any' is at the top
-      if (a.name === 'Any') return -1;
-      if (b.name === 'Any') return 1;
-      return a.name.localeCompare(b.name);
-    });
-  }, [allListings, activeTab, categories]);
 
   // Local state to control mobile-only location modal
 
@@ -487,31 +216,15 @@ const SearchContainer = ({
   }, [filters, activeTab]);
 
   const mobileLocationsData = useMemo(() => {
-    const list = (filterOptions?.location || []).filter(Boolean);
+    return locationHierarchy.map((prov, index) => ({
+      id: prov.name === 'Any' ? 'all' : String(index),
+      name: prov.name,
+      count: prov.count,
+      lat: prov.lat || null,
+      lng: prov.lng || null
+    }));
+  }, [locationHierarchy]);
 
-    // Pre-compute counts per province from all listings
-    const totalCount = Array.isArray(allListings) ? allListings.length : 0;
-
-    const countForProvince = (provinceName) => {
-      if (!Array.isArray(allListings) || !provinceName) return 0;
-      const key = normalizeProvince(provinceName);
-      if (key === 'any') return totalCount;
-      return allListings.reduce((acc, listing) => {
-        return checkListingLocation(listing, provinceName) ? acc + 1 : acc;
-      }, 0);
-    };
-
-    return list.map((name, index) => {
-      const coords = getCityCoordinates(name);
-      return {
-        id: normalizeProvince(name) === 'any' ? 'all' : String(index),
-        name,
-        count: countForProvince(name),
-        lat: coords?.lat || null,
-        lng: coords?.lng || null,
-      };
-    });
-  }, [filterOptions, allListings]);
 
   // Effect: filter allListings based on URL params on load and whenever params change
   useEffect(() => {
