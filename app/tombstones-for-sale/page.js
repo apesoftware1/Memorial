@@ -28,6 +28,8 @@ import {
   LISTINGS_DELTA_QUERY,
 } from '@/graphql/queries';
 import { useListingCategories } from "@/hooks/use-ListingCategories"
+import { useLocationHierarchy } from '@/hooks/useLocationHierarchy';
+import { checkListingLocation } from '@/lib/locationHelpers';
 export default function Home() {
   const { categories, loading: categoriesLoading } = useListingCategories();
   const [activeTab, setActiveTab] = useState(0);
@@ -227,49 +229,6 @@ export default function Home() {
     return '';
   };
 
-  // Province synonyms and matching helper
-  const provinceSynonyms = {
-    'gauteng': ['gauteng', 'gp'],
-    'western cape': ['western cape', 'wc'],
-    'kwazulu-natal': ['kwazulu-natal', 'kwazulu natal', 'kzn'],
-    'eastern cape': ['eastern cape', 'ec'],
-    'free state': ['free state', 'fs'],
-    'north west': ['north west', 'nw'],
-    'limpopo': ['limpopo', 'lp'],
-    'mpumalanga': ['mpumalanga', 'mp'],
-    'northern cape': ['northern cape', 'nc']
-  };
-
-  const normalizeProvince = (name) =>
-    (name || '').toLowerCase().trim().replace(/\s+/g, ' ');
-
-  const matchesProvince = (companyLocation, selectedProvince) => {
-    const lowerLoc = (companyLocation || '').toLowerCase();
-    const key = normalizeProvince(selectedProvince);
-    const terms = provinceSynonyms[key] || (key ? [key] : []);
-    if (!terms.length) return true;
-    return terms.some(term => lowerLoc.includes(term));
-  };
-
-  // Helper to check if listing matches location (company location OR branch location)
-  const checkListingLocation = (listing, locationFilter) => {
-    if (!locationFilter || locationFilter === 'Any' || locationFilter === 'All') return true;
-    
-    // Check company location
-    if (matchesProvince(listing?.company?.location, locationFilter)) return true;
-    
-    // Check branches
-    if (Array.isArray(listing?.branches)) {
-      return listing.branches.some(branch => 
-        // Check province (primary) then fallbacks
-        matchesProvince(branch?.location?.province, locationFilter) ||
-        matchesProvince(branch?.location?.address, locationFilter) ||
-        matchesProvince(branch?.location?.city, locationFilter) ||
-        matchesProvince(branch?.location?.town, locationFilter)
-      );
-    }
-    return false;
-  };
 
   // Generic filter function that accepts a filters object
   const filterListingsFrom = (filtersObj) => {

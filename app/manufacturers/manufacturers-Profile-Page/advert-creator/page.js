@@ -778,13 +778,14 @@ export default function CreateListingForm() {
       } else {
         const errorData = await res.text()
         console.error('Strapi API Error:', res.status, errorData)
-        setSubmitMessage(`Error creating listing: ${res.status} - ${errorData}`);
+        // User requested to show a generic support message instead of technical details
+        setSubmitMessage("An error occurred while creating the listing. Please contact support if this persists.");
         setShowMessage(true);
         setIsSubmitting(false);
       }
     } catch (error) {
       console.error('Error:', error)
-      setSubmitMessage(`Error uploading images or creating listing: ${error.message}`);
+      setSubmitMessage("An unexpected error occurred. Please contact support.");
       setShowMessage(true);
       setIsSubmitting(false);
     }
