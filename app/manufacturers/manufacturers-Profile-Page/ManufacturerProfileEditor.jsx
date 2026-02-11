@@ -2589,7 +2589,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
             )}
 
             {/* Banner Ad Section */}
-            {((!isOwner && !mobile) || (isOwner && showBannerAdUpdate)) && (
+            {isOwner && showBannerAdUpdate && (
               <>
                 {isOwner && (
                   <div

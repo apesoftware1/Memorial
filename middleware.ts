@@ -26,7 +26,9 @@ export default withAuth({
 
 export const config = {
   matcher: [
-    "/manufacturers/manufacturers-Profile-Page/:path*",
+    "/manufacturers/manufacturers-Profile-Page",
+    "/manufacturers/manufacturers-Profile-Page/advert-creator/:path*",
+    "/manufacturers/manufacturers-Profile-Page/update-listing/:path*",
     "/regan-dashboard/:path*",
   ],
 }
