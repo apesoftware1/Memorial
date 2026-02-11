@@ -1818,11 +1818,13 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                   Profile
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleCreateListing}>
-                  + Create Listing
+                  {isOwner && "+ Create Listing"}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowBannerAdUpdate(true)}>
-                  Update Banner Ad
-                </DropdownMenuItem>
+                {isOwner && (
+                  <DropdownMenuItem onClick={() => setShowBannerAdUpdate(true)}>
+                    Update Banner Ad
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
