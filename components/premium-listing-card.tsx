@@ -36,7 +36,8 @@ export function PremiumListingCard({
   onPrimaryClick,
   compact = false,
   maxThumbnails = 3,
-}: PremiumListingCardProps): React.ReactElement {
+  fixedHeight = false,
+}: PremiumListingCardProps & { fixedHeight?: boolean }): React.ReactElement {
   const router = useRouter();
   const [distanceInfo, setDistanceInfo] = useState<DistanceInfo | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -224,7 +225,10 @@ export function PremiumListingCard({
         </div>
       )}
       <div
-        className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto transition-all duration-300 h-full flex flex-col hover:border-b-2 hover:border-[#0090e0] hover:shadow-lg hover:shadow-gray-400 cursor-pointer"
+        className={cn(
+          "bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto transition-all duration-300 flex flex-col hover:border-b-2 hover:border-[#0090e0] hover:shadow-lg hover:shadow-gray-400 cursor-pointer",
+          fixedHeight ? "h-[420px]" : "h-full"
+        )}
         onClick={handleCardClick}
         onKeyDown={handleKeyDown}
         role="button"
@@ -341,11 +345,11 @@ export function PremiumListingCard({
             </div>
           </div>
           {/* Title, Details, Features (Mobile) */}
-          <h2 className="text-lg font-bold text-gray-800 mb-2 uppercase">
+          <h2 className={cn("text-lg font-bold text-gray-800 mb-2 uppercase", fixedHeight && "line-clamp-2 h-[48px]")}>
             {listing.title}
           </h2>
           {/* --- Product Details Section (same as desktop) --- */}
-          <div className="space-y-0.5 mb-2">
+          <div className={cn("space-y-0.5 mb-2", fixedHeight && "line-clamp-3")}>
             {/* First line: Tombstone Type, Full Tombstone (bold if present), stoneType, style/theme, culture */}
             <div className="text-xs text-gray-700 ">
               <strong>{listing.listing_category?.name || getCategoryLabel()}</strong>
@@ -528,10 +532,10 @@ export function PremiumListingCard({
         </div>
       </div>
       {/* Desktop Layout (768px and up) - Equal 50/50 split */}
-      <div className="hidden md:flex min-h-[300px]">
+      <div className={cn("hidden md:flex min-h-[300px]", fixedHeight && "h-full min-h-0")}>
         {/* Left - Main Image (50% width) */}
         <div className="w-1/2 flex-shrink-0 flex flex-col">
-          <div className={cn("relative flex-1", compact ? "min-h-[240px]" : "min-h-[300px]")}> 
+          <div className={cn("relative flex-1", fixedHeight ? "h-full" : (compact ? "min-h-[240px]" : "min-h-[300px]"))}> 
             <Image
               src={cloudinaryOptimized(listing.mainImageUrl, 1600) || "/placeholder.svg"}
               alt={listing.title}

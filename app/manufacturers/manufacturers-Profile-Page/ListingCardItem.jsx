@@ -152,6 +152,7 @@ const ListingCardItem = memo(({
                 listing.documentId || listing.id
                 }`}
                 isOwner={isOwner}
+                fixedHeight={true}
             />
             {isOwner && (
                 <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
