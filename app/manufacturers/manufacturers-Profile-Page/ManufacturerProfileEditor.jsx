@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Star, MapPin, Edit2, Upload, Lock, RefreshCw, Activity, Trash2, X } from "lucide-react";
 import React, { useState, useEffect, useRef, useCallback, useMemo, forwardRef } from "react";
-import { VirtuosoGrid } from 'react-virtuoso';
+import { Virtuoso, VirtuosoGrid } from 'react-virtuoso';
 import { useRouter, useSearchParams } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -182,6 +182,27 @@ export default function ManufacturerProfileEditor({
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const isMounted = useRef(false);
+
+  const gridComponents = useMemo(() => ({
+    List: forwardRef(({ style, children, fixedItemHeight, ...props }, ref) => (
+      <div
+        ref={ref}
+        style={{
+          ...style,
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 40,
+          alignItems: "stretch",
+        }}
+        {...props}
+      >
+        {children}
+      </div>
+    )),
+    Item: forwardRef(({ fixedItemHeight, ...props }, ref) => (
+      <div {...props} ref={ref} />
+    ))
+  }), []);
 
   // Load persisted sort option on mount
   useEffect(() => {
@@ -3272,27 +3293,40 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
             </>
           )}
 
-          <VirtuosoGrid
+          {mobile ? (
+            <Virtuoso
+              useWindowScroll
+              totalCount={sortedAndFilteredListings.length}
+              itemContent={(index) => {
+                const listing = sortedAndFilteredListings[index];
+                return (
+                  <ListingCardItem
+                    key={listing.documentId || listing.id}
+                    listing={listing}
+                    isFirstCard={index === 0}
+                    selectionMode={selectionMode}
+                    isSelected={selectedListingIds.has(listing.documentId || listing.id)}
+                    onToggleSelection={toggleListingSelection}
+                    company={company}
+                    branchFromUrl={branchFromUrl}
+                    isOwner={isOwner}
+                    isDuplicating={isDuplicating}
+                    isDeleting={isDeleting}
+                    onDuplicate={handleDuplicate}
+                    onDelete={handleDeleteListing}
+                    onEdit={handleEditListing}
+                    onCreateSpecial={handleCreateSpecial}
+                    onAddToBranch={handleAddToBranch}
+                    fixedHeight={false}
+                  />
+                );
+              }}
+            />
+          ) : (
+            <VirtuosoGrid
             useWindowScroll
-            fixedItemHeight={420}
             totalCount={sortedAndFilteredListings.length}
-            components={useMemo(() => ({
-              List: forwardRef(({ style, children, ...props }, ref) => (
-                <div
-                  ref={ref}
-                  style={{
-                    ...style,
-                    display: "grid",
-                    gridTemplateColumns: mobile ? "1fr" : "1fr 1fr",
-                    gap: mobile ? 20 : 40,
-                    alignItems: "stretch",
-                  }}
-                  {...props}
-                >
-                  {children}
-                </div>
-              ))
-            }), [mobile])}
+            components={gridComponents}
             itemContent={(index) => {
               const listing = sortedAndFilteredListings[index];
               return (
@@ -3313,10 +3347,12 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                   onEdit={handleEditListing}
                   onCreateSpecial={handleCreateSpecial}
                   onAddToBranch={handleAddToBranch}
+                  fixedHeight={true}
                 />
               );
             }}
           />
+          )}
         </div>
 
 
