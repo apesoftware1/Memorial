@@ -3274,6 +3274,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
 
           <VirtuosoGrid
             useWindowScroll
+            fixedItemHeight={420}
             totalCount={sortedAndFilteredListings.length}
             components={useMemo(() => ({
               List: forwardRef(({ style, children, ...props }, ref) => (
