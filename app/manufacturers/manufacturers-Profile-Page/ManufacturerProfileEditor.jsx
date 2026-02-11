@@ -1817,9 +1817,11 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                 >
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleCreateListing}>
-                  {isOwner && "+ Create Listing"}
-                </DropdownMenuItem>
+                {isOwner && (
+                  <DropdownMenuItem onClick={handleCreateListing}>
+                    + Create Listing
+                  </DropdownMenuItem>
+                )}
                 {isOwner && (
                   <DropdownMenuItem onClick={() => setShowBannerAdUpdate(true)}>
                     Update Banner Ad
@@ -2868,6 +2870,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                           {social.displayName}
                         </Link>
                       ) : (
+                        isOwner && (
                         <span
                           style={{
                             color: "#888",
@@ -2880,6 +2883,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                         >
                           {social.displayName} (not set)
                         </span>
+                        )
                       )}
                     </div>
                   ))}
