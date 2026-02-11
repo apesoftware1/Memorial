@@ -49,7 +49,8 @@ const ListingCardItem = memo(({
   onCreateSpecial,
   onAddToBranch,
   onSelectAll,
-  allSelected
+  allSelected,
+  fixedHeight = true
 }) => {
     const handleToggle = useCallback(() => {
         onToggleSelection(listing.documentId || listing.id);
@@ -152,6 +153,7 @@ const ListingCardItem = memo(({
                 listing.documentId || listing.id
                 }`}
                 isOwner={isOwner}
+                fixedHeight={fixedHeight}
             />
             {isOwner && (
                 <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
