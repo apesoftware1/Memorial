@@ -1698,6 +1698,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
             </button>
 
             {/* Notification Button */ }
+            {isOwner && (
             <button
               onClick={handleNotificationClick}
               style={{
@@ -1742,8 +1743,10 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                 </span>
               )}
             </button>
+            )}
 
             {/* Branch Options Button */}
+            {isOwner && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -1784,8 +1787,10 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            )}
 
             {/* Settings Button */}
+            {isOwner && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -1829,6 +1834,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+            )}
           </div>
         )}
         {/* Combined Profile Card - all info in one card */}
@@ -2588,123 +2594,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
               </div>
             )}
 
-            {/* Banner Ad Section */}
-            {isOwner && showBannerAdUpdate && (
-              <>
-                {isOwner && (
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: "#888",
-                      fontWeight: 700,
-                      marginBottom: 6,
-                      textAlign: "center",
-                      width: "100%",
-                      display: "block",
-                      marginTop: 16,
-                    }}
-                  >
-                    Banner Ad
-                  </div>
-                )}
-                <div
-                  style={{
-                    border: isOwner ? "2px solid #00baff" : "#e0e0e0",
-                    borderRadius: 8,
-                    background: "#fff",
-                    padding: 8,
-                    display: "inline-block",
-                    position: "relative",
-                    minWidth: 240,
-                    minHeight: 120,
-                    marginBottom: 16,
-                    cursor: isOwner ? "pointer" : "default",
-                  }}
-                  onClick={() => isOwner && bannerInputRef.current?.click()}
-                >
-                  {isOwner && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowBannerAdUpdate(false);
-                      }}
-                      style={{
-                        position: "absolute",
-                        top: -12,
-                        right: -12,
-                        background: "#ff4444",
-                        borderRadius: "50%",
-                        border: "2px solid #fff",
-                        width: 28,
-                        height: 28,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        zIndex: 100,
-                        boxShadow: "0 2px 6px rgba(0,0,0,0.3)"
-                      }}
-                    >
-                      <X size={16} color="#fff" />
-                    </button>
-                  )}
-                  <div
-                    style={{ position: "relative", width: "100%", height: "100%" }}
-                  >
-                    <Image
-                      src={`${
-                        company.bannerAdUrl || company.bannerAd?.url || "/placeholder-logo.svg"
-                      }?t=${Date.now()}`}
-                      alt="Banner Ad"
-                      width={220}
-                      height={110}
-                      key={company.bannerAdUrl || company.bannerAd?.url}
-                      style={{
-                        objectFit: "contain",
-                        display: "block",
-                        margin: "0 auto",
-                      }}
-                    />
-                    {isOwner && isUploadingBanner && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          backgroundColor: "rgba(0,0,0,0.3)",
-                        }}
-                      >
-                        <Upload style={{ width: 24, height: 24, color: "white" }} />
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    type="file"
-                    ref={bannerInputRef}
-                    style={{ display: "none" }}
-                    accept="image/*"
-                    onChange={handleBannerAdUpload}
-                  />
-                </div>
-                {isOwner && (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      fontSize: 12,
-                      color: "#666",
-                      marginBottom: 8,
-                    }}
-                  >
-                    {isUploadingBanner ? "Uploading..." : "Click to update banner ad"}
-                  </div>
-                )}
-              </>
-            )}
+
 
             {/* Socials label - conditionally show */}
             {(isOwner || socialLinks.some(social => social.url && social.url !== "#")) && (

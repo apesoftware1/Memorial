@@ -4,6 +4,7 @@ import { PremiumListingCard } from "@/components/premium-listing-card";
 import { StandardListingCard } from "@/components/standard-listing-card";
 import BannerAd from "@/components/BannerAd";
 import FeaturedListings from "@/components/FeaturedListings";
+import NoListingsFallback from "@/components/NoListingsFallback";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { PageLoader, CardSkeleton } from "@/components/ui/loader";
 import { useQuery } from "@apollo/client";
@@ -193,44 +194,60 @@ const IndexRender = ({
             
             {/* Mobile: Horizontal scrolling cards */}
             <div className="md:hidden">
-              <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide px-4" ref={featuredScrollRef}>
-                {[0, 1, 2].map(idx =>
-                  featuredListings && featuredListings[idx] ? (
-                    <div key={featuredListings[idx].id || idx} className="flex-shrink-0 w-72 snap-start">
-                      <FeaturedListings listing={featuredListings[idx]} />
-                    </div>
-                  ) : (
-                    <div key={"fallback-" + idx} className="flex-shrink-0 w-72 snap-start flex justify-center">
-                      {fallbackCard("featured listings")}
-                    </div>
-                  )
-                )}
-              </div>
-              {/* Pagination Dots - Mobile only */}
-              <div className="flex justify-center mt-4 space-x-3 mb-4">
-                {[0, 1, 2].map((index) => (
-                  <button
-                    key={index}
-                    onClick={() => scrollToFeaturedCard(index)}
-                    className={`w-2.5 h-2.5 rounded-full transition-all duration-200 shadow-sm ${
-                      featuredActiveIndex === index ? 'bg-blue-700 ring-2 ring-blue-300 scale-110' : 'bg-gray-300 hover:bg-blue-400'
-                    }`}
-                    aria-label={`Go to card ${index + 1}`}
-                  ></button>
-                ))}
-              </div>
+              {featuredListings && featuredListings.length > 0 ? (
+                <>
+                  <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide px-4" ref={featuredScrollRef}>
+                    {[0, 1, 2].map(idx =>
+                      featuredListings[idx] ? (
+                        <div key={featuredListings[idx].id || idx} className="flex-shrink-0 w-72 snap-start">
+                          <FeaturedListings listing={featuredListings[idx]} />
+                        </div>
+                      ) : (
+                        <div key={"fallback-" + idx} className="flex-shrink-0 w-72 snap-start flex justify-center">
+                          {fallbackCard("featured listings")}
+                        </div>
+                      )
+                    )}
+                  </div>
+                  {/* Pagination Dots - Mobile only */}
+                  <div className="flex justify-center mt-4 space-x-3 mb-4">
+                    {[0, 1, 2].map((index) => (
+                      <button
+                        key={index}
+                        onClick={() => scrollToFeaturedCard(index)}
+                        className={`w-2.5 h-2.5 rounded-full transition-all duration-200 shadow-sm ${
+                          featuredActiveIndex === index ? 'bg-blue-700 ring-2 ring-blue-300 scale-110' : 'bg-gray-300 hover:bg-blue-400'
+                        }`}
+                        aria-label={`Go to card ${index + 1}`}
+                      ></button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                !loading ? (
+                  <div className="px-4 mb-4">
+                    <NoListingsFallback message="No featured listings available" />
+                  </div>
+                ) : null
+              )}
             </div>
 
             {/* Desktop: Grid layout */}
-            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[0, 1, 2].map(idx =>
-                featuredListings && featuredListings[idx] ? (
-                  <FeaturedListings key={featuredListings[idx].id || idx} listing={featuredListings[idx]} />
-                ) : (
-                  <div key={"fallback-" + idx} className="flex-1 flex justify-center">
-                    {fallbackCard("featured listings")}
-                  </div>
-                )
+            <div className="hidden md:block">
+              {featuredListings && featuredListings.length > 0 ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[0, 1, 2].map(idx =>
+                    featuredListings[idx] ? (
+                      <FeaturedListings key={featuredListings[idx].id || idx} listing={featuredListings[idx]} />
+                    ) : (
+                      <div key={"fallback-" + idx} className="flex-1 flex justify-center">
+                        {fallbackCard("featured listings")}
+                      </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                !loading ? <NoListingsFallback message="No featured listings available" /> : null
               )}
             </div>
           </div>
@@ -255,7 +272,7 @@ const IndexRender = ({
                 <PremiumListingCard listing={item} />
               </div>
             ))
-          : fallbackCard("premium listings")}
+          : (!loading ? <NoListingsFallback message="No premium listings available" /> : null)}
       </section>
 
       {/* 6. second Banner Advertisement */}
@@ -284,7 +301,7 @@ const IndexRender = ({
                 <PremiumListingCard listing={item} />
               </div>
             ))
-          : fallbackCard("premium listings")}
+          : (!loading ? <NoListingsFallback message="No premium listings available" /> : null)}
       </section>
 
       {/* 8. Featured Manufacturer Section */}
@@ -316,52 +333,53 @@ const IndexRender = ({
                   </div>
                 </div>
                 <div className="text-blue-600 text-sm mb-4">{featuredManufacturer.location}</div>
-              </>
-            ) : fallbackCard("manufacturer")}
-            
-            {/* Mobile: Horizontal scrolling cards */}
-            <div className="md:hidden">
-              <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide">
-                {[0, 1, 2].map(idx =>
-                  manufacturerListings && manufacturerListings[idx] ? (
-                    <div key={manufacturerListings[idx].id || idx} className="flex-shrink-0 w-80 snap-start">
-                      <FeaturedListings listing={manufacturerListings[idx]} />
-                    </div>
-                  ) : (
-                    <div key={"fallback-manufacturer-" + idx} className="flex-shrink-0 w-80 snap-start flex justify-center">
-                      {fallbackCard("manufacturer listings")}
-                    </div>
-                  )
-                )}
-              </div>
-              {/* Pagination Dots - Mobile only */}
-              <div className="flex justify-center mt-4 space-x-2">
-                {[0, 1, 2].map((index) => (
-                  <div 
-                    key={index} 
-                    className="w-3 h-3 rounded-full bg-gray-300"
-                  ></div>
-                ))}
-              </div>
-            </div>
 
-            {/* Desktop: Grid layout */}
-            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[0, 1, 2].map(idx =>
-                manufacturerListings && manufacturerListings[idx] ? (
-                  <FeaturedListings key={manufacturerListings[idx].id || idx} listing={manufacturerListings[idx]} />
-                ) : (
-                  <div key={"fallback-manufacturer-" + idx} className="flex-1 flex justify-center">
-                    {fallbackCard("manufacturer listings")}
+                {/* Mobile: Horizontal scrolling cards */}
+                <div className="md:hidden">
+                  <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide">
+                    {[0, 1, 2].map(idx =>
+                      manufacturerListings && manufacturerListings[idx] ? (
+                        <div key={manufacturerListings[idx].id || idx} className="flex-shrink-0 w-80 snap-start">
+                          <FeaturedListings listing={manufacturerListings[idx]} />
+                        </div>
+                      ) : (
+                        <div key={"fallback-manufacturer-" + idx} className="flex-shrink-0 w-80 snap-start flex justify-center">
+                          {fallbackCard("manufacturer listings")}
+                        </div>
+                      )
+                    )}
                   </div>
-                )
-              )}
-            </div>
+                  {/* Pagination Dots - Mobile only */}
+                  <div className="flex justify-center mt-4 space-x-2">
+                    {[0, 1, 2].map((index) => (
+                      <div 
+                        key={index} 
+                        className="w-3 h-3 rounded-full bg-gray-300"
+                      ></div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Desktop: Grid layout */}
+                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[0, 1, 2].map(idx =>
+                    manufacturerListings && manufacturerListings[idx] ? (
+                      <FeaturedListings key={manufacturerListings[idx].id || idx} listing={manufacturerListings[idx]} />
+                    ) : (
+                      <div key={"fallback-manufacturer-" + idx} className="flex-1 flex justify-center">
+                        {fallbackCard("manufacturer listings")}
+                      </div>
+                    )
+                  )}
+                </div>
+              </>
+            ) : (
+              !loading ? <NoListingsFallback message="No featured manufacturer available" /> : null
+            )}
           </div>
         </div>
       </section>
 
-      {/* 9. Standard Listings Section */}
       <section className="mt-0 pt-2 bg-gray-50 mb-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center mb-0">
@@ -380,7 +398,10 @@ const IndexRender = ({
             ))}
           </div>
         ) : (
-          fallbackCard("standard listings")
+          <NoListingsFallback
+            message="No standard listings available"
+            subMessage="Try adjusting your filters or check back later."
+          />
         )}
       </section>
 
@@ -491,6 +512,11 @@ const IndexRender = ({
           </button>
         </nav>
       </div>
+      {(!loading && premListings.length === 0 && featuredListings.length === 0 && stdListings.length === 0) && (
+        <div className="container mx-auto px-4 mb-8">
+          <NoListingsFallback />
+        </div>
+      )}
     </>
   );
 };
