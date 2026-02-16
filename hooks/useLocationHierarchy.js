@@ -3,7 +3,8 @@ import {
   normalizeProvince, 
   provinceSynonyms, 
   getCityCoordinates, 
-  DEFAULT_PROVINCES 
+  DEFAULT_PROVINCES,
+  matchesProvince
 } from '@/lib/locationHelpers';
 
 export function useLocationHierarchy(allListings, categories, activeTab) {
@@ -45,15 +46,14 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
           cities: new Set(),
           towns: new Set()
         };
+        let hasProvinceFromBranches = false;
 
-        // Strict: Only use branches for location options
         if (Array.isArray(listing.branches)) {
           listing.branches.forEach(branch => {
             const loc = branch.location;
             if (loc?.province) {
                let provKey = normalizeProvince(loc.province);
                
-               // Try to map to canonical province if it's a synonym
                for (const [canonical, synonyms] of Object.entries(provinceSynonyms)) {
                   if (synonyms.includes(provKey)) {
                     provKey = canonical;
@@ -61,16 +61,15 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
                   }
                }
 
-               // Add province if not exists
                if (!hierarchy[provKey]) {
                  const niceName = DEFAULT_PROVINCES.find(p => normalizeProvince(p) === provKey) || loc.province.trim();
                  hierarchy[provKey] = { name: niceName, count: 0, cities: {} };
                }
 
-               // Increment province count
                if (!visited.provinces.has(provKey)) {
                  hierarchy[provKey].count += 1;
                  visited.provinces.add(provKey);
+                 hasProvinceFromBranches = true;
                }
                
                if (loc.city) {
@@ -78,7 +77,6 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
                  let cityKey = String(cityRaw).toLowerCase();
                  let townRaw = loc.town ? loc.town.trim() : null;
 
-                 // Metro grouping
                  const metros = ['durban', 'cape town', 'johannesburg', 'pretoria', 'bloemfontein', 'port elizabeth', 'east london'];
                  
                  for (const metro of metros) {
@@ -95,7 +93,6 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
                    hierarchy[provKey].cities[cityKey] = { name: cityRaw, count: 0, towns: {} };
                  }
                  
-                 // Increment city count
                  if (!visited.cities.has(cityKey)) {
                    hierarchy[provKey].cities[cityKey].count += 1;
                    visited.cities.add(cityKey);
@@ -107,7 +104,6 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
                       hierarchy[provKey].cities[cityKey].towns[townKey] = { name: townRaw, count: 0 };
                    }
 
-                   // Increment town count
                    if (!visited.towns.has(townKey)) {
                      hierarchy[provKey].cities[cityKey].towns[townKey].count += 1;
                      visited.towns.add(townKey);
@@ -116,6 +112,30 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
                }
             }
           });
+        }
+
+        if (!hasProvinceFromBranches && listing?.company?.location) {
+          const companyLocation = listing.company.location;
+          let matchedProvKey = null;
+
+          for (const prov of DEFAULT_PROVINCES) {
+            if (prov === 'Any') continue;
+            if (matchesProvince(companyLocation, prov)) {
+              matchedProvKey = normalizeProvince(prov);
+              break;
+            }
+          }
+
+          if (matchedProvKey) {
+            if (!hierarchy[matchedProvKey]) {
+              const niceName = DEFAULT_PROVINCES.find(p => normalizeProvince(p) === matchedProvKey) || companyLocation.trim();
+              hierarchy[matchedProvKey] = { name: niceName, count: 0, cities: {} };
+            }
+            if (!visited.provinces.has(matchedProvKey)) {
+              hierarchy[matchedProvKey].count += 1;
+              visited.provinces.add(matchedProvKey);
+            }
+          }
         }
       });
     }
