@@ -270,14 +270,10 @@ export default function Home() {
 
     const featured = validListings.filter((l) => l.isFeatured);
 
-    const premiumRaw = validListings.filter(
-      (l) => l.isPremium && !l.isFeatured
-    );
+    const premiumRaw = validListings.filter((l) => l.isPremium);
     const premium = getDiverseShuffledListings(premiumRaw);
 
-    const standard = validListings.filter(
-      (l) => l.isStandard && !l.isFeatured && !l.isPremium
-    );
+    const standard = validListings.filter((l) => l.isStandard);
 
     setPremListings(premium);
     setFeaturedListings(featured);

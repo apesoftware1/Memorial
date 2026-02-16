@@ -83,14 +83,14 @@ export function PremiumListingCardModal({
         <div className="p-4">
           <div className="grid grid-cols-1 gap-4 mt-7">
             {branches.map((branch: any, index: number) => (
-                <PremiumBranchCard 
-                  key={branch.id || branch.documentId || index}
-                  branch={branch}
-                  listing={listing}
-                  onSelect={onBranchSelect}
-                  branchCount={branches.length}
-                />
-              ))}
+              <PremiumBranchCard 
+                key={`${branch.id || branch.documentId || "branch"}-${index}`}
+                branch={branch}
+                listing={listing}
+                onSelect={onBranchSelect}
+                branchCount={branches.length}
+              />
+            ))}
           </div>
         </div>
 
