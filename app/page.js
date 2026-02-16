@@ -235,11 +235,11 @@ export default function Home() {
  {console.log()}
   // const { data, loading, error } = useLoggedQuery(GET_LISTINGS, {}, 'GET_LISTINGS');
   // const strapiListings = data?.listings || [];
- const { data,loading, error } = useProgressiveQuery({
+ const { data, loading, error } = useProgressiveQuery({
     initialQuery: LISTINGS_INITIAL_QUERY,
     fullQuery: LISTINGS_FULL_QUERY,
     deltaQuery: LISTINGS_DELTA_QUERY,
-    variables: {},
+    variables: { limit: 20 },
     storageKey: 'listings:lastUpdated',
     refreshInterval: 60000, // Reduced from 3000ms to 60s to save bandwidth
     staleTime: 1000 * 60 * 5, // 5 minutes staleness
@@ -264,21 +264,25 @@ export default function Home() {
   useEffect(() => {
     if (loading || error) return;
 
-    // Filter premium listings and shuffle them to ensure company diversity (top 5 from different companies)
-    const premiumRaw = nonSpecialListings.filter(l => l.isPremium);
+    const validListings = strapiListings.filter(
+      (l) => l.isFeatured || l.isPremium || l.isStandard
+    );
+
+    const featured = validListings.filter((l) => l.isFeatured);
+
+    const premiumRaw = validListings.filter(
+      (l) => l.isPremium && !l.isFeatured
+    );
     const premium = getDiverseShuffledListings(premiumRaw);
 
-    const featured = nonSpecialListings.filter(l => l.isFeatured);
-    const standard = nonSpecialListings.filter(l =>
-      typeof l.isStandard === 'boolean'
-        ? l.isStandard
-        : !l.isPremium && !l.isFeatured
+    const standard = validListings.filter(
+      (l) => l.isStandard && !l.isFeatured && !l.isPremium
     );
 
     setPremListings(premium);
     setFeaturedListings(featured);
     setStdListings(standard);
-  }, [nonSpecialListings, loading, error]);
+  }, [strapiListings, loading, error]);
 
   // Fetch companies for FAQ banner (must be above return)
   
