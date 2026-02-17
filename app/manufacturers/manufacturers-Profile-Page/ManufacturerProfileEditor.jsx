@@ -35,7 +35,7 @@ import CompanyMediaUpload from "@/components/CompanyMediaUpload";
 import { updateBranch } from "@/graphql/mutations/updateBranch";
 import { useGuestLocation } from "@/hooks/useGuestLocation";
 import ListingCardItem from "./ListingCardItem";
-import { getIconPath, OPERATING_DAY_ORDER, SOCIAL_ICON_MAP } from "./constants";
+import { getIconPath, OPERATING_DAY_ORDER, SOCIAL_ICON_MAP, createListingSlug } from "./constants";
 import { useDebounce } from "@/hooks/useDebounce";
 
   // Helper function to find a branch by name
@@ -141,7 +141,6 @@ function isMobile() {
   return window.innerWidth <= 768;
 }
 
-// Helper to parse price as number from string or number
 function parsePrice(val) {
   if (typeof val === "number") return val;
   if (typeof val === "string") {
@@ -152,14 +151,6 @@ function parsePrice(val) {
 }
 
 import { addListingToBranchListing, addListingToBranch } from "@/lib/addListingToBranch";
-
-// Helper to slugify text
-const slugify = (s) =>
-  String(s || "")
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-");
 
 export default function ManufacturerProfileEditor({
   isOwner,
@@ -507,9 +498,10 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       const full = data?.listing;
       if (!full) throw new Error("Full listing details not found.");
 
-      // 3) Compute unique slug and duplicated title
-      const baseSlug = slugify(full.slug || full.title || "listing");
-      const uniqueSlug = `${baseSlug}-copy-${Date.now().toString(36)}`;
+      const duplicatedSlug = createListingSlug(
+        full.title || "listing",
+        Date.now().toString(36)
+      );
       const duplicatedTitle = `${full.title || "Listing"} 1`;
 
       // 4) Resolve category documentId using live categories (match by name)
@@ -539,7 +531,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       const payload = {
         data: {
           title: duplicatedTitle,
-          slug: uniqueSlug,
+          slug: duplicatedSlug,
           description: full.description || "",
           price: Number(full.price) || 0,
           adFlasher: full.adFlasher || "",

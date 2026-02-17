@@ -147,3 +147,35 @@ export const SOCIAL_ICON_MAP = {
   messenger:
     "/new files/Social Media Icons/Social Media Icons/Advert Set-Up-06.svg", // Messenger icon (confirmed)
 };
+
+export const createListingSlug = (title, suffix) => {
+  const maxTotalLength = 200;
+  const maxBaseLength = 180;
+  const maxSuffixLength = 6;
+  let str = String(title || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "");
+  str = str.replace(/[^a-z0-9\s-]/g, "");
+  str = str.trim().replace(/\s+/g, "-").replace(/-+/g, "-");
+  let base = str.slice(0, maxBaseLength).replace(/-+$/g, "");
+  let slug = base;
+  if (suffix) {
+    let sfx = String(suffix)
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "")
+      .slice(0, maxSuffixLength);
+    if (sfx) {
+      const separatorLength = 1;
+      const allowedBaseLength = maxTotalLength - (sfx.length + separatorLength);
+      if (slug.length > allowedBaseLength) {
+        slug = slug.slice(0, allowedBaseLength).replace(/-+$/g, "");
+      }
+      slug = slug ? `${slug}-${sfx}` : sfx;
+    }
+  }
+  if (slug.length > maxTotalLength) {
+    slug = slug.slice(0, maxTotalLength).replace(/-+$/g, "");
+  }
+  return slug;
+};

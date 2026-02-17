@@ -12,6 +12,7 @@ import { GET_LISTINGS } from '@/graphql/queries/getListings'
 import { useListingCategories } from '@/hooks/use-ListingCategories'
 import { desiredOrder } from '@/lib/categories'
 import { AlertTriangle } from 'lucide-react'
+import { createListingSlug } from '../constants'
 
 const colorOptions = [
   'Black',
@@ -598,6 +599,8 @@ export default function CreateListingForm() {
     setShowMessage(false);
 
     try {
+      const slug = createListingSlug(formData.title);
+
       // Upload main image to Cloudinary
       const uploadedMainImage = mainImage ? await uploadToCloudinary(mainImage) : null
       
@@ -610,7 +613,7 @@ export default function CreateListingForm() {
     const payload = {
       data: {
         title: formData.title,
-        slug: formData.title.toLowerCase().replace(/\s+/g, '-'),
+        slug,
         description: formData.description,
         price: parseFloat(formData.price),
         adFlasher: formData.adFlasher,
@@ -709,7 +712,7 @@ export default function CreateListingForm() {
               __typename: 'Listing',
               documentId: responseData.data.documentId,
               title: formData.title,
-              slug: formData.title.toLowerCase().replace(/\s+/g, '-'),
+              slug,
               description: formData.description,
               price: parseFloat(formData.price),
               adFlasher: formData.adFlasher,
