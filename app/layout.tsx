@@ -128,9 +128,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </ApolloWrapper>
         </SessionWrapper>
         <Toaster />
-        <Suspense fallback={null}>
-          <GAEvents />
-        </Suspense>
       </body>
     </html>
   )

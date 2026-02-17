@@ -2547,6 +2547,31 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                     margin: "0 auto",
                   }}
                 />
+                {isOwner && !isUploading && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 6,
+                      left: 0,
+                      right: 0,
+                      display: "flex",
+                      justifyContent: "center",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 11,
+                        padding: "2px 8px",
+                        borderRadius: 999,
+                        backgroundColor: "rgba(0,0,0,0.55)",
+                        color: "#fff",
+                      }}
+                    >
+                      Click to update logo
+                    </span>
+                  </div>
+                )}
                 {isOwner && isUploading && (
                   <div
                     style={{
@@ -2573,19 +2598,147 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                 onChange={handleLogoUpload}
               />
             </div>
-            {isOwner && !mobile && (
+            {isOwner && showBannerAdUpdate && (
               <div
                 style={{
-                  textAlign: "center",
-                  fontSize: 12,
-                  color: "#666",
                   marginBottom: 8,
                 }}
               >
-                {isUploading ? "Uploading..." : "Click to update logo"}
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "#555",
+                    marginBottom: 4,
+                  }}
+                >
+                  Update banner ad image
+                </div>
+                <div
+                  style={{
+                    position: "relative",
+                    display: "inline-block",
+                  }}
+                >
+                  <input
+                    ref={bannerInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={handleBannerAdUpload}
+                  />
+                  <div
+                    onClick={() => {
+                      if (!isUploadingBanner && bannerInputRef.current) {
+                        bannerInputRef.current.click();
+                      }
+                    }}
+                    style={{
+                      width: 240,
+                      height: 120,
+                      borderRadius: 6,
+                      border: "1px dashed #cbd5e1",
+                      background: "#fff",
+                      cursor: isUploadingBanner ? "not-allowed" : "pointer",
+                      position: "relative",
+                      overflow: "hidden",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {company.bannerAdUrl ? (
+                      <Image
+                        src={`${company.bannerAdUrl}?t=${Date.now()}`}
+                        alt="Banner Ad"
+                        fill
+                        style={{ objectFit: "cover" }}
+                        sizes="240px"
+                      />
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: 10,
+                          color: "#999",
+                          textAlign: "center",
+                          padding: 4,
+                        }}
+                      >
+                        Click to upload banner
+                      </span>
+                    )}
+                    {company.bannerAdUrl && isOwner && !isUploadingBanner && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 6,
+                          left: 0,
+                          right: 0,
+                          display: "flex",
+                          justifyContent: "center",
+                          pointerEvents: "none",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 11,
+                            padding: "2px 8px",
+                            borderRadius: 999,
+                            backgroundColor: "rgba(0,0,0,0.55)",
+                            color: "#fff",
+                          }}
+                        >
+                          Click to update banner
+                        </span>
+                      </div>
+                    )}
+                    {isUploadingBanner && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          background: "rgba(0,0,0,0.3)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#fff",
+                          fontSize: 11,
+                          fontWeight: 600,
+                        }}
+                      >
+                        Uploading...
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (!isUploadingBanner) {
+                        setShowBannerAdUpdate(false);
+                      }
+                    }}
+                    style={{
+                      position: "absolute",
+                      top: -6,
+                      right: -6,
+                      background: "#ef4444",
+                      borderRadius: "9999px",
+                      border: "none",
+                      width: 20,
+                      height: 20,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: 0,
+                      cursor: "pointer",
+                      color: "#fff",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.18)",
+                    }}
+                    aria-label="Close banner update"
+                  >
+                    <X style={{ width: 12, height: 12 }} />
+                  </button>
+                </div>
               </div>
             )}
-
 
 
             {/* Socials label - conditionally show */}
