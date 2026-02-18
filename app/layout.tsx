@@ -89,7 +89,6 @@ export const metadata: Metadata = {
 
 import { Toaster } from "@/components/ui/toaster";
 import GAEvents from './components/GAEvents'
-import ImageProtection from "@/components/ImageProtection";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -118,7 +117,37 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
       </head>
       <body className={inter.className}>
-        <ImageProtection />
+        <Script id="image-protection" strategy="afterInteractive">
+          {`
+            (function() {
+              function handleContextMenu(e) {
+                var target = e.target;
+                var depth = 0;
+                while (target && target !== document.body && depth < 3) {
+                  if (target.tagName === 'IMG') {
+                    e.preventDefault();
+                    return false;
+                  }
+                  var style = window.getComputedStyle(target);
+                  if (style && style.backgroundImage && style.backgroundImage !== 'none') {
+                    e.preventDefault();
+                    return false;
+                  }
+                  target = target.parentElement;
+                  depth++;
+                }
+              }
+              function handleDragStart(e) {
+                if (e.target && e.target.tagName === 'IMG') {
+                  e.preventDefault();
+                  return false;
+                }
+              }
+              document.addEventListener('contextmenu', handleContextMenu, { capture: true });
+              document.addEventListener('dragstart', handleDragStart, { capture: true });
+            })();
+          `}
+        </Script>
         <MaintenanceBanner />
         <SessionWrapper>
           <ApolloWrapper>

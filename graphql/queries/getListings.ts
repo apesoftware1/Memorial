@@ -42,7 +42,8 @@ query GetListings {
       id
       color { id value }
       style { id value }
-      stoneType { id value }   
+      stoneType { id value }
+      slabStyle { id value }
       customization { id value }
     }
     slug

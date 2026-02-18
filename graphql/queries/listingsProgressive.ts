@@ -80,6 +80,7 @@ export const LISTINGS_FULL_QUERY = gql`
         color { id value }
         style { id value }
         stoneType { id value }
+        slabStyle { id value }
         customization { id value }
       }
       slug
@@ -148,7 +149,14 @@ export const LISTINGS_DELTA_QUERY = gql`
       specials { active sale_price start_date end_date }
       isPremium
       isStandard
-      productDetails { id color { id value } style { id value } stoneType { id value } customization { id value } }
+      productDetails {
+        id
+        color { id value }
+        style { id value }
+        stoneType { id value }
+        slabStyle { id value }
+        customization { id value }
+      }
       slug
       additionalProductDetails { id transportAndInstallation { id value } foundationOptions { id value } warrantyOrGuarantee { id value } }
       manufacturingTimeframe

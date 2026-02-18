@@ -124,6 +124,7 @@ export default function Home() {
     stoneType: null,
     color: null,
     style: null,
+    slabStyle: null,
     custom: null,
     colour: null,
     // removed: culture, bodyType, designTheme
@@ -365,6 +366,7 @@ export default function Home() {
     const cat = searchParams.get('category');
     const colour = searchParams.get('colour') || searchParams.get('color');
     const mat = searchParams.get('material') || searchParams.get('stoneType');
+    const slab = searchParams.get('slabStyle');
     const sty = searchParams.get('style');
     const cus = searchParams.get('customization') || searchParams.get('custom');
     const loc = searchParams.get('location');
@@ -379,6 +381,7 @@ export default function Home() {
     if (colour) { nextFilters.colour = colour; nextFilters.color = colour; }
     if (mat) nextFilters.stoneType = mat;
     if (sty) nextFilters.style = sty;
+    if (slab) nextFilters.slabStyle = slab;
     if (cus) nextFilters.custom = cus;
     if (loc) nextFilters.location = loc;
     if (minP) nextFilters.minPrice = minP;
