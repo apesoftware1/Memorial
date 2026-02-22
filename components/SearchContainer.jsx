@@ -137,6 +137,20 @@ const defaultFilterOptions = {
   ],
 };
 
+const parsePrice = (priceStr) => {
+  if (!priceStr) return 0;
+  if (typeof priceStr === "number") return priceStr;
+  if (typeof priceStr === "string") {
+    return Number(priceStr.replace(/[^\d]/g, ""));
+  }
+  try {
+    const str = String(priceStr);
+    return Number(str.replace(/[^\d]/g, ""));
+  } catch {
+    return 0;
+  }
+};
+
 const SearchContainer = ({
   selectedCategory,
   setSelectedCategory,
@@ -439,14 +453,23 @@ const SearchContainer = ({
           )
           // Location (partial)
           .filter((listing) =>
-            f.location && f.location !== "All" && f.location !== ""
+            f.location &&
+            f.location !== "All" &&
+            f.location !== "Any" &&
+            f.location !== ""
               ? checkListingLocation(listing, f.location)
               : true
           )
           // Stone Type (partial)
           .filter((listing) => {
             const filterVal = f.stoneType;
-            if (!filterVal || filterVal === "All" || filterVal === "") return true;
+            if (
+              !filterVal ||
+              filterVal === "All" ||
+              filterVal === "Any" ||
+              filterVal === ""
+            )
+              return true;
             const itemVal = (listing?.productDetails?.stoneType?.[0]?.value || "").toLowerCase();
             if (Array.isArray(filterVal)) return filterVal.some(v => itemVal.includes(String(v).toLowerCase()));
             return itemVal.includes(String(filterVal).toLowerCase());
@@ -454,7 +477,13 @@ const SearchContainer = ({
           // Colour/Color (partial)
           .filter((listing) => {
             const query = f.color || f.colour;
-            if (!query || query === "All" || query === "") return true;
+            if (
+              !query ||
+              query === "All" ||
+              query === "Any" ||
+              query === ""
+            )
+              return true;
             const colour = (listing?.productDetails?.color?.[0]?.value || "").toLowerCase();
             if (Array.isArray(query)) return query.some(v => colour.includes(String(v).toLowerCase()));
             return colour.includes(String(query).toLowerCase());
@@ -462,7 +491,13 @@ const SearchContainer = ({
           // Head style (partial)
           .filter((listing) => {
             const filterVal = f.style;
-            if (!filterVal || filterVal === "All" || filterVal === "") return true;
+            if (
+              !filterVal ||
+              filterVal === "All" ||
+              filterVal === "Any" ||
+              filterVal === ""
+            )
+              return true;
             const itemVal = (listing?.productDetails?.style?.[0]?.value || "").toLowerCase();
             if (Array.isArray(filterVal)) return filterVal.some(v => itemVal.includes(String(v).toLowerCase()));
             return itemVal.includes(String(filterVal).toLowerCase());
@@ -470,7 +505,13 @@ const SearchContainer = ({
           // Slab style (partial)
           .filter((listing) => {
             const filterVal = f.slabStyle;
-            if (!filterVal || filterVal === "All" || filterVal === "") return true;
+            if (
+              !filterVal ||
+              filterVal === "All" ||
+              filterVal === "Any" ||
+              filterVal === ""
+            )
+              return true;
             const itemVal = (listing?.productDetails?.slabStyle?.[0]?.value || "").toLowerCase();
             if (Array.isArray(filterVal)) return filterVal.some(v => itemVal.includes(String(v).toLowerCase()));
             return itemVal.includes(String(filterVal).toLowerCase());
@@ -478,25 +519,35 @@ const SearchContainer = ({
           // Customization (partial)
           .filter((listing) => {
             const filterVal = f.custom;
-            if (!filterVal || filterVal === "All" || filterVal === "") return true;
+            if (
+              !filterVal ||
+              filterVal === "All" ||
+              filterVal === "Any" ||
+              filterVal === ""
+            )
+              return true;
             const itemVal = (listing?.productDetails?.customization?.[0]?.value || "").toLowerCase();
             if (Array.isArray(filterVal)) return filterVal.some(v => itemVal.includes(String(v).toLowerCase()));
             return itemVal.includes(String(filterVal).toLowerCase());
           })
           // Min Price
-          .filter((listing) =>
-            f.minPrice && f.minPrice !== "Min Price" && f.minPrice !== ""
-              ? Number(listing?.price ?? 0) >=
-                Number(String(f.minPrice).replace(/[^\d]/g, ""))
-              : true
-          )
+          .filter((listing) => {
+            if (!f.minPrice || f.minPrice === "Min Price" || f.minPrice === "") {
+              return true;
+            }
+            const min = parsePrice(f.minPrice);
+            if (!listing.price) return false;
+            return parsePrice(listing.price) >= min;
+          })
           // Max Price
-          .filter((listing) =>
-            f.maxPrice && f.maxPrice !== "Max Price" && f.maxPrice !== ""
-              ? Number(listing?.price ?? 0) <=
-                Number(String(f.maxPrice).replace(/[^\d]/g, ""))
-              : true
-          )
+          .filter((listing) => {
+            if (!f.maxPrice || f.maxPrice === "Max Price" || f.maxPrice === "") {
+              return true;
+            }
+            const max = parsePrice(f.maxPrice);
+            if (!listing.price) return false;
+            return parsePrice(listing.price) <= max;
+          })
       );
     },
     [categories, activeTab, filters]
@@ -671,15 +722,20 @@ const SearchContainer = ({
       );
     }
 
-    // Filter by price range
     if (filters?.minPrice && filters.minPrice !== "Min Price") {
-      const minPriceNum = parseInt(filters.minPrice.replace(/[^\d]/g, ""));
-      filtered = filtered.filter((listing) => listing.price >= minPriceNum);
+      const min = parsePrice(filters.minPrice);
+      filtered = filtered.filter((listing) => {
+        if (!listing.price) return false;
+        return parsePrice(listing.price) >= min;
+      });
     }
 
     if (filters?.maxPrice && filters.maxPrice !== "Max Price") {
-      const maxPriceNum = parseInt(filters.maxPrice.replace(/[^\d]/g, ""));
-      filtered = filtered.filter((listing) => listing.price <= maxPriceNum);
+      const max = parsePrice(filters.maxPrice);
+      filtered = filtered.filter((listing) => {
+        if (!listing.price) return false;
+        return parsePrice(listing.price) <= max;
+      });
     }
 
     return filtered.length;

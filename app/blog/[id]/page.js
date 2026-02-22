@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, use } from "react"
+import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ChevronLeft } from "lucide-react"
@@ -49,8 +49,7 @@ export default function BlogPage({ params }) {
 }
 
 function BlogContent({ params }) {
-  const resolvedParams = use(params);
-  const { id } = resolvedParams;
+  const { id } = params;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Fetch blog post using GraphQL

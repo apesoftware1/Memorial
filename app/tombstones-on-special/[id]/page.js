@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, use } from "react"
+import { useState } from "react"
 import { useQuery } from "@apollo/client"
 import { GET_LISTING_BY_ID } from "@/graphql/queries/getListingById"
 import Image from "next/image"
@@ -10,7 +10,7 @@ import CountdownTimer from "@/components/countdown-timer"
 import ProductShowcase from "@/components/product-showcase"
 
 export default function SpecialTombstoneDetail({ params }) {
-  const { id } = use(params)
+  const { id } = params
 
   // Fetch listing data
   const { data, loading, error } = useQuery(GET_LISTING_BY_ID, {

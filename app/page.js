@@ -17,7 +17,6 @@ import LocationTrigger from "@/components/LocationTrigger"
 import FilterDropdown from "@/components/FilterDropdown"
 import SearchForm from "@/components/SearchForm"
 import SearchContainer from "@/components/SearchContainer.jsx";
-import { useRouter } from "next/navigation";
 import { PageLoader } from "@/components/ui/loader"
 import { useGuestLocation } from "@/hooks/useGuestLocation"
 
@@ -103,7 +102,6 @@ export default function Home() {
   
   const { categories, loading: _loading } = useListingCategories()
   const [activeTab, setActiveTab] = useState(0) // Default to SINGLE tab (first tab)
-  const router = useRouter();
 
   // Location modal state
   const { location, loading: locationLoading } = useGuestLocation()
@@ -208,8 +206,10 @@ export default function Home() {
     // Navigate to tombstones-for-sale with parameters
     const queryString = params.toString();
     const url = queryString ? `/tombstones-for-sale?${queryString}` : '/tombstones-for-sale';
-    router.push(url);
-  }, [router, activeTab, categories, filters]);
+    if (typeof window !== "undefined") {
+      window.location.href = url;
+    }
+  }, [activeTab, categories, filters]);
 
   // New state hooks for filtered listings
   const [premListings, setPremListings] = useState([]);
