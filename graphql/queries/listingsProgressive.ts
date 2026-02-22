@@ -12,6 +12,7 @@ export const LISTINGS_INITIAL_QUERY = gql`
       updatedAt
       title
       price
+      isFeatured
       isOnSpecial
       isPremium
       isStandard

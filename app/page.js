@@ -239,7 +239,8 @@ export default function Home() {
     initialQuery: LISTINGS_INITIAL_QUERY,
     fullQuery: LISTINGS_FULL_QUERY,
     deltaQuery: LISTINGS_DELTA_QUERY,
-    variables: { limit: 20 },
+    // Fetch more listings in the first, fast query so homepage counts are closer to final
+    variables: { limit: 50 },
     storageKey: 'listings:lastUpdated',
     refreshInterval: 60000, // Reduced from 3000ms to 60s to save bandwidth
     staleTime: 1000 * 60 * 5, // 5 minutes staleness
