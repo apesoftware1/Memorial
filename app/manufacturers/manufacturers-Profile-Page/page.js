@@ -34,7 +34,8 @@ export default function OwnerProfilePage() {
   const { data, loading, error, refetch } = useQuery(GET_COMPANY_BY_USER, {
     variables: { documentId },
     skip: !documentId,
-    fetchPolicy: 'cache-first', // Reduced network usage - rely on cache unless manual refresh
+    fetchPolicy: 'network-only',
+    nextFetchPolicy: 'cache-first',
     notifyOnNetworkStatusChange: true,
   });
 

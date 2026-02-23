@@ -339,8 +339,23 @@ export default function FilterDropdown({
       console.log('Selecting multi:', newValues);
       selectOption(name, newValues, true); // Keep open
     } else {
-      console.log('Selecting single:', val);
-      selectOption(name, val, false); // Close for single select
+      // Single-select (minPrice / maxPrice): allow toggle off by clicking again
+      const current = currentVal;
+      let nextValue = val;
+
+      // If the same value is clicked again, reset to default placeholder
+      if (current === val) {
+        if (name === 'minPrice') {
+          nextValue = 'Min Price';
+        } else if (name === 'maxPrice') {
+          nextValue = 'Max Price';
+        } else {
+          nextValue = null;
+        }
+      }
+
+      console.log('Selecting single:', nextValue);
+      selectOption(name, nextValue, false); // Close for single select
     }
   };
 

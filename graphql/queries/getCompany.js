@@ -9,9 +9,9 @@ export const GET_COMPANY_BY_USER = gql`
       videoPublicId
       profilePicUrl
       profilePicPublicId
-      branches {
-         documentId
-          name
+      branches(pagination: { limit: -1 }) {
+        documentId
+        name
         location {
           address
           latitude
