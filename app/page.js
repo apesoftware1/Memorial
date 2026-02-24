@@ -240,7 +240,7 @@ export default function Home() {
     fullQuery: LISTINGS_FULL_QUERY,
     deltaQuery: LISTINGS_DELTA_QUERY,
     // Fetch more listings in the first, fast query so homepage counts are closer to final
-    variables: { limit: 50 },
+    variables: {},
     storageKey: 'listings:lastUpdated',
     refreshInterval: 60000, // Reduced from 3000ms to 60s to save bandwidth
     staleTime: 1000 * 60 * 5, // 5 minutes staleness
@@ -287,7 +287,7 @@ export default function Home() {
     initialQuery: MANUFACTURERS_INITIAL_QUERY,
     fullQuery: MANUFACTURERS_FULL_QUERY,
     deltaQuery: MANUFACTURERS_DELTA_QUERY,
-    variables: { limit: 1 },
+    variables: {},
     storageKey: 'manufacturers:lastUpdated',
     refreshInterval: 3000,
   });

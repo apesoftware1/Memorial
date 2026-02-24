@@ -2,14 +2,19 @@
 
 import { useParams } from "next/navigation";
 import { useQuery } from "@apollo/client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import dynamic from 'next/dynamic';
 import { GET_COMPANY_BY_ID } from '@/graphql/queries/getCompanyById';
-import ManufacturerProfileEditor from '../ManufacturerProfileEditor';
 import BranchButton from '@/components/BranchButton';
 import VideoModal from '@/components/VideoModal';
 import Footer from '@/components/Footer';
 import { PageLoader } from '@/components/ui/loader';
 import { useProgressiveQuery } from "@/hooks/useProgressiveQuery";
+
+const ManufacturerProfileEditor = dynamic(() => import('../ManufacturerProfileEditor'), { 
+  ssr: false,
+  loading: () => <PageLoader text="Loading profile..." />
+});
 import {
   COMPANY_INITIAL_QUERY,
   COMPANY_FULL_QUERY,
@@ -20,13 +25,14 @@ export default function ManufacturerProfilePage() {
   const [showVideoModal, setShowVideoModal] = useState(false);
   
   const { loading, error, data } = useProgressiveQuery({
-        initialQuery: COMPANY_INITIAL_QUERY,
-        fullQuery: COMPANY_FULL_QUERY,
-          deltaQuery: COMPANY_DELTA_QUERY,
-          variables: { limit: 50 ,documentId: documentId },
-          storageKey: 'manufacturers:lastUpdated',
-          refreshInterval: 3000,
-      });
+    initialQuery: COMPANY_INITIAL_QUERY,
+    fullQuery: COMPANY_FULL_QUERY,
+    deltaQuery: COMPANY_DELTA_QUERY,
+    variables: { documentId },
+    storageKey: 'companyProfile:lastUpdated',
+    refreshInterval: 60000,
+    staleTime: 1000 * 60 * 5,
+  });
 
   if (loading) return <PageLoader text="Loading company data..." />;
   if (error) return <div>Error loading company data.</div>;
@@ -50,13 +56,15 @@ export default function ManufacturerProfilePage() {
   return (
     <div>
       {/* Pass the click handler to the profile editor */}
-      <ManufacturerProfileEditor 
-        isOwner={false} 
-        company={company} 
-        listings={listings} 
-        onVideoClick={handleVideoClick}
-        branchButton={<BranchButton company={company} />}
-      />
+      <Suspense fallback={<PageLoader text="Loading profile..." />}>
+        <ManufacturerProfileEditor 
+          isOwner={false} 
+          company={company} 
+          listings={listings} 
+          onVideoClick={handleVideoClick}
+          branchButton={<BranchButton company={company} />}
+        />
+      </Suspense>
       
       {/* Video Modal */}
       <VideoModal 

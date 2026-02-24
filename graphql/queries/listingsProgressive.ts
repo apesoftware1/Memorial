@@ -20,6 +20,12 @@ export const LISTINGS_INITIAL_QUERY = gql`
       listing_category { name }
       mainImageUrl
       company { name location logoUrl }
+      branch_listings {
+        branch { location { province city town } }
+      }
+      branches {
+        location { province city town }
+      }
       specials { active sale_price end_date }
     }
     listingCategories {

@@ -1286,7 +1286,7 @@ const SearchContainer = ({
               {/* Additional Filters - Reordered as requested */}
               <div
                 className="grid grid-cols-2 gap-1 mb-2 sm:gap-2"
-                style={{ marginTop: "102px" }}
+                style={{ marginTop: "126px" }}
               >
                 <FilterDropdown
                   name="slabStyle"

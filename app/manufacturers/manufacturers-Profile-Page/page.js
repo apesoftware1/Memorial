@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery } from '@apollo/client';
 import { GET_COMPANY_BY_USER } from '@/graphql/queries/getCompany';
-import ManufacturerProfileEditor from './ManufacturerProfileEditor';
+import dynamic from 'next/dynamic';
 import Footer from '@/components/Footer';
 import { PageLoader } from '@/components/ui/loader';
+
+const ManufacturerProfileEditor = dynamic(() => import('./ManufacturerProfileEditor'), { 
+  ssr: false,
+  loading: () => <PageLoader text="Loading editor..." />
+});
 
 export default function OwnerProfilePage() {
   const { data: session } = useSession();
@@ -81,15 +86,17 @@ if (loading) return <PageLoader text="Loading company data..." />;
 
   return (
     <div>
-      <ManufacturerProfileEditor 
-        isOwner={true} 
-        company={company} 
-        listings={listings} 
-        onRefresh={refetch}
-        isRefreshing={loading}
-        autoRefreshEnabled={autoRefreshEnabled}
-        onToggleAutoRefresh={() => setAutoRefreshEnabled(prev => !prev)}
-      />
+      <Suspense fallback={<PageLoader text="Loading profile editor..." />}>
+        <ManufacturerProfileEditor 
+          isOwner={true} 
+          company={company} 
+          listings={listings} 
+          onRefresh={refetch}
+          isRefreshing={loading}
+          autoRefreshEnabled={autoRefreshEnabled}
+          onToggleAutoRefresh={() => setAutoRefreshEnabled(prev => !prev)}
+        />
+      </Suspense>
       <Footer />
     </div>
   );

@@ -354,12 +354,41 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       const branch = company.branches.find(b => b.name === branchParam || b.documentId === branchParam);
       if (branch) {
         setBranchFromUrl(branch);
-        // Filter listings to show only those associated with this branch
-        let branchListings = listings.filter(listing => 
-          listing.branches?.some(b => b.documentId === branch.documentId)
+
+        const matchesBranch = (b) => {
+          if (!b) return false;
+          if (branch.documentId && b.documentId === branch.documentId) return true;
+          if (branch.id && b.id === branch.id) return true;
+          if (branch.name && b.name === branch.name) return true;
+          return false;
+        };
+
+        const legacyListings = listings.filter(listing =>
+          Array.isArray(listing.branches) &&
+          listing.branches.some(matchesBranch)
         );
 
-        // Override price with branch specific price if available
+        const newSystemListings = listings.filter(listing =>
+          Array.isArray(listing.branch_listings) &&
+          listing.branch_listings.some(bl => matchesBranch(bl?.branch))
+        );
+
+        const legacyCount = legacyListings.length;
+        const newSystemCount = newSystemListings.length;
+
+        const useNewSystem = newSystemCount > legacyCount;
+
+        let branchListings = useNewSystem ? newSystemListings : legacyListings;
+
+        console.log("Branch listings debug", {
+          branch: branch.name,
+          totalListings: listings.length,
+          legacyCount,
+          newSystemCount,
+          usingSystem: useNewSystem ? "new" : "legacy",
+          matchedListings: branchListings.length,
+        });
+
         branchListings = branchListings.map(listing => {
           const branchListing = listing.branch_listings?.find(bl => 
             bl.branch?.documentId === branch.documentId
@@ -370,7 +399,6 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
           return listing;
         });
         
-        // Apply category filter
         if (categoryFilter !== "All Categories") {
           branchListings = branchListings.filter(listing => {
             const categoryName = listing.listing_category?.name || listing.category;
@@ -411,6 +439,46 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     }
     setCompanyListings(filteredCompanyListings);
   }, [searchParams, company, listings, categoryFilter]);
+
+  useEffect(() => {
+    if (!company?.branches?.length || !listings?.length) return;
+
+    const summarize = (branch) => {
+      const matchesBranch = (b) => {
+        if (!b) return false;
+        if (branch.documentId && b.documentId === branch.documentId) return true;
+        if (branch.id && b.id === branch.id) return true;
+        if (branch.name && b.name === branch.name) return true;
+        return false;
+      };
+
+      const legacyListings = listings.filter(listing =>
+        Array.isArray(listing.branches) &&
+        listing.branches.some(matchesBranch)
+      );
+
+      const newSystemListings = listings.filter(listing =>
+        Array.isArray(listing.branch_listings) &&
+        listing.branch_listings.some(bl => matchesBranch(bl?.branch))
+      );
+
+      const legacyCount = legacyListings.length;
+      const newSystemCount = newSystemListings.length;
+      const useNewSystem = newSystemCount > legacyCount;
+      const matchedListings = useNewSystem ? newSystemCount : legacyCount;
+
+      return {
+        branch: branch.name,
+        legacyCount,
+        newSystemCount,
+        usingSystem: useNewSystem ? "new" : "legacy",
+        matchedListings,
+      };
+    };
+
+    const summary = company.branches.map(summarize);
+    console.log("Branch listings summary", summary);
+  }, [company, listings]);
   
   // Branch location display component
   const BranchLocationInfo = () => {
@@ -2279,31 +2347,35 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
               </div>
             )}
            
-            {/* CreateBranchModal is conditionally rendered based on state */}
-            <CreateBranchModal
-              documentId={company.documentId}
-              isOpen={modals.createBranch}
-              onClose={() => toggleModal("createBranch", false)}
-            />
+            {/* CreateBranchModal is conditionally rendered for owners */}
+            {isOwner && (
+              <CreateBranchModal
+                documentId={company.documentId}
+                isOpen={modals.createBranch}
+                onClose={() => toggleModal("createBranch", false)}
+              />
+            )}
             
-            {/* Branch Selector Modal */}
-            <Dialog open={modals.branchSelector} onOpenChange={(open) => toggleModal("branchSelector", open)}>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Switch Branch</DialogTitle>
-                </DialogHeader>
-                <div className="py-4">
-                  <BranchSelector
-                    companyId={company.documentId}
-                    branches={company.branches}
-                    onBranchSelect={(branch) => {
-                      handleBranchSelect(branch);
-                      toggleModal("branchSelector", false);
-                    }}
-                  />
-                </div>
-              </DialogContent>
-            </Dialog>
+            {/* Branch Selector Modal (owner only) */}
+            {isOwner && (
+              <Dialog open={modals.branchSelector} onOpenChange={(open) => toggleModal("branchSelector", open)}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Switch Branch</DialogTitle>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <BranchSelector
+                      companyId={company.documentId}
+                      branches={company.branches}
+                      onBranchSelect={(branch) => {
+                        handleBranchSelect(branch);
+                        toggleModal("branchSelector", false);
+                      }}
+                    />
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
             <div
               style={{
                 display: "flex",
@@ -3400,31 +3472,36 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
 
 
 
-        {/* Create Special Modal */}
-        <CreateSpecialModal
-          isOpen={modals.createSpecial}
-          onClose={() => {
-            toggleModal("createSpecial", false);
-            setSelectedListing(null);
-          }}
-          listing={selectedListing}
-        />
+        {/* Owner-only modals */}
+        {isOwner && (
+          <>
+            {/* Create Special Modal */}
+            <CreateSpecialModal
+              isOpen={modals.createSpecial}
+              onClose={() => {
+                toggleModal("createSpecial", false);
+                setSelectedListing(null);
+              }}
+              listing={selectedListing}
+            />
 
-        {/* View Inquiries Modal */}
-        <ViewInquiriesModal
-          open={modals.viewInquiries}
-          onClose={() => toggleModal("viewInquiries", false)}
-          listings={companyListings}
-          onInquiriesRead={handleInquiriesRead}
-        />
+            {/* View Inquiries Modal */}
+            <ViewInquiriesModal
+              open={modals.viewInquiries}
+              onClose={() => toggleModal("viewInquiries", false)}
+              listings={companyListings}
+              onInquiriesRead={handleInquiriesRead}
+            />
 
-        {/* Manufacturer Location Modal */}
-        <ManufacturerLocationModal
-          isOpen={showLocationModal}
-          onClose={closeLocationModal}
-          company={company}
-          onLocationUpdate={handleLocationUpdate}
-        />
+            {/* Manufacturer Location Modal */}
+            <ManufacturerLocationModal
+              isOpen={showLocationModal}
+              onClose={closeLocationModal}
+              company={company}
+              onLocationUpdate={handleLocationUpdate}
+            />
+          </>
+        )}
 
         {/* Custom Confirmation Dialog */}
         {modals.confirmDelete && (
@@ -3700,33 +3777,38 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
           </div>
         )}
 
-        {/* Branch Selection Modal */}
-        <BranchSelectionModal
-          isOpen={modals.branchSelection}
-          onClose={() => toggleModal("branchSelection", false)}
-          branches={company.branches || []}
-          listingId={selectedListingForBranch?.documentId}
-          onSuccess={(branch) => {
-            toast({
-              title: "Success",
-              description: `Listing added to ${branch.name} branch`,
-              status: "success",
-            });
-          }}
-        />
+        {/* Branch Selection and Operating Hours Modals (owner only) */}
+        {isOwner && (
+          <>
+            {/* Branch Selection Modal */}
+            <BranchSelectionModal
+              isOpen={modals.branchSelection}
+              onClose={() => toggleModal("branchSelection", false)}
+              branches={company.branches || []}
+              listingId={selectedListingForBranch?.documentId}
+              onSuccess={(branch) => {
+                toast({
+                  title: "Success",
+                  description: `Listing added to ${branch.name} branch`,
+                  status: "success",
+                });
+              }}
+            />
 
-        {/* Operating Hours Modal */}
-        <OperatingHoursModal
-          isOpen={modals.operatingHours}
-          onClose={() => toggleModal("operatingHours", false)}
-          initialData={company?.operatingHours || {
-            monToFri: "",
-            saturday: "",
-            sunday: "",
-            publicHoliday: ""
-          }}
-          onSave={handleSaveOperatingHours}
-        />
+            {/* Operating Hours Modal */}
+            <OperatingHoursModal
+              isOpen={modals.operatingHours}
+              onClose={() => toggleModal("operatingHours", false)}
+              initialData={company?.operatingHours || {
+                monToFri: "",
+                saturday: "",
+                sunday: "",
+                publicHoliday: ""
+              }}
+              onSave={handleSaveOperatingHours}
+            />
+          </>
+        )}
 
 
       </div>
