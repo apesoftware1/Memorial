@@ -223,6 +223,7 @@ export default function ManufacturerProfileEditor({
   const [editValue, setEditValue] = useState("");
   
   const [selectedBranch, setSelectedBranch] = useState(null);
+  const [loadingListings, setLoadingListings] = useState(false);
   const handleBranchSelect = (branch) => {
     setSelectedBranch(branch);
   };
@@ -347,98 +348,62 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     }
   };
   
-  // Extract branch parameter from URL and filter listings
+  // Extract branch parameter from URL and fetch listings via REST API
   useEffect(() => {
     const branchParam = searchParams.get('branch');
-    if (branchParam && company?.branches?.length) {
-      const branch = company.branches.find(b => b.name === branchParam || b.documentId === branchParam);
-      if (branch) {
-        setBranchFromUrl(branch);
-
-        const matchesBranch = (b) => {
-          if (!b) return false;
-          if (branch.documentId && b.documentId === branch.documentId) return true;
-          if (branch.id && b.id === branch.id) return true;
-          if (branch.name && b.name === branch.name) return true;
-          return false;
-        };
-
-        const legacyListings = listings.filter(listing =>
-          Array.isArray(listing.branches) &&
-          listing.branches.some(matchesBranch)
-        );
-
-        const newSystemListings = listings.filter(listing =>
-          Array.isArray(listing.branch_listings) &&
-          listing.branch_listings.some(bl => matchesBranch(bl?.branch))
-        );
-
-        const legacyCount = legacyListings.length;
-        const newSystemCount = newSystemListings.length;
-
-        const useNewSystem = newSystemCount > legacyCount;
-
-        let branchListings = useNewSystem ? newSystemListings : legacyListings;
-
-        console.log("Branch listings debug", {
-          branch: branch.name,
-          totalListings: listings.length,
-          legacyCount,
-          newSystemCount,
-          usingSystem: useNewSystem ? "new" : "legacy",
-          matchedListings: branchListings.length,
-        });
-
-        branchListings = branchListings.map(listing => {
-          const branchListing = listing.branch_listings?.find(bl => 
-            bl.branch?.documentId === branch.documentId
-          );
-          if (branchListing?.price) {
-            return { ...listing, price: branchListing.price };
-          }
-          return listing;
-        });
-        
-        if (categoryFilter !== "All Categories") {
-          branchListings = branchListings.filter(listing => {
-            const categoryName = listing.listing_category?.name || listing.category;
-            return (categoryName || "").toLowerCase() === categoryFilter.toLowerCase();
-          });
-        }
-        
-        setFilteredListings(branchListings);
-        setSelectedBranch(branch);
-      } else {
-        let filteredByCategory = listings;
-        if (categoryFilter !== "All Categories") {
-          filteredByCategory = listings.filter(listing => {
-            const categoryName = listing.listing_category?.name || listing.category;
-            return (categoryName || "").toLowerCase() === categoryFilter.toLowerCase();
-          });
-        }
-        setFilteredListings(filteredByCategory);
-      }
-    } else {
-      let filteredByCategory = listings;
-      if (categoryFilter !== "All Categories") {
-        filteredByCategory = listings.filter(listing => {
-          const categoryName = listing.listing_category?.name || listing.category;
-          return (categoryName || "").toLowerCase() === categoryFilter.toLowerCase();
-        });
-      }
-      setFilteredListings(filteredByCategory);
-    }
     
-    // Also update companyListings with category filter for consistency
-    let filteredCompanyListings = listings || [];
-    if (categoryFilter !== "All Categories") {
-      filteredCompanyListings = filteredCompanyListings.filter(listing => {
-        const categoryName = listing.listing_category?.name || listing.category;
-        return (categoryName || "").toLowerCase() === categoryFilter.toLowerCase();
-      });
-    }
-    setCompanyListings(filteredCompanyListings);
-  }, [searchParams, company, listings, categoryFilter]);
+    const fetchListings = async () => {
+      if (branchParam && company?.branches?.length) {
+        const branch = company.branches.find(b => b.name === branchParam || b.documentId === branchParam);
+        
+        if (branch) {
+          setBranchFromUrl(branch);
+          setSelectedBranch(branch);
+          setLoadingListings(true);
+          
+          try {
+            const response = await fetch(`/api/branches/${branch.documentId}`);
+            if (!response.ok) throw new Error('Failed to fetch branch listings');
+            
+            const data = await response.json();
+            let fetchedListings = data.listings || [];
+            
+            // Map prices from branch_listings if available (handling price overrides)
+            fetchedListings = fetchedListings.map(listing => {
+              const branchListing = listing.branch_listings?.find(bl => 
+                bl.branch?.documentId === branch.documentId
+              );
+              if (branchListing?.price) {
+                return { ...listing, price: branchListing.price };
+              }
+              return listing;
+            });
+
+            setFilteredListings(fetchedListings);
+          } catch (error) {
+            console.error("Error fetching branch listings:", error);
+            // Fallback to empty or keep previous? 
+            setFilteredListings([]);
+          } finally {
+            setLoadingListings(false);
+          }
+        } else {
+          // Branch not found in company branches
+          setBranchFromUrl(null);
+          setFilteredListings(listings || []);
+        }
+      } else {
+        // No branch selected
+        setBranchFromUrl(null);
+        setFilteredListings(listings || []);
+      }
+      
+      // Update companyListings to ensure it reflects the latest props
+      setCompanyListings(listings || []);
+    };
+
+    fetchListings();
+  }, [searchParams, company, listings]);
 
   useEffect(() => {
     if (!company?.branches?.length || !listings?.length) return;
@@ -3397,18 +3362,22 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         {/* Product Grid - Virtualized */}
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: mobile && !isOwner ? "0 16px" : 0 }}>
           {/* Display branch information if filtering by branch */}
-          {branchFromUrl && (
+          {branchFromUrl && !loadingListings && (
             <>
               <BranchLocationInfo />
               <div className="col-span-full mb-4">
                 <p className="text-gray-600">
-                  Showing {filteredListings.length} listing{filteredListings.length !== 1 ? 's' : ''} for {branchFromUrl.name} branch
+                  Showing {sortedAndFilteredListings.length} listing{sortedAndFilteredListings.length !== 1 ? 's' : ''} for {branchFromUrl.name} branch
                 </p>
               </div>
             </>
           )}
 
-          {mobile ? (
+          {loadingListings ? (
+            <div className="flex justify-center items-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+          ) : mobile ? (
             <Virtuoso
               useWindowScroll
               totalCount={sortedAndFilteredListings.length}

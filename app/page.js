@@ -235,7 +235,7 @@ export default function Home() {
  {console.log()}
   // const { data, loading, error } = useLoggedQuery(GET_LISTINGS, {}, 'GET_LISTINGS');
   // const strapiListings = data?.listings || [];
- const { data, loading, error } = useProgressiveQuery({
+ const { data, loading, error, isFullLoaded } = useProgressiveQuery({
     initialQuery: LISTINGS_INITIAL_QUERY,
     fullQuery: LISTINGS_FULL_QUERY,
     deltaQuery: LISTINGS_DELTA_QUERY,
@@ -372,6 +372,7 @@ export default function Home() {
           allListings={nonSpecialListings}
           filters={filters}
           setFilters={setFilters}
+          isFullLoaded={isFullLoaded}
         />
       </section>
       

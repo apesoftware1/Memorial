@@ -28,6 +28,8 @@ import SocialShare from "./SocialShare";
 import RelatedProducts from "./RelatedProducts";
 import WhatsAppContactDrawer from "./WhatsAppContactDrawer";
 import { useSearchParams, usePathname } from "next/navigation";
+import { useQuery } from "@apollo/client";
+import { GET_BRANCHES_BY_NAME } from "@/graphql/queries/getBranchesByName";
 import { PageLoader } from "./ui/loader";
 
 export default function ProductShowcase({ listing, id, allListings = [], currentIndex = 0, onNavigate }) {
@@ -45,6 +47,15 @@ export default function ProductShowcase({ listing, id, allListings = [], current
   const pathname = usePathname();
   const basePath = pathname && pathname.includes('/tombstones-for-sale') ? '/tombstones-for-sale' : '/product';
   
+  // Fetch branch details if branch param is present
+  const { data: branchData } = useQuery(GET_BRANCHES_BY_NAME, {
+    variables: { name: branch || "" },
+    skip: !branch,
+    fetchPolicy: "cache-first" // Use cache if available
+  });
+
+  const fetchedBranch = branchData?.branches_connection?.nodes?.[0];
+
   // Navigation functions for Next/Previous
   const handlePrevious = () => {
     if (onNavigate && typeof onNavigate === 'function') {
@@ -78,14 +89,38 @@ export default function ProductShowcase({ listing, id, allListings = [], current
     }
   };
   useEffect(() => {
-    if (listing.branches && listing.branches.length > 0) {
-      setSelectedBranch(
-        listing.branches.length <= 1
-          ? listing.branches[0]
-          : listing.branches.find((b) => b.name === (branch))
-      );
+    // 1. If fetched branch data is available (from GQL query), use it
+    if (fetchedBranch) {
+      setSelectedBranch(fetchedBranch);
+      return;
     }
-  }, [listing, branch]);
+
+    if (listing.branches && listing.branches.length > 0) {
+      // 2. If only one branch, auto-select it
+      if (listing.branches.length === 1) {
+        setSelectedBranch(listing.branches[0]);
+        return;
+      }
+      
+      // 3. If branch param exists, try to find it in listing.branches as fallback
+      if (branch) {
+        const found = listing.branches.find((b) => b.name === branch);
+        if (found) {
+          setSelectedBranch(found);
+          return;
+        }
+      }
+
+      // 4. If listing has a pre-selected branch (e.g. passed from parent/search), use it
+      if (listing.selectedBranch) {
+        setSelectedBranch(listing.selectedBranch);
+        return;
+      }
+      
+      // 5. Otherwise, leave selectedBranch as null (to show "Available at: ...")
+      setSelectedBranch(null);
+    }
+  }, [listing, branch, fetchedBranch]);
 
   const handleMobileMenuToggle = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -154,6 +189,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
   const destinationCoords = React.useMemo(() => {
     // Try branch coordinates from several possible shapes
     const branchLatCandidates = [
+      fetchedBranch?.location?.latitude,
       selectedBranch?.location?.latitude,
       listing?.company?.branch?.location?.latitude,
       (Array.isArray(listing?.branches)
@@ -161,6 +197,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
         : undefined),
     ];
     const branchLngCandidates = [
+      fetchedBranch?.location?.longitude,
       selectedBranch?.location?.longitude,
       listing?.company?.branch?.location?.longitude,
       (Array.isArray(listing?.branches)
@@ -185,7 +222,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
     }
 
     return null; // No valid coordinates
-  }, [branch, listing?.branches, listing?.company?.branch, listing?.company?.latitude, listing?.company?.longitude, selectedBranch]);
+  }, [branch, listing?.branches, listing?.company?.branch, listing?.company?.latitude, listing?.company?.longitude, selectedBranch, fetchedBranch]);
 
   // Calculate distance using chosen destination coordinates
   useEffect(() => {
@@ -214,6 +251,41 @@ export default function ProductShowcase({ listing, id, allListings = [], current
       cancelled = true;
     };
   }, [calcDistance, destinationCoords, storedGuestLocation, guestLocError]);
+
+  const salesRepsToDisplay = React.useMemo(() => {
+    // 1. If we have explicitly fetched branch data (via GQL query), use its reps
+    if (fetchedBranch) {
+      return fetchedBranch.sales_reps || [];
+    }
+
+    // 2. If branch param exists, try to find it in listing.branches
+    if (branch) {
+      const branchObj = listing.branches?.find((b) => b.name === branch);
+      if (branchObj) {
+        return branchObj.sales_reps || [];
+      }
+    }
+    
+    // 3. Otherwise return reps from all branches associated with this listing
+    const branchReps = listing.branches?.flatMap(b => b.sales_reps || []) || [];
+    if (branchReps.length > 0) {
+      const uniqueReps = [];
+      const seen = new Set();
+      branchReps.forEach(rep => {
+        const key = rep.name || rep.call;
+        if (key && !seen.has(key)) {
+          seen.add(key);
+          uniqueReps.push(rep);
+        } else if (!key) {
+          uniqueReps.push(rep);
+        }
+      });
+      return uniqueReps;
+    }
+
+    // 4. Fallback to company reps if no branch reps found
+    return listing.company?.sales_reps || [];
+  }, [branch, listing.branches, listing.company?.sales_reps, fetchedBranch]);
 
   // Prefer branch-based distance if available; otherwise use existing hook distance
   const effectiveDistanceInfo = distanceOverride || distanceInfo;
@@ -423,11 +495,22 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                       unoptimized
                     />
                   </div>
-                  {listing.selectedBranch && (
+                  {/* Logic for displaying branch info:
+                      1. selectedBranch (from state, driven by URL or single-branch logic)
+                      2. listing.selectedBranch (legacy/prop fallback)
+                      3. List of branches if multiple
+                   */}
+                  {(selectedBranch || listing.selectedBranch) ? (
                     <div className="text-sm font-semibold text-gray-800 mb-1">
-                      {listing.selectedBranch.name || listing.selectedBranch.title || listing.selectedBranch.branchName || "Branch"} Branch
+                      {(selectedBranch || listing.selectedBranch).name || 
+                       (selectedBranch || listing.selectedBranch).title || 
+                       (selectedBranch || listing.selectedBranch).branchName || "Branch"} Branch
                     </div>
-                  )}
+                  ) : listing.branches && listing.branches.length > 0 ? (
+                    <div className="text-sm font-semibold text-gray-800 mb-1">
+                      Available at: {listing.branches.map(b => b.name).join(", ")}
+                    </div>
+                  ) : null}
                   <div className="text-xs text-blue-500 mb-4">
                     Current Google Rating: {info.rating} out of 5
                   </div>
@@ -527,9 +610,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                 {listing?.company?.enableWhatsAppButton === true && (
                   <WhatsAppContactDrawer
                     className="-mx-4 mt-3 "
-                    reps={
-                      (selectedBranch?.sales_reps?.length ? selectedBranch.sales_reps : listing?.company?.sales_reps) || []
-                    }
+                    reps={salesRepsToDisplay}
                     listing_id={listing.documentId}
                   />
                 )}

@@ -24,7 +24,7 @@ export const COMPANY_INITIAL_QUERY = gql`
       description
       logoUrl
       logoUrlPublicId
-      branches {
+      branches(pagination: { limit: -1 }) {
         documentId
         name
         location {
@@ -60,7 +60,7 @@ export const COMPANY_INITIAL_QUERY = gql`
         whatsappNumber
         phoneNumber
       }
-      listings(pagination: { limit: 24 }) {
+      listings(pagination: { limit: -1 }) {
         createdAt
         listing_category {
           name
@@ -158,7 +158,7 @@ export const COMPANY_FULL_QUERY = gql`
       description
       logoUrl
       logoUrlPublicId
-      branches {
+      branches(pagination: { limit: -1 }) {
         documentId
         name
         location {
