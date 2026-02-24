@@ -171,6 +171,7 @@ const SearchContainer = ({
   totalListings = 0, // Add total listings count
   onNavigateToResults = null, // Add navigation callback
   allListings = [], // Add all listings for filtering
+  isFullLoaded = false, // Add this
 }) => {
   const router = useRouter();
   const [currentQuery, setCurrentQuery] = useState("");
@@ -824,8 +825,10 @@ const SearchContainer = ({
       return `Found ${searchButtonCount} results`;
     }
 
-    // Default state: "View (19) SINGLE tombstones"
-    return `View (${searchButtonCount})${categoryLabel ? " " + categoryLabel : ""}`;
+    // Default state: "View 19 SINGLE tombstones"
+    // Show 100+ on initial load before data is populated
+    const displayCount = isFullLoaded ? searchButtonCount : "100+";
+    return `View ${displayCount}${categoryLabel ? " " + categoryLabel : ""}`;
   };
 
   // Use provided functions or defaults
@@ -1286,7 +1289,7 @@ const SearchContainer = ({
               {/* Additional Filters - Reordered as requested */}
               <div
                 className="grid grid-cols-2 gap-1 mb-2 sm:gap-2"
-                style={{ marginTop: "102px" }}
+                style={{ marginTop: "126px" }}
               >
                 <FilterDropdown
                   name="slabStyle"

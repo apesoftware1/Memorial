@@ -235,12 +235,12 @@ export default function Home() {
  {console.log()}
   // const { data, loading, error } = useLoggedQuery(GET_LISTINGS, {}, 'GET_LISTINGS');
   // const strapiListings = data?.listings || [];
- const { data, loading, error } = useProgressiveQuery({
+ const { data, loading, error, isFullLoaded } = useProgressiveQuery({
     initialQuery: LISTINGS_INITIAL_QUERY,
     fullQuery: LISTINGS_FULL_QUERY,
     deltaQuery: LISTINGS_DELTA_QUERY,
     // Fetch more listings in the first, fast query so homepage counts are closer to final
-    variables: { limit: 50 },
+    variables: {},
     storageKey: 'listings:lastUpdated',
     refreshInterval: 60000, // Reduced from 3000ms to 60s to save bandwidth
     staleTime: 1000 * 60 * 5, // 5 minutes staleness
@@ -287,7 +287,7 @@ export default function Home() {
     initialQuery: MANUFACTURERS_INITIAL_QUERY,
     fullQuery: MANUFACTURERS_FULL_QUERY,
     deltaQuery: MANUFACTURERS_DELTA_QUERY,
-    variables: { limit: 1 },
+    variables: {},
     storageKey: 'manufacturers:lastUpdated',
     refreshInterval: 3000,
   });
@@ -372,6 +372,7 @@ export default function Home() {
           allListings={nonSpecialListings}
           filters={filters}
           setFilters={setFilters}
+          isFullLoaded={isFullLoaded}
         />
       </section>
       

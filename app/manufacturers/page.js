@@ -1,7 +1,5 @@
 "use client"
 
-import { useQuery } from '@apollo/client';
-import { GET_MANUFACTURERS } from '@/graphql/queries/getManufacturers';
 import ManufacturerCard from '../components/ManufacturerCard';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -21,13 +19,14 @@ import {
 export default function ManufacturersPage() {
 
   const { loading, error, data } = useProgressiveQuery({
-      initialQuery: MANUFACTURERS_INITIAL_QUERY,
-      fullQuery: MANUFACTURERS_FULL_QUERY,
-      deltaQuery: MANUFACTURERS_DELTA_QUERY,
-      variables: { limit: 5 },
-      storageKey: 'manufacturers:lastUpdated',
-      refreshInterval: 3000,
-    });
+    initialQuery: MANUFACTURERS_INITIAL_QUERY,
+    fullQuery: MANUFACTURERS_FULL_QUERY,
+    deltaQuery: MANUFACTURERS_DELTA_QUERY,
+    variables: {},
+    storageKey: 'manufacturers:lastUpdated',
+    refreshInterval: 60000,
+    staleTime: 1000 * 60 * 5,
+  });
   const sortModalRef = useRef(null);
   const locationDropdownRef = useRef(null);
 

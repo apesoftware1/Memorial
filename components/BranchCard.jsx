@@ -108,8 +108,6 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
     details: listing?.productDetails,
     manufacturer: listing?.company?.name,
     location: `${name} branch - ${joinWithPipes([city, province])}`,
-    tag: listing?.adFlasher,
-    tagColor: listing?.adFlasherColor
   };
 
   const handleClick = () => {
@@ -208,64 +206,19 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
       </div>
       {/* Mobile Layout (up to 768px) */}
       <div className="relative flex flex-col md:hidden">
-        {/* Main Image Container */}
-        <div className="bg-white px-3 py-3">
-          <div className="relative h-[350px] w-full rounded-lg overflow-hidden border border-gray-200">
-            <Image
-              src={cloudinaryOptimized(listing?.mainImageUrl, 800) || "/placeholder.svg"}
-              alt={listing?.title || "Listing image"}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw"
-              unoptimized
-            />
-            {/* Camera icon and counter overlay for main image */}
-            <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/80 text-white px-2 py-0.5 rounded text-xs font-medium z-10">
-              <Camera className="w-4 h-4" />
-              <span>{getImageCount()}</span>
-            </div>
-          </div>
-        </div>
-        
-        {/* Thumbnails Row Below Main Image (Mobile) */}
-        <div className="bg-white px-3 pb-3">
-          <div className="relative">
-            <div className="flex flex-row gap-1">
-              {listing?.thumbnailUrls && Array.isArray(listing.thumbnailUrls)
-                ? listing.thumbnailUrls
-                    .slice(0, 3)
-                    .map((src, index) => (
-                      <button
-                        key={index}
-                        className="relative h-20 w-1/3 rounded-md overflow-hidden border border-gray-200"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Image
-                          src={cloudinaryOptimized(src, 400)}
-                          alt={`Thumbnail ${index + 1}`}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                      </button>
-                    ))
-                : null}
-            </div>
-          </div>
-        </div>
-        
-        {/* Content (Mobile) */}
         <div className="w-full px-4 pt-4 pb-2 bg-white flex flex-col">
           {/* Price and Badge */}
           <div className="flex flex-col items-start mb-3">
             <div className="text-2xl font-bold text-blue-600 pr-14">
               {displayPrice ? formatPrice(displayPrice) : "Contact for price"}
             </div>
-            <div className="mt-1 mb-0 pr-14">
-              <Badge className="text-white text-sm px-3 py-1 rounded bg-pink-600">
-                {getCategoryLabel() || listing?.adFlasher || "Available at this branch"}
-              </Badge>
-            </div>
+            {getCategoryLabel() && (
+              <div className="mt-1 mb-0 pr-14">
+                <Badge className="text-white text-sm px-3 py-1 rounded bg-pink-600">
+                  {getCategoryLabel()}
+                </Badge>
+              </div>
+            )}
           </div>
           
           {/* Title and Branch Details */}
@@ -310,36 +263,16 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
       
       {/* Desktop Layout (768px and above) */}
       <div className="hidden md:flex flex-row">
-        {/* Left: Image */}
-        <div className="w-1/3 relative">
-          <div className="relative h-full w-full">
-            <Image
-              src={cloudinaryOptimized(listing?.mainImageUrl, 800) || "/placeholder.svg"}
-              alt={listing?.title || "Listing image"}
-              fill
-              className="object-cover"
-              sizes="(min-width: 768px) 33vw"
-              unoptimized
-            />
-            {/* Camera icon and counter overlay */}
-            <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/80 text-white px-2 py-0.5 rounded text-xs font-medium z-10">
-              <Camera className="w-4 h-4" />
-              <span>{getImageCount()}</span>
-            </div>
-          </div>
-        </div>
-        
-        {/* Right: Content */}
-        <div className="w-2/3 p-4 flex flex-col">
+        <div className="w-full p-4 flex flex-col">
           {/* Price and Badge */}
           <div className="flex flex-col items-start mb-3">
             <div className="text-2xl font-bold text-blue-600">
               {displayPrice ? formatPrice(displayPrice) : "Contact for price"}
             </div>
-            <div className="mt-1 mb-0 md:hidden">
-              {(getCategoryLabel() || listing?.adFlasher) && (
+            <div className="mt-1 mb-0">
+              {getCategoryLabel() && (
                 <Badge className="text-white text-sm px-3 py-1 rounded bg-pink-600">
-                  {getCategoryLabel() || listing?.adFlasher}
+                  {getCategoryLabel()}
                 </Badge>
               )}
             </div>
@@ -352,17 +285,12 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
           
           {/* Branch Details */}
           <div className="space-y-0.5 mb-2">
-            {/* First line: Branch Name (distance moved to final indicator) */}
             <div className="text-sm font-semibold text-gray-800 flex items-center">
               <span>{name} Branch</span>
             </div>
-            {/* Second line: Description */}
-            <div className="text-xs text-gray-700">{listing?.description || "No description available"}</div>
-            {/* Third line: City | Province */}
             {(city || province) && (
               <div className="text-xs text-gray-700">{joinWithPipes([city, province])}</div>
             )}
-            {/* Third line: Street | Phone */}
             {(street || phone) && (
               <div className="text-xs text-gray-700">{joinWithPipes([street, phone])}</div>
             )}

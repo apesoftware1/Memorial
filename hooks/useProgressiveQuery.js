@@ -148,7 +148,9 @@ export function useProgressiveQuery({
   // Choose best available data source
   const data = useMemo(() => fullData || initialData, [fullData, initialData]);
 
-  return { data, loading: initialLoading, error: initialError };
+  const isFullLoaded = !!fullData;
+
+  return { data, loading: initialLoading, error: initialError, isFullLoaded };
 }
 
 /** Helpers **/

@@ -4,7 +4,7 @@ export const GET_LISTING_BY_ID = gql`
   query Listing($documentID: ID!) {
     listing(documentId: $documentID) {
       documentId
-      branches {
+      branches(pagination: { limit: -1 }) {
         documentId
         name
         sales_reps {

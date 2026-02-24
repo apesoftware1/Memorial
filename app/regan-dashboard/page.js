@@ -54,7 +54,7 @@ export default function DashboardPage() {
       initialQuery: MANUFACTURERS_INITIAL_QUERY,
       fullQuery: MANUFACTURERS_FULL_QUERY,
       deltaQuery: MANUFACTURERS_DELTA_QUERY,
-      variables: { limit: 5 },
+      variables: {},
       storageKey: 'manufacturers:lastUpdated',
       refreshInterval: 3000,
     });

@@ -10,8 +10,9 @@ import { gql } from '@apollo/client';
 export const MANUFACTURERS_INITIAL_QUERY = gql`
   query ManufacturersInitial {
     companies(
-      filters: { isFeatured: { eq: true } },
-      pagination: { limit: -1 }
+      filters: { isFeatured: { eq: true } }
+      pagination: { limit: 10 }
+      sort: "updatedAt:desc"
     ) {
       documentId
       updatedAt
@@ -24,6 +25,8 @@ export const MANUFACTURERS_INITIAL_QUERY = gql`
       bannerAdUrl
       bannerAdPublicId
       bannerAd { url }
+      googleRating
+      branches { documentId }
     }
   }
 `;
