@@ -20,7 +20,7 @@ export const useCompanyPerformance = (documentId, eventsStart, eventsEnd) => {
       eventsStart: eventsStart ?? null,
       eventsEnd: eventsEnd ?? null,
     },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
     skip: !documentId,
   });
 };

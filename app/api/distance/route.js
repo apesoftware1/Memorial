@@ -4,7 +4,7 @@
 // Keys: "userLat,userLng:destLat,destLng"
 // Values: { distance, duration, timestamp }
 const CACHE = new Map();
-const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour cache duration
+const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours cache duration
 const MAX_CACHE_SIZE = 1000; // Prevent memory leaks
 
 export async function POST(req) {

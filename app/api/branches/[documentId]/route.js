@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 export async function GET(request, { params }) {
   try {
     const { documentId } = params;
+    const { searchParams } = new URL(request.url);
+    const limitParam = searchParams.get('limit');
+    const limit = limitParam ? parseInt(limitParam) : -1;
 
     if (!documentId) {
       return NextResponse.json(
@@ -13,10 +16,10 @@ export async function GET(request, { params }) {
 
     const graphqlUrl = process.env.NEXT_PUBLIC_STRAPI_GRAPHQL_URL;
     const query = `
-      query GetBranchListings($documentId: ID!) {
+      query GetBranchListings($documentId: ID!, $limit: Int) {
         listings(
           filters: { branches: { documentId: { eq: $documentId } } }
-          pagination: { limit: -1 }
+          pagination: { limit: $limit }
         ) {
           documentId
           title
@@ -58,8 +61,9 @@ export async function GET(request, { params }) {
       },
       body: JSON.stringify({
         query,
-        variables: { documentId },
+        variables: { documentId, limit },
       }),
+      next: { revalidate: 3600 },
     });
 
     const result = await response.json();

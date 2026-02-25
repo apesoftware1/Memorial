@@ -55,7 +55,7 @@ function BlogContent({ params }) {
   // Fetch blog post using GraphQL
   const { loading, error, data } = useQuery(GET_BLOG_BY_ID, {
     variables: { documentId: id },
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
   });
 
   // Handle loading state

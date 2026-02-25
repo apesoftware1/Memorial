@@ -84,7 +84,7 @@ export function useProgressiveQuery({
           const { data } = await client.query({
             query: fullQuery,
             variables, // pass variables for full query
-            fetchPolicy: 'network-only',
+            fetchPolicy: 'cache-first',
           });
 
           // Track last updated timestamp for delta refresh

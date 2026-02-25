@@ -1,4 +1,7 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -80,17 +83,21 @@ const BackArrowIcon = (props) => (
 );
 
 export default function BranchButton({ company }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [showBranchSelectorModal, setShowBranchSelectorModal] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [branchSwitched, setBranchSwitched] = useState(false);
   
-  // Check URL for branch parameter on component mount
+  // Check URL for branch parameter on component mount and updates
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('branch')) {
+    if (searchParams.has('branch')) {
       setBranchSwitched(true);
+    } else {
+      setBranchSwitched(false);
     }
-  }, []);
+  }, [searchParams]);
 
   const handleBranchSelect = (branch) => {
     setSelectedBranch(branch);
@@ -101,12 +108,10 @@ export default function BranchButton({ company }) {
   const handleBack = () => {
     setBranchSwitched(false);
     // If we're on a page with branch parameter, remove it
-    if (window.location.search.includes('branch=')) {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('branch');
-      window.history.pushState({}, '', url);
-      // Reload to ensure content reflects the main branch
-      window.location.reload();
+    if (searchParams.has('branch')) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('branch');
+      router.push(`${pathname}?${params.toString()}`);
     }
   };
 
@@ -115,13 +120,13 @@ export default function BranchButton({ company }) {
     // For non-logged-in users, redirect to the main branch
     if (company?.documentId) {
       // Check if we're already on a tombstone listing page
-      if (window.location.pathname.includes('/tombstones-for-sale/')) {
+      if (pathname.includes('/tombstones-for-sale/')) {
         // Stay on the current page - we're already on a listing
         setBranchSwitched(true);
         return;
       } else {
         // Navigate to the main branch page
-        window.location.href = `/manufacturers/manufacturers-Profile-Page/${company.documentId}`;
+        router.push(`/manufacturers/manufacturers-Profile-Page/${company.documentId}`);
       }
     }
   };

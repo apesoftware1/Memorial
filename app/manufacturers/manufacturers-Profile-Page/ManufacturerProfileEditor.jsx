@@ -351,58 +351,105 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
   // Extract branch parameter from URL and fetch listings via REST API
   useEffect(() => {
     const branchParam = searchParams.get('branch');
+    let isActive = true;
     
     const fetchListings = async () => {
       if (branchParam && company?.branches?.length) {
         const branch = company.branches.find(b => b.name === branchParam || b.documentId === branchParam);
         
         if (branch) {
-          setBranchFromUrl(branch);
-          setSelectedBranch(branch);
-          setLoadingListings(true);
-          
-          try {
-            const response = await fetch(`/api/branches/${branch.documentId}`);
-            if (!response.ok) throw new Error('Failed to fetch branch listings');
-            
-            const data = await response.json();
-            let fetchedListings = data.listings || [];
-            
-            // Map prices from branch_listings if available (handling price overrides)
-            fetchedListings = fetchedListings.map(listing => {
-              const branchListing = listing.branch_listings?.find(bl => 
-                bl.branch?.documentId === branch.documentId
-              );
-              if (branchListing?.price) {
-                return { ...listing, price: branchListing.price };
-              }
-              return listing;
-            });
-
-            setFilteredListings(fetchedListings);
-          } catch (error) {
-            console.error("Error fetching branch listings:", error);
-            // Fallback to empty or keep previous? 
-            setFilteredListings([]);
-          } finally {
-            setLoadingListings(false);
+          if (isActive) {
+            setBranchFromUrl(branch);
+            setSelectedBranch(branch);
+            setLoadingListings(true);
           }
+          
+          const fetchBatch = async (limit) => {
+            if (!isActive) return 0;
+            try {
+              const url = `/api/branches/${branch.documentId}${limit > 0 ? `?limit=${limit}` : ''}`;
+              const response = await fetch(url, {
+                cache: "force-cache"
+              });
+              if (!response.ok) throw new Error('Failed to fetch branch listings');
+              
+              const data = await response.json();
+              let fetchedListings = data.listings || [];
+              
+              // Map prices from branch_listings if available (handling price overrides)
+              fetchedListings = fetchedListings.map(listing => {
+                const branchListing = listing.branch_listings?.find(bl => 
+                  bl.branch?.documentId === branch.documentId
+                );
+                if (branchListing?.price) {
+                  return { ...listing, price: branchListing.price };
+                }
+                return listing;
+              });
+
+              if (isActive) {
+                setFilteredListings(fetchedListings);
+                // Stop loading spinner after the first batch (10 items) is rendered
+                if (limit === 10) setLoadingListings(false);
+              }
+              return fetchedListings.length;
+            } catch (error) {
+              console.error("Error fetching branch listings:", error);
+              if (isActive) {
+                 // If first batch fails, stop loading and show empty/error state
+                 if (limit === 10) {
+                     setFilteredListings([]);
+                     setLoadingListings(false);
+                 }
+              }
+              return 0;
+            }
+          };
+
+          // Progressive loading: 10 -> 60 -> All
+          const count10 = await fetchBatch(10);
+          if (count10 < 10) {
+            if (isActive) setLoadingListings(false);
+            return;
+          }
+
+          const count60 = await fetchBatch(60);
+          if (count60 < 60) {
+             if (isActive) setLoadingListings(false);
+             return;
+          }
+          
+          await fetchBatch(-1); // Fetch all
+          if (isActive) setLoadingListings(false);
+
         } else {
           // Branch not found in company branches
-          setBranchFromUrl(null);
-          setFilteredListings(listings || []);
+          if (isActive) {
+            setBranchFromUrl(null);
+            setFilteredListings(listings || []);
+            setLoadingListings(false);
+          }
         }
       } else {
         // No branch selected
-        setBranchFromUrl(null);
-        setFilteredListings(listings || []);
+        if (isActive) {
+          setBranchFromUrl(null);
+          setFilteredListings(listings || []);
+          setLoadingListings(false);
+        }
       }
       
       // Update companyListings to ensure it reflects the latest props
-      setCompanyListings(listings || []);
+      if (isActive) {
+        setCompanyListings(listings || []);
+      }
     };
 
     fetchListings();
+
+    return () => {
+      isActive = false;
+    };
   }, [searchParams, company, listings]);
 
   useEffect(() => {
@@ -528,7 +575,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       const { data } = await client.query({
         query: GET_LISTING_BY_ID,
         variables: { documentID: listing.documentId },
-        fetchPolicy: "network-only",
+        fetchPolicy: "cache-first",
       });
       const full = data?.listing;
       if (!full) throw new Error("Full listing details not found.");
@@ -957,12 +1004,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     }
   };
 
-  const handleBulkDelete = async () => {
+  const performBulkDelete = async () => {
     if (selectedListingIds.size === 0) return;
-    
-    if (!window.confirm(`Are you sure you want to delete ${selectedListingIds.size} listings? This cannot be undone.`)) {
-        return;
-    }
 
     setIsBulkDeleting(true);
     try {
@@ -1019,6 +1062,12 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     } finally {
         setIsBulkDeleting(false);
     }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedListingIds.size === 0) return;
+    setListingToDelete(null); // Ensure we're in "bulk mode" for the modal
+    toggleModal("confirmDelete", true);
   };
 
   const toggleDayOpen = (key) => {
@@ -3547,7 +3596,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                       color: "#1f2937",
                     }}
                   >
-                    Delete Listing
+                    {listingToDelete ? "Delete Listing" : "Delete Listings"}
                   </h3>
                   <p
                     style={{
@@ -3569,9 +3618,17 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                   lineHeight: "1.5",
                 }}
               >
-                Are you sure you want to delete{" "}
-                <strong>"{listingToDelete?.title || "this listing"}"</strong>?
-                This action cannot be undone.
+                {listingToDelete ? (
+                  <>
+                    Are you sure you want to delete{" "}
+                    <strong>"{listingToDelete.title}"</strong>?
+                    This action cannot be undone.
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to delete {selectedListingIds.size} listings? This cannot be undone.
+                  </>
+                )}
               </p>
 
               {/* --- Added: Remove listing from a branch section --- */}
@@ -3693,6 +3750,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                     toggleModal("confirmDelete", false);
                     if (listingToDelete) {
                       handleDelete(listingToDelete.documentId);
+                    } else {
+                      performBulkDelete();
                     }
                     setListingToDelete(null);
                   }}
@@ -3714,7 +3773,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                     e.target.style.backgroundColor = "#dc2626";
                   }}
                 >
-                  Delete Listing
+                  {listingToDelete ? "Delete Listing" : "Delete Listings"}
                 </button>
               </div>
             </div>

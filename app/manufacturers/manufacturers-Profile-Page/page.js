@@ -39,7 +39,7 @@ export default function OwnerProfilePage() {
   const { data, loading, error, refetch } = useQuery(GET_COMPANY_BY_USER, {
     variables: { documentId },
     skip: !documentId,
-    fetchPolicy: 'network-only',
+    fetchPolicy: 'cache-first',
     nextFetchPolicy: 'cache-first',
     notifyOnNetworkStatusChange: true,
   });
