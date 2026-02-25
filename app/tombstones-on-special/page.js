@@ -386,22 +386,24 @@ export default function TombstonesOnSpecial() {
           {/* Manufacturer Logo in its own box, bottom right corner (Mobile only) */}
           <div className="absolute bottom-3 right-3 z-20 bg-gray-50 p-2 rounded-lg md:hidden">
             <Image
-              src={product.logo || "/placeholder-logo.svg"}
+              src={cloudinaryOptimized(product.logo, 200) || "/placeholder-logo.svg"}
               alt={product.manufacturer + " Logo"}
               width={96}
               height={96}
               className="object-contain"
+              unoptimized
             />
           </div>
           {/* Main Image Container */}
           <div className="bg-white px-3 py-3">
             <div className="relative h-[350px] w-full rounded-lg overflow-hidden border border-gray-200">
               <Image
-                src={product.image || "/placeholder.svg"}
+                src={cloudinaryOptimized(product.image, 600) || "/placeholder.svg"}
                 alt={product.title}
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 100vw"
+                unoptimized
               />
                              {/* Camera icon and counter overlay for main image */}
                <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/80 text-white px-2 py-0.5 rounded text-xs font-medium z-10">
@@ -510,7 +512,12 @@ export default function TombstonesOnSpecial() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header />
+        <Header 
+          mobileMenuOpen={uiState.mobileMenuOpen}
+          handleMobileMenuToggle={handleMobileMenuToggle}
+          mobileDropdown={uiState.mobileDropdown}
+          handleMobileDropdownToggle={handleMobileDropdownToggle}
+        />
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-amber-500 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
@@ -525,7 +532,12 @@ export default function TombstonesOnSpecial() {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header />
+        <Header 
+          mobileMenuOpen={uiState.mobileMenuOpen}
+          handleMobileMenuToggle={handleMobileMenuToggle}
+          mobileDropdown={uiState.mobileDropdown}
+          handleMobileDropdownToggle={handleMobileDropdownToggle}
+        />
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto text-center">
             <p className="text-red-600">Error loading special offers. Please try again later.</p>
@@ -541,7 +553,12 @@ export default function TombstonesOnSpecial() {
   if (specialListings.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header />
+        <Header 
+          mobileMenuOpen={uiState.mobileMenuOpen}
+          handleMobileMenuToggle={handleMobileMenuToggle}
+          mobileDropdown={uiState.mobileDropdown}
+          handleMobileDropdownToggle={handleMobileDropdownToggle}
+        />
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto text-center">
             <p className="text-gray-600">No special offers available at the moment.</p>
@@ -554,7 +571,13 @@ export default function TombstonesOnSpecial() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header 
+        mobileMenuOpen={uiState.mobileMenuOpen}
+        handleMobileMenuToggle={handleMobileMenuToggle}
+        mobileDropdown={uiState.mobileDropdown}
+        handleMobileDropdownToggle={handleMobileDropdownToggle}
+        onMobileFilterClick={() => setShowFilters(true)}
+      />
       
       {/* Branch Selection Modal */}
       {showBranchesModal && selectedListing && (

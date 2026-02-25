@@ -1,5 +1,13 @@
 import { gql } from '@apollo/client';
 
+export const GET_COMPANY_ID_BY_USER = gql`
+  query GetCompanyIdByUser($documentId: ID!) {
+    companies(filters: { user: { documentId: { eq: $documentId } } }) {
+      documentId
+    }
+  }
+`;
+
 export const GET_COMPANY_BY_USER = gql`
   query GetCompanyByUser($documentId: ID!) {
     companies(filters: { user: { documentId: { eq: $documentId } } }) {

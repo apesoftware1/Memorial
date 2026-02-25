@@ -29,6 +29,7 @@ export function useProgressiveQuery({
   storageKey = 'data:lastUpdated',
   refreshInterval = 3000,
   staleTime = 0, // Time in ms before data is considered stale
+  skip = false, // Skip query execution if true
 }) {
   const client = useApolloClient();
   const mountedRef = useRef(true);
@@ -39,14 +40,25 @@ export function useProgressiveQuery({
     data: initialData,
     loading: initialLoading,
     error: initialError,
+    refetch: refetchInitial,
   } = useQuery(initialQuery, {
     variables,
+    skip,
     fetchPolicy: 'cache-first',
     nextFetchPolicy: 'cache-first',
+    errorPolicy: 'all',
   });
+
+  // Log initial query errors
+  useEffect(() => {
+    if (initialError) {
+      console.error('[Initial Query Error]', initialError);
+    }
+  }, [initialError]);
 
   // Subscribe to Apollo cache for live updates
   useEffect(() => {
+    if (skip) return;
     mountedRef.current = true;
     const observable = client.watchQuery({
       query: fullQuery,
@@ -63,10 +75,11 @@ export function useProgressiveQuery({
       mountedRef.current = false;
       sub.unsubscribe();
     };
-  }, [client, fullQuery, variables]);
+  }, [client, fullQuery, variables, skip]);
 
   // Background full data fetch to populate cache
   useEffect(() => {
+    if (skip) return;
     if (!initialLoading && initialData) {
       (async () => {
         const start = performance.now();
@@ -99,11 +112,11 @@ export function useProgressiveQuery({
         }
       })();
     }
-  }, [initialData, initialLoading, client, fullQuery, storageKey, staleTime, variables]);
+  }, [initialData, initialLoading, client, fullQuery, storageKey, staleTime, variables, skip]);
 
   // Silent background delta refresh
   useEffect(() => {
-    if (!deltaQuery || refreshInterval <= 0) return;
+    if (skip || !deltaQuery || refreshInterval <= 0) return;
 
     const interval = setInterval(async () => {
       // Skip if page is hidden
@@ -143,7 +156,7 @@ export function useProgressiveQuery({
     }, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [client, deltaQuery, fullQuery, refreshInterval, storageKey, variables]);
+  }, [client, deltaQuery, fullQuery, refreshInterval, storageKey, variables, skip]);
 
   // Choose best available data source
   const data = useMemo(() => fullData || initialData, [fullData, initialData]);

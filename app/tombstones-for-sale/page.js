@@ -926,8 +926,8 @@ export default function Home() {
                       ? listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
                           Array.isArray(product.branches) && product.branches.length > 0 ? (
                             // Map through branches if they exist
-                            product.branches.map((branch) => (
-                              <div key={`${product.documentId || product.id}-${branch.documentId || branch.id}`} className="flex-shrink-0 w-64 snap-start">
+                            product.branches.map((branch, branchIndex) => (
+                              <div key={`${product.documentId || product.id}-${branch.documentId || branch.id || branchIndex}`} className="flex-shrink-0 w-64 snap-start">
                                 <FeaturedListings listing={{...product, currentBranch: branch}} />
                               </div>
                             ))

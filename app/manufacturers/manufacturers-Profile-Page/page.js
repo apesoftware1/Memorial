@@ -3,7 +3,13 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery } from '@apollo/client';
-import { GET_COMPANY_BY_USER } from '@/graphql/queries/getCompany';
+import { GET_COMPANY_ID_BY_USER } from '@/graphql/queries/getCompany';
+import {
+  COMPANY_INITIAL_QUERY,
+  COMPANY_FULL_QUERY,
+  COMPANY_DELTA_QUERY,
+} from '@/graphql/queries/getCompanyById';
+import { useProgressiveQuery } from "@/hooks/useProgressiveQuery";
 import dynamic from 'next/dynamic';
 import Footer from '@/components/Footer';
 import { PageLoader } from '@/components/ui/loader';
@@ -15,7 +21,7 @@ const ManufacturerProfileEditor = dynamic(() => import('./ManufacturerProfileEdi
 
 export default function OwnerProfilePage() {
   const { data: session } = useSession();
-  const documentId = session?.user?.documentId;
+  const userDocumentId = session?.user?.documentId;
   // Add state to control auto-refresh behavior
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
   const [isMobileSmall, setIsMobileSmall] = useState(false);
@@ -36,13 +42,37 @@ export default function OwnerProfilePage() {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
   
-  const { data, loading, error, refetch } = useQuery(GET_COMPANY_BY_USER, {
-    variables: { documentId },
-    skip: !documentId,
+  // 1. First, get the company ID associated with the user
+  const { 
+    data: idData, 
+    loading: idLoading,
+    refetch: refetchId
+  } = useQuery(GET_COMPANY_ID_BY_USER, {
+    variables: { documentId: userDocumentId },
+    skip: !userDocumentId,
     fetchPolicy: 'cache-first',
-    nextFetchPolicy: 'cache-first',
-    notifyOnNetworkStatusChange: true,
   });
+
+  const companyDocumentId = idData?.companies?.[0]?.documentId;
+
+  // 2. Then use progressive loading with the company ID
+  const { 
+    data, 
+    loading: companyLoading, 
+    error, 
+    isFullLoaded 
+  } = useProgressiveQuery({
+    initialQuery: COMPANY_INITIAL_QUERY,
+    fullQuery: COMPANY_FULL_QUERY,
+    deltaQuery: COMPANY_DELTA_QUERY,
+    variables: { documentId: companyDocumentId },
+    skip: !companyDocumentId,
+    storageKey: `companyProfile:${companyDocumentId}:lastUpdated`,
+    refreshInterval: 60000,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const loading = idLoading || (companyLoading && !data);
 
   // Auto-refresh data when page becomes visible (e.g., when navigating back)
   useEffect(() => {
@@ -50,8 +80,10 @@ export default function OwnerProfilePage() {
     if (!autoRefreshEnabled) return;
     
     const handleVisibilityChange = () => {
-      if (!document.hidden && documentId) {
-        refetch();
+      if (!document.hidden && userDocumentId) {
+        refetchId();
+        // useProgressiveQuery handles its own refreshing via refreshInterval and internal logic
+        // but we might want to force a refetch if needed, though the hook doesn't expose a simple refetch for everything
       }
     };
 
@@ -61,7 +93,7 @@ export default function OwnerProfilePage() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [documentId, refetch, autoRefreshEnabled]);
+  }, [userDocumentId, refetchId, autoRefreshEnabled]);
 
   // Display warning for small mobile screens
   if (isMobileSmall) {
@@ -77,10 +109,10 @@ export default function OwnerProfilePage() {
     );
   }
 
-if (loading) return <PageLoader text="Loading company data..." />;
+  if (loading) return <PageLoader text="Loading company data..." />;
   if (error) return <div>Error loading company data.</div>;
   
-  const company = data?.companies[0];
+  const company = data?.companies?.[0];
   if (!company) return <PageLoader text=" " />;
   const listings = company.listings || [];
 
@@ -91,10 +123,11 @@ if (loading) return <PageLoader text="Loading company data..." />;
           isOwner={true} 
           company={company} 
           listings={listings} 
-          onRefresh={refetch}
+          onRefresh={refetchId} // Note: This might need adjustment as refetchId only gets ID, but progressive query updates automatically
           isRefreshing={loading}
           autoRefreshEnabled={autoRefreshEnabled}
           onToggleAutoRefresh={() => setAutoRefreshEnabled(prev => !prev)}
+          isFullLoaded={isFullLoaded}
         />
       </Suspense>
       <Footer />

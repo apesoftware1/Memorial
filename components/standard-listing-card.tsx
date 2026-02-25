@@ -391,6 +391,7 @@ export function StandardListingCard({
                   width={14}
                   height={14}
                   className="object-contain"
+                  style={{ width: "14px", height: "auto" }}
                 />
                 <span>
                   {distanceInfo?.distance?.text
@@ -625,6 +626,7 @@ export function StandardListingCard({
                     width={14}
                     height={14}
                     className="object-contain"
+                    style={{ width: "14px", height: "auto" }}
                   />
                   <span>
                     {distanceInfo?.distance?.text

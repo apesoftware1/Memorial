@@ -164,6 +164,7 @@ export default function ManufacturerProfileEditor({
   isRefreshing,
   autoRefreshEnabled,
   onToggleAutoRefresh,
+  isFullLoaded,
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -175,6 +176,7 @@ export default function ManufacturerProfileEditor({
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const isMounted = useRef(false);
+  const companyListingsLoaded = useRef(false);
 
   const gridComponents = useMemo(() => ({
     List: forwardRef(({ style, children, fixedItemHeight, ...props }, ref) => (
@@ -196,6 +198,24 @@ export default function ManufacturerProfileEditor({
       <div {...props} ref={ref} />
     ))
   }), []);
+
+  // Sync listings prop to state when it updates (progressive loading)
+  useEffect(() => {
+    if (listings) {
+        setCompanyListings(listings);
+        
+        // If no branch is selected via URL, update the view
+        const branchParam = searchParams.get('branch');
+        if (!branchParam) {
+            setFilteredListings(listings);
+            
+            // Only stop loading if we are fully loaded or have data
+            if (isFullLoaded || listings.length > 0) {
+                setLoadingListings(false);
+            }
+        }
+    }
+  }, [listings, searchParams, isFullLoaded]);
 
   // Load persisted sort option on mount
   useEffect(() => {
@@ -228,7 +248,7 @@ export default function ManufacturerProfileEditor({
     setSelectedBranch(branch);
   };
   const [branchFromUrl, setBranchFromUrl] = useState(null);
-  const [filteredListings, setFilteredListings] = useState(listings);
+  const [filteredListings, setFilteredListings] = useState(listings || []);
   const [companyListings, setCompanyListings] = useState(listings || []);
   const [notificationCount, setNotificationCount] = useState(0);
   // Single-step Operating Hours editor state
@@ -354,6 +374,13 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     let isActive = true;
     
     const fetchListings = async () => {
+      // If using progressive loading and not yet fully loaded (and not navigating to a branch),
+      // wait for prop update to avoid redundant API calls
+      if (!branchParam && typeof isFullLoaded !== 'undefined' && !isFullLoaded) {
+          if (isActive) setLoadingListings(true);
+          return;
+      }
+
       if (branchParam && company?.branches?.length) {
         const branch = company.branches.find(b => b.name === branchParam || b.documentId === branchParam);
         
@@ -431,17 +458,98 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
           }
         }
       } else {
-        // No branch selected
+        // No branch selected - Fetch company listings progressively
         if (isActive) {
           setBranchFromUrl(null);
-          setFilteredListings(listings || []);
-          setLoadingListings(false);
+          
+          // Optimization: If we already have company listings in state (e.g. from previous load), use them instantly
+          if (companyListings.length > 0) {
+            setFilteredListings(companyListings);
+            setLoadingListings(false);
+            return;
+          }
+
+          // Optimization: If listings prop has data (from parent progressive load), use it
+          if (listings && listings.length > 0) {
+            setCompanyListings(listings);
+            setFilteredListings(listings);
+            companyListingsLoaded.current = true;
+            setLoadingListings(false);
+            return;
+          }
+
+          // Only start loading if we don't have listings yet
+          if (!companyListingsLoaded.current && (!companyListings || companyListings.length === 0)) {
+             setLoadingListings(true);
+
+             const fetchCompanyListings = async (limit) => {
+                if (!isActive) return 0;
+                
+                try {
+                  const url = `/api/companies/${company.documentId}/listings${limit > 0 ? `?limit=${limit}` : ''}`;
+                  const response = await fetch(url, {
+                    cache: "no-store"
+                  });
+                  if (!response.ok) throw new Error('Failed to fetch company listings');
+                  
+                  const data = await response.json();
+                  const fetchedListings = data.listings || [];
+                  
+                  if (isActive) {
+                    setFilteredListings(fetchedListings);
+                    setCompanyListings(fetchedListings); // Also update base listings
+                    if (limit === 10) setLoadingListings(false);
+                  }
+                  return fetchedListings.length;
+                } catch (error) {
+                  console.error("Error fetching company listings:", error);
+                  if (isActive && limit === 10) {
+                     setLoadingListings(false);
+                  }
+                  return 0;
+                }
+             };
+
+             // Progressive loading: 10 -> 60 -> All
+             const runProgressiveLoad = async () => {
+                 const count10 = await fetchCompanyListings(10);
+                 if (count10 < 10) {
+                    if (isActive) {
+                        setLoadingListings(false);
+                        companyListingsLoaded.current = true;
+                    }
+                    return;
+                 }
+                 
+                 const count60 = await fetchCompanyListings(60);
+                 if (count60 < 60) {
+                    if (isActive) {
+                        setLoadingListings(false);
+                        companyListingsLoaded.current = true;
+                    }
+                    return;
+                 }
+                 
+                 await fetchCompanyListings(-1);
+                 if (isActive) {
+                    setLoadingListings(false);
+                    companyListingsLoaded.current = true;
+                 }
+             };
+             
+             runProgressiveLoad();
+
+          } else {
+             // We have listings from prop or cache
+             if (companyListings.length > 0) {
+                 setFilteredListings(companyListings);
+             } else {
+                 setFilteredListings(listings || []);
+                 if (listings && listings.length > 0) setCompanyListings(listings);
+             }
+             setLoadingListings(false);
+          }
         }
-      }
-      
-      // Update companyListings to ensure it reflects the latest props
-      if (isActive) {
-        setCompanyListings(listings || []);
       }
     };
 
@@ -450,10 +558,10 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     return () => {
       isActive = false;
     };
-  }, [searchParams, company, listings]);
+  }, [searchParams, company?.documentId]);
 
   useEffect(() => {
-    if (!company?.branches?.length || !listings?.length) return;
+    if (!company?.branches?.length || !companyListings?.length) return;
 
     const summarize = (branch) => {
       const matchesBranch = (b) => {
@@ -464,12 +572,12 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         return false;
       };
 
-      const legacyListings = listings.filter(listing =>
+      const legacyListings = companyListings.filter(listing =>
         Array.isArray(listing.branches) &&
         listing.branches.some(matchesBranch)
       );
 
-      const newSystemListings = listings.filter(listing =>
+      const newSystemListings = companyListings.filter(listing =>
         Array.isArray(listing.branch_listings) &&
         listing.branch_listings.some(bl => matchesBranch(bl?.branch))
       );
@@ -490,7 +598,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
 
     const summary = company.branches.map(summarize);
     console.log("Branch listings summary", summary);
-  }, [company, listings]);
+  }, [company, companyListings]);
   
   // Branch location display component
   const BranchLocationInfo = () => {
@@ -3080,7 +3188,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
 
             <div style={{ fontSize: 15, fontWeight: 700 }}>
-              {companyListings.length} Active Listings
+              {filteredListings.length} Active Listings
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

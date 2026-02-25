@@ -4,6 +4,7 @@ import { useFavorites } from "@/context/favorites-context.jsx"
 import Link from "next/link"
 import Image from "next/image"
 import { Heart, Trash2 } from "lucide-react"
+import { cloudinaryOptimized } from "@/lib/cloudinary"
 
 export function FavoritesContent() {
   const { favorites, removeFavorite, totalFavorites } = useFavorites()
