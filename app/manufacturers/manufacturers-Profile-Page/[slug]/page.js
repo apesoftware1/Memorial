@@ -24,11 +24,12 @@ export default function ManufacturerProfilePage() {
   const { slug: documentId } = useParams();
   const [showVideoModal, setShowVideoModal] = useState(false);
   
-  const { loading, error, data } = useProgressiveQuery({
+  const { loading, error, data, isFullLoaded } = useProgressiveQuery({
     initialQuery: COMPANY_INITIAL_QUERY,
     fullQuery: COMPANY_FULL_QUERY,
     deltaQuery: COMPANY_DELTA_QUERY,
     variables: { documentId },
+    skip: !documentId,
     storageKey: 'companyProfile:lastUpdated',
     refreshInterval: 60000,
     staleTime: 1000 * 60 * 5,
@@ -61,6 +62,7 @@ export default function ManufacturerProfilePage() {
           isOwner={false} 
           company={company} 
           listings={listings} 
+          isFullLoaded={isFullLoaded}
           onVideoClick={handleVideoClick}
           branchButton={<BranchButton company={company} />}
         />

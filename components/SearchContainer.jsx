@@ -11,22 +11,24 @@ import MobileFilterTags from "@/components/MobileFilterTags.jsx";
 import { SearchLoader } from "@/components/ui/loader";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocationHierarchy } from "@/hooks/useLocationHierarchy";
-import { checkListingLocation } from "@/lib/locationHelpers";
+import { checkListingLocation, toTitleCase } from "@/lib/locationHelpers";
 
 // Default filter options with updated price ranges
 const defaultFilterOptions = {
   minPrice: [
     "Min Price",
+    "R 1,000",
     ...Array.from(
-      { length: 100 },
-      (_, i) => `R ${(1000 + i * 2000).toLocaleString()}`
+      { length: 40 },
+      (_, i) => `R ${(5000 + i * 5000).toLocaleString()}`
     ),
   ],
   maxPrice: [
     "Max Price",
+    "R 1,000",
     ...Array.from(
-      { length: 100 },
-      (_, i) => `R ${(3000 + i * 2000).toLocaleString()}`
+      { length: 40 },
+      (_, i) => `R ${(5000 + i * 5000).toLocaleString()}`
     ),
     "R 200,000+",
   ],
@@ -386,7 +388,7 @@ const SearchContainer = ({
         slabStyle: paramSlabStyle || prev?.slabStyle || null,
         stoneType: paramMaterial || prev?.stoneType || null,
         custom: paramCustomization || prev?.custom || null,
-        location: paramLocation || prev?.location || null,
+        location: paramLocation ? toTitleCase(paramLocation) : (prev?.location || null),
         minPrice: paramMinPrice || prev?.minPrice || null,
         maxPrice: paramMaxPrice || prev?.maxPrice || null,
       }));

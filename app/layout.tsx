@@ -96,7 +96,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* Preconnect to media origins to speed up image loading */}
         <link rel="preconnect" href="https://typical-car-e0b66549b3.media.strapiapp.com" crossOrigin="anonymous" />
-        <link rel="preload" as="image" href="/2560(w)x400px(h)_Banner_OldYoungCouple.jpg" />
         {/* Google Analytics – paste your GA4 Measurement ID in NEXT_PUBLIC_GA_ID inside .env.local */}
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID ?? 'G-PASTE_MEASUREMENT_ID_HERE'}`}

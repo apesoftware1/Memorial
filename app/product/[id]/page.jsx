@@ -1,44 +1,31 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
 import ProductShowcase from "@/components/product-showcase";
 import ProductStructuredData from "@/components/ProductStructuredData";
 import LoadingIndicator from "@/components/LoadingIndicator";
 
-export default function ProductPage() {
-  const { id } = useParams();
-  const [listing, setListing] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+// This is a Server Component
+export default async function ProductPage({ params }) {
+  const { id } = await params;
+  let listing = null;
+  let error = null;
 
-  useEffect(() => {
-    async function fetchListing() {
-      try {
-        const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
-        const response = await fetch(`${baseUrl}/listings/${id}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch listing");
-        }
-        const data = await response.json();
-        // Extract the actual listing data from the response
-        const listingData = data.data || data;
-        setListing(data);
-      } catch (err) {
-        console.error("Error fetching listing:", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
+    const response = await fetch(`${baseUrl}/listings/${id}`, {
+      cache: "force-cache",
+      next: { revalidate: 3600 } // Revalidate every hour
+    });
+    
+    if (!response.ok) {
+      // If 404 or other error, we might want to handle it gracefully
+      // For now, we'll just set error state like before
+      throw new Error("Failed to fetch listing");
     }
-
-    if (id) {
-      fetchListing();
-    }
-  }, [id]);
-
-  if (loading) {
-    return <LoadingIndicator />;
+    
+    const data = await response.json();
+    listing = data.data || data;
+  } catch (err) {
+    console.error("Error fetching listing:", err);
+    error = err.message;
   }
 
   if (error) {

@@ -289,7 +289,7 @@ export default function Home() {
     deltaQuery: MANUFACTURERS_DELTA_QUERY,
     variables: {},
     storageKey: 'manufacturers:lastUpdated',
-    refreshInterval: 3000,
+    refreshInterval: 60000,
   });
   const bannerPool = useMemo(
     () =>

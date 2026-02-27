@@ -56,7 +56,7 @@ export default function DashboardPage() {
       deltaQuery: MANUFACTURERS_DELTA_QUERY,
       variables: {},
       storageKey: 'manufacturers:lastUpdated',
-      refreshInterval: 3000,
+      refreshInterval: 60000,
     });
   // Local dark-mode state scoped to this page
   const [isDark, setIsDark] = useState(false);
@@ -76,7 +76,7 @@ export default function DashboardPage() {
     const loadMaintenance = async () => {
       try {
         setMaintenanceLoading(true);
-        const res = await fetch("/api/maintenance-mode");
+        const res = await fetch("/api/maintenance-mode", { next: { revalidate: 60 } });
         if (!res.ok) return;
         const data = await res.json();
         setMaintenanceEnabled(!!data?.enabled);

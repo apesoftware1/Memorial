@@ -1,5 +1,6 @@
-import { ApolloClient, InMemoryCache, createHttpLink, NormalizedCacheObject } from '@apollo/client';
+import { ApolloClient, InMemoryCache, createHttpLink, NormalizedCacheObject, from } from '@apollo/client';
 import { persistCache, LocalStorageWrapper } from 'apollo3-cache-persist';
+import { onError } from '@apollo/client/link/error';
 
 // Shared cache instance so persistence can hydrate it before client creation
 const cache = new InMemoryCache({
@@ -32,13 +33,30 @@ const cache = new InMemoryCache({
 });
 
 export function createApolloClient(): ApolloClient<NormalizedCacheObject> {
+  const uri = process.env.NEXT_PUBLIC_STRAPI_GRAPHQL_URL;
+  if (!uri) {
+    console.error('NEXT_PUBLIC_STRAPI_GRAPHQL_URL is not defined');
+  }
+
+  const errorLink = onError(({ graphQLErrors, networkError }) => {
+    if (graphQLErrors)
+      graphQLErrors.forEach(({ message, locations, path }) =>
+        console.error(
+          `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
+        )
+      );
+    if (networkError) console.error(`[Network error]: ${networkError}`);
+  });
+
+  const httpLink = createHttpLink({
+    uri,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
   return new ApolloClient({
-    link: createHttpLink({
-      uri: process.env.NEXT_PUBLIC_STRAPI_GRAPHQL_URL,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    }),
+    link: from([errorLink, httpLink]),
     cache,
     defaultOptions: {
       watchQuery: { fetchPolicy: 'cache-first' },

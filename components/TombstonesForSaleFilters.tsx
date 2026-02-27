@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "react"
-import { ChevronDown, Search } from "lucide-react"
+import { ChevronDown, Search, X } from "lucide-react"
 import { useListingCategories } from "@/hooks/use-ListingCategories"
 import Image from "next/image"
+import FilterDropdown from "./FilterDropdown"
+import LocationModal from "./LocationModal"
 
 interface TombstonesForSaleFiltersProps {
   activeFilters: any;
@@ -13,12 +15,13 @@ interface TombstonesForSaleFiltersProps {
   handleSearch?: () => void;
   getActiveCategory?: () => string;
   showCategoryDropdown?: boolean;
+  locationsData?: any[];
 }
 
 // Use the same filter options as SearchContainer
 const defaultFilterOptions = {
-  minPrice: ["Min Price", ...Array.from({length: 100}, (_, i) => `R ${(1000 + i * 2000).toLocaleString()}`)],
-  maxPrice: ["Max Price", ...Array.from({length: 100}, (_, i) => `R ${(3000 + i * 2000).toLocaleString()}`), "R 200,000+"],
+  minPrice: ["Min Price", "R 1,000", ...Array.from({length: 40}, (_, i) => `R ${(5000 + i * 5000).toLocaleString()}`)],
+  maxPrice: ["Max Price", "R 1,000", ...Array.from({length: 40}, (_, i) => `R ${(5000 + i * 5000).toLocaleString()}`), "R 200,000+"],
   location: ["Gauteng", "Western Cape", "KwaZulu-Natal", "Eastern Cape", "Free State"],
   style: [
     "Christian Cross", "Heart", "Bible", "Pillars", "Traditional African", "Abstract", "Praying Hands", "Scroll", "Angel", "Mausoleum", "Obelisk", "Plain", "Teddy Bear", "Butterfly", "Car", "Bike", "Sports",
@@ -156,17 +159,20 @@ const getIconForOption = (filterName: string, option: string) => {
   }
 };
 
-export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions, filteredListings, handleSearch, getActiveCategory, showCategoryDropdown = true }: TombstonesForSaleFiltersProps) {
+export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions, filteredListings, handleSearch, getActiveCategory, showCategoryDropdown = true, locationsData }: TombstonesForSaleFiltersProps) {
   const [showMore, setShowMore] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
   const { categories, loading } = useListingCategories();
-  const mergedOptions = { ...defaultFilterOptions, ...filterOptions };
-  const filterContainerRef = useRef<HTMLDivElement>(null);
+  const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  // Handle click outside to close filters
+  // Handle click outside to close dropdowns
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (filterContainerRef.current && !filterContainerRef.current.contains(event.target as Node)) {
-        setShowFilters(null);
+      if (showFilters) {
+        const dropdownRef = dropdownRefs.current[showFilters];
+        if (dropdownRef && !dropdownRef.contains(event.target as Node)) {
+          setShowFilters(null);
+        }
       }
     };
 
@@ -174,52 +180,57 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [setShowFilters]);
+  }, [showFilters, setShowFilters]);
+
+  const mergedOptions = { ...defaultFilterOptions, ...filterOptions };
+  
+  // Use locationsData if provided (hierarchical) - check for existence, not just non-empty, to allow empty overrides
+    if (locationsData) {
+      mergedOptions.location = locationsData;
+    }
 
   // Toggle filter dropdown
   const toggleFilter = (filter: string) => {
+    if (filter === 'location' && typeof window !== 'undefined' && window.innerWidth < 768) {
+      setShowLocationModal(true);
+      return;
+    }
     setShowFilters(showFilters === filter ? null : filter)
   }
 
   // Helper for multi-select
   const isMultiSelect = (name: string) => ['style', 'slabStyle', 'stoneType', 'colour', 'custom', 'location'].includes(name);
 
-  // Set filter value
-  const setFilter = (category: string, value: string) => {
-    if (isMultiSelect(category)) {
-        let current = activeFilters[category];
-        let newValues = [];
-        
-        // Normalize current to array
-        if (Array.isArray(current)) {
-            newValues = [...current];
-        } else if (current && current !== 'All' && current !== 'Any' && current !== 'All Categories' && current !== '') {
-            newValues = [current];
-        }
-        
-        if (value === 'Any' || value === 'All' || value === 'All Categories') {
-             newValues = []; // Clear
-        } else {
-             if (newValues.includes(value)) {
-                 newValues = newValues.filter(v => v !== value);
-             } else {
-                 newValues.push(value);
-             }
-        }
-        
-        setActiveFilters({
-          ...activeFilters,
-          [category]: newValues.length > 0 ? newValues : null,
-        });
-        // Keep open
+  // New selectOption for FilterDropdown.js
+  const selectOption = (name: string, value: any, keepOpen: boolean = false) => {
+    // If selecting 'Any', handle clearing logic
+    if (value === 'Any' || value === 'All' || value === 'All Categories' || (Array.isArray(value) && value.length === 0)) {
+       // Check if it's location to clear specific fields if needed
+       if (name === 'location') {
+         setActiveFilters({
+           ...activeFilters,
+           location: null // Clear location
+         });
+       } else {
+         setActiveFilters({
+           ...activeFilters,
+           [name]: null
+         });
+       }
     } else {
-        setActiveFilters({
-          ...activeFilters,
-          [category]: value,
-        })
-        setShowFilters(null)
+       // Set the new value directly
+       // FilterDropdown.js passes the *next state* for multi-select arrays, or the single value for single-select
+       // So we just set it.
+       setActiveFilters({
+         ...activeFilters,
+         [name]: value
+       });
     }
-  }
+
+    if (!keepOpen) {
+      setShowFilters(null);
+    }
+  };
 
   // Helper to remove a specific filter tag
   const removeFilterTag = (category: string, value: string) => {
@@ -228,10 +239,20 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
     } else if (category === 'maxPrice') {
       setActiveFilters({ ...activeFilters, maxPrice: "Max Price" });
     } else if (isMultiSelect(category)) {
-      setFilter(category, value); // reusing setFilter logic which toggles/removes
+      // For multi-select, value is the item to remove.
+      // But we need to update the array.
+      const current = activeFilters[category];
+      if (Array.isArray(current)) {
+        const newValues = current.filter((v: string) => v !== value);
+        // If array becomes empty, set to null or 'Any' (handled by selectOption)
+        selectOption(category, newValues.length > 0 ? newValues : 'Any', true);
+      } else if (current === value) {
+         // Single value match (if stored as string despite being multi-select type)
+         selectOption(category, 'Any', false);
+      }
     } else {
-      // Single select (location, category)
-      setActiveFilters({ ...activeFilters, [category]: null });
+      // Single select (category)
+      selectOption(category, null, false);
     }
   };
 
@@ -248,104 +269,12 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
     </div>
   );
 
-  // FilterDropdown component
-  const FilterDropdown = ({ name, label, options, replaceLabelWithSelected = false }: { name: string; label: string; options: string[]; replaceLabelWithSelected?: boolean }) => {
-     const isMulti = isMultiSelect(name);
-     const currentVal = activeFilters?.[name];
-     
-     const isSelected = (opt: string) => {
-         if (isMulti) {
-             if (Array.isArray(currentVal)) return currentVal.includes(opt);
-             return currentVal === opt;
-         }
-         return currentVal === opt;
-     };
-
-     // Get selected items for tags
-     const selectedItems = isMulti 
-        ? (Array.isArray(currentVal) ? currentVal : (currentVal ? [currentVal] : []))
-        : (currentVal && currentVal !== 'All' && currentVal !== 'Any' && currentVal !== 'All Categories' && !replaceLabelWithSelected ? [currentVal] : []);
-
-     return (
-    <div className="mb-2 relative w-full sm:rounded-none">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => toggleFilter(name)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            toggleFilter(name);
-          }
-        }}
-        className={`w-full flex justify-between items-center py-2 px-3 bg-[#0D7C99] text-white font-semibold text-sm rounded-t-sm focus:outline-none hover:bg-[#0D7C99]/90 min-h-[44px] transition-all cursor-pointer`}
-        aria-expanded={showFilters === name}
-        aria-haspopup="true"
-        style={{ textAlign: 'left' }}
-      >
-        <div className="flex flex-wrap items-center gap-2 pr-2">
-            <span className="text-white font-semibold text-base">
-                {replaceLabelWithSelected && !isMulti && currentVal ? currentVal : label}
-            </span>
-            {selectedItems.length > 0 && selectedItems.map((item: string) => (
-                <FilterTag 
-                  key={item} 
-                  label={item} 
-                  onRemove={() => removeFilterTag(name, item)} 
-                />
-            ))}
-        </div>
-        <ChevronDown className={`h-5 w-5 text-white transition-transform duration-200 ${showFilters === name ? 'transform rotate-180' : ''}`} />
-      </div>
-
-      {showFilters === name && (
-        <div className="absolute z-50 left-0 right-0 mt-0 bg-[#2E2E30] border border-gray-600 shadow-xl max-h-60 overflow-y-auto">
-          <ul className="py-2" role="menu">
-            {options.map((option: string) => {
-              const iconPath = getIconForOption(name, option);
-              const selected = isSelected(option);
-              
-              return (
-                <li
-                  key={option}
-                  onClick={() => setFilter(name, option)}
-                  className={`px-4 py-3 text-sm text-gray-200 hover:bg-[#3E3E40] transition-colors flex items-center cursor-pointer border-b border-gray-700/50 last:border-0`}
-                  role="menuitem"
-                >
-                  {/* Checkbox / Radio */}
-                  <div className={`w-5 h-5 mr-3 flex items-center justify-center rounded-sm border ${selected ? 'bg-white border-white' : 'border-gray-400 bg-transparent'}`}>
-                      {selected && <div className="w-2.5 h-2.5 bg-black rounded-[1px]"></div>}
-                  </div>
-                  
-                  {/* Icon */}
-                  {iconPath && (
-                      <div className="w-6 h-6 mr-3 flex-shrink-0">
-                        <Image
-                          src={iconPath}
-                          alt={`${option} icon`}
-                          width={24}
-                          height={24}
-                          className={`w-full h-full object-contain ${name !== 'colour' ? 'filter brightness-0 invert' : ''}`} 
-                        />
-                      </div>
-                  )}
-                  
-                  <span className="font-medium">{option}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-    </div>
-  )};
 
   return (
     <div
       className="w-full bg-[#005D77] text-white min-h-full"
-      ref={filterContainerRef}
     >
-      <div className="p-4 sm:p-6">
+      <div className="p-4 sm:p-6 space-y-4">
       {/* Price Section */}
       <div className="mb-4">
         <div className="grid grid-cols-2 gap-2">
@@ -369,7 +298,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
           </select>
         </div>
         {/* Price Tags */}
-        <div className="flex flex-wrap mt-2">
+        <div className="flex flex-wrap mt-2 gap-2">
           {activeFilters.minPrice && activeFilters.minPrice !== "Min Price" && (
              <FilterTag label={activeFilters.minPrice} onRemove={() => removeFilterTag('minPrice', activeFilters.minPrice)} />
           )}
@@ -378,27 +307,42 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
           )}
         </div>
       </div>
-      <div className="border-t border-teal-700/60 my-2"></div>
       
-      {/* Category Filter (optional; hidden when using CategoryTabs) */}
+      {/* Category Filter (optional) */}
       {showCategoryDropdown && (
         <div className="md:hidden">
           <FilterDropdown 
             name="category" 
             label="Category" 
-            options={loading ? ["Loading..."] : ["All Categories", ...categories.map((cat: any) => cat.name)]} 
+            options={loading ? ["Loading..."] : ["All Categories", ...categories.map((cat: any) => cat.name)]}
+            openDropdown={showFilters}
+            toggleDropdown={toggleFilter}
+            selectOption={selectOption}
+            filters={activeFilters}
+            dropdownRefs={dropdownRefs}
           />
         </div>
       )}
       
-      <FilterDropdown name="location" label="Location" options={mergedOptions.location} />
-      <FilterDropdown name="style" label="Head Style" options={mergedOptions.style} />
-      <FilterDropdown name="slabStyle" label="Slab Style" options={mergedOptions.slabStyle} />
-      <FilterDropdown name="stoneType" label="Stone Type" options={mergedOptions.stoneType} />
-      <FilterDropdown name="colour" label="Colour" options={mergedOptions.colour} />
-      <FilterDropdown name="custom" label="Customisation" options={mergedOptions.custom} />
+      {/* Location Filter */}
+      <FilterDropdown
+        name="location"
+        label="Location"
+        options={mergedOptions.location}
+        openDropdown={showFilters}
+        toggleDropdown={toggleFilter}
+        selectOption={selectOption}
+        filters={activeFilters}
+        dropdownRefs={dropdownRefs}
+      />
+
+      <FilterDropdown name="style" label="Head Style" options={mergedOptions.style} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
+      <FilterDropdown name="slabStyle" label="Slab Style" options={mergedOptions.slabStyle} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
+      <FilterDropdown name="stoneType" label="Stone Type" options={mergedOptions.stoneType} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
+      <FilterDropdown name="colour" label="Colour" options={mergedOptions.colour} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
+      <FilterDropdown name="custom" label="Customisation" options={mergedOptions.custom} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
       
-      {/* Duplicate Search Button */}
+      {/* Search Button */}
       {handleSearch && filteredListings && getActiveCategory && (
         <div className="mt-4 px-2 sm:px-0">
           <button 
@@ -423,6 +367,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
                 custom: null,
                 colour: null,
                 category: activeFilters.category || null,
+                search: null,
               });
             }}
           >
@@ -431,6 +376,26 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
         </div>
       )}
       </div>
+
+      {/* Location Modal for Mobile */}
+      {showLocationModal && (
+        <LocationModal
+          isOpen={showLocationModal}
+          onClose={() => setShowLocationModal(false)}
+          locationsData={locationsData}
+          onSelectLocation={(loc: string | { type: string, lat: number, lng: number }) => {
+            if (typeof loc === 'string') {
+               // Single select for mobile modal
+               selectOption('location', loc);
+            } else if (typeof loc === 'object' && loc.type === 'coords') {
+               // Handle "Near me" or coords if supported, or just ignore/fallback
+               // For now, let's map "Near me" to string if possible or just use "Near me" text
+               selectOption('location', "Near me");
+            }
+            setShowLocationModal(false);
+          }}
+        />
+      )}
     </div>
   )
 }

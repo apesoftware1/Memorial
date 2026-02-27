@@ -4,7 +4,9 @@ import {
   provinceSynonyms, 
   getCityCoordinates, 
   DEFAULT_PROVINCES,
-  matchesProvince
+  matchesProvince,
+  toTitleCase,
+  normalizeCityName
 } from '@/lib/locationHelpers';
 
 export function useLocationHierarchy(allListings, categories, activeTab) {
@@ -14,8 +16,17 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
     // Initialize with Any
     hierarchy['any'] = { name: 'Any', count: 0, cities: {} };
 
+    // Initialize all default provinces with 0 count
+    DEFAULT_PROVINCES.forEach(prov => {
+      if (prov === 'Any') return;
+      const provKey = normalizeProvince(prov);
+      hierarchy[provKey] = { name: prov, count: 0, cities: {} };
+    });
+
     // Determine relevant listings based on current category (activeTab)
     let relevantListings = allListings;
+    let selectedCategoryObj = null;
+
     if (Array.isArray(allListings) && categories && categories.length > 0 && activeTab !== undefined) {
       const desiredOrder = [
         "SINGLE",
@@ -30,7 +41,7 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
           categories.find((cat) => cat?.name && cat.name.toUpperCase() === name)
         )
         .filter(Boolean);
-      const selectedCategoryObj = sortedCategories[activeTab];
+      selectedCategoryObj = sortedCategories[activeTab];
       
       if (selectedCategoryObj) {
         relevantListings = allListings.filter(listing => 
@@ -40,6 +51,9 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
     }
 
     if (Array.isArray(relevantListings)) {
+      // Debug logging
+      console.log(`[useLocationHierarchy] Processing ${relevantListings.length} listings for category: ${selectedCategoryObj?.name || 'All'}`);
+      
       relevantListings.forEach(listing => {
         const visited = {
           provinces: new Set(),
@@ -62,7 +76,7 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
                }
 
                if (!hierarchy[provKey]) {
-                 const niceName = DEFAULT_PROVINCES.find(p => normalizeProvince(p) === provKey) || loc.province.trim();
+                 const niceName = DEFAULT_PROVINCES.find(p => normalizeProvince(p) === provKey) || toTitleCase(loc.province.trim());
                  hierarchy[provKey] = { name: niceName, count: 0, cities: {} };
                }
 
@@ -73,19 +87,29 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
                }
                
                if (loc.city) {
-                 let cityRaw = loc.city.trim();
+                 // Use centralized normalization
+                 let cityRaw = normalizeCityName(loc.city);
                  let cityKey = String(cityRaw).toLowerCase();
-                 let townRaw = loc.town ? loc.town.trim() : null;
+                 let townRaw = loc.town ? toTitleCase(loc.town.trim()) : null;
 
                  const metros = ['durban', 'cape town', 'johannesburg', 'pretoria', 'bloemfontein', 'port elizabeth', 'east london'];
                  
                  for (const metro of metros) {
                     if (cityKey !== metro && cityKey.startsWith(metro + ' ')) {
+                        // Extract suburb/town part from city name (e.g. "North" from "Durban North")
+                        const suburbPart = cityRaw.substring(metro.length).trim();
+                        
                         if (!townRaw) {
-                            townRaw = cityRaw; 
-                            cityRaw = metro.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                            cityKey = metro;
+                            townRaw = suburbPart;
+                        } else {
+                            // If town already exists, keep it but normalize city to metro parent
+                            // Only append if not redundant
+                            if (!townRaw.toLowerCase().includes(suburbPart.toLowerCase())) {
+                                townRaw = `${suburbPart} - ${townRaw}`;
+                            }
                         }
+                        cityRaw = toTitleCase(metro);
+                        cityKey = metro;
                     }
                  }
 
@@ -128,7 +152,7 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
 
           if (matchedProvKey) {
             if (!hierarchy[matchedProvKey]) {
-              const niceName = DEFAULT_PROVINCES.find(p => normalizeProvince(p) === matchedProvKey) || companyLocation.trim();
+              const niceName = DEFAULT_PROVINCES.find(p => normalizeProvince(p) === matchedProvKey) || toTitleCase(companyLocation.trim());
               hierarchy[matchedProvKey] = { name: niceName, count: 0, cities: {} };
             }
             if (!visited.provinces.has(matchedProvKey)) {
@@ -151,7 +175,10 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
         count: city.count,
         towns: Object.values(city.towns).sort((a, b) => a.name.localeCompare(b.name))
       })).sort((a, b) => a.name.localeCompare(b.name))
-    })).sort((a, b) => {
+    }))
+    // Filter out provinces with 0 count, but always keep 'Any'
+    .filter(prov => prov.name === 'Any' || prov.count > 0)
+    .sort((a, b) => {
       if (a.name === 'Any') return -1;
       if (b.name === 'Any') return 1;
       return a.name.localeCompare(b.name);

@@ -2,36 +2,41 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request, { params }) {
   try {
-    const { documentId } = params;
+    const { documentId } = await params;
     const { searchParams } = new URL(request.url);
     const limitParam = searchParams.get('limit');
     const limit = limitParam ? parseInt(limitParam) : -1;
 
     if (!documentId) {
       return NextResponse.json(
-        { error: 'Branch ID is required' },
+        { error: 'Company ID is required' },
         { status: 400 }
       );
     }
 
     const graphqlUrl = process.env.NEXT_PUBLIC_STRAPI_GRAPHQL_URL;
     const query = `
-      query GetBranchListings($documentId: ID!, $limit: Int) {
+      query GetCompanyListings($documentId: ID!, $limit: Int) {
         listings(
-          filters: { branches: { documentId: { eq: $documentId } } }
+          filters: { company: { documentId: { eq: $documentId } } }
           pagination: { limit: $limit }
         ) {
           documentId
           title
-          price
           slug
+          price
+          adFlasher
+          isFeatured
+          isOnSpecial
+          isPremium
+          isStandard
+          manufacturingTimeframe
           mainImageUrl
+          mainImagePublicId
+          thumbnailUrls
+          thumbnailPublicIds
           listing_category {
             name
-          }
-          company {
-            name
-            location
           }
           branches {
             documentId
@@ -49,6 +54,12 @@ export async function GET(request, { params }) {
             }
             price
           }
+          inquiries {
+            documentId
+          }
+          inquiries_c {
+            documentId
+          }
         }
       }
     `;
@@ -57,7 +68,6 @@ export async function GET(request, { params }) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Add Authorization if needed, but public listings should be accessible
       },
       body: JSON.stringify({
         query,

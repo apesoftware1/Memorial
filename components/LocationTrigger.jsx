@@ -93,6 +93,7 @@ export default function LocationTrigger({ listing, className = "" }) {
           width={14}
           height={14}
           className="object-contain"
+          style={{ width: "14px", height: "auto" }}
         />
         <span>{getDistanceText()}</span>
       </div>

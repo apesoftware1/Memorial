@@ -14,7 +14,8 @@ export default function RelatedProducts({ currentProductId, categoryId }) {
       try {
         // Fetch products from same category, excluding current one
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_STRAPI_URL}/api/listings?filters[category][id][$eq]=${categoryId}&filters[id][$ne]=${currentProductId}&populate=images&pagination[limit]=4`
+          `${process.env.NEXT_PUBLIC_STRAPI_URL}/api/listings?filters[category][id][$eq]=${categoryId}&filters[id][$ne]=${currentProductId}&populate=images&pagination[limit]=4`,
+          { cache: "force-cache" }
         );
         const data = await response.json();
         
