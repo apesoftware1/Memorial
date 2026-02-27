@@ -29,7 +29,7 @@ import {
 } from '@/graphql/queries';
 import { useListingCategories } from "@/hooks/use-ListingCategories"
 import { useLocationHierarchy } from '@/hooks/useLocationHierarchy';
-import { checkListingLocation } from '@/lib/locationHelpers';
+import { checkListingLocation, toTitleCase, DEFAULT_PROVINCES, normalizeCityName } from '@/lib/locationHelpers';
 export default function Home() {
   const { categories, loading: categoriesLoading } = useListingCategories();
   const [activeTab, setActiveTab] = useState(0);
@@ -101,6 +101,7 @@ export default function Home() {
         })
       : [];
   }, [listings]);
+
   const featuredManufacturers = [];
   const seenManufacturers = new Set();
   if (Array.isArray(listings)) {
@@ -127,9 +128,165 @@ export default function Home() {
     slabStyle: null,
     custom: null,
     colour: null,
-    // removed: culture, bodyType, designTheme
     category: null,
+    search: null,
   })
+
+  // Ref to track if we are currently updating the URL to prevent loops
+  const isUrlUpdating = useRef(false);
+
+  // Initialize filters from URL params on mount and sync on back/forward navigation
+  useEffect(() => {
+    if (!searchParams) return;
+
+    // If we just updated the URL ourselves, don't re-sync state immediately
+    // unless we want to ensure source-of-truth consistency.
+    // However, for Next.js router.replace, it's safer to allow the sync but ensure we don't trigger another URL update.
+    
+    setActiveFilters(prev => {
+      const newFilters = { ...prev };
+      let hasChanges = false;
+
+      // Helper to get param as array or string
+    const getParam = (key) => {
+      const val = searchParams.get(key);
+      if (!val) return null;
+      return val.includes(',') ? val.split(',') : [val]; // Always return array for multi-selects to avoid type instability
+    };
+
+    const locationVal = searchParams.get('location');
+    // Normalize location to Title Case to match hierarchy data
+    let locationNormalized = null;
+    if (locationVal) {
+      const raw = locationVal.includes(',') ? locationVal.split(',') : [locationVal];
+      locationNormalized = raw.map(l => {
+        const trimmed = l.trim();
+        // Check if it matches a known province (case-insensitive)
+        const knownProv = DEFAULT_PROVINCES.find(p => p.toLowerCase() === trimmed.toLowerCase());
+        // Use centralized normalization for cities (handles Newcastle, Eshowe, etc.)
+        return knownProv || normalizeCityName(trimmed);
+      });
+    }
+
+    if (JSON.stringify(locationNormalized) !== JSON.stringify(prev.location)) {
+      newFilters.location = locationNormalized;
+      hasChanges = true;
+    }
+
+      const minPrice = searchParams.get('minPrice') || "Min Price";
+      if (minPrice !== prev.minPrice) {
+        newFilters.minPrice = minPrice;
+        hasChanges = true;
+      }
+
+      const maxPrice = searchParams.get('maxPrice') || "Max Price";
+      if (maxPrice !== prev.maxPrice) {
+        newFilters.maxPrice = maxPrice;
+        hasChanges = true;
+      }
+      
+      const search = searchParams.get('search') || searchParams.get('query');
+      if (search !== prev.search) {
+        newFilters.search = search;
+        hasChanges = true;
+      }
+
+      // Handle other multi-select filters
+      // Map 'color' param to 'colour' filter state to match TombstonesForSaleFilters
+      const colorParam = searchParams.get('color') || searchParams.get('colour');
+      const colorVal = colorParam ? (colorParam.includes(',') ? colorParam.split(',') : [colorParam]) : null;
+      
+      if (JSON.stringify(colorVal) !== JSON.stringify(prev.colour)) {
+        newFilters.colour = colorVal;
+        // Also update 'color' key for backward compatibility/SearchContainer logic if needed
+        newFilters.color = colorVal; 
+        hasChanges = true;
+      }
+
+      // Stone Type (support 'material' alias)
+      const stoneType = getParam('stoneType') || getParam('material');
+      if (JSON.stringify(stoneType) !== JSON.stringify(prev.stoneType)) {
+        newFilters.stoneType = stoneType;
+        hasChanges = true;
+      }
+
+      // Custom (support 'customization' alias)
+      const custom = getParam('custom') || getParam('customization');
+      if (JSON.stringify(custom) !== JSON.stringify(prev.custom)) {
+        newFilters.custom = custom;
+        hasChanges = true;
+      }
+
+      // Standard multi-selects
+      ['style', 'slabStyle'].forEach(key => {
+        const val = getParam(key);
+        if (JSON.stringify(val) !== JSON.stringify(prev[key])) {
+          newFilters[key] = val;
+          hasChanges = true;
+        }
+      });
+
+      if (hasChanges) {
+        return newFilters;
+      }
+      return prev;
+    });
+  }, [searchParamsKey]);
+
+  // Update URL when filters change
+  useEffect(() => {
+    // Skip if searchParams is not available (SSR)
+    if (!searchParams) return;
+
+    // Check if this update was triggered by a URL change (indirectly)
+    // We can't easily know, but we can prevent loops by checking if state matches URL.
+    // Actually, we should just update URL if state differs.
+    
+    const params = new URLSearchParams(searchParams.toString());
+    let hasUpdates = false;
+
+    // Helper to set or delete param
+    const updateParam = (key, value) => {
+      const current = params.get(key);
+      
+      // Check for empty/default values
+      if (!value || value === 'Any' || value === 'All' || value === 'Min Price' || value === 'Max Price' || (Array.isArray(value) && value.length === 0)) {
+        if (current) {
+          params.delete(key);
+          hasUpdates = true;
+        }
+      } else {
+        const strVal = Array.isArray(value) ? value.join(',') : value;
+        // Only update if value is actually different
+        if (current !== strVal) {
+          params.set(key, strVal);
+          hasUpdates = true;
+        }
+      }
+    };
+
+    updateParam('location', activeFilters.location);
+    updateParam('minPrice', activeFilters.minPrice);
+    updateParam('maxPrice', activeFilters.maxPrice);
+    updateParam('search', activeFilters.search);
+    updateParam('stoneType', activeFilters.stoneType);
+    updateParam('colour', activeFilters.colour || activeFilters.color); // Prioritize colour
+    updateParam('style', activeFilters.style);
+    updateParam('slabStyle', activeFilters.slabStyle);
+    updateParam('custom', activeFilters.custom);
+    // Note: category is handled by tab clicks which push router directly, but we sync it here too if needed
+    // However, category tabs usually control the URL directly.
+
+    if (hasUpdates) {
+      isUrlUpdating.current = true;
+      router.replace(`?${params.toString()}`, { scroll: false });
+      // Reset flag after a short delay to allow router to process
+      setTimeout(() => {
+        isUrlUpdating.current = false;
+      }, 100);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFilters, router]);
 
   // Branch selection modal state
   const [showBranchesModal, setShowBranchesModal] = useState(false);
@@ -327,6 +484,17 @@ export default function Home() {
   // Convenience wrapper using current state
   const filteredListings = useMemo(() => filterListingsFrom(activeFilters), [activeFilters, allListings]);
 
+  // Calculate listings to use for location hierarchy counts (faceted search)
+  // We want counts to reflect other active filters (e.g. Stone Type), but NOT the location filter itself.
+  const listingsForLocationCounts = useMemo(() => {
+    // Create filters excluding location
+    const filtersForCounts = { ...activeFilters, location: null }; 
+    return filterListingsFrom(filtersForCounts);
+  }, [activeFilters, allListings]);
+
+  // Use the location hierarchy hook to get dynamic location data based on current search context
+  const locationHierarchy = useLocationHierarchy(listingsForLocationCounts, categories, activeTab);
+
   // Calculate counts for badges on CategoryTabs
   const categoryCounts = useMemo(() => {
     // Create filters excluding category to get potential matches across all categories
@@ -357,43 +525,9 @@ export default function Home() {
   // Removed as filteredListings is now memoized
 
   // Read URL params and apply filters on page load and when params change
-  useEffect(() => {
-    if (!searchParams) return;
-    const nextFilters = { ...activeFilters };
-    // Map URL params to our filter keys (support multiple synonyms)
-    const query = searchParams.get('query');
-    const search = searchParams.get('search');
-    const cat = searchParams.get('category');
-    const colour = searchParams.get('colour') || searchParams.get('color');
-    const mat = searchParams.get('material') || searchParams.get('stoneType');
-    const slab = searchParams.get('slabStyle');
-    const sty = searchParams.get('style');
-    const cus = searchParams.get('customization') || searchParams.get('custom');
-    const loc = searchParams.get('location');
-    const minP = searchParams.get('minPrice');
-    const maxP = searchParams.get('maxPrice');
+  // Note: This logic has been moved to the initial useEffect above to correctly handle array types
+  // and prevent type mismatches (string vs array) that were causing issues.
 
-    // Use search parameter if present, otherwise fall back to query parameter
-    if (search) nextFilters.search = search;
-    else if (query) nextFilters.search = query;
-    
-    if (cat) nextFilters.category = cat;
-    if (colour) { nextFilters.colour = colour; nextFilters.color = colour; }
-    if (mat) nextFilters.stoneType = mat;
-    if (sty) nextFilters.style = sty;
-    if (slab) nextFilters.slabStyle = slab;
-    if (cus) nextFilters.custom = cus;
-    if (loc) nextFilters.location = loc;
-    if (minP) nextFilters.minPrice = minP;
-    if (maxP) nextFilters.maxPrice = maxP;
-
-    // Apply filters only when URL params change
-    if (!filtersShallowEqual(activeFilters, nextFilters)) {
-      setActiveFilters(nextFilters);
-      if (currentPage !== 1) setCurrentPage(1);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParamsKey]);
 
   // State for sort order
   const [sortOrder, setSortOrder] = useState("Default");
@@ -690,30 +824,97 @@ export default function Home() {
   const filteredPremiumListings = filteredListings.filter(listing => {
     // Location
     if (activeFilters.location && activeFilters.location !== "All" && activeFilters.location !== "") {
-      if (!listing.location?.toLowerCase().includes(activeFilters.location.toLowerCase())) return false;
+      const selectedLocations = Array.isArray(activeFilters.location) 
+        ? activeFilters.location 
+        : [activeFilters.location];
+      
+      const listingLocation = listing.location?.toLowerCase() || "";
+      const hasMatch = selectedLocations.some(loc => 
+        listingLocation.includes(loc.toLowerCase())
+      );
+      
+      if (!hasMatch) return false;
     }
     // Stone Type
     if (activeFilters.stoneType && activeFilters.stoneType !== "All" && activeFilters.stoneType !== "") {
+      const selectedTypes = Array.isArray(activeFilters.stoneType)
+        ? activeFilters.stoneType
+        : [activeFilters.stoneType];
+        
       const stoneType = listing.stoneType || listing.details || "";
-      if (!stoneType.toLowerCase().includes(activeFilters.stoneType.toLowerCase())) return false;
+      const hasMatch = selectedTypes.some(type => 
+        stoneType.toLowerCase().includes(type.toLowerCase())
+      );
+      
+      if (!hasMatch) return false;
     }
-    // Color
+    // Color (mapped to 'colour' in listing)
+    if (activeFilters.colour && activeFilters.colour !== "All" && activeFilters.colour !== "") {
+      const selectedColors = Array.isArray(activeFilters.colour)
+        ? activeFilters.colour
+        : [activeFilters.colour];
+        
+      // Listing color might be an object {Black: true, ...} or string
+      const hasMatch = selectedColors.some(color => {
+        const c = color.toLowerCase();
+        if (typeof listing.colour === 'object' && listing.colour !== null) {
+          return listing.colour[color] || listing.colour[c];
+        }
+        return (listing.colour || "").toLowerCase().includes(c);
+      });
+      
+      if (!hasMatch) return false;
+    }
+    // Handle 'color' alias if present
     if (activeFilters.color && activeFilters.color !== "All" && activeFilters.color !== "") {
-      if (!listing.colour || !listing.colour[activeFilters.color.toLowerCase()]) return false;
+      const selectedColors = Array.isArray(activeFilters.color)
+        ? activeFilters.color
+        : [activeFilters.color];
+        
+      const hasMatch = selectedColors.some(color => {
+        const c = color.toLowerCase();
+        if (typeof listing.colour === 'object' && listing.colour !== null) {
+          return listing.colour[color] || listing.colour[c];
+        }
+        return (listing.colour || "").toLowerCase().includes(c);
+      });
+      
+      if (!hasMatch) return false;
     }
     // Culture
     if (activeFilters.culture && activeFilters.culture !== "All" && activeFilters.culture !== "") {
       if (!listing.culture || !listing.culture.toLowerCase().includes(activeFilters.culture.toLowerCase())) return false;
     }
-    // Design Theme
+    // Design Theme / Style
+    if (activeFilters.style && activeFilters.style !== "All" && activeFilters.style !== "") {
+      const selectedStyles = Array.isArray(activeFilters.style)
+        ? activeFilters.style
+        : [activeFilters.style];
+        
+      const theme = listing.details || listing.style || "";
+      const hasMatch = selectedStyles.some(style => 
+        theme.toLowerCase().includes(style.toLowerCase())
+      );
+      
+      if (!hasMatch) return false;
+    }
+    // Design Theme (Legacy support)
     if (activeFilters.designTheme && activeFilters.designTheme !== "All" && activeFilters.designTheme !== "") {
       const theme = listing.details || listing.style || "";
       if (!theme.toLowerCase().includes(activeFilters.designTheme.toLowerCase())) return false;
     }
     // Custom
     if (activeFilters.custom && activeFilters.custom !== "All" && activeFilters.custom !== "") {
+      const selectedCustom = Array.isArray(activeFilters.custom)
+        ? activeFilters.custom
+        : [activeFilters.custom];
+        
       const features = listing.features || "";
-      if (!features.toLowerCase().includes(activeFilters.custom.toLowerCase())) return false;
+      const hasMatch = selectedCustom.some(cust => 
+        features.toLowerCase().includes(cust.toLowerCase())
+      );
+      
+      if (!hasMatch) return false;
     }
     // Min Price
     if (activeFilters.minPrice && activeFilters.minPrice !== "Min Price" && activeFilters.minPrice !== "") {
@@ -724,6 +925,19 @@ export default function Home() {
     if (activeFilters.maxPrice && activeFilters.maxPrice !== "Max Price" && activeFilters.maxPrice !== "") {
       const max = parsePrice(activeFilters.maxPrice);
       if (!listing.price || parsePrice(listing.price) > max) return false;
+    }
+    // Slab Style
+    if (activeFilters.slabStyle && activeFilters.slabStyle !== "All" && activeFilters.slabStyle !== "") {
+      const selectedSlabStyles = Array.isArray(activeFilters.slabStyle)
+        ? activeFilters.slabStyle
+        : [activeFilters.slabStyle];
+        
+      const slabStyle = listing.slabStyle || "";
+      const hasMatch = selectedSlabStyles.some(style => 
+        slabStyle.toLowerCase().includes(style.toLowerCase())
+      );
+      
+      if (!hasMatch) return false;
     }
     return true;
   });
@@ -822,16 +1036,17 @@ export default function Home() {
           </div>
           <div className="flex-1 overflow-y-auto w-full p-0">
             <TombstonesForSaleFilters
-              activeFilters={activeFilters}
-              setActiveFilters={setActiveFilters}
-              showFilters={showFilters}
-              setShowFilters={setShowFilters}
-              filterOptions={filterOptions}
-              filteredListings={filteredListings}
-              handleSearch={handleSearch}
-              getActiveCategory={getActiveCategory}
-              showCategoryDropdown={true}
-            />
+            activeFilters={activeFilters}
+            setActiveFilters={setActiveFilters}
+            showFilters={showFilters}
+            setShowFilters={setShowFilters}
+            filterOptions={filterOptions}
+            filteredListings={filteredListings}
+            handleSearch={handleSearch}
+            getActiveCategory={getActiveCategory}
+            showCategoryDropdown={true}
+            locationsData={locationHierarchy}
+          />
           </div>
         </div>
       )}
@@ -872,16 +1087,17 @@ export default function Home() {
             {/* Filters - Left Side */}
             <div className="w-full md:w-1/4 hidden sm:block md:sticky md:top-0 md:self-start">
               <TombstonesForSaleFilters
-                activeFilters={activeFilters}
-                setActiveFilters={setActiveFilters}
-                showFilters={showFilters}
-                setShowFilters={setShowFilters}
-                filterOptions={filterOptions}
-                filteredListings={filteredListings}
-                handleSearch={handleSearch}
-                getActiveCategory={getActiveCategory}
-                showCategoryDropdown={true}
-              />
+            activeFilters={activeFilters}
+            setActiveFilters={setActiveFilters}
+            showFilters={showFilters}
+            setShowFilters={setShowFilters}
+            filterOptions={filterOptions}
+            filteredListings={filteredListings}
+            handleSearch={handleSearch}
+            getActiveCategory={getActiveCategory}
+            showCategoryDropdown={true}
+            locationsData={locationHierarchy}
+          />
             </div>
 
             {/* Product Listings - Right Side */}

@@ -17,6 +17,7 @@ import { checkListingLocation, toTitleCase } from "@/lib/locationHelpers";
 const defaultFilterOptions = {
   minPrice: [
     "Min Price",
+    "R 1,000",
     ...Array.from(
       { length: 40 },
       (_, i) => `R ${(5000 + i * 5000).toLocaleString()}`
@@ -24,6 +25,7 @@ const defaultFilterOptions = {
   ],
   maxPrice: [
     "Max Price",
+    "R 1,000",
     ...Array.from(
       { length: 40 },
       (_, i) => `R ${(5000 + i * 5000).toLocaleString()}`

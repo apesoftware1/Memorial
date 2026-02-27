@@ -5,7 +5,8 @@ import {
   getCityCoordinates, 
   DEFAULT_PROVINCES,
   matchesProvince,
-  toTitleCase
+  toTitleCase,
+  normalizeCityName
 } from '@/lib/locationHelpers';
 
 export function useLocationHierarchy(allListings, categories, activeTab) {
@@ -15,8 +16,17 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
     // Initialize with Any
     hierarchy['any'] = { name: 'Any', count: 0, cities: {} };
 
+    // Initialize all default provinces with 0 count
+    DEFAULT_PROVINCES.forEach(prov => {
+      if (prov === 'Any') return;
+      const provKey = normalizeProvince(prov);
+      hierarchy[provKey] = { name: prov, count: 0, cities: {} };
+    });
+
     // Determine relevant listings based on current category (activeTab)
     let relevantListings = allListings;
+    let selectedCategoryObj = null;
+
     if (Array.isArray(allListings) && categories && categories.length > 0 && activeTab !== undefined) {
       const desiredOrder = [
         "SINGLE",
@@ -31,7 +41,7 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
           categories.find((cat) => cat?.name && cat.name.toUpperCase() === name)
         )
         .filter(Boolean);
-      const selectedCategoryObj = sortedCategories[activeTab];
+      selectedCategoryObj = sortedCategories[activeTab];
       
       if (selectedCategoryObj) {
         relevantListings = allListings.filter(listing => 
@@ -41,6 +51,9 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
     }
 
     if (Array.isArray(relevantListings)) {
+      // Debug logging
+      console.log(`[useLocationHierarchy] Processing ${relevantListings.length} listings for category: ${selectedCategoryObj?.name || 'All'}`);
+      
       relevantListings.forEach(listing => {
         const visited = {
           provinces: new Set(),
@@ -74,23 +87,10 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
                }
                
                if (loc.city) {
-                 let cityRaw = toTitleCase(loc.city.trim());
+                 // Use centralized normalization
+                 let cityRaw = normalizeCityName(loc.city);
                  let cityKey = String(cityRaw).toLowerCase();
                  let townRaw = loc.town ? toTitleCase(loc.town.trim()) : null;
-
-                 // Normalize specific city names
-                 if (cityKey === 'new castle') {
-                    cityRaw = 'Newcastle';
-                    cityKey = 'newcastle';
-                 }
-                 if (cityKey === 'eshawe' || cityKey === 'ehowa') {
-                    cityRaw = 'Eshowe';
-                    cityKey = 'eshowe';
-                 }
-                 if (cityKey.startsWith('umlazi')) {
-                    cityRaw = 'Umlazi';
-                    cityKey = 'umlazi';
-                 }
 
                  const metros = ['durban', 'cape town', 'johannesburg', 'pretoria', 'bloemfontein', 'port elizabeth', 'east london'];
                  
@@ -175,7 +175,10 @@ export function useLocationHierarchy(allListings, categories, activeTab) {
         count: city.count,
         towns: Object.values(city.towns).sort((a, b) => a.name.localeCompare(b.name))
       })).sort((a, b) => a.name.localeCompare(b.name))
-    })).sort((a, b) => {
+    }))
+    // Filter out provinces with 0 count, but always keep 'Any'
+    .filter(prov => prov.name === 'Any' || prov.count > 0)
+    .sort((a, b) => {
       if (a.name === 'Any') return -1;
       if (b.name === 'Any') return 1;
       return a.name.localeCompare(b.name);

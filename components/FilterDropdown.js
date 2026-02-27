@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronDown, ChevronRight, Check, Square } from "lucide-react"
+import { ChevronDown, ChevronRight, Check, Square, X } from "lucide-react"
 import { useRef, useState, useEffect } from "react"
 import Image from "next/image"
 
@@ -314,30 +314,45 @@ export default function FilterDropdown({
   const currentVal = filters[name];
   // Parse current selected values into an array
   const getSelectedValues = () => {
-    if (!currentVal || currentVal === 'Any') return [];
+    if (!currentVal || ['Any', 'All', 'All Categories'].includes(currentVal)) return [];
     return Array.isArray(currentVal) ? currentVal : [currentVal];
   };
   
   const selectedValues = getSelectedValues();
 
   const handleSelect = (val) => {
-    console.log('FilterDropdown handleSelect called:', val, 'name:', name, 'isMultiSelect:', isMultiSelect);
-    if (val === 'Any') {
-      console.log('Selecting Any');
+    // console.log('FilterDropdown handleSelect called:', val, 'name:', name, 'isMultiSelect:', isMultiSelect);
+    if (val === 'Any' || val === 'All' || val === 'All Categories') {
+      // console.log('Selecting Any');
       selectOption(name, 'Any', false); // Close on 'Any'
       return;
     }
 
     if (isMultiSelect) {
-      let newValues = [...selectedValues];
+      // Ensure we start with a clean array
+      let newValues = [];
+      if (Array.isArray(selectedValues)) {
+        newValues = [...selectedValues];
+      } else if (selectedValues && !['Any', 'All', 'All Categories'].includes(selectedValues)) {
+        newValues = [selectedValues];
+      }
+
+      // Always remove 'Any'/'All' from the array if we are selecting a specific value
+      newValues = newValues.filter(v => !['Any', 'All', 'All Categories'].includes(v));
+      
       if (newValues.includes(val)) {
         newValues = newValues.filter(v => v !== val);
       } else {
         newValues.push(val);
       }
-      if (newValues.length === 0) newValues = 'Any';
-      console.log('Selecting multi:', newValues);
-      selectOption(name, newValues, true); // Keep open
+      
+      // If nothing selected, revert to 'Any'
+      if (newValues.length === 0) {
+        selectOption(name, 'Any', true);
+      } else {
+        // console.log('Selecting multi:', newValues);
+        selectOption(name, newValues, true); // Keep open
+      }
     } else {
       // Single-select (minPrice / maxPrice): allow toggle off by clicking again
       const current = currentVal;
@@ -352,9 +367,12 @@ export default function FilterDropdown({
         } else {
           nextValue = null;
         }
+      } else {
+        // If selecting a specific value, ensure it's not null/Any
+        nextValue = val;
       }
 
-      console.log('Selecting single:', nextValue);
+      // console.log('Selecting single:', nextValue);
       selectOption(name, nextValue, false); // Close for single select
     }
   };
@@ -366,24 +384,67 @@ export default function FilterDropdown({
       // Also handle case where array contains only 'Any'
       if (currentVal.length === 1 && currentVal[0] === 'Any') return label;
       
+      // If single item selected, show its name
       if (currentVal.length === 1) return currentVal[0];
+      // If multiple items, show count
       return `${currentVal.length} Selected`;
     }
     return currentVal || label;
+  };
+
+  const renderTriggerContent = () => {
+    // Check if we have active selections (not empty, not just "Any")
+    const hasActiveSelection = selectedValues.length > 0 && !selectedValues.includes('Any') && !selectedValues.includes('All') && !selectedValues.includes('All Categories');
+
+    if (!hasActiveSelection) {
+      return <span className="truncate">{label}</span>;
+    }
+
+    if (isMultiSelect) {
+      return (
+        <div className="flex flex-wrap gap-2 items-center py-0.5">
+           <span className="font-bold text-white mr-1">{label}</span>
+           {selectedValues.map((val) => (
+             <span 
+               key={val} 
+               className="inline-flex items-center bg-[#074E61] text-white text-[11px] px-2 py-0.5 rounded border border-[#1687A7] shadow-sm whitespace-nowrap"
+               onClick={(e) => e.stopPropagation()} 
+             >
+               {val}
+               <span 
+                 role="button"
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   handleSelect(val);
+                 }}
+                 className="ml-1.5 hover:text-red-400 flex items-center justify-center cursor-pointer"
+               >
+                 <X className="h-3 w-3" /> 
+               </span>
+             </span>
+          ))}
+        </div>
+      );
+    }
+    
+    // Single select
+    return <span className="truncate">{currentVal || label}</span>;
   };
 
   return (
     <div className="relative w-full" ref={(el) => (dropdownRefs.current[name] = el)}>
       <button
         onClick={() => toggleDropdown(name)}
-        className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-white bg-[#0D7C99] hover:bg-[#0D7C99]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0D7C99] h-9 shadow"
+        className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-white bg-[#0D7C99] hover:bg-[#0D7C99]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0D7C99] min-h-[36px] h-auto shadow"
         style={{ borderRadius: '2px' }}
         aria-expanded={openDropdown === name}
         aria-haspopup="true"
       >
-        <span className="truncate">{getLabel()}</span>
+        <div className="flex-1 text-left overflow-hidden">
+          {renderTriggerContent()}
+        </div>
         <ChevronDown
-          className={`h-4 w-4 transition-transform duration-200 ${openDropdown === name ? "transform rotate-180" : ""}`}
+          className={`h-4 w-4 transition-transform duration-200 flex-shrink-0 ml-2 ${openDropdown === name ? "transform rotate-180" : ""}`}
         />
       </button>
 
