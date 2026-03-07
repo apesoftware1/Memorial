@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Checkbox } from "@/components/ui/checkbox";
 import { PremiumListingCard } from "@/components/premium-listing-card";
 import Header from "@/components/Header";
+import ProgressBar from "@/components/ProgressBar";
+import RecyclingBin from "@/components/RecyclingBin";
 import dynamic from 'next/dynamic';
 
 const ViewInquiriesModal = dynamic(() => import("@/components/ViewInquiriesModal"), { ssr: false });
@@ -28,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useManufacturerLocation } from "@/hooks/useManufacturerLocation";
 import { updateCompanyField } from "@/graphql/mutations/updateCompany";
+import { updateListingField } from "@/graphql/mutations/updateListing";
 import { toast } from "@/hooks/use-toast";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { useApolloClient } from '@apollo/client';
@@ -166,6 +169,7 @@ export default function ManufacturerProfileEditor({
   onToggleAutoRefresh,
   isFullLoaded,
 }) {
+  // Removed useApolloClient hook as requested to disable cache manipulation in this editor
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mobile, setMobile] = useState(false);
@@ -290,10 +294,11 @@ export default function ManufacturerProfileEditor({
   // Custom confirmation dialog state - consolidated
   const [listingToDelete, setListingToDelete] = useState(null);
 // --- Added local state for removing listing from a branch ---
-const [selectedBranchIdToDisconnect, setSelectedBranchIdToDisconnect] = useState("");
-const [disconnecting, setDisconnecting] = useState(false);
-const [disconnectError, setDisconnectError] = useState("");
-const [disconnectSuccess, setDisconnectSuccess] = useState(false);
+  // Changed to Set to support multiple branch selection
+  const [selectedBranchIdsToDisconnect, setSelectedBranchIdsToDisconnect] = useState(new Set());
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [disconnectError, setDisconnectError] = useState("");
+  const [disconnectSuccess, setDisconnectSuccess] = useState(false);
 
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -320,6 +325,10 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
   const [isUploadingProfilePic, setIsUploadingProfilePic] = useState(false);
   const [selectedListingForBranch, setSelectedListingForBranch] = useState(null);
   const [isBulkAssigning, setIsBulkAssigning] = useState(false);
+  const [assignProgress, setAssignProgress] = useState({ current: 0, total: 0 }); // Progress tracking state
+  const [viewMode, setViewMode] = useState("active"); // 'active' | 'bin'
+  const [isBinMenuOpen, setIsBinMenuOpen] = useState(false);
+  const [cleanupChecked, setCleanupChecked] = useState(false);
 
   // Company state management
   const [company, setCompany] = useState(initialCompany);
@@ -368,6 +377,29 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     }
   };
   
+  // Ensure companyListings stays in sync with listings prop
+  useEffect(() => {
+    if (listings && listings.length > 0) {
+      // If we're on a branch page, we don't want to overwrite companyListings with just the branch listings 
+      // if listings prop happens to be partial. But typically listings prop from parent is the full company set.
+      // However, if the user navigates directly to a branch, the parent might fetch full company data progressively.
+      // We should only update companyListings if the incoming listings are indeed company-wide.
+      // Since OwnerProfilePage fetches based on company ID, 'listings' prop SHOULD be company-wide.
+      setCompanyListings(prev => {
+          // If we already have more listings than the incoming prop (e.g. optimistic updates), maybe be careful?
+          // But usually prop is source of truth.
+          // To be safe, we merge or just set it.
+          // Let's assume listings prop is the master list.
+          
+          // Optimization: avoid re-render if length and IDs are same
+          if (prev.length === listings.length && prev.every((p, i) => (p.documentId || p.id) === (listings[i].documentId || listings[i].id))) {
+              return prev;
+          }
+          return listings;
+      });
+    }
+  }, [listings]);
+
   // Extract branch parameter from URL and fetch listings via REST API
   useEffect(() => {
     const branchParam = searchParams.get('branch');
@@ -386,22 +418,54 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         
         if (branch) {
           if (isActive) {
+            console.log(`Switching to branch: ${branch.name} (${branch.documentId})`);
             setBranchFromUrl(branch);
             setSelectedBranch(branch);
             setLoadingListings(true);
           }
           
+          // Safety check: if branch matches by name but has no documentId, we cannot fetch via API.
+          // Fallback to client-side filtering if we have company listings.
+          if (!branch.documentId) {
+             console.warn(`Branch "${branch.name}" missing documentId. Falling back to client-side filtering.`);
+             if (companyListings && companyListings.length > 0) {
+                 const fallbackListings = companyListings.filter(l => {
+                     const inBranches = l.branches?.some(b => b.name === branch.name);
+                     const inBranchListings = l.branch_listings?.some(bl => bl.branch?.name === branch.name);
+                     return inBranches || inBranchListings;
+                 });
+                 if (isActive) {
+                     console.log(`Fallback filtering found ${fallbackListings.length} listings`);
+                     setFilteredListings(fallbackListings);
+                     setLoadingListings(false);
+                 }
+                 return;
+             } else {
+                 console.warn("No company listings available for fallback filtering.");
+                 if (isActive) setLoadingListings(false);
+                 return;
+             }
+          }
+
           const fetchBatch = async (limit) => {
             if (!isActive) return 0;
+            // Ensure we have a documentId before fetching
+            if (!branch.documentId) return 0;
+
             try {
               const url = `/api/branches/${branch.documentId}${limit > 0 ? `?limit=${limit}` : ''}`;
+              console.log(`Fetching branch listings from: ${url}`);
               const response = await fetch(url, {
-                cache: "force-cache"
+                cache: "no-store"
               });
-              if (!response.ok) throw new Error('Failed to fetch branch listings');
+              if (!response.ok) {
+                  const errorText = await response.text();
+                  throw new Error(`Failed to fetch branch listings: ${response.status} ${errorText}`);
+              }
               
               const data = await response.json();
               let fetchedListings = data.listings || [];
+              console.log(`Fetched ${fetchedListings.length} listings for branch ${branch.name}`);
               
               // Map prices from branch_listings if available (handling price overrides)
               fetchedListings = fetchedListings.map(listing => {
@@ -425,7 +489,19 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
               if (isActive) {
                  // If first batch fails, stop loading and show empty/error state
                  if (limit === 10) {
-                     setFilteredListings([]);
+                     // Try fallback to client-side filtering if fetch fails
+                     if (companyListings && companyListings.length > 0) {
+                        console.log("Attempting fallback filtering after API error...");
+                        const fallbackListings = companyListings.filter(l => {
+                             const inBranches = l.branches?.some(b => b.name === branch.name || b.documentId === branch.documentId);
+                             const inBranchListings = l.branch_listings?.some(bl => bl.branch?.name === branch.name || bl.branch?.documentId === branch.documentId);
+                             return inBranches || inBranchListings;
+                        });
+                        setFilteredListings(fallbackListings);
+                     } else {
+                        console.warn("Fetch failed and no fallback listings available.");
+                        setFilteredListings([]);
+                     }
                      setLoadingListings(false);
                  }
               }
@@ -665,7 +741,6 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     );
   };
 
-  const client = useApolloClient();
   const [isDuplicating, setIsDuplicating] = useState(false);
   const handleDuplicate = useCallback(async (listing) => {
     if (!listing?.documentId) {
@@ -679,13 +754,16 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     try {
       setIsDuplicating(true);
 
-      // 1) Load full listing details so we can mirror Advert Creator payload
-      const { data } = await client.query({
-        query: GET_LISTING_BY_ID,
-        variables: { documentID: listing.documentId },
-        fetchPolicy: "cache-first",
+      // 1) Load full listing details via REST API instead of Apollo
+      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
+      const listingResponse = await fetch(`${baseUrl}/listings/${listing.documentId}?populate=*`, {
+          headers: { "Content-Type": "application/json" }
       });
-      const full = data?.listing;
+      
+      if (!listingResponse.ok) throw new Error("Full listing details not found.");
+      
+      const listingData = await listingResponse.json();
+      const full = listingData?.data;
       if (!full) throw new Error("Full listing details not found.");
 
       const duplicatedSlug = createListingSlug(
@@ -695,19 +773,16 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       const duplicatedTitle = `${full.title || "Listing"} 1`;
 
       // 4) Resolve category documentId using live categories (match by name)
-      const thisListing = (full.company?.listings || []).find(
-        (l) => l.documentId === full.documentId
-      );
-      const categoryName = (thisListing?.listing_category?.name || "")
+      const categoryName = (full.listing_category?.name || "")
         .trim()
         .toLowerCase();
       let categoryDocId = undefined;
       try {
-        const categoriesResp = await client.query({
-          query: GET_LISTING_CATEGORY,
-          fetchPolicy: "cache-first",
+        const categoriesResp = await fetch(`${baseUrl}/listing-categories?pagination[limit]=100`, {
+            headers: { "Content-Type": "application/json" }
         });
-        const categories = categoriesResp?.data?.listingCategories || [];
+        const categoriesData = await categoriesResp.json();
+        const categories = categoriesData?.data || [];
         const matched = categories.find(
           (c) => String(c.name).trim().toLowerCase() === categoryName
         );
@@ -787,9 +862,9 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         },
       };
 
-      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
+      const postBaseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
       const res = await fetch(
-        `${baseUrl}/listings`,
+        `${postBaseUrl}/listings`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -809,83 +884,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         description: `"${duplicatedTitle}" created successfully.`,
       });
 
-      // 7) Optimistically update the cache instead of refetching the whole list
-      // This prevents the "Last Get" (fetching all 150+ listings) which causes 429 errors.
-      
-      // A. Fetch only the SINGLE new listing (cheap)
-      const { data: newData } = await client.query({
-        query: GET_LISTING_BY_ID,
-        variables: { documentID: newDocId },
-        fetchPolicy: "network-only",
-      });
-      const newListing = newData?.listing;
-
-      if (newListing) {
-        // B. Manually update the GET_COMPANY_BY_USER cache
-        // We need the user's documentId which is passed in the query variables.
-        // We can access the user ID from the company object if available: company.user.documentId
-        
-        if (company?.user?.documentId) {
-            try {
-                const queryVars = { documentId: company.user.documentId };
-                // Attempt to read the exact query from cache
-                // Note: Apollo readQuery throws if data is missing, so we wrap in try/catch
-                const companyData = client.readQuery({
-                    query: GET_COMPANY_BY_USER,
-                    variables: queryVars,
-                });
-
-                if (companyData?.companies?.[0]) {
-                    // Ensure branch_listings exists to prevent UI crashes
-                    const safeNewListing = {
-                        ...newListing,
-                        branch_listings: newListing.branch_listings || [],
-                        branches: newListing.branches || [],
-                        // Ensure other required fields are present to match query shape
-                        listing_category: newListing.listing_category || null,
-                        productDetails: newListing.productDetails || null,
-                        additionalProductDetails: newListing.additionalProductDetails || null,
-                        inquiries_c: newListing.inquiries_c || [],
-                    };
-
-                    const updatedCompany = {
-                        ...companyData.companies[0],
-                        listings: [...(companyData.companies[0].listings || []), safeNewListing],
-                    };
-
-                    client.writeQuery({
-                        query: GET_COMPANY_BY_USER,
-                        variables: queryVars,
-                        data: {
-                            companies: [updatedCompany],
-                        },
-                    });
-                    
-                    // Also update the local state to reflect changes immediately
-                    // This handles the "filteredListings" state used for rendering
-                    setFilteredListings((prev) => [...prev, safeNewListing]);
-                    
-                    // Also update the main "companyListings" state if it exists
-                    setCompanyListings((prev) => [...prev, safeNewListing]);
-                    
-                    // Update the "company" prop if possible/needed (but props are read-only)
-                    // The parent component might re-render if it subscribes to the cache
-                }
-            } catch (cacheErr) {
-                console.warn("Could not update cache optimistically:", cacheErr);
-                // Fallback to full refresh if cache update fails
-                if (onRefresh) onRefresh();
-            }
-        } else {
-             // Fallback if we can't find the user ID
-             if (onRefresh) onRefresh();
-        }
-      }
-      
-      // Optional: If we wanted to navigate, we would use:
-      // if (newDocId) {
-      //   router.push(`/manufacturers/manufacturers-Profile-Page/update-listing/${newDocId}`);
-      // }
+      // 7) Refresh listings
+      if (onRefresh) onRefresh();
     } catch (err) {
       console.error(err);
       toast({
@@ -896,7 +896,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     } finally {
       setIsDuplicating(false);
     }
-  }, [client, company, toast, setFilteredListings, setCompanyListings, onRefresh]);
+  }, [company, toast, setFilteredListings, setCompanyListings, onRefresh]);
 
   // Bulk Selection Handlers
   const toggleSelectionMode = () => {
@@ -954,21 +954,21 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     }
 
     setIsBulkAssigning(true);
+    setAssignProgress({ current: 0, total: listingsToAssign.length });
     
     try {
-      const BATCH_SIZE = 5;
-      
       let successCount = 0;
       let errorCount = 0;
       
-      for (let i = 0; i < listingsToAssign.length; i += BATCH_SIZE) {
-        const batch = listingsToAssign.slice(i, i + BATCH_SIZE);
-        await Promise.all(batch.map(async (listing) => {
+      // Process sequentially (1 by 1) to avoid system overload
+      for (let i = 0; i < listingsToAssign.length; i++) {
+          const listing = listingsToAssign[i];
           const listingId = listing.documentId || listing.id;
           try {
              const price = listing ? Number(listing.price) : 0;
              
              // Step 1: Create the direct relationship (branches.listings)
+             // This might fail if the listing is already connected, but we checked above.
              await addListingToBranch(branchId, listingId);
 
              // Step 2: Create the pricing entry (branch_listings)
@@ -982,7 +982,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
              console.error(`Failed to assign listing ${listingId} to branch ${branchId}`, err);
              errorCount++;
           }
-        }));
+          // Update progress
+          setAssignProgress({ current: i + 1, total: listingsToAssign.length });
       }
       
       let description = `Assigned ${successCount} listings to ${branchName}.`;
@@ -1054,15 +1055,16 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     }
 
     setIsBulkAssigning(true);
+    setAssignProgress({ current: 0, total: tasks.length });
 
     try {
-      const BATCH_SIZE = 5;
       let successCount = 0;
       let errorCount = 0;
 
-      for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
-        const batch = tasks.slice(i, i + BATCH_SIZE);
-        await Promise.all(batch.map(async ({ listingId, branchId, listing }) => {
+      // Process sequentially (1 by 1) to avoid system overload
+      for (let i = 0; i < tasks.length; i++) {
+          const task = tasks[i];
+          const { listingId, branchId, listing } = task;
           try {
              const price = listing ? Number(listing.price) : 0;
 
@@ -1080,7 +1082,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
              console.error(`Failed to assign listing ${listingId} to branch ${branchId}`, err);
              errorCount++;
           }
-        }));
+          // Update progress
+          setAssignProgress({ current: i + 1, total: tasks.length });
       }
 
       const skippedCount = totalPossibleAssignments - tasks.length;
@@ -1112,59 +1115,143 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     }
   };
 
+  const performBulkRestore = async () => {
+    if (selectedListingIds.size === 0) return;
+
+    setIsBulkDeleting(true); // Re-use delete loading state for simplicity
+    try {
+        const ids = Array.from(selectedListingIds);
+        const BATCH_SIZE = 5;
+        
+        for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+            const batch = ids.slice(i, i + BATCH_SIZE);
+            await Promise.all(batch.map(async (id) => {
+                try {
+                    await updateListingField(id, { publishedAt: new Date().toISOString() });
+                } catch (err) {
+                    console.error(`Error restoring listing ${id}:`, err);
+                }
+            }));
+        }
+
+        // Optimistic update
+        setCompanyListings(prev => prev.map(l => 
+          ids.includes(l.documentId || l.id) 
+            ? { ...l, publishedAt: new Date().toISOString() } 
+            : l
+        ));
+        
+        // Also update filtered list if necessary (though they might disappear from bin view)
+        // If we are in 'bin' view, restored items should vanish from the list
+        if (viewMode === 'bin') {
+             // We don't remove them from companyListings (they just become active),
+             // but they will filter out of the bin view automatically.
+        }
+
+        toast({
+            title: "Restored",
+            description: `${ids.length} listings restored successfully.`,
+        });
+
+        // Clear selection
+        setSelectedListingIds(new Set());
+        setSelectionMode(false);
+
+    } catch (error) {
+        console.error("Bulk restore error:", error);
+        toast({
+            title: "Restore Failed",
+            description: "An error occurred while restoring listings.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsBulkDeleting(false);
+    }
+  };
+
   const performBulkDelete = async () => {
     if (selectedListingIds.size === 0) return;
 
     setIsBulkDeleting(true);
     try {
         const ids = Array.from(selectedListingIds);
-        const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
         
-        // Process in batches of 5 to avoid overwhelming the server
-        const BATCH_SIZE = 5;
-        for (let i = 0; i < ids.length; i += BATCH_SIZE) {
-            const batch = ids.slice(i, i + BATCH_SIZE);
-            await Promise.all(batch.map(async (id) => {
-                 try {
-                     const res = await fetch(`${baseUrl}/listings/${id}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                     });
-                     if (!res.ok) {
-                         console.error(`Failed to delete listing ${id}: ${res.status}`);
-                     }
-                 } catch (err) {
-                     console.error(`Error deleting listing ${id}:`, err);
-                 }
-            }));
+        if (viewMode === 'active') {
+            // Bulk Soft Delete (Unpublish)
+            const BATCH_SIZE = 5;
+            for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+                const batch = ids.slice(i, i + BATCH_SIZE);
+                await Promise.all(batch.map(async (id) => {
+                    try {
+                        await updateListingField(id, { publishedAt: null });
+                    } catch (err) {
+                        console.error(`Error moving listing ${id} to bin:`, err);
+                    }
+                }));
+            }
+
+            // Optimistic update - Update publishedAt to null instead of filtering
+            setCompanyListings(prev => prev.map(l => 
+                ids.includes(l.documentId || l.id) 
+                  ? { ...l, publishedAt: null } 
+                  : l
+            ));
+            setFilteredListings(prev => prev.map(l => 
+                ids.includes(l.documentId || l.id) 
+                  ? { ...l, publishedAt: null } 
+                  : l
+            ));
+            
+             toast({
+                title: "Moved to Bin",
+                description: `${ids.length} listings moved to Recycling Bin.`,
+            });
+            
+        } else {
+            // Bulk Permanent Delete
+            const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
+            const BATCH_SIZE = 5;
+            for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+                const batch = ids.slice(i, i + BATCH_SIZE);
+                await Promise.all(batch.map(async (id) => {
+                    try {
+                        await fetch(`${baseUrl}/listings/${id}`, {
+                           method: 'DELETE',
+                           headers: { 'Content-Type': 'application/json' },
+                        });
+                    } catch (err) {
+                        console.error(`Error deleting listing ${id}:`, err);
+                    }
+                }));
+            }
+
+            // Update state
+            setCompanyListings(prev => prev.filter(l => !ids.includes(l.documentId || l.id)));
+            setFilteredListings(prev => prev.filter(l => !ids.includes(l.documentId || l.id)));
+            
+             toast({
+                title: "Permanently Deleted",
+                description: `${ids.length} listings permanently deleted.`,
+                variant: "destructive"
+            });
         }
 
-        // Optimistic update
-        const remainingIds = new Set(ids); // Ideally check which ones actually succeeded
-        
-        setCompanyListings(prev => prev.filter(l => !remainingIds.has(l.documentId || l.id)));
-        setFilteredListings(prev => prev.filter(l => !remainingIds.has(l.documentId || l.id)));
-        
         // Clear selection
         setSelectedListingIds(new Set());
         setSelectionMode(false);
         
-        toast({
-            title: "Bulk Delete Successful",
-            description: `Selected listings have been deleted.`,
-            variant: "default", 
-        });
-        
-        // Trigger refresh to sync with server fully
-        if (onRefresh) onRefresh();
+        // Evict from Apollo Cache to avoid heavy re-fetch
+        // ids.forEach(id => {
+        //     const cacheId = client.cache.identify({ __typename: 'Listing', documentId: id }) || client.cache.identify({ __typename: 'Listing', id: id });
+        //     if (cacheId) client.cache.evict({ id: cacheId });
+        // });
+        // client.cache.gc();
 
     } catch (error) {
         console.error("Bulk delete error:", error);
         toast({
-            title: "Bulk Delete Failed",
-            description: "An error occurred while deleting listings.",
+            title: "Bulk Action Failed",
+            description: "An error occurred.",
             variant: "destructive",
         });
     } finally {
@@ -1275,9 +1362,90 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     setNotificationCount(unreadCount);
   }, [companyListings]);
 
+  // Cleanup old bin items (older than 24h)
+  useEffect(() => {
+    if (!isOwner || cleanupChecked || !companyListings || companyListings.length === 0) return;
+
+    const performCleanup = async () => {
+      const now = Date.now();
+      const twentyFourHours = 24 * 60 * 60 * 1000;
+      
+      const itemsToDelete = companyListings.filter(item => {
+        // Check if item is in bin (publishedAt === null)
+        if (item.publishedAt !== null) return false;
+        
+        // Check if item is older than 24h based on updatedAt
+        if (!item.updatedAt) return false;
+        const updateTime = new Date(item.updatedAt).getTime();
+        return !isNaN(updateTime) && (now - updateTime) > twentyFourHours;
+      });
+
+      if (itemsToDelete.length > 0) {
+        // Optimistic update
+        const idsToDelete = itemsToDelete.map(i => i.documentId || i.id);
+        
+        // Filter out deleted items from local state
+        setCompanyListings(prev => prev.filter(l => !idsToDelete.includes(l.documentId || l.id)));
+        
+        // Show toast immediately
+        toast({
+          title: "Recycling Bin Cleanup",
+          description: `Automatically removing ${itemsToDelete.length} item(s) older than 24h from bin.`,
+        });
+        
+        // Perform deletion in background
+        const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
+        const BATCH_SIZE = 5;
+        
+        try {
+          for (let i = 0; i < idsToDelete.length; i += BATCH_SIZE) {
+            const batch = idsToDelete.slice(i, i + BATCH_SIZE);
+            await Promise.all(batch.map(async (id) => {
+              try {
+                await fetch(`${baseUrl}/listings/${id}`, {
+                   method: 'DELETE',
+                   headers: { 'Content-Type': 'application/json' },
+                });
+              } catch (err) {
+                console.error(`Error auto-deleting listing ${id}:`, err);
+              }
+            }));
+          }
+        } catch (error) {
+          console.error("Cleanup error:", error);
+        }
+      }
+      
+      setCleanupChecked(true);
+    };
+
+    performCleanup();
+  }, [companyListings, isOwner, cleanupChecked]);
+
   // Memoize sorted and filtered listings to avoid expensive re-sorting on every render
   const sortedAndFilteredListings = useMemo(() => {
-    let baseListings = branchFromUrl ? filteredListings : companyListings;
+    let baseListings;
+
+    if (viewMode === "bin") {
+        // For Bin mode, ALWAYS derive from companyListings (the master list)
+        // because public branch APIs typically don't return unpublished items (drafts).
+        // We manually filter companyListings to match the selected branch if one is active.
+        if (branchFromUrl) {
+             baseListings = companyListings.filter(l => {
+                 const inBranches = l.branches?.some(b => b.documentId === branchFromUrl.documentId || b.name === branchFromUrl.name);
+                 const inBranchListings = l.branch_listings?.some(bl => bl.branch?.documentId === branchFromUrl.documentId || bl.branch?.name === branchFromUrl.name);
+                 return inBranches || inBranchListings;
+             });
+        } else {
+             baseListings = companyListings;
+        }
+        // Filter for unpublished items
+        baseListings = baseListings.filter(l => l.publishedAt === null);
+    } else {
+        // For Active mode, use filteredListings (from API) if on a branch, otherwise companyListings
+        baseListings = branchFromUrl ? filteredListings : companyListings;
+        baseListings = baseListings.filter(l => l.publishedAt !== null);
+    }
 
     // Apply category filter
     if (categoryFilter !== "All Categories") {
@@ -1309,7 +1477,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
       }
       return 0;
     });
-  }, [branchFromUrl, filteredListings, companyListings, sortBy, debouncedSearchQuery, categoryFilter]);
+  }, [branchFromUrl, filteredListings, companyListings, sortBy, debouncedSearchQuery, categoryFilter, viewMode]);
 
   const handleSelectAll = useCallback((checked) => {
     if (checked) {
@@ -1439,40 +1607,92 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
     setShowDeleteMessage(false);
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
-      const res = await fetch(
-        `${baseUrl}/listings/${documentId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            // If using JWT:
-            // Authorization: Bearer ${yourToken},
-          },
+      if (viewMode === 'active') {
+        // Soft delete (Unpublish)
+        await updateListingField(documentId, { publishedAt: null });
+        
+        // Remove from currently selected branch if applicable
+        if (selectedBranch && selectedBranch.documentId) {
+            // We need to disconnect it from the branch? 
+            // The requirement says "remove the listing from the currently selected branch".
+            // If it's unpublished, it should disappear anyway.
+            // But let's follow "programmatically determine... and execute a targeted removal".
+            // However, just unpublishing removes it from public view.
+            // If we want to DISCONNECT it from the branch, that's a different operation.
+            // "listing-to-bin relocation" -> usually implies unpublishing.
+            
+            // If we are in a branch view, unpublishing it makes it disappear from the "Active" list of that branch.
+            // So we just need to update the local state correctly.
         }
-      );
 
-      if (!res.ok) {
-        throw new Error("Failed to delete listing");
+        // Update local state to remove it from the list immediately (soft delete for view)
+        setCompanyListings(prev => prev.map(l => 
+          (l.documentId === documentId || l.id === documentId) 
+            ? { ...l, publishedAt: null } 
+            : l
+        ));
+        setFilteredListings(prev => prev.map(l => 
+          (l.documentId === documentId || l.id === documentId) 
+            ? { ...l, publishedAt: null } 
+            : l
+        ));
+        
+        setDeleteMessage("Listing moved to Recycling Bin.");
+        setShowDeleteMessage(true);
+        setIsDeleting(false);
+        
+        // Hide message after delay
+        setTimeout(() => setShowDeleteMessage(false), 3000);
+      } else {
+        // Permanent delete logic remains the same
+        const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
+        const res = await fetch(
+          `${baseUrl}/listings/${documentId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!res.ok) {
+          throw new Error("Failed to delete listing");
+        }
+
+        // Show styled success message
+        setDeleteMessage("Listing permanently deleted.");
+        setShowDeleteMessage(true);
+        setIsDeleting(false);
+
+        // Update local state
+        setCompanyListings(prev => prev.filter(l => l.documentId !== documentId && l.id !== documentId));
+        setFilteredListings(prev => prev.filter(l => l.documentId !== documentId && l.id !== documentId));
+
+        setTimeout(() => setShowDeleteMessage(false), 3000);
       }
-
-      // Only parse JSON if response has content
-      const text = await res.text();
-      const data = text ? JSON.parse(text) : null;
-
-      // Show styled success message
-      setDeleteMessage("Listing deleted successfully!");
-      setShowDeleteMessage(true);
-      setIsDeleting(false);
-
-      // Auto-refresh the page after 2 seconds
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
     } catch (error) {
+      console.error(error);
       setDeleteMessage("Failed to delete listing.");
       setShowDeleteMessage(true);
       setIsDeleting(false);
+    }
+  };
+
+  const handleRestore = async (documentId) => {
+    try {
+      await updateListingField(documentId, { publishedAt: new Date() });
+      toast({ title: "Restored", description: "Listing restored from Recycling Bin." });
+      
+      // Update local state
+      setCompanyListings(prev => prev.map(l => 
+        (l.documentId === documentId || l.id === documentId) 
+          ? { ...l, publishedAt: new Date().toISOString() } 
+          : l
+      ));
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "Failed to restore listing.", variant: "destructive" });
     }
   };
 
@@ -1797,6 +2017,14 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
         handleMobileDropdownToggle={handleMobileDropdownToggle}
       />
       
+      {/* Progress Bar Overlay */}
+      <ProgressBar 
+        isVisible={isBulkAssigning} 
+        current={assignProgress.current} 
+        total={assignProgress.total} 
+        title="Assigning Listings..." 
+      />
+      
       {/* Branch Button Container - Positioned directly beneath header */}
       {branchButton && (
         <div
@@ -1857,7 +2085,14 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
 
             {/* Manual Refresh Button */}
             <button
-              onClick={() => onRefresh()}
+              onClick={() => {
+                  // Trigger parent refresh if available
+                  if (onRefresh) onRefresh();
+                  
+                  // Force a window reload as a hard fallback if desired, 
+                  // but usually onRefresh() should handle data fetching.
+                  // Since we removed Apollo Cache, we rely on standard fetching.
+              }}
               disabled={isRefreshing}
               title="Refresh Data"
               style={{
@@ -3389,7 +3624,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                               {isBulkAssigning ? 'Assigning...' : 'Assign to Branch'} ({selectedListingIds.size})
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuContent align="end" className="w-56 max-h-60 overflow-y-auto">
                           {company?.branches?.length > 0 ? (
                             <>
                                 <DropdownMenuItem 
@@ -3482,6 +3717,8 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
           </div>
         </div>
 
+
+
         {/* Search Input - Moved below toolbar */}
         <div style={{ maxWidth: 1200, margin: "0 auto 20px auto", padding: "0 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
            <div>
@@ -3555,6 +3792,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                     isDeleting={isDeleting}
                     onDuplicate={handleDuplicate}
                     onDelete={handleDeleteListing}
+                    onRestore={viewMode === 'bin' ? handleRestore : undefined}
                     onEdit={handleEditListing}
                     onCreateSpecial={handleCreateSpecial}
                     onAddToBranch={handleAddToBranch}
@@ -3586,6 +3824,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                   onDuplicate={handleDuplicate}
                   onDelete={handleDeleteListing}
                   onEdit={handleEditListing}
+                  onRestore={viewMode === 'bin' ? handleRestore : undefined}
                   onCreateSpecial={handleCreateSpecial}
                   onAddToBranch={handleAddToBranch}
                   fixedHeight={true}
@@ -3704,7 +3943,10 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                       color: "#1f2937",
                     }}
                   >
-                    {listingToDelete ? "Delete Listing" : "Delete Listings"}
+                    {viewMode === 'active' 
+                      ? (listingToDelete ? "Move to Recycling Bin" : "Move Listings to Bin")
+                      : (listingToDelete ? "Permanently Delete" : "Permanently Delete Listings")
+                    }
                   </h3>
                   <p
                     style={{
@@ -3713,7 +3955,10 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                       color: "#6b7280",
                     }}
                   >
-                    This action cannot be undone
+                    {viewMode === 'active' 
+                      ? "Items can be restored from the recycling bin." 
+                      : "This action cannot be undone."
+                    }
                   </p>
                 </div>
               </div>
@@ -3728,50 +3973,79 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
               >
                 {listingToDelete ? (
                   <>
-                    Are you sure you want to delete{" "}
-                    <strong>"{listingToDelete.title}"</strong>?
-                    This action cannot be undone.
+                    Are you sure you want to {viewMode === 'active' ? 'move' : 'permanently delete'} <strong>"{listingToDelete.title}"</strong>{viewMode === 'active' ? ' to the recycling bin?' : '?'}
                   </>
                 ) : (
                   <>
-                    Are you sure you want to delete {selectedListingIds.size} listings? This cannot be undone.
+                    Are you sure you want to {viewMode === 'active' ? 'move' : 'permanently delete'} {selectedListingIds.size} listings?
                   </>
                 )}
               </p>
 
               {/* --- Added: Remove listing from a branch section --- */}
-              {listingToDelete?.documentId && Array.isArray(company?.branches) && company.branches.length > 0 && (
-                <div style={{ marginTop: "12px" }}>
+              {(listingToDelete?.documentId || selectedListingIds.size > 0) && Array.isArray(company?.branches) && company.branches.length > 0 && (
+                <div style={{ marginTop: "16px" }}>
                   <label style={{ display: "block", fontSize: "14px", fontWeight: 600, color: "#374151", marginBottom: "8px" }}>
-                    Remove listing from a branch
+                    Remove {listingToDelete ? "listing" : "listings"} from branches
                   </label>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <select
-                      value={selectedBranchIdToDisconnect}
-                      onChange={(e) => setSelectedBranchIdToDisconnect(e.target.value)}
-                      style={{
-                        padding: "8px 12px",
-                        border: "1px solid #d1d5db",
-                        borderRadius: "8px",
-                        backgroundColor: "#fff",
-                        fontSize: "14px",
-                        color: "#111827",
-                        outline: "none",
-                      }}
-                    >
-                      <option value="">Select a branch</option>
-                      {company.branches.map((b) => (
-                        <option key={b?.documentId || b?.id} value={b?.documentId || b?.id}>
-                          {b?.name || b?.branchName || "Unnamed Branch"}
-                        </option>
-                      ))}
-                    </select>
+                  <div style={{ 
+                    border: "1px solid #d1d5db", 
+                    borderRadius: "8px", 
+                    padding: "12px",
+                    maxHeight: "200px",
+                    overflowY: "auto",
+                    backgroundColor: "#f9fafb"
+                  }}>
+                    {company.branches.map((b) => {
+                      const branchId = b?.documentId || b?.id;
+                      const isChecked = selectedBranchIdsToDisconnect.has(branchId);
+                      return (
+                        <div key={branchId} style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
+                          <input
+                            type="checkbox"
+                            id={`branch-${branchId}`}
+                            checked={isChecked}
+                            onChange={(e) => {
+                                const newSet = new Set(selectedBranchIdsToDisconnect);
+                                if (e.target.checked) {
+                                    newSet.add(branchId);
+                                } else {
+                                    newSet.delete(branchId);
+                                }
+                                setSelectedBranchIdsToDisconnect(newSet);
+                            }}
+                            style={{ 
+                                width: "16px", 
+                                height: "16px", 
+                                marginRight: "8px",
+                                cursor: "pointer",
+                                accentColor: "#dc2626" // Red color to signify removal
+                            }}
+                          />
+                          <label 
+                            htmlFor={`branch-${branchId}`}
+                            style={{ 
+                                fontSize: "14px", 
+                                color: "#374151", 
+                                cursor: "pointer",
+                                userSelect: "none",
+                                flex: 1
+                            }}
+                          >
+                            {b?.name || b?.branchName || "Unnamed Branch"}
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ marginTop: "8px", fontSize: "12px", color: "#6b7280" }}>
+                      {selectedBranchIdsToDisconnect.size} branch{selectedBranchIdsToDisconnect.size !== 1 ? "es" : ""} selected for removal
                   </div>
                   {disconnectError && (
                     <p style={{ fontSize: "13px", color: "#dc2626", marginTop: "8px" }}>{disconnectError}</p>
                   )}
                   {disconnectSuccess && (
-                    <p style={{ fontSize: "13px", color: "#16a34a", marginTop: "8px" }}>Listing removed from branch.</p>
+                    <p style={{ fontSize: "13px", color: "#16a34a", marginTop: "8px" }}>Listings removed from selected branches.</p>
                   )}
                 </div>
               )}
@@ -3788,6 +4062,7 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                   onClick={() => {
                     toggleModal("confirmDelete", false);
                     setListingToDelete(null);
+                    setSelectedBranchIdsToDisconnect(new Set());
                   }}
                   style={{
                     padding: "6px 14px",
@@ -3813,25 +4088,108 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                 </button>
                 <button
                   onClick={async () => {
-                    if (!selectedBranchIdToDisconnect) return;
+                    if (selectedBranchIdsToDisconnect.size === 0) return;
+                    // Determine IDs to disconnect (single or bulk)
+                    const idsToDisconnect = listingToDelete 
+                      ? [listingToDelete.documentId] 
+                      : Array.from(selectedListingIds);
+                    
+                    if (idsToDisconnect.length === 0) return;
+
                     setDisconnecting(true);
                     setDisconnectError("");
                     setDisconnectSuccess(false);
                     try {
-                      await updateBranch(selectedBranchIdToDisconnect, { listings: { disconnect: [listingToDelete.documentId] } });
+                      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
+                      
+                      const selectedBranches = Array.from(selectedBranchIdsToDisconnect);
+
+                      // Iterate through each selected branch and remove listings
+                      for (const branchId of selectedBranches) {
+                          // 1. Remove from branch_listings (New System)
+                          const listingsToDisconnect = companyListings.filter(l => 
+                              idsToDisconnect.includes(l.documentId) || idsToDisconnect.includes(l.id)
+                          );
+                          
+                          await Promise.all(listingsToDisconnect.map(async (listing) => {
+                              // Find branch_listing for this branch
+                              const branchListing = (listing.branch_listings || []).find(bl => 
+                                  bl.branch && (bl.branch.documentId === branchId || bl.branch.id === branchId)
+                              );
+                              
+                              if (branchListing) {
+                                  const blId = branchListing.documentId || branchListing.id;
+                                  try {
+                                      await fetch(`${baseUrl}/branch-listings/${blId}`, {
+                                          method: 'DELETE',
+                                          headers: { 'Content-Type': 'application/json' }
+                                      });
+                                  } catch (e) {
+                                      console.error(`Failed to delete branch listing for branch ${branchId}`, e);
+                                  }
+                              }
+                          }));
+
+                          // 2. Remove from branch.listings (Legacy System)
+                          try {
+                              // Filter out listings that might not be in the legacy relation to avoid 400 errors
+                              // This is a best-effort approach. If we don't know, we try anyway but catch the error.
+                              // IMPORTANT: Strapi throws 400 if we try to disconnect an ID that isn't connected.
+                              // We can't easily know if it's connected without fetching the branch details first.
+                              // So we just suppress the error completely here as it's likely due to the listing not being in the legacy relation.
+                              await updateBranch(branchId, { listings: { disconnect: idsToDisconnect } }, { suppressErrorLog: true });
+                          } catch (legacyError) {
+                              // Ignore "Document not found" or "ValidationError" which mean the listing wasn't in the legacy relation
+                              // console.warn(`Legacy disconnect warning for branch ${branchId} (safe to ignore if using new system):`, legacyError.message);
+                          }
+                      }
+
                       setDisconnectSuccess(true);
+                      
+                      // Clear selection if bulk operation
+                      if (!listingToDelete) {
+                        setSelectedListingIds(new Set());
+                        setSelectionMode(false);
+                      }
+
+                      // Update local state by removing disconnected listings
+                      // This avoids full page reload while updating UI
+                      const disconnectedIdsSet = new Set(idsToDisconnect);
+                      
+                      // Check if we are currently viewing ONE of the branches we just disconnected from
+                      // If so, update the view immediately
+                      const isViewingDisconnectedBranch = branchFromUrl && (
+                        (branchFromUrl.documentId && selectedBranchIdsToDisconnect.has(branchFromUrl.documentId)) || 
+                        (branchFromUrl.id && selectedBranchIdsToDisconnect.has(branchFromUrl.id))
+                      );
+
+                      // If we are on a specific branch page AND we removed from that branch, remove from view
+                      if (isViewingDisconnectedBranch) {
+                          setFilteredListings(prev => prev.filter(l => !disconnectedIdsSet.has(l.documentId) && !disconnectedIdsSet.has(l.id)));
+                          setCompanyListings(prev => prev.filter(l => !disconnectedIdsSet.has(l.documentId) && !disconnectedIdsSet.has(l.id)));
+                      }
+                      
+                      // Force Apollo Cache update to ensure data consistency
+                      // idsToDisconnect.forEach(id => {
+                      //     const cacheId = client.cache.identify({ __typename: 'Listing', documentId: id }) || client.cache.identify({ __typename: 'Listing', id: id });
+                      //     if (cacheId) client.cache.evict({ id: cacheId });
+                      // });
+                      // client.cache.gc();
+
                       setTimeout(() => {
-                        if (typeof window !== "undefined") {
-                          window.location.reload();
-                        }
-                      }, 500);
+                        // Close modal after success message
+                        toggleModal("confirmDelete", false);
+                        setDisconnectSuccess(false);
+                        setListingToDelete(null);
+                        setSelectedBranchIdsToDisconnect(new Set());
+                      }, 1000);
                     } catch (err) {
-                      setDisconnectError(err?.message || "Failed to remove listing from branch");
+                      setDisconnectError(err?.message || "Failed to remove listing from branches");
                     } finally {
                       setDisconnecting(false);
                     }
                   }}
-                  disabled={!selectedBranchIdToDisconnect || disconnecting}
+                  disabled={selectedBranchIdsToDisconnect.size === 0 || disconnecting}
                   style={{
                     padding: "6px 14px",
                     border: "1px solid #fca5a5",
@@ -3840,19 +4198,50 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                     color: "#dc2626",
                     fontSize: "13px",
                     fontWeight: 500,
-                    cursor: !selectedBranchIdToDisconnect || disconnecting ? "not-allowed" : "pointer",
+                    cursor: selectedBranchIdsToDisconnect.size === 0 || disconnecting ? "not-allowed" : "pointer",
                     transition: "all 0.2s ease",
                   }}
                   onMouseOver={(e) => {
-                    if (!selectedBranchIdToDisconnect || disconnecting) return;
+                    if (selectedBranchIdsToDisconnect.size === 0 || disconnecting) return;
                     e.target.style.backgroundColor = "#fee2e2";
                   }}
                   onMouseOut={(e) => {
                     e.target.style.backgroundColor = disconnecting ? "#fecaca" : "#fff";
                   }}
                 >
-                  {disconnecting ? "Removing…" : "Remove From Branch"}
+                  {disconnecting ? "Removing…" : "Remove From Selected"}
                 </button>
+                
+                {/* Bulk Restore Button (only in bin mode) */}
+                {viewMode === 'bin' && !listingToDelete && (
+                  <button
+                    onClick={() => {
+                      toggleModal("confirmDelete", false);
+                      performBulkRestore();
+                    }}
+                    style={{
+                      padding: "6px 14px",
+                      border: "none",
+                      borderRadius: "6px",
+                      backgroundColor: "#28a745",
+                      color: "#fff",
+                      fontSize: "13px",
+                      fontWeight: "500",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      marginLeft: "8px"
+                    }}
+                    onMouseOver={(e) => {
+                      e.target.style.backgroundColor = "#218838";
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.backgroundColor = "#28a745";
+                    }}
+                  >
+                    Restore Selected
+                  </button>
+                )}
+
                 <button
                   onClick={() => {
                     toggleModal("confirmDelete", false);
@@ -3881,7 +4270,10 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
                     e.target.style.backgroundColor = "#dc2626";
                   }}
                 >
-                  {listingToDelete ? "Delete Listing" : "Delete Listings"}
+                  {listingToDelete 
+                    ? (viewMode === 'active' ? "Move to Bin" : "Delete Permanently")
+                    : (viewMode === 'active' ? "Move Selected to Bin" : "Delete Selected Permanently")
+                  }
                 </button>
               </div>
             </div>
@@ -3945,6 +4337,67 @@ const [disconnectSuccess, setDisconnectSuccess] = useState(false);
             />
           </>
         )}
+
+      {/* Floating Recycling Bin Icon & Menu */}
+      <RecyclingBin
+        isOwner={isOwner}
+        isOpen={isBinMenuOpen}
+        onToggleOpen={setIsBinMenuOpen}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        binCount={companyListings.filter(l => l.publishedAt === null).length}
+        onEmptyBin={() => {
+            // Empty Bin Logic
+            const binListings = companyListings.filter(l => l.publishedAt === null);
+            if (binListings.length === 0) {
+                toast({ title: "Bin is empty", description: "No listings to delete." });
+                setIsBinMenuOpen(false);
+                return;
+            }
+            
+            if (confirm(`Are you sure you want to permanently delete all ${binListings.length} items in the Recycle Bin? This cannot be undone.`)) {
+                 setIsBulkDeleting(true);
+                 setIsBinMenuOpen(false);
+                 
+                 const ids = binListings.map(l => l.documentId || l.id);
+                 const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'https://api.tombstonesfinder.co.za/api';
+                 const BATCH_SIZE = 5;
+                 
+                 (async () => {
+                     try {
+                         for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+                            const batch = ids.slice(i, i + BATCH_SIZE);
+                            await Promise.all(batch.map(async (id) => {
+                                try {
+                                    await fetch(`${baseUrl}/listings/${id}`, {
+                                       method: 'DELETE',
+                                       headers: { 'Content-Type': 'application/json' },
+                                    });
+                                } catch (err) {
+                                    console.error(`Error deleting listing ${id}:`, err);
+                                }
+                            }));
+                         }
+                         
+                         // Update state
+                         setCompanyListings(prev => prev.filter(l => !ids.includes(l.documentId || l.id)));
+                         setFilteredListings(prev => prev.filter(l => !ids.includes(l.documentId || l.id)));
+                         
+                         toast({
+                            title: "Recycle Bin Emptied",
+                            description: `${ids.length} listings permanently deleted.`,
+                            variant: "destructive"
+                        });
+                     } catch (err) {
+                         console.error(err);
+                         toast({ title: "Error", description: "Failed to empty bin", variant: "destructive" });
+                     } finally {
+                         setIsBulkDeleting(false);
+                     }
+                 })();
+            }
+        }}
+      />
 
 
       </div>

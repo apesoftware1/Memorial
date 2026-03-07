@@ -17,6 +17,7 @@ import LocationTrigger from "@/components/LocationTrigger"
 import FilterDropdown from "@/components/FilterDropdown"
 import SearchForm from "@/components/SearchForm"
 import SearchContainer from "@/components/SearchContainer.jsx";
+import { useSearchParams, useRouter } from 'next/navigation';
 import { PageLoader } from "@/components/ui/loader"
 import { useGuestLocation } from "@/hooks/useGuestLocation"
 
@@ -99,6 +100,7 @@ const getDiverseShuffledListings = (listings) => {
 };
 
 export default function Home() {
+  const router = useRouter();
   
   const { categories, loading: _loading } = useListingCategories()
   const [activeTab, setActiveTab] = useState(0) // Default to SINGLE tab (first tab)
@@ -149,14 +151,15 @@ export default function Home() {
     mobileDropdown: null,
   });
   const [filters, setFilters] = useState({
-    minPrice: null,
-    maxPrice: null,
-    colour: null,
-    style: null,
-    location: null,
-    stoneType: null,
-    culture: null,
-    custom: null,
+    minPrice: "Min Price",
+    maxPrice: "Max Price",
+    colour: "Any",
+    style: "Any",
+    slabStyle: "Any",
+    location: "Any",
+    stoneType: "Any",
+    custom: "Any",
+    search: ""
   });
 
   useEffect(() => {
@@ -167,49 +170,19 @@ export default function Home() {
   const [isSearching, setIsSearching] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Navigation function for search results
-  const handleNavigateToResults = useCallback((categoryParam = "") => {
-    // Build query parameters from current filters and category
-    const params = new URLSearchParams();
-    
-    // Check if a category parameter was passed from the search modal
-    if (categoryParam && categoryParam.includes('category=')) {
-      const categoryValue = categoryParam.split('category=')[1].split('&')[0];
-      params.append('category', decodeURIComponent(categoryValue));
-    } 
-    // Otherwise use the active tab category
-    else if (categories && categories.length > 0) {
-      // Use the same sorting logic as CategoryTabs
-      const desiredOrder = ["SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"];
-      const sortedCategories = desiredOrder
-        .map(name => categories.find(cat => cat.name && cat.name.toUpperCase() === name))
-        .filter(Boolean);
-      
-      const selectedCategory = sortedCategories[activeTab];
-      if (selectedCategory) {
-        params.append('category', selectedCategory.name);
-      }
+  const handleNavigateToResults = useCallback((queryString) => {
+    if (queryString) {
+      // queryString usually comes formatted as "category=..." or "&category=..."
+      // Ensure we construct a valid path
+      const path = queryString.startsWith('&') 
+        ? `/tombstones-for-sale?${queryString.substring(1)}` 
+        : `/tombstones-for-sale?${queryString}`;
+        
+      router.push(path);
+    } else {
+      router.push("/tombstones-for-sale");
     }
-    
-    // Add filters if any are set
-    if (filters) {
-   
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value && value !== 'Min Price' && value !== 'Max Price') {
-     
-          params.append(key, value);
-        }
-      });
-
-    }
-    
-    // Navigate to tombstones-for-sale with parameters
-    const queryString = params.toString();
-    const url = queryString ? `/tombstones-for-sale?${queryString}` : '/tombstones-for-sale';
-    if (typeof window !== "undefined") {
-      window.location.href = url;
-    }
-  }, [activeTab, categories, filters]);
+  }, [router]);
 
   // New state hooks for filtered listings
   const [premListings, setPremListings] = useState([]);

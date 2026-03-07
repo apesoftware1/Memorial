@@ -47,7 +47,7 @@ export default function ManufacturerProfilePage() {
       </div>
     );
   }
-  const listings = company.listings || [];
+  const listings = data?.listings || company?.listings || [];
 
   // Function to handle video click
   const handleVideoClick = () => {

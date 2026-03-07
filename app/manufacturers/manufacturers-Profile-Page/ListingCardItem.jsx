@@ -48,6 +48,7 @@ const ListingCardItem = memo(({
   onEdit,
   onCreateSpecial,
   onAddToBranch,
+  onRestore,
   onSelectAll,
   allSelected,
   fixedHeight = true
@@ -128,6 +129,7 @@ const ListingCardItem = memo(({
             <PremiumListingCard
                 listing={{
                 ...listing,
+                title: listing.title || null, // Ensure title is passed if available
                 company: {
                     name: company.name,
                     logoUrl:
@@ -155,6 +157,43 @@ const ListingCardItem = memo(({
                 isOwner={isOwner}
                 fixedHeight={fixedHeight}
             />
+
+            {/* Restore Button Overlay (Only in Bin Mode) */}
+            {onRestore && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onRestore(listing.documentId || listing.id);
+                    }}
+                    style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        zIndex: 20,
+                        backgroundColor: '#22c55e',
+                        color: 'white',
+                        padding: '10px 20px',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                        border: 'none',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#16a34a"}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#22c55e"}
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                        <path d="M3 3v5h5" />
+                    </svg>
+                    Restore Listing
+                </button>
+            )}
+
             {isOwner && (
                 <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
                 <DropdownMenu>
@@ -177,9 +216,21 @@ const ListingCardItem = memo(({
                     </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                    <DropdownMenuItem
+                      {onRestore && (
+                        <DropdownMenuItem
+                          onClick={() => onRestore(listing.documentId || listing.id)}
+                          style={{
+                            cursor: "pointer",
+                            color: "#15803d",
+                            fontWeight: "600",
+                          }}
+                        >
+                          Restore Listing
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
                         onClick={() => onEdit(listing)}
-                    >
+                      >
                         Edit Listing
                     </DropdownMenuItem>
                     <DropdownMenuItem

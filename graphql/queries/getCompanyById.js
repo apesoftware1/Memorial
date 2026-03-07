@@ -129,66 +129,71 @@ export const COMPANY_FULL_QUERY = gql`
         whatsappNumber
         phoneNumber
       }
-      listings(pagination: { limit: -1 }) {
-        createdAt
-        branches {
-          documentId
-          name
-          location {
-            address
-            latitude
-            longitude
-            mapUrl
-          }
-        }
-        branch_listings {
-          branch {
-            documentId
-          }
-          price
-        }
+      isFeatured
+    }
+    listings(
+      filters: { company: { documentId: { eq: $documentId } } }
+      pagination: { limit: -1 }
+    ) {
+      publishedAt
+      createdAt
+      updatedAt
+      branches {
         documentId
-        listing_category {
-          documentId
-          name
-        }
-        title
-        slug
-        price
-        adFlasher
-        adFlasherColor
-        isFeatured
-        isOnSpecial
-        isPremium
-        isStandard
-        manufacturingTimeframe
-        mainImageUrl
-        mainImagePublicId
-        thumbnailUrls
-        thumbnailPublicIds
-        productDetails {
-          id
-          color { id value }
-          style { id value }
-          stoneType { id value }
-          slabStyle { id value }
-          customization { id value }
-        }
-        additionalProductDetails {
-          id
-          transportAndInstallation { id value }
-          foundationOptions { id value }
-          warrantyOrGuarantee { id value }
-        }
-        inquiries_c {
-          documentId
-          name
-          email
-          message
-          createdAt
+        name
+        location {
+          address
+          latitude
+          longitude
+          mapUrl
         }
       }
+      branch_listings {
+        branch {
+          documentId
+        }
+        price
+      }
+      documentId
+      listing_category {
+        documentId
+        name
+      }
+      title
+      slug
+      price
+      adFlasher
+      adFlasherColor
       isFeatured
+      isOnSpecial
+      isPremium
+      isStandard
+      manufacturingTimeframe
+      mainImageUrl
+      mainImagePublicId
+      thumbnailUrls
+      thumbnailPublicIds
+      productDetails {
+        id
+        color { id value }
+        style { id value }
+        stoneType { id value }
+        slabStyle { id value }
+        customization { id value }
+      }
+      additionalProductDetails {
+        id
+        transportAndInstallation { id value }
+        foundationOptions { id value }
+        warrantyOrGuarantee { id value }
+      }
+      inquiries_c {
+        documentId
+        name
+        email
+        message
+        createdAt
+      }
     }
   }
 `;
@@ -198,25 +203,29 @@ export const COMPANY_DELTA_QUERY = gql`
     companies(filters: { documentId: { eq: $documentId } }) {
       documentId
       updatedAt
-      listings(
-        filters: { updatedAt: { gt: $since } }
-        pagination: { limit: -1 }
-      ) {
-        documentId
-        title
-        slug
-        price
-        updatedAt
-        mainImageUrl
-        mainImagePublicId
-        isFeatured
-        isOnSpecial
-        isPremium
-        isStandard
-        manufacturingTimeframe
-        thumbnailUrls
-        thumbnailPublicIds
+    }
+    listings(
+      filters: { 
+        company: { documentId: { eq: $documentId } },
+        updatedAt: { gt: $since } 
       }
+      pagination: { limit: -1 }
+    ) {
+      documentId
+      title
+      slug
+      price
+      updatedAt
+      publishedAt
+      mainImageUrl
+      mainImagePublicId
+      isFeatured
+      isOnSpecial
+      isPremium
+      isStandard
+      manufacturingTimeframe
+      thumbnailUrls
+      thumbnailPublicIds
     }
   }
 `;

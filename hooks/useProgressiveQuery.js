@@ -94,17 +94,26 @@ export function useProgressiveQuery({
             }
           }
 
+          // Use a new client instance or specific fetch policy if needed to avoid blocking
+          // but here we just reuse client with proper error handling
           const { data } = await client.query({
             query: fullQuery,
             variables, // pass variables for full query
-            fetchPolicy: 'cache-first',
+            fetchPolicy: 'network-only', // Ensure we actually get fresh data if we decided to fetch
+            errorPolicy: 'all',
           });
+
+          if (!data) {
+             console.warn('[Background Fetch] No data returned');
+             return;
+          }
 
           // Track last updated timestamp for delta refresh
           const maxUpdated = getMaxUpdatedTime(data);
           if (maxUpdated && typeof window !== 'undefined') {
             window.localStorage.setItem(storageKey, String(Date.now())); // Use current time for staleness check
           }
+          setFullData(data); // Explicitly set full data
 
           console.log(`[Background Fetch] ${(performance.now() - start).toFixed(0)} ms`);
         } catch (err) {

@@ -49,7 +49,10 @@ export function createApolloClient(): ApolloClient<NormalizedCacheObject> {
   });
 
   const httpLink = createHttpLink({
-    uri,
+    uri: uri || 'https://api.tombstonesfinder.co.za/graphql', // Fallback if env var missing
+    fetchOptions: {
+      timeout: 300000, // 300 seconds (5 minutes) timeout
+    },
     headers: {
       'Content-Type': 'application/json',
     },
