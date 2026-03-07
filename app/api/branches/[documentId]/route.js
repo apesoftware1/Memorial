@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request, { params }) {
   try {
-    const { documentId } = params;
+    const { documentId } = await params;
     const { searchParams } = new URL(request.url);
     const limitParam = searchParams.get('limit');
-    const limit = limitParam ? parseInt(limitParam) : -1;
+    // Use a large number for "all" because GraphQL limit must be positive
+    const limit = limitParam && parseInt(limitParam) > 0 ? parseInt(limitParam) : 2000;
+
+    console.log(`[API] Fetching listings for branch: ${documentId}, limit: ${limit}`);
 
     if (!documentId) {
       return NextResponse.json(
@@ -18,7 +21,12 @@ export async function GET(request, { params }) {
     const query = `
       query GetBranchListings($documentId: ID!, $limit: Int) {
         listings(
-          filters: { branches: { documentId: { eq: $documentId } } }
+          filters: { 
+            or: [
+              { branches: { documentId: { eq: $documentId } } },
+              { branch_listings: { branch: { documentId: { eq: $documentId } } } }
+            ]
+          }
           pagination: { limit: $limit }
         ) {
           documentId
@@ -26,6 +34,8 @@ export async function GET(request, { params }) {
           price
           slug
           mainImageUrl
+          publishedAt
+          updatedAt
           listing_category {
             name
           }
@@ -69,9 +79,9 @@ export async function GET(request, { params }) {
     const result = await response.json();
 
     if (result.errors) {
-      console.error('GraphQL errors:', result.errors);
+      console.error('GraphQL errors:', JSON.stringify(result.errors, null, 2));
       return NextResponse.json(
-        { error: 'Failed to fetch listings from Strapi' },
+        { error: 'Failed to fetch listings from Strapi', details: result.errors },
         { status: 500 }
       );
     }

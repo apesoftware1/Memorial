@@ -20,8 +20,10 @@ export async function GET(request, { params }) {
         listings(
           filters: { company: { documentId: { eq: $documentId } } }
           pagination: { limit: $limit }
+          publicationState: PREVIEW
         ) {
           documentId
+          publishedAt
           title
           slug
           price

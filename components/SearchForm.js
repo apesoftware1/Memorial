@@ -103,7 +103,8 @@ export default function SearchForm({
 
   // Notify parent of typing state instead of manipulating DOM directly
   useEffect(() => {
-    if (typeof onTypingChange === 'function') {
+    // Only call if the function actually exists
+    if (onTypingChange && typeof onTypingChange === 'function') {
       onTypingChange(isTyping);
     }
   }, [isTyping, onTypingChange]);
@@ -125,37 +126,6 @@ export default function SearchForm({
       }
     };
   }, [onQueryChange]);
-
-  // Hide specified elements when the button appears below the form
-  // useEffect(() => {
-  //   const labelsToHide = [
-  //     "Min Price",
-  //     "Max Price",
-  //     "Location",
-  //     "Head Style",
-  //     "+ More Options",
-  //   ];
-  //
-  //   const toggleElements = (hide) => {
-  //     try {
-  //       const all = Array.from(document.querySelectorAll('*'));
-  //       for (const el of all) {
-  //         const txt = (el.textContent || '').trim();
-  //         if (
-  //           labelsToHide.includes(txt) ||
-  //           (/Search.*Results/i.test(txt))
-  //         ) {
-  //           el.style.display = hide ? 'none' : '';
-  //         }
-  //       }
-  //     } catch (_) {
-  //       // no-op in case DOM isn't available
-  //     }
-  //   };
-  //
-  //   toggleElements(isTyping);
-  //   return () => toggleElements(false);
-  // }, [isTyping]);
 
   // Shared click handler for magnifying glass button
   const handleSearchClick = (e) => {
@@ -218,12 +188,7 @@ export default function SearchForm({
         {/* Searching status */}
         {isSearching && <div className="mt-2 text-sm text-gray-500">Searching...</div>}
 
-        {/* Search results count - Removed as per request */}
-        {/* {!isSearching && searchQuery.trim() && (
-          <div className="mt-2 text-sm text-[#1A1D23]">
-            Found {searchResults.length} results for "{searchQuery}"
-          </div>
-        )} */}
+     
       </form>
 
       {/* Animated button below the form when typing */}

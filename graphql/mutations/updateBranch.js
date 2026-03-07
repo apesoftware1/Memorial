@@ -1,4 +1,4 @@
-export async function updateBranch(branchDocumentId, data) {
+export async function updateBranch(branchDocumentId, data, options = {}) {
   if (!branchDocumentId) {
     throw new Error("Branch documentId is required");
   }
@@ -6,7 +6,7 @@ export async function updateBranch(branchDocumentId, data) {
   try {
     const baseUrl = process.env.STRAPI_API_URL || "https://api.tombstonesfinder.co.za";
     const response = await fetch(
-`${baseUrl}/api/branches/${branchDocumentId}`,
+      `${baseUrl}/api/branches/${branchDocumentId}`,
       {
         method: "PUT",
         headers: {
@@ -25,7 +25,9 @@ export async function updateBranch(branchDocumentId, data) {
     const result = await response.json();
     return result;
   } catch (error) {
-    console.error("❌ Error updating branch:", error.message);
+    if (!options.suppressErrorLog) {
+      console.error("❌ Error updating branch:", error.message);
+    }
     throw error;
   }
 }

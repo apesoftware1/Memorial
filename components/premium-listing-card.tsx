@@ -263,7 +263,7 @@ export function PremiumListingCard({
           )}>
             <Image
               src={cloudinaryOptimized(listing.mainImageUrl, 800) || "/placeholder.svg"}
-              alt={listing.title}
+              alt={listing.title || "Tombstone listing image"}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 50vw"

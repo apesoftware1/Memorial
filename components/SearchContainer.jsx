@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ChevronDown, X, Search } from "lucide-react";
 import SearchForm from "@/components/SearchForm";
@@ -9,9 +9,9 @@ import LocationModal from "@/components/LocationModal";
 import CategoryTabs from "@/components/CategoryTabs.jsx";
 import MobileFilterTags from "@/components/MobileFilterTags.jsx";
 import { SearchLoader } from "@/components/ui/loader";
+import { useSearchFilters } from "@/hooks/useSearchFilters";
 import { AnimatePresence, motion } from "framer-motion";
-import { useLocationHierarchy } from "@/hooks/useLocationHierarchy";
-import { checkListingLocation, toTitleCase } from "@/lib/locationHelpers";
+import { toTitleCase } from "@/lib/locationHelpers";
 
 // Default filter options with updated price ranges
 const defaultFilterOptions = {
@@ -199,6 +199,13 @@ const SearchContainer = ({
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
+  // --- New Filtering Engine Integration ---
+  // Define hook and state early to ensure locationHierarchy is available for memoized values
+  const { loading: filtersLoading, computeFilteredResults, buildLocationTree } = useSearchFilters();
+  const [hookFilteredCount, setHookFilteredCount] = useState(0);
+  const [locationHierarchyState, setLocationHierarchyState] = useState([]); 
+  const locationHierarchy = locationHierarchyState; // Defined here for access in mobileLocationsData
+
   // Internal state for search functionality if not provided
   const [internalIsSearching, setInternalIsSearching] = useState(false);
 
@@ -206,19 +213,18 @@ const SearchContainer = ({
   const searchParams = useSearchParams();
   const [filteredListings, setFilteredListings] = useState([]);
 
-  // Helper: safely get array of values from productDetails field
-  const getDetailValues = (listing, key) => {
-    const arr = listing?.productDetails?.[key];
-    if (Array.isArray(arr)) {
-      return arr
-        .map((item) => (item?.value || "").toString().toLowerCase())
-        .filter(Boolean);
-    }
-    return [];
-  };
+  // Calculate filtered listings for location counts (apply all filters EXCEPT location)
+  // const listingsForLocationCounts = useMemo(() => {
+  //   // Create a filter object that excludes location
+  //   // const filtersForLocation = { ...(filters || {}), location: null };
+  //   // return filterListings(allListings, filtersForLocation, categories, activeTab);
+  //   return [];
+  // }, [allListings, filters, categories, activeTab]);
 
   // Build hierarchical location options from listings
-  const locationHierarchy = useLocationHierarchy(allListings, categories, activeTab);
+  // const locationHierarchy = useMemo(() => {
+  //   return buildLocationTree(listingsForLocationCounts);
+  // }, [listingsForLocationCounts]);
 
 
   // Local state to control mobile-only location modal
@@ -556,208 +562,80 @@ const SearchContainer = ({
     [categories, activeTab, filters]
   );
 
+  // Determine current category name from activeTab
+  const currentCategoryName = useMemo(() => {
+    if (activeTab === undefined || !categories || !categories.length) return null;
+    const desiredOrder = [
+      "SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"
+    ];
+    const sortedCategories = desiredOrder
+      .map((name) =>
+        categories.find((cat) => cat?.name && cat.name.toUpperCase() === name)
+      )
+      .filter(Boolean);
+    return sortedCategories[activeTab]?.name;
+  }, [categories, activeTab]);
+
+  // Combined filters for the hook
+  const effectiveFilters = useMemo(() => {
+    // When a location is selected from the dropdown (string), we need to parse it
+    // If it's just a province name, set province. If city, set city etc.
+    // However, the current UI likely just sets filters.location to the string.
+    // The hook expects separate province/city/town fields OR a generic location field.
+    // Let's ensure we pass the generic location field correctly if it's set.
+    
+    return {
+      ...filters,
+      category: currentCategoryName || 'Any',
+      // Ensure 'location' is passed if set (it usually is from FilterDropdown)
+      location: filters.location === 'Any' ? null : filters.location
+    };
+  }, [filters, currentCategoryName]);
+
+  useEffect(() => {
+    if (!filtersLoading) {
+      // 1. Compute total count with ALL filters applied
+      const ids = computeFilteredResults(effectiveFilters);
+      setHookFilteredCount(ids.size);
+      
+      // 2. Compute location tree base (All filters EXCEPT location)
+      // This ensures the location dropdown shows available locations for the selected criteria
+      const filtersNoLoc = { ...effectiveFilters, province: 'Any', city: 'Any', town: 'Any', location: null };
+      const baseIds = computeFilteredResults(filtersNoLoc);
+      const tree = buildLocationTree(baseIds);
+      setLocationHierarchyState(tree); // Update the state used by UI
+    }
+  }, [filtersLoading, effectiveFilters, computeFilteredResults, buildLocationTree]);
+
+  // Use the hook's data instead of client-side props processing
+  const searchButtonCount = hookFilteredCount;
+  // locationHierarchy is defined above
+  const isEngineLoaded = !filtersLoading;
+
+  /* 
+  // OLD CLIENT-SIDE LOGIC (Replaced by useSearchFilters)
   // Calculate filtered count for search button using the shared filter logic
-  const searchButtonCount = useMemo(() => {
-    const filteredListings = filterListingsFrom(allListings, filters);
-    
-    // If a category is selected via prop (and not activeTab handling it), filter here.
-    // filterListingsFrom handles activeTab category filtering, so we don't need to re-filter for activeTab.
-    if (selectedCategory && activeTab === undefined) {
-      return filteredListings.filter(listing => 
-        listing.category?.toUpperCase() === selectedCategory
-      ).length;
-    }
-    
-    return filteredListings.length;
-  }, [allListings, filters, filterListingsFrom, selectedCategory, activeTab]);
-
-  // Calculate filtered count based on current filters and category (for actual filtering)
-  const filteredCount = useMemo(() => {
-    if (!allListings.length) return 0;
-
-    let filtered = [...allListings];
-    
-    // First filter by current category if we're on a specific category page
-    if (activeTab !== undefined && categories && categories.length > 0) {
-      const desiredOrder = [
-        "SINGLE",
-        "DOUBLE",
-        "CHILD",
-        "HEAD",
-        "PLAQUES",
-        "CREMATION",
-      ];
-      const sortedCategories = desiredOrder
-        .map((name) =>
-          categories.find((cat) => cat.name && cat.name.toUpperCase() === name)
-        )
-        .filter(Boolean);
-        
-      if (sortedCategories[activeTab]) {
-        const categoryName = sortedCategories[activeTab].name;
-        filtered = filtered.filter(listing => 
-          listing.category?.toUpperCase() === categoryName.toUpperCase()
-        );
-      }
-    }
-
-    // Filter by search (add this before other filters)
-    if (filters?.search && filters.search !== "") {
-      filtered = filtered.filter((listing) => {
-        const title = (listing?.title || "").toLowerCase();
-        const companyName = (listing?.company?.name || "").toLowerCase();
-        const documentId = (listing?.documentId || "").toLowerCase();
-        const id = (listing?.id || "").toString().toLowerCase();
-        const productId = (listing?.productDetails?.id || "").toLowerCase();
-        const listingSlug = (listing?.slug || "").toLowerCase();
-        
-        const searchQuery = String(filters.search).toLowerCase();
-
-        return (
-          title.includes(searchQuery) ||
-          companyName.includes(searchQuery) ||
-          documentId.includes(searchQuery) ||
-          id.includes(searchQuery) ||
-          productId.includes(searchQuery) ||
-          listingSlug.includes(searchQuery)
-        );
-      });
-    }
-
-    // Filter by category - activeTab corresponds directly to category index
-    if (categories && categories.length > 0) {
-      // Use the same sorting logic as CategoryTabs
-      const desiredOrder = [
-        "SINGLE",
-        "DOUBLE",
-        "CHILD",
-        "HEAD",
-        "PLAQUES",
-        "CREMATION",
-      ];
-      const sortedCategories = desiredOrder
-        .map((name) =>
-          categories.find((cat) => cat.name && cat.name.toUpperCase() === name)
-        )
-        .filter(Boolean);
-
-      const selectedCategory = sortedCategories[activeTab];
-
-      if (selectedCategory) {
-        const categoryName = selectedCategory.name;
-        filtered = filtered.filter((listing) => {
-          // Use the actual listing_category.name from the backend
-          const listingCategory = listing.listing_category?.name;
-
-          // Exact match for category names
-          return listingCategory === categoryName;
-        });
-      }
-    }
-
-    // Filter by color
-    if (filters?.colour) {
-      filtered = filtered.filter((listing) => {
-        const listingColor =
-          listing.productDetails?.color?.[0]?.value ||
-          listing.title?.toLowerCase();
-
-        return listingColor
-          ?.toLowerCase()
-          .includes(String(filters.colour).toLowerCase());
-      });
-    }
-
-    // Filter by material (stoneType)
-    if (filters?.stoneType) {
-      filtered = filtered.filter((listing) => {
-        const listingMaterial =
-          listing.productDetails?.stoneType?.[0]?.value ||
-          listing.title?.toLowerCase();
-
-        return listingMaterial
-          ?.toLowerCase()
-          .includes(String(filters.stoneType).toLowerCase());
-      });
-    }
-
-    // Filter by head style
-    if (filters?.style) {
-      filtered = filtered.filter((listing) => {
-        const listingStyle =
-          listing.productDetails?.style?.[0]?.value ||
-          listing.title?.toLowerCase();
-        return listingStyle
-          ?.toLowerCase()
-          .includes(String(filters.style).toLowerCase());
-      });
-    }
-
-    // Filter by slab style
-    if (filters?.slabStyle) {
-      filtered = filtered.filter((listing) => {
-        const listingSlabStyle =
-          listing.productDetails?.slabStyle?.[0]?.value ||
-          listing.title?.toLowerCase();
-        return listingSlabStyle
-          ?.toLowerCase()
-          .includes(String(filters.slabStyle).toLowerCase());
-      });
-    }
-
-    // Filter by customisation
-    if (filters?.custom) {
-      filtered = filtered.filter((listing) => {
-        const listingCustom =
-          listing.productDetails?.customization?.[0]?.value ||
-          listing.title?.toLowerCase();
-
-        return listingCustom
-          ?.toLowerCase()
-          .includes(String(filters.custom).toLowerCase());
-      });
-    }
-
-    // Filter by location
-    if (filters?.location) {
-      filtered = filtered.filter((listing) =>
-        checkListingLocation(listing, filters.location)
-      );
-    }
-
-    if (filters?.minPrice && filters.minPrice !== "Min Price") {
-      const min = parsePrice(filters.minPrice);
-      filtered = filtered.filter((listing) => {
-        if (!listing.price) return false;
-        return parsePrice(listing.price) >= min;
-      });
-    }
-
-    if (filters?.maxPrice && filters.maxPrice !== "Max Price") {
-      const max = parsePrice(filters.maxPrice);
-      filtered = filtered.filter((listing) => {
-        if (!listing.price) return false;
-        return parsePrice(listing.price) <= max;
-      });
-    }
-
-    return filtered.length;
-  }, [allListings, activeTab, categories, filters]);
+  const searchButtonCount_OLD = useMemo(() => {
+    // ... (old logic removed)
+    return 0;
+  }, []);
+  */
 
   // Default functions if not provided
   const defaultHandleSearch = useCallback(() => {
     setInternalIsSearching(true);
-    // Recompute filtered list locally to ensure parity with TombstonesForSale
-    const next = filterListingsFrom(allListings, filters);
-    setFilteredListings(next);
+    // Note: We no longer need to filter allListings locally for state
+    // But we might simulate a delay for UX
     setTimeout(() => setInternalIsSearching(false), 300);
     
     // Navigate to results page with category parameter
     if (onNavigateToResults) {
-      // Get the current category if available
-      let categoryParam = "";
+      // Build query string from all active filters
+      const params = new URLSearchParams();
+      
+      // Category
       if (selectedCategory) {
-        categoryParam = `&category=${encodeURIComponent(selectedCategory)}`;
+        params.set('category', selectedCategory);
       } else if (categories && categories.length > 0 && activeTab !== undefined) {
         const desiredOrder = [
           "SINGLE",
@@ -774,14 +652,47 @@ const SearchContainer = ({
           .filter(Boolean);
         const selectedCategoryObj = sortedCategories[activeTab];
         if (selectedCategoryObj) {
-          categoryParam = `&category=${encodeURIComponent(selectedCategoryObj.name)}`;
+           params.set('category', selectedCategoryObj.name);
         }
       }
       
+      // Other filters
+      if (filters) {
+          if (filters.minPrice && filters.minPrice !== 'Min Price') params.set('minPrice', filters.minPrice);
+          if (filters.maxPrice && filters.maxPrice !== 'Max Price') params.set('maxPrice', filters.maxPrice);
+          if (filters.search) params.set('search', filters.search);
+          
+          // Multi-selects (arrays)
+          if (Array.isArray(filters.location) && filters.location.length > 0) params.set('location', filters.location.join(','));
+          else if (filters.location && filters.location !== 'Any') params.set('location', filters.location);
+
+          if (Array.isArray(filters.style) && filters.style.length > 0) params.set('style', filters.style.join(','));
+          else if (filters.style && filters.style !== 'Any') params.set('style', filters.style);
+
+          if (Array.isArray(filters.slabStyle) && filters.slabStyle.length > 0) params.set('slabStyle', filters.slabStyle.join(','));
+          else if (filters.slabStyle && filters.slabStyle !== 'Any') params.set('slabStyle', filters.slabStyle);
+
+          if (Array.isArray(filters.stoneType) && filters.stoneType.length > 0) params.set('stoneType', filters.stoneType.join(','));
+          else if (filters.stoneType && filters.stoneType !== 'Any') params.set('stoneType', filters.stoneType);
+
+          if (Array.isArray(filters.colour) && filters.colour.length > 0) params.set('colour', filters.colour.join(','));
+          else if (filters.colour && filters.colour !== 'Any') params.set('colour', filters.colour);
+
+          if (Array.isArray(filters.custom) && filters.custom.length > 0) params.set('custom', filters.custom.join(','));
+          else if (filters.custom && filters.custom !== 'Any') params.set('custom', filters.custom);
+      }
+      
+      // Construct the full query string
+      const queryString = params.toString();
+      const finalParam = queryString ? `&${queryString}` : ""; // onNavigateToResults expects a string starting with & or empty? 
+      // Checking usage in Home page... usually it expects just the params part.
+      // But let's check how onNavigateToResults is used.
+      
       // Include the category parameter in the navigation
-      onNavigateToResults(categoryParam);
+      onNavigateToResults(finalParam);
     }
-  }, [onNavigateToResults, filterListingsFrom, allListings, filters, selectedCategory, categories, activeTab]);
+  }, [onNavigateToResults, selectedCategory, categories, activeTab, filters]);
+
 
   const defaultGetSearchButtonText = useCallback(() => {
     const searching =
@@ -793,7 +704,8 @@ const SearchContainer = ({
   const renderSearchButtonContent = () => {
     const searching =
       isSearching !== undefined ? isSearching : internalIsSearching;
-    if (searching || isCalculating) {
+    
+    if (searching || filtersLoading) {
       return <SearchLoader />;
     }
     
@@ -827,9 +739,7 @@ const SearchContainer = ({
       return `Found ${searchButtonCount} results`;
     }
 
-    // Default state: "View 19 SINGLE tombstones"
-    // Show 100+ on initial load before data is populated
-    const displayCount = isFullLoaded ? searchButtonCount : "100+";
+    const displayCount = searchButtonCount;
     return `View ${displayCount}${categoryLabel ? " " + categoryLabel : ""}`;
   };
 
@@ -1034,7 +944,7 @@ const SearchContainer = ({
                 activeTab={activeTab}
                 currentQuery={currentQuery}
                 onQueryChange={(q) => setCurrentQuery(q)}
-                onTypingChange={(typing) => setIsSearchFormFocused(typing)}
+                onTypingChange={useCallback((typing) => setIsSearchFormFocused(typing), [])}
               />
             </div>
             

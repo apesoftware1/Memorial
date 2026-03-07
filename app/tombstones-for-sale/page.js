@@ -139,9 +139,8 @@ export default function Home() {
   useEffect(() => {
     if (!searchParams) return;
 
-    // If we just updated the URL ourselves, don't re-sync state immediately
-    // unless we want to ensure source-of-truth consistency.
-    // However, for Next.js router.replace, it's safer to allow the sync but ensure we don't trigger another URL update.
+    // Prevent immediate re-sync if we just updated the URL
+    if (isUrlUpdating.current) return;
     
     setActiveFilters(prev => {
       const newFilters = { ...prev };
@@ -158,16 +157,23 @@ export default function Home() {
     // Normalize location to Title Case to match hierarchy data
     let locationNormalized = null;
     if (locationVal) {
-      const raw = locationVal.includes(',') ? locationVal.split(',') : [locationVal];
+      // Split by comma if present, trim whitespace, and filter out empty strings
+      const raw = locationVal.split(',').map(s => s.trim()).filter(Boolean);
+      
       locationNormalized = raw.map(l => {
-        const trimmed = l.trim();
-        // Check if it matches a known province (case-insensitive)
-        const knownProv = DEFAULT_PROVINCES.find(p => p.toLowerCase() === trimmed.toLowerCase());
-        // Use centralized normalization for cities (handles Newcastle, Eshowe, etc.)
-        return knownProv || normalizeCityName(trimmed);
+        // 1. Check if it matches a known province (case-insensitive)
+        const knownProv = DEFAULT_PROVINCES.find(p => p.toLowerCase() === l.toLowerCase());
+        if (knownProv) return knownProv;
+        
+        // 2. Otherwise treat as city/town and normalize
+        return normalizeCityName(l);
       });
+      
+      // Ensure we always have an array for consistency
+      if (locationNormalized.length === 0) locationNormalized = null;
     }
 
+    // Only update if location actually changed
     if (JSON.stringify(locationNormalized) !== JSON.stringify(prev.location)) {
       newFilters.location = locationNormalized;
       hasChanges = true;
@@ -185,7 +191,7 @@ export default function Home() {
         hasChanges = true;
       }
       
-      const search = searchParams.get('search') || searchParams.get('query');
+      const search = searchParams.get('search') || searchParams.get('query') || "";
       if (search !== prev.search) {
         newFilters.search = search;
         hasChanges = true;
@@ -193,13 +199,13 @@ export default function Home() {
 
       // Handle other multi-select filters
       // Map 'color' param to 'colour' filter state to match TombstonesForSaleFilters
-      const colorParam = searchParams.get('color') || searchParams.get('colour');
+      const colorParam = searchParams.get('colour') || searchParams.get('color');
       const colorVal = colorParam ? (colorParam.includes(',') ? colorParam.split(',') : [colorParam]) : null;
       
       if (JSON.stringify(colorVal) !== JSON.stringify(prev.colour)) {
         newFilters.colour = colorVal;
-        // Also update 'color' key for backward compatibility/SearchContainer logic if needed
-        newFilters.color = colorVal; 
+        // Keep 'color' in sync just in case, but prefer 'colour'
+        newFilters.color = colorVal;
         hasChanges = true;
       }
 
@@ -238,10 +244,37 @@ export default function Home() {
     // Skip if searchParams is not available (SSR)
     if (!searchParams) return;
 
-    // Check if this update was triggered by a URL change (indirectly)
-    // We can't easily know, but we can prevent loops by checking if state matches URL.
-    // Actually, we should just update URL if state differs.
-    
+    // Skip initial render or if filters haven't been hydrated yet
+    // This is crucial: if filters are still at their default empty state but the URL has params,
+    // we don't want to overwrite the URL with empty params.
+    const isDefaultState = 
+        activeFilters.minPrice === "Min Price" &&
+        activeFilters.maxPrice === "Max Price" &&
+        !activeFilters.location &&
+        !activeFilters.stoneType &&
+        !activeFilters.colour &&
+        !activeFilters.style &&
+        !activeFilters.slabStyle &&
+        !activeFilters.custom &&
+        !activeFilters.search;
+
+    // Check if URL actually has params we might be about to wipe out
+    const hasUrlParams = 
+        searchParams.has('minPrice') || 
+        searchParams.has('maxPrice') || 
+        searchParams.has('location') || 
+        searchParams.has('stoneType') || 
+        searchParams.has('colour') || 
+        searchParams.has('style') || 
+        searchParams.has('slabStyle') || 
+        searchParams.has('custom') ||
+        searchParams.has('search');
+
+    if (isDefaultState && hasUrlParams) {
+        // Wait for hydration from URL before pushing updates back to URL
+        return;
+    }
+
     const params = new URLSearchParams(searchParams.toString());
     let hasUpdates = false;
 
@@ -271,11 +304,21 @@ export default function Home() {
     updateParam('search', activeFilters.search);
     updateParam('stoneType', activeFilters.stoneType);
     updateParam('colour', activeFilters.colour || activeFilters.color); // Prioritize colour
+    // Clean up 'color' if it exists to avoid duplicates
+    if (params.has('color')) params.delete('color');
+    
     updateParam('style', activeFilters.style);
     updateParam('slabStyle', activeFilters.slabStyle);
     updateParam('custom', activeFilters.custom);
-    // Note: category is handled by tab clicks which push router directly, but we sync it here too if needed
-    // However, category tabs usually control the URL directly.
+    
+    // Always preserve category if it exists in state
+    if (activeFilters.category) {
+        const currentCat = params.get('category');
+        if (currentCat !== activeFilters.category) {
+            params.set('category', activeFilters.category);
+            hasUpdates = true;
+        }
+    }
 
     if (hasUpdates) {
       isUrlUpdating.current = true;
@@ -306,26 +349,59 @@ export default function Home() {
       .filter(Boolean);
   }, [categories]);
 
-  // Initialize active tab from current category or default to SINGLE
+  // Initialize active tab from URL param (priority) or current activeFilters or default
   useEffect(() => {
     if (!sortedCategories.length) return;
+    
+    // Check URL param first
+    const categoryParam = searchParams?.get('category');
+    
+    if (categoryParam) {
+      // Try to find index of the category from URL
+      const idx = sortedCategories.findIndex(c => 
+        c.name.toLowerCase() === categoryParam.toLowerCase()
+      );
+      
+      if (idx >= 0) {
+        setActiveTab(idx);
+        // Ensure activeFilters is synced with URL param
+        setActiveFilters(prev => {
+           if (prev.category !== sortedCategories[idx].name) {
+               return { ...prev, category: sortedCategories[idx].name };
+           }
+           return prev;
+        });
+        return;
+      }
+    }
+    
+    // Fallback: If no URL param, check if activeFilters has a category set
     const currentName = activeFilters.category;
     if (currentName) {
       const idx = sortedCategories.findIndex(c => c.name === currentName);
-      setActiveTab(idx >= 0 ? idx : 0);
-    } else {
-      // Default selection to first tab (typically SINGLE)
-      setActiveTab(0);
-      setActiveFilters(prev => ({ ...prev, category: sortedCategories[0].name }));
+      if (idx >= 0) {
+          setActiveTab(idx);
+          return;
+      }
+    } 
+    
+    // Default selection to first tab (typically SINGLE) if nothing else matched
+    if (activeTab === 0 && !activeFilters.category) {
+        setActiveFilters(prev => ({ ...prev, category: sortedCategories[0].name }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortedCategories.length]);
+  }, [sortedCategories, searchParams]); // Add searchParams to dependency array
 
   const handleTabChange = (index) => {
     setActiveTab(index);
     const selected = sortedCategories[index];
     if (selected?.name) {
       setActiveFilters(prev => ({ ...prev, category: selected.name }));
+      
+      // Update URL when tab changes
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('category', selected.name);
+      router.push(`?${params.toString()}`, { scroll: false });
     }
   };
 
@@ -447,35 +523,64 @@ export default function Home() {
        }
     }
     // Stone Type (partial from productDetails)
-    filtered = filtered.filter(listing => checkMatch(listing.productDetails?.stoneType?.[0]?.value, f.stoneType));
+    filtered = filtered.filter(listing => {
+        // Handle array of values in productDetails (many-to-many or single relation returned as array)
+        const values = listing.productDetails?.stoneType?.map(v => v.value) || [];
+        if (values.length === 0) return checkMatch(null, f.stoneType);
+        
+        // If filter is active, check if ANY of the listing's stone types match the filter
+        return values.some(val => checkMatch(val, f.stoneType));
+    });
 
     // Color (partial from productDetails) - support both color and colour externally
     const colorQuery = f.color || f.colour;
-    filtered = filtered.filter(listing => checkMatch(listing.productDetails?.color?.[0]?.value, colorQuery));
+    filtered = filtered.filter(listing => {
+        const values = listing.productDetails?.color?.map(v => v.value) || [];
+        if (values.length === 0) return checkMatch(null, colorQuery);
+        return values.some(val => checkMatch(val, colorQuery));
+    });
 
     // Style (partial)
-    filtered = filtered.filter(listing => checkMatch(listing.productDetails?.style?.[0]?.value, f.style));
+    filtered = filtered.filter(listing => {
+        const values = listing.productDetails?.style?.map(v => v.value) || [];
+        if (values.length === 0) return checkMatch(null, f.style);
+        return values.some(val => checkMatch(val, f.style));
+    });
 
     // Slab Style (partial)
-    filtered = filtered.filter(listing => checkMatch(listing.productDetails?.slabStyle?.[0]?.value, f.slabStyle));
+    filtered = filtered.filter(listing => {
+        const values = listing.productDetails?.slabStyle?.map(v => v.value) || [];
+        if (values.length === 0) return checkMatch(null, f.slabStyle);
+        return values.some(val => checkMatch(val, f.slabStyle));
+    });
 
     // Custom (partial)
-    filtered = filtered.filter(listing => checkMatch(listing.productDetails?.customization?.[0]?.value, f.custom));
+    filtered = filtered.filter(listing => {
+        const values = listing.productDetails?.customization?.map(v => v.value) || [];
+        if (values.length === 0) return checkMatch(null, f.custom);
+        return values.some(val => checkMatch(val, f.custom));
+    });
 
     // Min Price
     if (f.minPrice && f.minPrice !== 'Min Price' && f.minPrice !== '') {
       const min = parsePrice(f.minPrice);
+      console.log('Filtering Min Price:', min, 'Raw:', f.minPrice);
       filtered = filtered.filter(listing => {
-        if (!listing.price) return false;
-        return parsePrice(listing.price) >= min;
+        if (!listing.price && listing.price !== 0) return false;
+        const price = parsePrice(listing.price);
+        // console.log(`Listing ${listing.title} Price: ${price} (Raw: ${listing.price}) >= ${min}: ${price >= min}`);
+        return price >= min;
       });
     }
     // Max Price
     if (f.maxPrice && f.maxPrice !== 'Max Price' && f.maxPrice !== '') {
       const max = parsePrice(f.maxPrice);
+      console.log('Filtering Max Price:', max, 'Raw:', f.maxPrice);
       filtered = filtered.filter(listing => {
-        if (!listing.price) return false;
-        return parsePrice(listing.price) <= max;
+        if (!listing.price && listing.price !== 0) return false;
+        const price = parsePrice(listing.price);
+        // console.log(`Listing ${listing.title} Price: ${price} (Raw: ${listing.price}) <= ${max}: ${price <= max}`);
+        return price <= max;
       });
     }
     return filtered;
@@ -781,13 +886,15 @@ export default function Home() {
     // Handle different data types
     if (typeof priceStr === 'number') return priceStr;
     if (typeof priceStr === 'string') {
-      return Number(priceStr.replace(/[^\d]/g, ""));
+      // Remove everything except digits and dot (preserve decimal points)
+      // This handles "R 1,000.00" -> "1000.00" and "R 1,000" -> "1000"
+      return Number(priceStr.replace(/[^\d.]/g, ""));
     }
     
     // If it's an object or other type, try to convert to string first
     try {
       const str = String(priceStr);
-      return Number(str.replace(/[^\d]/g, ""));
+      return Number(str.replace(/[^\d.]/g, ""));
     } catch (error) {
       console.warn('Failed to parse price:', priceStr, error);
       return 0;

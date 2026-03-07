@@ -114,7 +114,7 @@ export default function OwnerProfilePage() {
   
   const company = data?.companies?.[0];
   if (!company) return <PageLoader text=" " />;
-  const listings = company.listings || [];
+  const listings = data?.listings || company?.listings || [];
 
   return (
     <div>
