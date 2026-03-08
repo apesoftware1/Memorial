@@ -705,11 +705,8 @@ const SearchContainer = ({
     const searching =
       isSearching !== undefined ? isSearching : internalIsSearching;
     
-    if (searching || filtersLoading) {
-      return <SearchLoader />;
-    }
-    
     // Always calculate category label if available
+    let categoryName = "";
     let categoryLabel = "";
     if (categories && categories.length > 0 && activeTab !== undefined) {
       const desiredOrder = [
@@ -727,8 +724,18 @@ const SearchContainer = ({
         .filter(Boolean);
       const selectedCategoryObj = sortedCategories[activeTab];
       if (selectedCategoryObj) {
-        categoryLabel = selectedCategoryObj.name + " tombstones";
+        categoryName = selectedCategoryObj.name;
+        categoryLabel = categoryName + " tombstones";
       }
+    }
+
+    if (searching) {
+      return <SearchLoader />;
+    }
+    
+    // If loading in background, show placeholder
+    if (filtersLoading) {
+      return `View 100+ ${categoryName || "SINGLE"} tombstones`;
     }
     
     // If we have a search term
