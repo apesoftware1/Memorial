@@ -175,7 +175,7 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
         return false;
       })
     : null;
-    console.log(branchListing, "from branch card")
+
   const displayPrice = branchListing?.price || listing?.price;
 
   return (

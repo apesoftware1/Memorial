@@ -53,13 +53,31 @@ export function PremiumListingCardModal({
   onBranchSelect,
 }: PremiumListingCardModalProps): React.ReactElement {
   if (!listing) return <></>;
-  // Get branches array from branch_listings (new structure) or branches (legacy)
-  let branches: any[] = [];
-  if (Array.isArray(listing?.branch_listings) && listing.branch_listings.length > 0) {
-    branches = listing.branch_listings.map((bl: any) => bl.branch).filter(Boolean);
-  } else {
-    branches = Array.isArray(listing?.branches) ? listing.branches : [];
-  }
+  // Get branches array from both sources to ensure we don't miss any
+  const branchesFromListings = Array.isArray(listing?.branch_listings) 
+    ? listing.branch_listings.map((bl: any) => bl.branch).filter(Boolean)
+    : [];
+    
+  const directBranches = Array.isArray(listing?.branches) ? listing.branches : [];
+  
+  // Combine and deduplicate
+  const uniqueBranches = new Map();
+  
+  // Add direct branches first
+  directBranches.forEach((branch: any) => {
+    const id = branch.documentId || branch.id;
+    if (id) uniqueBranches.set(id, branch);
+  });
+  
+  // Add/Overwrite with branches from branch_listings (might have more info?)
+  // Actually, usually branch object is the same, but branch_listings has price. 
+  // But here we are extracting the branch object itself.
+  branchesFromListings.forEach((branch: any) => {
+    const id = branch.documentId || branch.id;
+    if (id) uniqueBranches.set(id, branch);
+  });
+  
+  const branches = Array.from(uniqueBranches.values());
   
   // Only show this component if there are multiple branches
   if (branches.length <= 1) return <></>;

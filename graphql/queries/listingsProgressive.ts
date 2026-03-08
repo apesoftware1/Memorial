@@ -50,11 +50,11 @@ export const LISTINGS_FULL_QUERY = gql`
     listings(pagination: { limit: -1 }) {
       documentId
       updatedAt
-      branch_listings {
+      branch_listings(pagination: { limit: -1 }) {
         branch { documentId name location { address latitude longitude mapUrl province city town} }
         price
       }
-      branches {
+      branches(pagination: { limit: -1 }) {
         documentId
         name
         location {
@@ -124,11 +124,11 @@ export const LISTINGS_DELTA_QUERY = gql`
     ) {
       documentId
       updatedAt
-      branch_listings {
+      branch_listings(pagination: { limit: -1 }) {
         branch { documentId name location { address latitude longitude mapUrl province city town} }
         price
       }
-      branches {
+      branches(pagination: { limit: -1 }) {
         documentId
         name
         location {
