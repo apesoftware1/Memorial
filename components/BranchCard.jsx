@@ -102,7 +102,7 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
   // Create product object for FavoriteButton
   const favoriteProduct = {
     id: listing?.id || listing?.documentId,
-    title: listing?.title,
+    
     price: listing?.price,
     image: listing?.mainImageUrl,
     details: listing?.productDetails,
@@ -209,7 +209,7 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
         <div className="w-full px-4 pt-4 pb-2 bg-white flex flex-col">
           {/* Price and Badge */}
           <div className="flex flex-col items-start mb-3">
-            <div className="text-2xl font-bold text-blue-600 pr-14">
+            <div className="text-lg font-bold text-blue-600 pr-14">
               {displayPrice ? formatPrice(displayPrice) : "Contact for price"}
             </div>
             {getCategoryLabel() && (
@@ -223,14 +223,14 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
           
           {/* Title and Branch Details */}
           <h2 className="text-lg font-bold text-gray-800 mb-2 uppercase">
-            {listing?.title || "Tombstone"}
+            
           </h2>
           
           {/* Branch Details */}
           <div className="space-y-0.5 mb-2">
             {/* First line: Branch Name (distance moved to final indicator) */}
-            <div className="text-sm font-semibold text-gray-800 flex items-center">
-              <span>{name} Branch</span>
+            <div className="text-base font-medium text-gray-800 flex items-center">
+              <span className="font-bold text-2xl">{name} Branch</span>
             </div>
             {/* Second line: City | Province */}
             {(city || province) && (
@@ -266,7 +266,7 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
         <div className="w-full p-4 flex flex-col">
           {/* Price and Badge */}
           <div className="flex flex-col items-start mb-3">
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-lg font-bold text-blue-600">
               {displayPrice ? formatPrice(displayPrice) : "Contact for price"}
             </div>
             <div className="mt-1 mb-0">
@@ -280,13 +280,13 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
           
           {/* Title and Branch Details */}
           <h2 className="text-lg font-bold text-gray-800 mb-2 uppercase">
-            {listing?.title || "Tombstone"}
+
           </h2>
           
           {/* Branch Details */}
           <div className="space-y-0.5 mb-2">
-            <div className="text-sm font-semibold text-gray-800 flex items-center">
-              <span>{name} Branch</span>
+            <div className="text-base font-medium text-gray-800 flex items-center">
+              <span className="font-bold text-2xl">{name} Branch</span>
             </div>
             {(city || province) && (
               <div className="text-xs text-gray-700">{joinWithPipes([city, province])}</div>
