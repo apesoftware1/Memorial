@@ -1464,6 +1464,15 @@ export default function ManufacturerProfileEditor({
       );
     }
 
+    // Deduplicate listings by documentId/id to prevent rendering duplicates
+    const seen = new Set();
+    baseListings = baseListings.filter(l => {
+      const id = l.documentId || l.id;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+
     return [...baseListings].sort((a, b) => {
       if (sortBy === "Price") {
         return parsePrice(a.price) - parsePrice(b.price);
@@ -4398,8 +4407,6 @@ export default function ManufacturerProfileEditor({
             }
         }}
       />
-
-
       </div>
     </>
   );

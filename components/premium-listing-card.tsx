@@ -204,12 +204,28 @@ export function PremiumListingCard({
   };
 
   // Get branches array
-  let branches: any[] = [];
-  if (Array.isArray(listing?.branch_listings) && listing.branch_listings.length > 0) {
-    branches = listing.branch_listings.map((bl: any) => bl.branch).filter(Boolean);
-  } else {
-    branches = Array.isArray(listing?.branches) ? listing.branches : [];
-  }
+  const branchesFromListings = Array.isArray(listing?.branch_listings) 
+    ? listing.branch_listings.map((bl: any) => bl.branch).filter(Boolean)
+    : [];
+    
+  const directBranches = Array.isArray(listing?.branches) ? listing.branches : [];
+  
+  // Combine and deduplicate
+  const uniqueBranches = new Map();
+  
+  // Add direct branches first
+  directBranches.forEach((branch: any) => {
+    const id = branch.documentId || branch.id;
+    if (id) uniqueBranches.set(id, branch);
+  });
+  
+  // Add/Overwrite with branches from branch_listings
+  branchesFromListings.forEach((branch: any) => {
+    const id = branch.documentId || branch.id;
+    if (id) uniqueBranches.set(id, branch);
+  });
+  
+  const branches = Array.from(uniqueBranches.values());
   const hasBranches = branches.length > 0;
   
   const pathname = usePathname();

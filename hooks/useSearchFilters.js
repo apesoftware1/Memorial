@@ -443,12 +443,20 @@ export function useSearchFilters(initialFilters = {}) {
                       tree[p].cities[c].count++;
                   }
 
-                  if (t) {
-                      if (!tree[p].cities[c].towns[t]) tree[p].cities[c].towns[t] = { count: 0, listings: new Set() };
+                  if (
+                      t &&
+                      String(t).trim() !== "" &&
+                      String(t).trim().toLowerCase() !== "unknown" &&
+                      String(t).trim().toLowerCase() !== "n/a" &&
+                      String(t).trim().toLowerCase() !== "na" &&
+                      String(t).trim() !== String(c).trim()
+                  ) {
+                      const townKey = String(t).trim();
+                      if (!tree[p].cities[c].towns[townKey]) tree[p].cities[c].towns[townKey] = { count: 0, listings: new Set() };
                       
-                      if (!tree[p].cities[c].towns[t].listings.has(id)) {
-                          tree[p].cities[c].towns[t].listings.add(id);
-                          tree[p].cities[c].towns[t].count++;
+                      if (!tree[p].cities[c].towns[townKey].listings.has(id)) {
+                          tree[p].cities[c].towns[townKey].listings.add(id);
+                          tree[p].cities[c].towns[townKey].count++;
                       }
                   }
               }

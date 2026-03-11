@@ -138,7 +138,7 @@ export const COMPANY_FULL_QUERY = gql`
       publishedAt
       createdAt
       updatedAt
-      branches {
+      branches(pagination: { limit: -1 }) {
         documentId
         name
         location {
@@ -148,7 +148,7 @@ export const COMPANY_FULL_QUERY = gql`
           mapUrl
         }
       }
-      branch_listings {
+      branch_listings(pagination: { limit: -1 }) {
         branch {
           documentId
         }
@@ -226,6 +226,22 @@ export const COMPANY_DELTA_QUERY = gql`
       manufacturingTimeframe
       thumbnailUrls
       thumbnailPublicIds
+      branches(pagination: { limit: -1 }) {
+        documentId
+        name
+        location {
+          address
+          latitude
+          longitude
+          mapUrl
+        }
+      }
+      branch_listings(pagination: { limit: -1 }) {
+        branch {
+          documentId
+        }
+        price
+      }
     }
   }
 `;
