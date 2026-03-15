@@ -59,7 +59,7 @@ const normalizeHiddenOptions = (
     const unique = new Set<string>();
     for (const item of arr) {
       if (typeof item !== "string") continue;
-      const v = item.trim();
+      const v = item.trim().toLowerCase();
       if (!v) continue;
       unique.add(v);
     }

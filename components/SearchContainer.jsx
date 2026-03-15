@@ -245,40 +245,52 @@ const SearchContainer = ({
       : {};
   }, [filterVisibility.hiddenOptions]);
 
+  const normalizeOption = useCallback((value) => {
+    if (typeof value !== "string") return "";
+    return value.trim().toLowerCase();
+  }, []);
+
   const getHiddenOptionSet = useCallback(
-    (key) => new Set(Array.isArray(hiddenOptions?.[key]) ? hiddenOptions[key] : []),
-    [hiddenOptions]
+    (key) =>
+      new Set(
+        (Array.isArray(hiddenOptions?.[key]) ? hiddenOptions[key] : [])
+          .map(normalizeOption)
+          .filter(Boolean)
+      ),
+    [hiddenOptions, normalizeOption]
   );
 
   const filterSimpleOptions = useCallback((options, key, alwaysKeep = []) => {
     if (!Array.isArray(options)) return options;
     const hidden = getHiddenOptionSet(key);
-    const keep = new Set(alwaysKeep);
+    const keep = new Set(alwaysKeep.map(normalizeOption).filter(Boolean));
     return options.filter((opt) => {
       if (typeof opt !== "string") return true;
-      if (keep.has(opt)) return true;
-      return !hidden.has(opt);
+      const normalized = normalizeOption(opt);
+      if (keep.has(normalized)) return true;
+      return !hidden.has(normalized);
     });
-  }, [getHiddenOptionSet]);
+  }, [getHiddenOptionSet, normalizeOption]);
 
   const filterLocationHierarchy = useCallback((hierarchy) => {
     const hidden = getHiddenOptionSet("location");
+    const isHiddenName = (name) => hidden.has(normalizeOption(name));
     const pruneTowns = (towns) =>
       Array.isArray(towns)
-        ? towns.filter((t) => t && !hidden.has(t.name))
+        ? towns.filter((t) => t && !isHiddenName(t.name))
         : towns;
     const pruneCities = (cities) =>
       Array.isArray(cities)
         ? cities
-            .filter((c) => c && !hidden.has(c.name))
+            .filter((c) => c && !isHiddenName(c.name))
             .map((c) => ({ ...c, towns: pruneTowns(c.towns) }))
         : cities;
     return Array.isArray(hierarchy)
       ? hierarchy
-          .filter((p) => p && !hidden.has(p.name))
+          .filter((p) => p && !isHiddenName(p.name))
           .map((p) => ({ ...p, cities: pruneCities(p.cities) }))
       : hierarchy;
-  }, [getHiddenOptionSet]);
+  }, [getHiddenOptionSet, normalizeOption]);
   const showMinPrice = !hiddenSet.has("minPrice");
   const showMaxPrice = !hiddenSet.has("maxPrice");
   const showLocation = !hiddenSet.has("location");
