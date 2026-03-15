@@ -2,19 +2,19 @@
   "hidden": [],
   "hiddenOptions": {
     "location": [
-      "Northern Cape",
-      "Free State",
-      "North west",
-      "Gauteng",
-      "Western Cape",
-      "Eastern Cape",
-      "Limpopo",
-      "Mpumalanga"
+      "northern cape",
+      "free state",
+      "north west",
+      "gauteng",
+      "western cape",
+      "eastern cape",
+      "limpopo",
+      "mpumalanga"
     ],
     "style": [
-      "Car",
-      "Bike"
+      "car",
+      "bike"
     ]
   },
-  "updatedAt": "2026-03-15T13:30:54.851Z"
+  "updatedAt": "2026-03-15T15:27:30.084Z"
 }

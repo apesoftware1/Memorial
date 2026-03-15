@@ -61,7 +61,7 @@ const FILTER_OPTION_VALUES = {
     "Limpopo",
     "Northern Cape",
     "Mpumalanga",
-    "North west",
+    "North West",
   ],
   style: [
     "Christian Cross",
@@ -353,10 +353,19 @@ export default function DashboardClient() {
     setDisplayCount(prev => prev + 9);
   };
 
+  const normalizeOption = (value) => {
+    if (typeof value !== "string") return "";
+    return value.trim().toLowerCase();
+  };
+
   const isHidden = (key) => filterVisibility.hidden.includes(key);
 
   const getHiddenOptionSet = (key) =>
-    new Set(Array.isArray(filterVisibility?.hiddenOptions?.[key]) ? filterVisibility.hiddenOptions[key] : []);
+    new Set(
+      (Array.isArray(filterVisibility?.hiddenOptions?.[key]) ? filterVisibility.hiddenOptions[key] : [])
+        .map(normalizeOption)
+        .filter(Boolean)
+    );
 
   const toggleHidden = (key) => {
     setFilterVisibility((prev) => {
@@ -369,11 +378,13 @@ export default function DashboardClient() {
 
   const toggleHiddenOption = (key, value) => {
     setFilterVisibility((prev) => {
+      const normalized = normalizeOption(value);
+      if (!normalized) return prev;
       const currentObj = prev?.hiddenOptions && typeof prev.hiddenOptions === "object" ? prev.hiddenOptions : {};
       const currentArr = Array.isArray(currentObj?.[key]) ? currentObj[key] : [];
-      const set = new Set(currentArr);
-      if (set.has(value)) set.delete(value);
-      else set.add(value);
+      const set = new Set(currentArr.map(normalizeOption).filter(Boolean));
+      if (set.has(normalized)) set.delete(normalized);
+      else set.add(normalized);
       return {
         ...prev,
         hiddenOptions: { ...currentObj, [key]: Array.from(set.values()) },
@@ -381,7 +392,7 @@ export default function DashboardClient() {
     });
   };
 
-  const isOptionHidden = (key, value) => getHiddenOptionSet(key).has(value);
+  const isOptionHidden = (key, value) => getHiddenOptionSet(key).has(normalizeOption(value));
 
   const toggleExpanded = (key) => {
     setExpandedFilters((prev) => {
