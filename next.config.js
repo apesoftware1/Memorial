@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+const fs = require('fs');
 const path = require('path');
 
 const nextConfig = {
@@ -31,10 +32,15 @@ const nextConfig = {
   // Note: This only applies when using 'next build' or 'next dev --webpack'
   // When using 'next dev' (Turbopack), this block is skipped.
   webpack: (config, { dev, isServer }) => {
+    const reactPath = fs.realpathSync.native(require.resolve('react'));
+    const reactDomPath = fs.realpathSync.native(require.resolve('react-dom'));
+
     // Basic module resolution
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.join(process.cwd(), './'),
+      'react$': reactPath,
+      'react-dom$': reactDomPath,
     }
     
     // Optimize chunks

@@ -188,6 +188,7 @@ const SearchContainer = ({
     openDropdown: null,
     showAllOptions: false,
   });
+  const [filterVisibility, setFilterVisibility] = useState({ hidden: [], hiddenOptions: {}, updatedAt: "" });
 
   // State for location search
   const [searchTerm, setSearchTerm] = useState("");
@@ -208,6 +209,119 @@ const SearchContainer = ({
 
   // Internal state for search functionality if not provided
   const [internalIsSearching, setInternalIsSearching] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/filter-visibility", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (cancelled) return;
+        setFilterVisibility({
+          hidden: Array.isArray(json?.hidden) ? json.hidden : [],
+          hiddenOptions:
+            json?.hiddenOptions && typeof json.hiddenOptions === "object"
+              ? json.hiddenOptions
+              : {},
+          updatedAt: typeof json?.updatedAt === "string" ? json.updatedAt : "",
+        });
+      } catch {
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const hiddenSet = useMemo(
+    () => new Set(Array.isArray(filterVisibility.hidden) ? filterVisibility.hidden : []),
+    [filterVisibility.hidden]
+  );
+  const hiddenOptions = useMemo(() => {
+    return filterVisibility?.hiddenOptions && typeof filterVisibility.hiddenOptions === "object"
+      ? filterVisibility.hiddenOptions
+      : {};
+  }, [filterVisibility.hiddenOptions]);
+
+  const getHiddenOptionSet = useCallback(
+    (key) => new Set(Array.isArray(hiddenOptions?.[key]) ? hiddenOptions[key] : []),
+    [hiddenOptions]
+  );
+
+  const filterSimpleOptions = useCallback((options, key, alwaysKeep = []) => {
+    if (!Array.isArray(options)) return options;
+    const hidden = getHiddenOptionSet(key);
+    const keep = new Set(alwaysKeep);
+    return options.filter((opt) => {
+      if (typeof opt !== "string") return true;
+      if (keep.has(opt)) return true;
+      return !hidden.has(opt);
+    });
+  }, [getHiddenOptionSet]);
+
+  const filterLocationHierarchy = useCallback((hierarchy) => {
+    const hidden = getHiddenOptionSet("location");
+    const pruneTowns = (towns) =>
+      Array.isArray(towns)
+        ? towns.filter((t) => t && !hidden.has(t.name))
+        : towns;
+    const pruneCities = (cities) =>
+      Array.isArray(cities)
+        ? cities
+            .filter((c) => c && !hidden.has(c.name))
+            .map((c) => ({ ...c, towns: pruneTowns(c.towns) }))
+        : cities;
+    return Array.isArray(hierarchy)
+      ? hierarchy
+          .filter((p) => p && !hidden.has(p.name))
+          .map((p) => ({ ...p, cities: pruneCities(p.cities) }))
+      : hierarchy;
+  }, [getHiddenOptionSet]);
+  const showMinPrice = !hiddenSet.has("minPrice");
+  const showMaxPrice = !hiddenSet.has("maxPrice");
+  const showLocation = !hiddenSet.has("location");
+  const showStyle = !hiddenSet.has("style");
+  const showSlabStyle = !hiddenSet.has("slabStyle");
+  const showStoneType = !hiddenSet.has("stoneType");
+  const showColour = !hiddenSet.has("colour");
+  const showCustom = !hiddenSet.has("custom");
+  const hasMoreOptions = showSlabStyle || showStoneType || showColour || showCustom;
+
+  const minPriceOptions = useMemo(
+    () => filterSimpleOptions(filterOptions?.minPrice, "minPrice", ["Min Price"]),
+    [filterOptions?.minPrice, filterSimpleOptions]
+  );
+  const maxPriceOptions = useMemo(
+    () => filterSimpleOptions(filterOptions?.maxPrice, "maxPrice", ["Max Price"]),
+    [filterOptions?.maxPrice, filterSimpleOptions]
+  );
+  const styleOptions = useMemo(
+    () => filterSimpleOptions(filterOptions?.style, "style", ["Any"]),
+    [filterOptions?.style, filterSimpleOptions]
+  );
+  const slabStyleOptions = useMemo(
+    () => filterSimpleOptions(filterOptions?.slabStyle, "slabStyle", ["Any"]),
+    [filterOptions?.slabStyle, filterSimpleOptions]
+  );
+  const stoneTypeOptions = useMemo(
+    () => filterSimpleOptions(filterOptions?.stoneType, "stoneType", ["Any"]),
+    [filterOptions?.stoneType, filterSimpleOptions]
+  );
+  const colourOptions = useMemo(
+    () => filterSimpleOptions(filterOptions?.colour, "colour", ["Any"]),
+    [filterOptions?.colour, filterSimpleOptions]
+  );
+  const customOptions = useMemo(
+    () => filterSimpleOptions(filterOptions?.custom, "custom", ["Any"]),
+    [filterOptions?.custom, filterSimpleOptions]
+  );
+
+  const visibleLocationHierarchy = useMemo(
+    () => filterLocationHierarchy(locationHierarchy),
+    [filterLocationHierarchy, locationHierarchy]
+  );
 
   // Read URL query params and keep a filtered listings array in state
   const searchParams = useSearchParams();
@@ -996,46 +1110,54 @@ const SearchContainer = ({
 
             {/* All Filters Grid */}
             <div className="grid grid-cols-2 gap-1 sm:gap-2 relative mb-2">
-              <FilterDropdown
-                name="minPrice"
-                label="Min Price"
-                options={filterOptions.minPrice}
-                openDropdown={uiState.openDropdown}
-                toggleDropdown={toggleDropdown}
-                selectOption={selectOption}
-                filters={filters || {}}
-                dropdownRefs={dropdownRefs}
-              />
-              <FilterDropdown
-                name="maxPrice"
-                label="Max Price"
-                options={filterOptions.maxPrice}
-                openDropdown={uiState.openDropdown}
-                toggleDropdown={toggleDropdown}
-                selectOption={selectOption}
-                filters={filters || {}}
-                dropdownRefs={dropdownRefs}
-              />
-              <FilterDropdown
-                name="location"
-                label="Location"
-                options={locationHierarchy}
-                openDropdown={uiState.openDropdown}
-                toggleDropdown={toggleDropdown}
-                selectOption={selectOption}
-                filters={filters || {}}
-                dropdownRefs={dropdownRefs}
-              />
-              <FilterDropdown
-                name="style"
-                label="Head Style"
-                options={filterOptions.style}
-                openDropdown={uiState.openDropdown}
-                toggleDropdown={toggleDropdown}
-                selectOption={selectOption}
-                filters={filters || {}}
-                dropdownRefs={dropdownRefs}
-              />
+              {showMinPrice && (
+                <FilterDropdown
+                  name="minPrice"
+                  label="Min Price"
+                  options={minPriceOptions}
+                  openDropdown={uiState.openDropdown}
+                  toggleDropdown={toggleDropdown}
+                  selectOption={selectOption}
+                  filters={filters || {}}
+                  dropdownRefs={dropdownRefs}
+                />
+              )}
+              {showMaxPrice && (
+                <FilterDropdown
+                  name="maxPrice"
+                  label="Max Price"
+                  options={maxPriceOptions}
+                  openDropdown={uiState.openDropdown}
+                  toggleDropdown={toggleDropdown}
+                  selectOption={selectOption}
+                  filters={filters || {}}
+                  dropdownRefs={dropdownRefs}
+                />
+              )}
+              {showLocation && (
+                <FilterDropdown
+                  name="location"
+                  label="Location"
+                  options={visibleLocationHierarchy}
+                  openDropdown={uiState.openDropdown}
+                  toggleDropdown={toggleDropdown}
+                  selectOption={selectOption}
+                  filters={filters || {}}
+                  dropdownRefs={dropdownRefs}
+                />
+              )}
+              {showStyle && (
+                <FilterDropdown
+                  name="style"
+                  label="Head Style"
+                  options={styleOptions}
+                  openDropdown={uiState.openDropdown}
+                  toggleDropdown={toggleDropdown}
+                  selectOption={selectOption}
+                  filters={filters || {}}
+                  dropdownRefs={dropdownRefs}
+                />
+              )}
               {/* NOTE: Slab Style intentionally NOT here anymore */}
             </div>
 
@@ -1044,7 +1166,7 @@ const SearchContainer = ({
               <LocationModal
                 isOpen={showLocationModal}
                 onClose={() => setShowLocationModal(false)}
-                locationsData={locationHierarchy}
+                locationsData={visibleLocationHierarchy}
                 onSelectLocation={(loc) => {
                   if (setFilters) {
                     setFilters((prev) => ({
@@ -1060,71 +1182,81 @@ const SearchContainer = ({
             {/* Action Buttons Container */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-8 w-full">
               {/* More Options Button */}
-              {isDesktop ? (
-                <button
-                  onClick={() => setMoreOptionsOpen(!moreOptionsOpen)}
-                  className="w-full sm:w-[180px] bg-[#0D7C99] text-white font-bold text-sm h-9 transition-colors hover:bg-[#0D7C99]/90 whitespace-nowrap shadow"
-                  style={{ borderRadius: "2px" }}
-                >
-                  {moreOptionsOpen ? "- Less Options" : "+ More Options"}
-                </button>
-              ) : (
-                <button
-                  onClick={() =>
-                    setUiState((prev) => ({
-                      ...prev,
-                      showAllOptions: !prev.showAllOptions,
-                    }))
-                  }
-                  className="w-full sm:w-[180px] bg-[#0D7C99] text-white font-bold text-sm h-9 transition-colors hover:bg-[#0D7C99]/90 whitespace-nowrap shadow"
-                  style={{ borderRadius: "2px" }}
-                >
-                  {uiState.showAllOptions ? "- Less Options" : "+ More Options"}
-                </button>
-              )}
+              {hasMoreOptions ? (
+                isDesktop ? (
+                  <button
+                    onClick={() => setMoreOptionsOpen(!moreOptionsOpen)}
+                    className="w-full sm:w-[180px] bg-[#0D7C99] text-white font-bold text-sm h-9 transition-colors hover:bg-[#0D7C99]/90 whitespace-nowrap shadow"
+                    style={{ borderRadius: "2px" }}
+                  >
+                    {moreOptionsOpen ? "- Less Options" : "+ More Options"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() =>
+                      setUiState((prev) => ({
+                        ...prev,
+                        showAllOptions: !prev.showAllOptions,
+                      }))
+                    }
+                    className="w-full sm:w-[180px] bg-[#0D7C99] text-white font-bold text-sm h-9 transition-colors hover:bg-[#0D7C99]/90 whitespace-nowrap shadow"
+                    style={{ borderRadius: "2px" }}
+                  >
+                    {uiState.showAllOptions ? "- Less Options" : "+ More Options"}
+                  </button>
+                )
+              ) : null}
               {/* Mobile-only: showAllOptions tray (acts like more options) */}
               {!isDesktop && uiState.showAllOptions && (
                 <>
-                  <FilterDropdown
-                    name="slabStyle"
-                    label="Slab Style"
-                    options={filterOptions.slabStyle}
-                    openDropdown={uiState.openDropdown}
-                    toggleDropdown={toggleDropdown}
-                    selectOption={selectOption}
-                    filters={filters || {}}
-                    dropdownRefs={dropdownRefs}
-                  />
-                  <FilterDropdown
-                    name="stoneType"
-                    label="Stone Type"
-                    options={filterOptions.stoneType}
-                    openDropdown={uiState.openDropdown}
-                    toggleDropdown={toggleDropdown}
-                    selectOption={selectOption}
-                    filters={filters || {}}
-                    dropdownRefs={dropdownRefs}
-                  />
-                  <FilterDropdown
-                    name="colour"
-                    label="Colour"
-                    options={filterOptions.colour}
-                    openDropdown={uiState.openDropdown}
-                    toggleDropdown={toggleDropdown}
-                    selectOption={selectOption}
-                    filters={filters || {}}
-                    dropdownRefs={dropdownRefs}
-                  />
-                  <FilterDropdown
-                    name="custom"
-                    label="Customisation"
-                    options={filterOptions.custom}
-                    openDropdown={uiState.openDropdown}
-                    toggleDropdown={toggleDropdown}
-                    selectOption={selectOption}
-                    filters={filters || {}}
-                    dropdownRefs={dropdownRefs}
-                  />
+                  {showSlabStyle && (
+                    <FilterDropdown
+                      name="slabStyle"
+                      label="Slab Style"
+                      options={slabStyleOptions}
+                      openDropdown={uiState.openDropdown}
+                      toggleDropdown={toggleDropdown}
+                      selectOption={selectOption}
+                      filters={filters || {}}
+                      dropdownRefs={dropdownRefs}
+                    />
+                  )}
+                  {showStoneType && (
+                    <FilterDropdown
+                      name="stoneType"
+                      label="Stone Type"
+                      options={stoneTypeOptions}
+                      openDropdown={uiState.openDropdown}
+                      toggleDropdown={toggleDropdown}
+                      selectOption={selectOption}
+                      filters={filters || {}}
+                      dropdownRefs={dropdownRefs}
+                    />
+                  )}
+                  {showColour && (
+                    <FilterDropdown
+                      name="colour"
+                      label="Colour"
+                      options={colourOptions}
+                      openDropdown={uiState.openDropdown}
+                      toggleDropdown={toggleDropdown}
+                      selectOption={selectOption}
+                      filters={filters || {}}
+                      dropdownRefs={dropdownRefs}
+                    />
+                  )}
+                  {showCustom && (
+                    <FilterDropdown
+                      name="custom"
+                      label="Customisation"
+                      options={customOptions}
+                      openDropdown={uiState.openDropdown}
+                      toggleDropdown={toggleDropdown}
+                      selectOption={selectOption}
+                      filters={filters || {}}
+                      dropdownRefs={dropdownRefs}
+                    />
+                  )}
                 </>
               )}
               {/* Search Button */}
@@ -1176,7 +1308,7 @@ const SearchContainer = ({
           </div>
 
           {/* Desktop More Options Container */}
-          {isDesktop && (
+          {isDesktop && hasMoreOptions && (
             <div
               className={`absolute left-0 w-full md:max-w-lg bg-[#005D77] p-4 sm:p-6 flex flex-col transition-all duration-300 ease-in-out z-[1] 
                 ${
@@ -1210,46 +1342,54 @@ const SearchContainer = ({
                 className="grid grid-cols-2 gap-1 mb-2 sm:gap-2"
                 style={{ marginTop: "126px" }}
               >
-                <FilterDropdown
-                  name="slabStyle"
-                  label="Slab Style"
-                  options={filterOptions.slabStyle}
-                  openDropdown={uiState.openDropdown}
-                  toggleDropdown={toggleDropdown}
-                  selectOption={selectOption}
-                  filters={filters || {}}
-                  dropdownRefs={dropdownRefs}
-                />
-                <FilterDropdown
-                  name="stoneType"
-                  label="Stone Type"
-                  options={filterOptions.stoneType}
-                  openDropdown={uiState.openDropdown}
-                  toggleDropdown={toggleDropdown}
-                  selectOption={selectOption}
-                  filters={filters || {}}
-                  dropdownRefs={dropdownRefs}
-                />
-                <FilterDropdown
-                  name="colour"
-                  label="Colour"
-                  options={filterOptions.colour}
-                  openDropdown={uiState.openDropdown}
-                  toggleDropdown={toggleDropdown}
-                  selectOption={selectOption}
-                  filters={filters || {}}
-                  dropdownRefs={dropdownRefs}
-                />
-                <FilterDropdown
-                  name="custom"
-                  label="Customisation"
-                  options={filterOptions.custom}
-                  openDropdown={uiState.openDropdown}
-                  toggleDropdown={toggleDropdown}
-                  selectOption={selectOption}
-                  filters={filters || {}}
-                  dropdownRefs={dropdownRefs}
-                />
+                {showSlabStyle && (
+                  <FilterDropdown
+                    name="slabStyle"
+                    label="Slab Style"
+                    options={slabStyleOptions}
+                    openDropdown={uiState.openDropdown}
+                    toggleDropdown={toggleDropdown}
+                    selectOption={selectOption}
+                    filters={filters || {}}
+                    dropdownRefs={dropdownRefs}
+                  />
+                )}
+                {showStoneType && (
+                  <FilterDropdown
+                    name="stoneType"
+                    label="Stone Type"
+                    options={stoneTypeOptions}
+                    openDropdown={uiState.openDropdown}
+                    toggleDropdown={toggleDropdown}
+                    selectOption={selectOption}
+                    filters={filters || {}}
+                    dropdownRefs={dropdownRefs}
+                  />
+                )}
+                {showColour && (
+                  <FilterDropdown
+                    name="colour"
+                    label="Colour"
+                    options={colourOptions}
+                    openDropdown={uiState.openDropdown}
+                    toggleDropdown={toggleDropdown}
+                    selectOption={selectOption}
+                    filters={filters || {}}
+                    dropdownRefs={dropdownRefs}
+                  />
+                )}
+                {showCustom && (
+                  <FilterDropdown
+                    name="custom"
+                    label="Customisation"
+                    options={customOptions}
+                    openDropdown={uiState.openDropdown}
+                    toggleDropdown={toggleDropdown}
+                    selectOption={selectOption}
+                    filters={filters || {}}
+                    dropdownRefs={dropdownRefs}
+                  />
+                )}
               </div>
             </div>
           )}
