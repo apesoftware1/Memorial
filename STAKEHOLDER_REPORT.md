@@ -1,12 +1,24 @@
 # Updates: Technical Fixes, Security Patches & Improvements
 
-Date: January 05, 2026
+Date: March 18, 2026
 Project: TombstoneFinder
 
 ## Executive Summary
 This document outlines recent technical interventions aimed at stabilizing the application, resolving critical build/deployment failures on Vercel, patching security vulnerabilities, and enhancing the user interface. All identified issues have been resolved, and the application is now stable for both development and production.
 
 ## Key Achievements
+
+### 0. Performance & SEO: First Listings Rendered in Initial HTML (New)
+*   **Issue:** The homepage and the "Tombstones for Sale" page showed a "Loading listings..." gate on first load because listings were fetched only after client-side JavaScript loaded.
+*   **Resolution:** Implemented a Pattern A approach:
+    *   Server-rendered a small initial set of listings and categories into the HTML for the homepage (`/`) and `/tombstones-for-sale`.
+    *   Preserved existing client-side progressive queries for background hydration after mount.
+*   **Impact:** Faster first paint, better perceived performance, and improved crawlability (initial HTML contains real listings content).
+
+### 0.1 UI: Horizontal Side-Scrolling Removed (New)
+*   **Issue:** The site could scroll horizontally due to layout overflow.
+*   **Resolution:** Removed the overflowing layout pattern in FAQ sections and added a safe global guard against horizontal overflow.
+*   **Impact:** No more "scrolling to the sides" across affected pages and viewports.
 
 ### 1. Frontend Security & Bot Protection (New)
 *   **Issue:** The frontend was vulnerable to automated scraping, DDoS attacks via rendering exhaustion, and API quota theft.
@@ -24,10 +36,10 @@ This document outlines recent technical interventions aimed at stabilizing the a
     *   **Cleanup:** Removed invalid `eslint` config block that is no longer supported in Next.js 16.
 *   **Impact:** Clean build logs, future-proof configuration, and full compatibility with Next.js 16's Turbopack.
 
-### 3. Security & Infrastructure Hardening
-*   **Issue:** Critical security vulnerabilities were identified in previous versions of Next.js and React framework components, posing potential risks to the application integrity.
-*   **Resolution:** Executed a comprehensive security patch by upgrading the core framework to Next.js 16 and React 19. Implemented strict dependency overrides to ensure all components utilize these secure, patched versions.
-*   **Impact:** Eliminated known security vectors, protecting the application against recent exploits targeting older framework versions.
+### 3. Security & Infrastructure Hardening (Updated)
+*   **Issue:** Vercel flagged and blocked deployments when a vulnerable Next.js version was detected (CVE-2025-66478 / React Server Components protocol).
+*   **Resolution:** Standardized the project to use a patched Next.js release line and ensured the lockfile resolves to the secure version during `npm install`.
+*   **Impact:** Restored successful builds and unblocked deployments under Vercel's security enforcement.
 
 ### 4. Critical Build & Deployment Fixes
 *   **Issue:** The application was failing to build on Vercel and locally due to dependency conflicts and deprecated configurations.
@@ -62,6 +74,20 @@ This document outlines recent technical interventions aimed at stabilizing the a
 *   **Resolution:** Added `http` protocol configuration for `res.cloudinary.com` in `next.config.js`.
 *   **Impact:** Fixed the "Invalid src prop" runtime error, allowing images with HTTP URLs to load correctly.
 
+### 9. Search Dropdown Icon Completion (New)
+*   **Issue:** Several dropdown options in the search/filter UI had missing icons.
+*   **Resolution:** Added missing icon mappings and assets across:
+    *   Head Style: Arch, Church, House, Organic, Square, Wave
+    *   Colour: Gold, Pink, Yellow
+    *   Customisation: Bronze/Stainless Plaques, QR Code
+    *   Slab Style: Double (with corrected lighter icon styling)
+*   **Impact:** Consistent, complete dropdown visuals and improved usability.
+
+### 10. Build-Time Runtime Fixes for API Routes (New)
+*   **Issue:** Some API routes required the Node.js runtime during builds/deploys.
+*   **Resolution:** Explicitly set Node.js runtime for affected API routes to prevent build/runtime failures in serverless environments.
+*   **Impact:** More reliable deployments and fewer environment-specific failures.
+
 ## Technical Summary (For Development Team)
 
 | Component | Change Description | File(s) Modified |
@@ -71,10 +97,12 @@ This document outlines recent technical interventions aimed at stabilizing the a
 | **UI (New)** | Restored "Available at" logic (Fixed CSS error) | `premium-listing-card.tsx`, `BranchCard.jsx` |
 | **Security (New)** | Added Arcjet Middleware (Bot protection, Rate limiting) | `middleware.ts`, `.env.local` |
 | **Config (New)** | Fixed `next.config.js` deprecations & added Turbopack support | `next.config.js` |
-| Security | Upgraded to Next.js 16 / React 19 to patch vulnerabilities | `package.json` |
+| Security | Pinned patched Next.js version to satisfy CVE enforcement | `package.json`, `package-lock.json` |
 | Config | Removed `eslint` block; Added `http` protocol for remote patterns | `next.config.js` |
 | CI/CD | Created build configuration to force `npm run build` | `vercel.json` |
 | UI | Conditional CSS class to exclude `brightness-0 invert` on color icons | `components/TombstonesForSaleFilters.tsx` |
+| Performance | Server-rendered initial listings for homepage and for-sale pages | `app/page.js`, `app/home-client.jsx`, `app/tombstones-for-sale/page.js`, `app/tombstones-for-sale/for-sale-client.jsx` |
+| UI | Completed dropdown icon coverage (styles/colour/customisation/slab) | `components/FilterDropdown.js`, `public/last_icons/**` |
 
 ---
 *Prepared by ape softwares team*
