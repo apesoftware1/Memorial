@@ -22,6 +22,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# runtime data
+.data/filter-visibility.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
