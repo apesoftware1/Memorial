@@ -4,17 +4,17 @@
     "location": [
       "northern cape",
       "free state",
-      "north west",
       "gauteng",
       "western cape",
       "eastern cape",
       "limpopo",
-      "mpumalanga"
+      "mpumalanga",
+      "north west"
     ],
     "style": [
       "car",
       "bike"
     ]
   },
-  "updatedAt": "2026-03-15T15:27:30.084Z"
+  "updatedAt": "2026-03-18T00:33:23.433Z"
 }

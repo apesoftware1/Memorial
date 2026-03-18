@@ -42,7 +42,8 @@ const defaultFilterOptions = {
     "Limpopo",
     "Northern Cape",
     "Mpumalanga",
-    "North west"
+    "North west",
+    "North West"
 
   ],
   style: [
