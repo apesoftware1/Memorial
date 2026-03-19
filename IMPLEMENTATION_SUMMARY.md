@@ -3,7 +3,7 @@
 ## Summary
 Successfully replaced dummy data with real backend data in the tombstones-on-special page.
 
-## Changes Made
+## Changes Made ot
 
 ### 1. Data Fetching
 - ✅ Added Apollo Client imports (`useQuery` from `@apollo/client`)
