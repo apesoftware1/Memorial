@@ -27,6 +27,7 @@ import {
 } from '@/graphql/queries';
 import { useListingCategories } from "@/hooks/use-ListingCategories"
 import { useLocationHierarchy } from '@/hooks/useLocationHierarchy';
+import { useHomepageAggregations } from '@/hooks/useHomepageAggregations';
 import { checkListingLocation, toTitleCase, DEFAULT_PROVINCES, normalizeCityName } from '@/lib/locationHelpers';
 
 export default function TombstonesForSaleClient({ initialListings = [], initialCategories = [] }) {
@@ -529,9 +530,76 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     return filterListingsFrom(filtersForCounts);
   }, [activeFilters, allListings]);
 
-  const locationHierarchy = useLocationHierarchy(listingsForLocationCounts, categories, activeTab);
+  const { data: homepageAggData } = useHomepageAggregations();
 
-  const categoryCounts = useMemo(() => {
+  const homepageAggByCategory = useMemo(() => {
+    const cats = homepageAggData?.homepageAggregations?.categories;
+    if (!Array.isArray(cats)) return {};
+    return cats.reduce((acc, c) => {
+      const name = typeof c?.name === "string" ? c.name.toUpperCase() : "";
+      if (name) acc[name] = c;
+      return acc;
+    }, {});
+  }, [homepageAggData]);
+
+  const activeCategoryName = useMemo(() => {
+    const name = sortedCategories?.[activeTab]?.name;
+    return typeof name === "string" ? name.toUpperCase() : "";
+  }, [sortedCategories, activeTab]);
+
+  const activeCategoryAgg = useMemo(() => {
+    if (activeCategoryName && homepageAggByCategory[activeCategoryName]) return homepageAggByCategory[activeCategoryName];
+    if (homepageAggByCategory["SINGLE"]) return homepageAggByCategory["SINGLE"];
+    return null;
+  }, [activeCategoryName, homepageAggByCategory]);
+
+  const activeCategoryAggCount = useMemo(() => {
+    const v = activeCategoryAgg?.count;
+    return typeof v === "number" ? v : null;
+  }, [activeCategoryAgg]);
+
+  const homepageAggLocationHierarchy = useMemo(() => {
+    const locations = activeCategoryAgg?.locations;
+    if (!Array.isArray(locations)) return [];
+    return locations
+      .map((prov) => {
+        const provinceName = typeof prov?.province === "string" ? prov.province : "";
+        const provinceCount = typeof prov?.count === "number" ? prov.count : 0;
+        const cities = Array.isArray(prov?.cities) ? prov.cities : [];
+        return {
+          name: provinceName,
+          count: provinceCount,
+          cities: cities
+            .map((city) => {
+              const cityName = typeof city?.city === "string" ? city.city : "";
+              const cityCount = typeof city?.count === "number" ? city.count : 0;
+              const towns = Array.isArray(city?.towns) ? city.towns : [];
+              return {
+                name: cityName,
+                count: cityCount,
+                towns: towns
+                  .map((town) => ({
+                    name: typeof town?.town === "string" ? town.town : "",
+                    count: typeof town?.count === "number" ? town.count : 0,
+                  }))
+                  .filter((t) => t.name),
+              };
+            })
+            .filter((c) => c.name),
+        };
+      })
+      .filter((p) => p.name);
+  }, [activeCategoryAgg]);
+
+  const computedLocationHierarchy = useLocationHierarchy(listingsForLocationCounts, categories, activeTab);
+
+  const locationHierarchy = useMemo(() => {
+    const showAggCounts = !enableQueries || loading;
+    if (showAggCounts && homepageAggLocationHierarchy.length > 0) return homepageAggLocationHierarchy;
+    return computedLocationHierarchy;
+  }, [enableQueries, loading, homepageAggLocationHierarchy, computedLocationHierarchy]);
+
+  const computedCategoryCounts = useMemo(() => {
     const filtersNoCategory = { ...activeFilters, category: 'All Categories' };
     const potentialListings = filterListingsFrom(filtersNoCategory);
     
@@ -545,6 +613,23 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     
     return counts;
   }, [activeFilters, allListings]);
+
+  const homepageAggCategoryCounts = useMemo(() => {
+    const cats = homepageAggData?.homepageAggregations?.categories;
+    if (!Array.isArray(cats)) return null;
+    return cats.reduce((acc, c) => {
+      if (typeof c?.name !== "string") return acc;
+      const count = typeof c?.count === "number" ? c.count : 0;
+      acc[c.name] = count;
+      return acc;
+    }, {});
+  }, [homepageAggData]);
+
+  const categoryCounts = useMemo(() => {
+    const showAggCounts = !enableQueries || loading;
+    if (showAggCounts && homepageAggCategoryCounts) return homepageAggCategoryCounts;
+    return computedCategoryCounts;
+  }, [enableQueries, loading, homepageAggCategoryCounts, computedCategoryCounts]);
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -933,7 +1018,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       <MobileFilterTags activeFilters={activeFilters} setActiveFilters={setActiveFilters} />
       
       <MobileResultsBar 
-        count={filteredListings.length} 
+        count={(!enableQueries || loading) && typeof activeCategoryAggCount === "number" ? activeCategoryAggCount : filteredListings.length} 
         onSortClick={() => setShowSortDropdown(true)}
         onFilterClick={() => setMobileFilterOpen(true)}
       />
@@ -1053,8 +1138,10 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
             <div className="w-full md:w-3/4">
               <div className="hidden sm:flex justify-between items-center mt-3 sm:mt-4 mb-4 bg-gray-100 rounded px-4 py-2 shadow-sm">
                 <p className="text-gray-600">
-                  {filteredListings.length === 0
+                  {filteredListings.length === 0 && !((!enableQueries || loading) && typeof activeCategoryAggCount === "number")
                     ? `No results found for your filters.`
+                    : (!enableQueries || loading) && typeof activeCategoryAggCount === "number"
+                    ? `${activeCategoryAggCount} Listings For Sale`
                     : filteredListings.length === allListings.length
                     ? `${allListings.length} Listings For Sale`
                     : `${filteredListings.length} Results (of ${allListings.length})`}

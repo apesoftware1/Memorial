@@ -10,6 +10,7 @@ import CategoryTabs from "@/components/CategoryTabs.jsx";
 import MobileFilterTags from "@/components/MobileFilterTags.jsx";
 import { SearchLoader } from "@/components/ui/loader";
 import { useSearchFilters } from "@/hooks/useSearchFilters";
+import { useHomepageAggregations } from "@/hooks/useHomepageAggregations";
 import { AnimatePresence, motion } from "framer-motion";
 import { toTitleCase } from "@/lib/locationHelpers";
 
@@ -207,6 +208,18 @@ const SearchContainer = ({
   const [hookFilteredCount, setHookFilteredCount] = useState(0);
   const [locationHierarchyState, setLocationHierarchyState] = useState([]); 
   const locationHierarchy = locationHierarchyState; // Defined here for access in mobileLocationsData
+
+  const { data: homepageAggData } = useHomepageAggregations();
+
+  const homepageAggByCategory = useMemo(() => {
+    const categories = homepageAggData?.homepageAggregations?.categories;
+    if (!Array.isArray(categories)) return {};
+    return categories.reduce((acc, c) => {
+      const name = typeof c?.name === "string" ? c.name.toUpperCase() : "";
+      if (name) acc[name] = c;
+      return acc;
+    }, {});
+  }, [homepageAggData]);
 
   // Internal state for search functionality if not provided
   const [internalIsSearching, setInternalIsSearching] = useState(false);
@@ -703,6 +716,54 @@ const SearchContainer = ({
     return sortedCategories[activeTab]?.name;
   }, [categories, activeTab]);
 
+  const currentCategoryAgg = useMemo(() => {
+    const name = typeof currentCategoryName === "string" ? currentCategoryName.toUpperCase() : "";
+    if (name && homepageAggByCategory[name]) return homepageAggByCategory[name];
+    if (homepageAggByCategory["SINGLE"]) return homepageAggByCategory["SINGLE"];
+    return null;
+  }, [currentCategoryName, homepageAggByCategory]);
+
+  const currentCategoryAggCount = useMemo(() => {
+    const v = currentCategoryAgg?.count;
+    return typeof v === "number" ? v : null;
+  }, [currentCategoryAgg]);
+
+  const homepageAggLocationHierarchy = useMemo(() => {
+    const locations = currentCategoryAgg?.locations;
+    if (!Array.isArray(locations)) return [];
+
+    return locations
+      .map((prov) => {
+        const provinceName = typeof prov?.province === "string" ? prov.province : "";
+        const provinceCount = typeof prov?.count === "number" ? prov.count : 0;
+        const cities = Array.isArray(prov?.cities) ? prov.cities : [];
+
+        return {
+          name: provinceName,
+          count: provinceCount,
+          cities: cities
+            .map((city) => {
+              const cityName = typeof city?.city === "string" ? city.city : "";
+              const cityCount = typeof city?.count === "number" ? city.count : 0;
+              const towns = Array.isArray(city?.towns) ? city.towns : [];
+
+              return {
+                name: cityName,
+                count: cityCount,
+                towns: towns
+                  .map((town) => ({
+                    name: typeof town?.town === "string" ? town.town : "",
+                    count: typeof town?.count === "number" ? town.count : 0,
+                  }))
+                  .filter((t) => t.name),
+              };
+            })
+            .filter((c) => c.name),
+        };
+      })
+      .filter((p) => p.name);
+  }, [currentCategoryAgg]);
+
   // Combined filters for the hook
   const effectiveFilters = useMemo(() => {
     // When a location is selected from the dropdown (string), we need to parse it
@@ -720,19 +781,31 @@ const SearchContainer = ({
   }, [filters, currentCategoryName]);
 
   useEffect(() => {
-    if (!filtersLoading) {
-      // 1. Compute total count with ALL filters applied
-      const ids = computeFilteredResults(effectiveFilters);
-      setHookFilteredCount(ids.size);
-      
-      // 2. Compute location tree base (All filters EXCEPT location)
-      // This ensures the location dropdown shows available locations for the selected criteria
-      const filtersNoLoc = { ...effectiveFilters, province: 'Any', city: 'Any', town: 'Any', location: null };
-      const baseIds = computeFilteredResults(filtersNoLoc);
-      const tree = buildLocationTree(baseIds);
-      setLocationHierarchyState(tree); // Update the state used by UI
+    if (filtersLoading) {
+      if (homepageAggLocationHierarchy.length > 0) {
+        setLocationHierarchyState(homepageAggLocationHierarchy);
+      }
+      if (typeof currentCategoryAggCount === "number") {
+        setHookFilteredCount(currentCategoryAggCount);
+      }
+      return;
     }
-  }, [filtersLoading, effectiveFilters, computeFilteredResults, buildLocationTree]);
+
+    const ids = computeFilteredResults(effectiveFilters);
+    setHookFilteredCount(ids.size);
+
+    const filtersNoLoc = { ...effectiveFilters, province: 'Any', city: 'Any', town: 'Any', location: null };
+    const baseIds = computeFilteredResults(filtersNoLoc);
+    const tree = buildLocationTree(baseIds);
+    setLocationHierarchyState(tree);
+  }, [
+    filtersLoading,
+    effectiveFilters,
+    computeFilteredResults,
+    buildLocationTree,
+    homepageAggLocationHierarchy,
+    currentCategoryAggCount,
+  ]);
 
   // Use the hook's data instead of client-side props processing
   const searchButtonCount = hookFilteredCount;
@@ -862,7 +935,9 @@ const SearchContainer = ({
     
     // If loading in background, show placeholder
     if (filtersLoading) {
-      return `View 100+ ${categoryName || "SINGLE"} tombstones`;
+      const fallbackCount =
+        typeof currentCategoryAggCount === "number" ? currentCategoryAggCount : "100+";
+      return `View ${fallbackCount} ${categoryName || "SINGLE"} tombstones`;
     }
     
     // If we have a search term
