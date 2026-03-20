@@ -1018,7 +1018,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       <MobileFilterTags activeFilters={activeFilters} setActiveFilters={setActiveFilters} />
       
       <MobileResultsBar 
-        count={(!enableQueries || loading) && typeof activeCategoryAggCount === "number" ? activeCategoryAggCount : filteredListings.length} 
+        count={filteredListings.length} 
         onSortClick={() => setShowSortDropdown(true)}
         onFilterClick={() => setMobileFilterOpen(true)}
       />
@@ -1138,10 +1138,8 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
             <div className="w-full md:w-3/4">
               <div className="hidden sm:flex justify-between items-center mt-3 sm:mt-4 mb-4 bg-gray-100 rounded px-4 py-2 shadow-sm">
                 <p className="text-gray-600">
-                  {filteredListings.length === 0 && !((!enableQueries || loading) && typeof activeCategoryAggCount === "number")
+                  {filteredListings.length === 0
                     ? `No results found for your filters.`
-                    : (!enableQueries || loading) && typeof activeCategoryAggCount === "number"
-                    ? `${activeCategoryAggCount} Listings For Sale`
                     : filteredListings.length === allListings.length
                     ? `${allListings.length} Listings For Sale`
                     : `${filteredListings.length} Results (of ${allListings.length})`}

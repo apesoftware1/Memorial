@@ -197,6 +197,9 @@ const SearchContainer = ({
 
   // Refs for dropdowns
   const dropdownRefs = useRef({});
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const hasMountedRef = useRef(false);
+  const prevActiveTabRef = useRef(activeTab);
 
   // Check if screen is desktop/laptop
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
@@ -371,12 +374,25 @@ const SearchContainer = ({
 
   // Effect to simulate calculation loading state when filters or activeTab change
   useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    if (!hasUserInteracted) return;
     setIsCalculating(true);
     const timer = setTimeout(() => {
       setIsCalculating(false);
     }, 500);
     return () => clearTimeout(timer);
-  }, [filters, activeTab]);
+  }, [filters, activeTab, hasUserInteracted]);
+
+  useEffect(() => {
+    if (!hasMountedRef.current) return;
+    if (prevActiveTabRef.current !== activeTab) {
+      prevActiveTabRef.current = activeTab;
+      setHasUserInteracted(true);
+    }
+  }, [activeTab]);
 
   const mobileLocationsData = useMemo(() => {
     return locationHierarchy.map((prov, index) => ({
@@ -780,6 +796,21 @@ const SearchContainer = ({
     };
   }, [filters, currentCategoryName]);
 
+  const inMemoryApproxCount = useMemo(() => {
+    if (!hasUserInteracted) return null;
+    if (!(filtersLoading || isCalculating)) return null;
+    if (!Array.isArray(allListings) || allListings.length === 0) return null;
+
+    const MAX_SAMPLE = 800;
+    const sample = allListings.length > MAX_SAMPLE ? allListings.slice(0, MAX_SAMPLE) : allListings;
+    try {
+      const results = filterListingsFrom(sample, effectiveFilters);
+      return Array.isArray(results) ? results.length : null;
+    } catch {
+      return null;
+    }
+  }, [hasUserInteracted, filtersLoading, isCalculating, allListings, filterListingsFrom, effectiveFilters]);
+
   useEffect(() => {
     if (filtersLoading) {
       if (homepageAggLocationHierarchy.length > 0) {
@@ -904,6 +935,17 @@ const SearchContainer = ({
   const renderSearchButtonContent = () => {
     const searching =
       isSearching !== undefined ? isSearching : internalIsSearching;
+
+    const loadingIndicator = (
+      <div className="flex items-center justify-center gap-2">
+        <div className="flex space-x-1">
+          <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+          <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+          <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+        </div>
+        <span>Loading...</span>
+      </div>
+    );
     
     // Always calculate category label if available
     let categoryName = "";
@@ -933,11 +975,21 @@ const SearchContainer = ({
       return <SearchLoader />;
     }
     
-    // If loading in background, show placeholder
     if (filtersLoading) {
-      const fallbackCount =
+      if (isCalculating) return loadingIndicator;
+      if (hasUserInteracted) {
+        if (typeof inMemoryApproxCount === "number") {
+          return `View ${inMemoryApproxCount} ${categoryName || "SINGLE"} tombstones`;
+        }
+        return loadingIndicator;
+      }
+      const initialCount =
         typeof currentCategoryAggCount === "number" ? currentCategoryAggCount : "100+";
-      return `View ${fallbackCount} ${categoryName || "SINGLE"} tombstones`;
+      return `View ${initialCount} ${categoryName || "SINGLE"} tombstones`;
+    }
+
+    if (isCalculating) {
+      return loadingIndicator;
     }
     
     // If we have a search term
@@ -1006,6 +1058,8 @@ const SearchContainer = ({
   // Select option from dropdown
   const selectOption = useCallback(
     (name, value, keepOpen = false) => {
+      setHasUserInteracted(true);
+      setIsCalculating(true);
     
       if (setFilters) {
         setFilters((prev) => {
@@ -1067,6 +1121,7 @@ const SearchContainer = ({
             >
               <SearchForm
                 onSearch={(searchTerm) => {
+                  setHasUserInteracted(true);
                   const searchTermLower = searchTerm.toLowerCase();
                   setCurrentQuery(searchTerm);
                   setIsSearchFormFocused(true);
