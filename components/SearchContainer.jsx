@@ -10,6 +10,7 @@ import CategoryTabs from "@/components/CategoryTabs.jsx";
 import MobileFilterTags from "@/components/MobileFilterTags.jsx";
 import { SearchLoader } from "@/components/ui/loader";
 import { useSearchFilters } from "@/hooks/useSearchFilters";
+import { useHomepageAggregations } from "@/hooks/useHomepageAggregations";
 import { AnimatePresence, motion } from "framer-motion";
 import { toTitleCase } from "@/lib/locationHelpers";
 
@@ -196,6 +197,9 @@ const SearchContainer = ({
 
   // Refs for dropdowns
   const dropdownRefs = useRef({});
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const hasMountedRef = useRef(false);
+  const prevActiveTabRef = useRef(activeTab);
 
   // Check if screen is desktop/laptop
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
@@ -207,6 +211,18 @@ const SearchContainer = ({
   const [hookFilteredCount, setHookFilteredCount] = useState(0);
   const [locationHierarchyState, setLocationHierarchyState] = useState([]); 
   const locationHierarchy = locationHierarchyState; // Defined here for access in mobileLocationsData
+
+  const { data: homepageAggData } = useHomepageAggregations();
+
+  const homepageAggByCategory = useMemo(() => {
+    const categories = homepageAggData?.homepageAggregations?.categories;
+    if (!Array.isArray(categories)) return {};
+    return categories.reduce((acc, c) => {
+      const name = typeof c?.name === "string" ? c.name.toUpperCase() : "";
+      if (name) acc[name] = c;
+      return acc;
+    }, {});
+  }, [homepageAggData]);
 
   // Internal state for search functionality if not provided
   const [internalIsSearching, setInternalIsSearching] = useState(false);
@@ -358,12 +374,25 @@ const SearchContainer = ({
 
   // Effect to simulate calculation loading state when filters or activeTab change
   useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    if (!hasUserInteracted) return;
     setIsCalculating(true);
     const timer = setTimeout(() => {
       setIsCalculating(false);
     }, 500);
     return () => clearTimeout(timer);
-  }, [filters, activeTab]);
+  }, [filters, activeTab, hasUserInteracted]);
+
+  useEffect(() => {
+    if (!hasMountedRef.current) return;
+    if (prevActiveTabRef.current !== activeTab) {
+      prevActiveTabRef.current = activeTab;
+      setHasUserInteracted(true);
+    }
+  }, [activeTab]);
 
   const mobileLocationsData = useMemo(() => {
     return locationHierarchy.map((prov, index) => ({
@@ -703,6 +732,54 @@ const SearchContainer = ({
     return sortedCategories[activeTab]?.name;
   }, [categories, activeTab]);
 
+  const currentCategoryAgg = useMemo(() => {
+    const name = typeof currentCategoryName === "string" ? currentCategoryName.toUpperCase() : "";
+    if (name && homepageAggByCategory[name]) return homepageAggByCategory[name];
+    if (homepageAggByCategory["SINGLE"]) return homepageAggByCategory["SINGLE"];
+    return null;
+  }, [currentCategoryName, homepageAggByCategory]);
+
+  const currentCategoryAggCount = useMemo(() => {
+    const v = currentCategoryAgg?.count;
+    return typeof v === "number" ? v : null;
+  }, [currentCategoryAgg]);
+
+  const homepageAggLocationHierarchy = useMemo(() => {
+    const locations = currentCategoryAgg?.locations;
+    if (!Array.isArray(locations)) return [];
+
+    return locations
+      .map((prov) => {
+        const provinceName = typeof prov?.province === "string" ? prov.province : "";
+        const provinceCount = typeof prov?.count === "number" ? prov.count : 0;
+        const cities = Array.isArray(prov?.cities) ? prov.cities : [];
+
+        return {
+          name: provinceName,
+          count: provinceCount,
+          cities: cities
+            .map((city) => {
+              const cityName = typeof city?.city === "string" ? city.city : "";
+              const cityCount = typeof city?.count === "number" ? city.count : 0;
+              const towns = Array.isArray(city?.towns) ? city.towns : [];
+
+              return {
+                name: cityName,
+                count: cityCount,
+                towns: towns
+                  .map((town) => ({
+                    name: typeof town?.town === "string" ? town.town : "",
+                    count: typeof town?.count === "number" ? town.count : 0,
+                  }))
+                  .filter((t) => t.name),
+              };
+            })
+            .filter((c) => c.name),
+        };
+      })
+      .filter((p) => p.name);
+  }, [currentCategoryAgg]);
+
   // Combined filters for the hook
   const effectiveFilters = useMemo(() => {
     // When a location is selected from the dropdown (string), we need to parse it
@@ -719,20 +796,47 @@ const SearchContainer = ({
     };
   }, [filters, currentCategoryName]);
 
-  useEffect(() => {
-    if (!filtersLoading) {
-      // 1. Compute total count with ALL filters applied
-      const ids = computeFilteredResults(effectiveFilters);
-      setHookFilteredCount(ids.size);
-      
-      // 2. Compute location tree base (All filters EXCEPT location)
-      // This ensures the location dropdown shows available locations for the selected criteria
-      const filtersNoLoc = { ...effectiveFilters, province: 'Any', city: 'Any', town: 'Any', location: null };
-      const baseIds = computeFilteredResults(filtersNoLoc);
-      const tree = buildLocationTree(baseIds);
-      setLocationHierarchyState(tree); // Update the state used by UI
+  const inMemoryApproxCount = useMemo(() => {
+    if (!hasUserInteracted) return null;
+    if (!(filtersLoading || isCalculating)) return null;
+    if (!Array.isArray(allListings) || allListings.length === 0) return null;
+
+    const MAX_SAMPLE = 800;
+    const sample = allListings.length > MAX_SAMPLE ? allListings.slice(0, MAX_SAMPLE) : allListings;
+    try {
+      const results = filterListingsFrom(sample, effectiveFilters);
+      return Array.isArray(results) ? results.length : null;
+    } catch {
+      return null;
     }
-  }, [filtersLoading, effectiveFilters, computeFilteredResults, buildLocationTree]);
+  }, [hasUserInteracted, filtersLoading, isCalculating, allListings, filterListingsFrom, effectiveFilters]);
+
+  useEffect(() => {
+    if (filtersLoading) {
+      if (homepageAggLocationHierarchy.length > 0) {
+        setLocationHierarchyState(homepageAggLocationHierarchy);
+      }
+      if (typeof currentCategoryAggCount === "number") {
+        setHookFilteredCount(currentCategoryAggCount);
+      }
+      return;
+    }
+
+    const ids = computeFilteredResults(effectiveFilters);
+    setHookFilteredCount(ids.size);
+
+    const filtersNoLoc = { ...effectiveFilters, province: 'Any', city: 'Any', town: 'Any', location: null };
+    const baseIds = computeFilteredResults(filtersNoLoc);
+    const tree = buildLocationTree(baseIds);
+    setLocationHierarchyState(tree);
+  }, [
+    filtersLoading,
+    effectiveFilters,
+    computeFilteredResults,
+    buildLocationTree,
+    homepageAggLocationHierarchy,
+    currentCategoryAggCount,
+  ]);
 
   // Use the hook's data instead of client-side props processing
   const searchButtonCount = hookFilteredCount;
@@ -831,6 +935,17 @@ const SearchContainer = ({
   const renderSearchButtonContent = () => {
     const searching =
       isSearching !== undefined ? isSearching : internalIsSearching;
+
+    const loadingIndicator = (
+      <div className="flex items-center justify-center gap-2">
+        <div className="flex space-x-1">
+          <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+          <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+          <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+        </div>
+        <span>Loading...</span>
+      </div>
+    );
     
     // Always calculate category label if available
     let categoryName = "";
@@ -860,9 +975,21 @@ const SearchContainer = ({
       return <SearchLoader />;
     }
     
-    // If loading in background, show placeholder
     if (filtersLoading) {
-      return `View 100+ ${categoryName || "SINGLE"} tombstones`;
+      if (isCalculating) return loadingIndicator;
+      if (hasUserInteracted) {
+        if (typeof inMemoryApproxCount === "number") {
+          return `View ${inMemoryApproxCount} ${categoryName || "SINGLE"} tombstones`;
+        }
+        return loadingIndicator;
+      }
+      const initialCount =
+        typeof currentCategoryAggCount === "number" ? currentCategoryAggCount : "100+";
+      return `View ${initialCount} ${categoryName || "SINGLE"} tombstones`;
+    }
+
+    if (isCalculating) {
+      return loadingIndicator;
     }
     
     // If we have a search term
@@ -931,6 +1058,8 @@ const SearchContainer = ({
   // Select option from dropdown
   const selectOption = useCallback(
     (name, value, keepOpen = false) => {
+      setHasUserInteracted(true);
+      setIsCalculating(true);
     
       if (setFilters) {
         setFilters((prev) => {
@@ -992,6 +1121,7 @@ const SearchContainer = ({
             >
               <SearchForm
                 onSearch={(searchTerm) => {
+                  setHasUserInteracted(true);
                   const searchTermLower = searchTerm.toLowerCase();
                   setCurrentQuery(searchTerm);
                   setIsSearchFormFocused(true);
