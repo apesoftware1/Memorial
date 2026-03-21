@@ -288,12 +288,13 @@ export default function FilterDropdown({
   dropdownRefs
 }) {
   const SORTED_MENUS = new Set(["style", "slabStyle", "stoneType", "colour", "custom"]);
+  const MULTI_SELECT_MENUS = new Set(["style", "slabStyle", "stoneType", "colour", "custom", "location"]);
   
   // Determine if this is a hierarchical option list (contains objects)
   const isHierarchical = options.length > 0 && typeof options[0] === 'object';
   
   // Determine if multi-select is allowed
-  const isMultiSelect = !['minPrice', 'maxPrice'].includes(name);
+  const isMultiSelect = MULTI_SELECT_MENUS.has(name);
 
   const displayOptions = (!isHierarchical && SORTED_MENUS.has(name))
     ? [...options].sort((a, b) => {
@@ -445,6 +446,7 @@ export default function FilterDropdown({
   return (
     <div className="relative w-full" ref={(el) => (dropdownRefs.current[name] = el)}>
       <button
+        type="button"
         onClick={() => toggleDropdown(name)}
         className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-white bg-[#0D7C99] hover:bg-[#0D7C99]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0D7C99] min-h-[36px] h-auto shadow"
         style={{ borderRadius: '2px' }}
