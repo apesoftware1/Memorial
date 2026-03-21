@@ -1310,11 +1310,12 @@ const SearchContainer = ({
                 isOpen={showLocationModal}
                 onClose={() => setShowLocationModal(false)}
                 locationsData={visibleLocationHierarchy}
+                selectedLocations={filters?.location}
                 onSelectLocation={(loc) => {
                   if (setFilters) {
                     setFilters((prev) => ({
                       ...prev,
-                      location: typeof loc === "string" ? loc : "Near me",
+                      location: Array.isArray(loc) ? loc : typeof loc === "string" ? loc : "Near me",
                     }));
                   }
                   setShowLocationModal(false);

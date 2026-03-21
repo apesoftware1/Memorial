@@ -4,12 +4,13 @@ import { useState, useEffect, useMemo } from "react"
 import { X, MapPin, Loader, ChevronDown, ChevronUp } from "lucide-react"
 import { useGuestLocation } from "@/hooks/useGuestLocation"
 
-export default function LocationModal({ isOpen, onClose, locationsData, onSelectLocation }) {
+export default function LocationModal({ isOpen, onClose, locationsData, onSelectLocation, selectedLocations }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDesktop, setIsDesktop] = useState(true);
   const [geolocationStatus, setGeolocationStatus] = useState('idle');
   const [geolocationError, setGeolocationError] = useState(null);
   const [expandedProvinces, setExpandedProvinces] = useState({});
+  const [selectedValues, setSelectedValues] = useState([]);
 
   const toggleProvince = (e, provinceName) => {
     e.stopPropagation();
@@ -94,6 +95,41 @@ export default function LocationModal({ isOpen, onClose, locationsData, onSelect
     
     return filtered;
   }, [enhancedLocationsData, searchTerm, userLocation]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (selectedLocations === undefined) return;
+    if (!selectedLocations || selectedLocations === 'Any' || selectedLocations === 'All') {
+      setSelectedValues([]);
+      return;
+    }
+    setSelectedValues(Array.isArray(selectedLocations) ? selectedLocations : [selectedLocations]);
+  }, [isOpen, selectedLocations]);
+
+  const isSelected = (name) => selectedValues.includes(name);
+  const toggleSelected = (name) => {
+    setSelectedValues((prev) => {
+      if (prev.includes(name)) return prev.filter((v) => v !== name);
+      return [...prev, name];
+    });
+  };
+
+  const applySelection = () => {
+    if (selectedValues.length === 0) {
+      onSelectLocation('Any');
+    } else if (selectedValues.length === 1) {
+      onSelectLocation(selectedValues[0]);
+    } else {
+      onSelectLocation(selectedValues);
+    }
+    onClose();
+  };
+
+  const clearSelection = () => {
+    setSelectedValues([]);
+    onSelectLocation('Any');
+    onClose();
+  };
 
   if (!isOpen || isDesktop) return null;
 
@@ -203,13 +239,22 @@ export default function LocationModal({ isOpen, onClose, locationsData, onSelect
           <div key={location.id} className="border-b border-gray-100">
             <div className="flex w-full items-center hover:bg-gray-50 transition-colors">
               <button
-                onClick={() => onSelectLocation(location.name)}
+                onClick={() => toggleSelected(location.name)}
                 className="flex-grow text-left py-3 px-4 focus:outline-none"
               >
                 <div className="flex justify-between items-center">
                   <div>
                     <div className="text-gray-800 text-base font-medium">
-                      {location.name} 
+                      <span className="inline-flex items-center gap-2">
+                        <span className={`h-4 w-4 flex items-center justify-center border border-gray-400 ${isSelected(location.name) ? 'bg-[#D4AF37] border-[#D4AF37]' : ''}`}>
+                          {isSelected(location.name) ? (
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          ) : null}
+                        </span>
+                        <span>{location.name}</span>
+                      </span>
                       {location.count !== undefined && (
                         <span className="text-gray-500 text-sm font-normal ml-1">({location.count})</span>
                       )}
@@ -245,10 +290,19 @@ export default function LocationModal({ isOpen, onClose, locationsData, onSelect
                 {location.cities.map((city) => (
                   <button
                     key={city.name}
-                    onClick={() => onSelectLocation(city.name)}
+                    onClick={() => toggleSelected(city.name)}
                     className="w-full text-left py-2.5 pl-8 pr-4 border-b border-gray-100 hover:bg-gray-100 focus:outline-none transition-colors flex justify-between items-center"
                   >
-                    <span className="text-gray-700 text-sm font-medium">{city.name}</span>
+                    <span className="text-gray-700 text-sm font-medium inline-flex items-center gap-2">
+                      <span className={`h-4 w-4 flex items-center justify-center border border-gray-400 ${isSelected(city.name) ? 'bg-[#D4AF37] border-[#D4AF37]' : ''}`}>
+                        {isSelected(city.name) ? (
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        ) : null}
+                      </span>
+                      <span>{city.name}</span>
+                    </span>
                     <span className="text-gray-400 text-xs">({city.count})</span>
                   </button>
                 ))}
@@ -256,6 +310,23 @@ export default function LocationModal({ isOpen, onClose, locationsData, onSelect
             )}
           </div>
         ))}
+      </div>
+
+      <div className="border-t border-gray-200 bg-white p-3 flex gap-2">
+        <button
+          type="button"
+          onClick={clearSelection}
+          className="flex-1 h-11 border border-gray-300 text-gray-700 font-semibold"
+        >
+          Clear
+        </button>
+        <button
+          type="button"
+          onClick={applySelection}
+          className="flex-1 h-11 bg-[#D4AF37] text-white font-semibold"
+        >
+          Apply{selectedValues.length > 0 ? ` (${selectedValues.length})` : ''}
+        </button>
       </div>
     </div>
   );

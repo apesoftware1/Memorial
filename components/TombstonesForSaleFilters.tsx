@@ -192,6 +192,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
   // Toggle filter dropdown
   const toggleFilter = (filter: string) => {
     if (filter === 'location' && typeof window !== 'undefined' && window.innerWidth < 768) {
+      setShowFilters(null);
       setShowLocationModal(true);
       return;
     }
@@ -383,16 +384,21 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
           isOpen={showLocationModal}
           onClose={() => setShowLocationModal(false)}
           locationsData={locationsData}
-          onSelectLocation={(loc: string | { type: string, lat: number, lng: number }) => {
-            if (typeof loc === 'string') {
-               // Single select for mobile modal
-               selectOption('location', loc);
-            } else if (typeof loc === 'object' && loc.type === 'coords') {
-               // Handle "Near me" or coords if supported, or just ignore/fallback
-               // For now, let's map "Near me" to string if possible or just use "Near me" text
-               selectOption('location', "Near me");
+          selectedLocations={activeFilters?.location}
+          onSelectLocation={(loc: any) => {
+            if (Array.isArray(loc)) {
+              selectOption('location', loc);
+              return;
             }
-            setShowLocationModal(false);
+            if (typeof loc === 'string') {
+              selectOption('location', loc);
+              return;
+            }
+            if (loc && typeof loc === 'object' && loc.type === 'coords') {
+              selectOption('location', "Near me");
+              return;
+            }
+            selectOption('location', 'Any');
           }}
         />
       )}

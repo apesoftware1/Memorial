@@ -832,6 +832,14 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
+  const [isDesktopViewport, setIsDesktopViewport] = useState(false);
+  useEffect(() => {
+    const update = () => setIsDesktopViewport(window.innerWidth >= 640);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
   const sortModalRef = useRef();
   useEffect(() => {
     if (!showSortDropdown) return;
@@ -1120,20 +1128,22 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         <div className="max-w-6xl mx-auto">
           
           <div className="flex flex-col md:flex-row gap-6">
-            <div className="w-full md:w-1/4 hidden sm:block md:sticky md:top-0 md:self-start">
-              <TombstonesForSaleFilters
-            activeFilters={activeFilters}
-            setActiveFilters={setActiveFilters}
-            showFilters={showFilters}
-            setShowFilters={setShowFilters}
-            filterOptions={filterOptions}
-            filteredListings={filteredListings}
-            handleSearch={handleSearch}
-            getActiveCategory={getActiveCategory}
-            showCategoryDropdown={true}
-            locationsData={locationHierarchy}
-          />
-            </div>
+            {isDesktopViewport && (
+              <div className="w-full md:w-1/4 md:sticky md:top-0 md:self-start">
+                <TombstonesForSaleFilters
+                  activeFilters={activeFilters}
+                  setActiveFilters={setActiveFilters}
+                  showFilters={showFilters}
+                  setShowFilters={setShowFilters}
+                  filterOptions={filterOptions}
+                  filteredListings={filteredListings}
+                  handleSearch={handleSearch}
+                  getActiveCategory={getActiveCategory}
+                  showCategoryDropdown={true}
+                  locationsData={locationHierarchy}
+                />
+              </div>
+            )}
 
             <div className="w-full md:w-3/4">
               <div className="hidden sm:flex justify-between items-center mt-3 sm:mt-4 mb-4 bg-gray-100 rounded px-4 py-2 shadow-sm">
