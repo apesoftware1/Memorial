@@ -75,7 +75,7 @@ export async function GET(request, { params }) {
         query,
         variables: { documentId, limit },
       }),
-      next: { revalidate: 3600 },
+      next: { revalidate: 60 },
     });
 
     const result = await response.json();

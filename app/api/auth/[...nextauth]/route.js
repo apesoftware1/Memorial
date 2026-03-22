@@ -1,6 +1,8 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+export const runtime = "nodejs";
+
 const isProduction = process.env.NODE_ENV === "production";
 
 const handler = NextAuth({

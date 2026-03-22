@@ -34,6 +34,7 @@ export function useProgressiveQuery({
   const client = useApolloClient();
   const mountedRef = useRef(true);
   const [fullData, setFullData] = useState(null);
+  const syncedAtKey = `${storageKey}:syncedAt`;
 
   // Initial lightweight query for fast render
   const {
@@ -86,10 +87,12 @@ export function useProgressiveQuery({
         try {
           // Check if data is stale
           if (staleTime > 0 && typeof window !== 'undefined') {
-            const lastUpdated = Number(window.localStorage.getItem(storageKey) || 0);
+            const lastSyncedAt = Number(window.localStorage.getItem(syncedAtKey) || 0);
             const now = Date.now();
-            if (now - lastUpdated < staleTime) {
-              console.log(`[Background Fetch] Skipped (Fresh for ${(staleTime - (now - lastUpdated)) / 1000}s)`);
+            if (now - lastSyncedAt < staleTime) {
+              console.log(
+                `[Background Fetch] Skipped (Fresh for ${(staleTime - (now - lastSyncedAt)) / 1000}s)`
+              );
               return;
             }
           }
@@ -111,7 +114,8 @@ export function useProgressiveQuery({
           // Track last updated timestamp for delta refresh
           const maxUpdated = getMaxUpdatedTime(data);
           if (maxUpdated && typeof window !== 'undefined') {
-            window.localStorage.setItem(storageKey, String(Date.now())); // Use current time for staleness check
+            window.localStorage.setItem(storageKey, String(maxUpdated));
+            window.localStorage.setItem(syncedAtKey, String(Date.now()));
           }
           setFullData(data); // Explicitly set full data
 
@@ -125,9 +129,9 @@ export function useProgressiveQuery({
 
   // Silent background delta refresh
   useEffect(() => {
-    if (skip || !deltaQuery || refreshInterval <= 0) return;
+    if (skip || !deltaQuery) return;
 
-    const interval = setInterval(async () => {
+    const runDelta = async () => {
       // Skip if page is hidden
       if (typeof document !== 'undefined' && document.hidden) return;
 
@@ -142,6 +146,9 @@ export function useProgressiveQuery({
         if (!sinceIso) {
           // No timestamp yet — perform full sync
           await client.query({ query: fullQuery, fetchPolicy: 'network-only' });
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(syncedAtKey, String(Date.now()));
+          }
           return;
         }
 
@@ -162,10 +169,20 @@ export function useProgressiveQuery({
       } catch (err) {
         console.error('[Silent Refresh Error]', err);
       }
-    }, refreshInterval);
+    };
 
-    return () => clearInterval(interval);
-  }, [client, deltaQuery, fullQuery, refreshInterval, storageKey, variables, skip]);
+    const onMountTimer = setTimeout(runDelta, 0);
+
+    if (refreshInterval <= 0) {
+      return () => clearTimeout(onMountTimer);
+    }
+
+    const interval = setInterval(runDelta, refreshInterval);
+    return () => {
+      clearTimeout(onMountTimer);
+      clearInterval(interval);
+    };
+  }, [client, deltaQuery, fullQuery, refreshInterval, storageKey, syncedAtKey, variables, skip]);
 
   // Choose best available data source
   const data = useMemo(() => fullData || initialData, [fullData, initialData]);

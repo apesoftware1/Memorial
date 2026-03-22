@@ -530,7 +530,57 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     return filterListingsFrom(filtersForCounts);
   }, [activeFilters, allListings]);
 
-  const { data: homepageAggData } = useHomepageAggregations();
+  const pickScalar = (v) => {
+    if (Array.isArray(v)) return v.length > 0 ? v[v.length - 1] : null;
+    if (v === undefined || v === null) return null;
+    if (v === "Any" || v === "All" || v === "") return null;
+    return v;
+  };
+
+  const parseLocationSelection = (value) => {
+    if (!value) return { province: null, city: null, town: null };
+    if (Array.isArray(value)) {
+      const province = typeof value[0] === "string" ? value[0] : null;
+      const city = typeof value[1] === "string" ? value[1] : null;
+      const town = typeof value[2] === "string" ? value[2] : null;
+      return { province, city, town };
+    }
+    if (typeof value === "string") {
+      if (value.toLowerCase() === "near me") return { province: null, city: null, town: null };
+      return { province: value, city: null, town: null };
+    }
+    return { province: null, city: null, town: null };
+  };
+
+  const effectiveAggFilters = useMemo(() => {
+    const loc = parseLocationSelection(activeFilters?.location);
+    const minPrice =
+      activeFilters?.minPrice && activeFilters.minPrice !== "Min Price"
+        ? parsePrice(activeFilters.minPrice)
+        : null;
+    const maxPrice =
+      activeFilters?.maxPrice && activeFilters.maxPrice !== "Max Price"
+        ? parsePrice(activeFilters.maxPrice)
+        : null;
+
+    return {
+      province: loc.province,
+      city: loc.city,
+      town: loc.town,
+      minPrice: Number.isFinite(minPrice) && minPrice > 0 ? minPrice : null,
+      maxPrice: Number.isFinite(maxPrice) && maxPrice > 0 ? maxPrice : null,
+      color: pickScalar(activeFilters?.colour || activeFilters?.color),
+      style: pickScalar(activeFilters?.style),
+      stoneType: pickScalar(activeFilters?.stoneType),
+      customization: pickScalar(activeFilters?.custom),
+      slabStyle: pickScalar(activeFilters?.slabStyle),
+    };
+  }, [activeFilters]);
+
+  const {
+    data: homepageAggData,
+    error: homepageAggError,
+  } = useHomepageAggregations({ filters: effectiveAggFilters });
 
   const homepageAggByCategory = useMemo(() => {
     const cats = homepageAggData?.homepageAggregations?.categories;
@@ -594,10 +644,9 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   const computedLocationHierarchy = useLocationHierarchy(listingsForLocationCounts, categories, activeTab);
 
   const locationHierarchy = useMemo(() => {
-    const showAggCounts = !enableQueries || loading;
-    if (showAggCounts && homepageAggLocationHierarchy.length > 0) return homepageAggLocationHierarchy;
+    if (!homepageAggError && homepageAggLocationHierarchy.length > 0) return homepageAggLocationHierarchy;
     return computedLocationHierarchy;
-  }, [enableQueries, loading, homepageAggLocationHierarchy, computedLocationHierarchy]);
+  }, [homepageAggError, homepageAggLocationHierarchy, computedLocationHierarchy]);
 
   const computedCategoryCounts = useMemo(() => {
     const filtersNoCategory = { ...activeFilters, category: 'All Categories' };
@@ -626,10 +675,9 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   }, [homepageAggData]);
 
   const categoryCounts = useMemo(() => {
-    const showAggCounts = !enableQueries || loading;
-    if (showAggCounts && homepageAggCategoryCounts) return homepageAggCategoryCounts;
+    if (!homepageAggError && homepageAggCategoryCounts) return homepageAggCategoryCounts;
     return computedCategoryCounts;
-  }, [enableQueries, loading, homepageAggCategoryCounts, computedCategoryCounts]);
+  }, [homepageAggError, homepageAggCategoryCounts, computedCategoryCounts]);
 
   const handleSearch = () => {
     setCurrentPage(1);
