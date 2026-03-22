@@ -2,14 +2,14 @@
 
 import { useParams } from "next/navigation";
 import { useQuery } from "@apollo/client";
-import { GET_LISTING_BY_ID } from "@/graphql/queries/getListingById";
+import { GET_LISTING_BY_ID_FAST } from "@/graphql/queries/getListingByIdFast";
 import ProductShowcase from "@/components/product-showcase";
 import { PageLoader } from "@/components/ui/loader";
 
 export default function TombstoneDetail() {
   const { slug: documentId } = useParams();
  
-  const { data, loading, error } = useQuery(GET_LISTING_BY_ID, {
+  const { data, loading, error } = useQuery(GET_LISTING_BY_ID_FAST, {
     variables: { documentID: documentId},
     skip: !documentId,
   });

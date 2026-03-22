@@ -30,6 +30,7 @@ import WhatsAppContactDrawer from "./WhatsAppContactDrawer";
 import { useSearchParams, usePathname } from "next/navigation";
 import { useQuery } from "@apollo/client";
 import { GET_BRANCHES_BY_NAME } from "@/graphql/queries/getBranchesByName";
+import { GET_LISTING_EXTRAS_BY_ID } from "@/graphql/queries/getListingExtrasById";
 import { PageLoader } from "./ui/loader";
 
 export default function ProductShowcase({ listing, id, allListings = [], currentIndex = 0, onNavigate }) {
@@ -42,10 +43,17 @@ export default function ProductShowcase({ listing, id, allListings = [], current
   const [mobileDropdown, setMobileDropdown] = useState(null);
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [shouldFetchExtras, setShouldFetchExtras] = useState(false);
   const searchParams = useSearchParams();
   const branch = searchParams.get("branch"); // Prioritize branchId prop
   const pathname = usePathname();
   const basePath = pathname && pathname.includes('/tombstones-for-sale') ? '/tombstones-for-sale' : '/product';
+  const listingDocumentId = id || listing?.documentId;
+
+  useEffect(() => {
+    const t = setTimeout(() => setShouldFetchExtras(true), 0);
+    return () => clearTimeout(t);
+  }, []);
   
   // Fetch branch details if branch param is present
   const { data: branchData } = useQuery(GET_BRANCHES_BY_NAME, {
@@ -55,6 +63,16 @@ export default function ProductShowcase({ listing, id, allListings = [], current
   });
 
   const fetchedBranch = branchData?.branches_connection?.nodes?.[0];
+
+  const { data: extrasData } = useQuery(GET_LISTING_EXTRAS_BY_ID, {
+    variables: { documentID: listingDocumentId },
+    skip: !shouldFetchExtras || !listingDocumentId,
+    fetchPolicy: "cache-first",
+  });
+
+  const extrasListing = extrasData?.listing;
+  const branchesFromExtras = Array.isArray(extrasListing?.branches) ? extrasListing.branches : null;
+  const companyListingsFromExtras = extrasListing?.company?.listings;
 
   // Navigation functions for Next/Previous
   const handlePrevious = () => {
@@ -121,6 +139,25 @@ export default function ProductShowcase({ listing, id, allListings = [], current
       setSelectedBranch(null);
     }
   }, [listing, branch, fetchedBranch]);
+
+  useEffect(() => {
+    if (!branchesFromExtras || branchesFromExtras.length === 0) return;
+    setSelectedBranch((prev) => {
+      const prevName = prev?.name;
+      const needsUpgrade = prev && (!prev?.location || !prev?.sales_reps);
+      if (!prevName) {
+        if (branch) {
+          const found = branchesFromExtras.find((b) => b?.name === branch);
+          if (found) return found;
+        }
+        if (branchesFromExtras.length === 1) return branchesFromExtras[0];
+        return prev;
+      }
+      if (!needsUpgrade) return prev;
+      const found = branchesFromExtras.find((b) => b?.name === prevName);
+      return found || prev;
+    });
+  }, [branchesFromExtras, branch]);
 
   const handleMobileMenuToggle = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -258,16 +295,18 @@ export default function ProductShowcase({ listing, id, allListings = [], current
       return fetchedBranch.sales_reps || [];
     }
 
+    const sourceBranches = branchesFromExtras || listing.branches;
+
     // 2. If branch param exists, try to find it in listing.branches
     if (branch) {
-      const branchObj = listing.branches?.find((b) => b.name === branch);
+      const branchObj = sourceBranches?.find((b) => b.name === branch);
       if (branchObj) {
         return branchObj.sales_reps || [];
       }
     }
     
     // 3. Otherwise return reps from all branches associated with this listing
-    const branchReps = listing.branches?.flatMap(b => b.sales_reps || []) || [];
+    const branchReps = sourceBranches?.flatMap(b => b.sales_reps || []) || [];
     if (branchReps.length > 0) {
       const uniqueReps = [];
       const seen = new Set();
@@ -285,7 +324,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
 
     // 4. Fallback to company reps if no branch reps found
     return listing.company?.sales_reps || [];
-  }, [branch, listing.branches, listing.company?.sales_reps, fetchedBranch]);
+  }, [branch, listing.branches, listing.company?.sales_reps, fetchedBranch, branchesFromExtras]);
 
   // Prefer branch-based distance if available; otherwise use existing hook distance
   const effectiveDistanceInfo = distanceOverride || distanceInfo;
@@ -764,9 +803,8 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                 <h3 className="text-sm font-medium mb-3">
                   More Tombstones from this Manufacturer
                 </h3>
-                {listing.company?.listings &&
-                listing.company.listings.length > 0 ? (
-                  listing.company?.listings?.slice(0, 3).map((product) => (
+                {Array.isArray(companyListingsFromExtras) && companyListingsFromExtras.length > 0 ? (
+                  companyListingsFromExtras.slice(0, 3).map((product) => (
                     <Link
                       key={product.documentId}
                       href={`/tombstones-for-sale/${product.documentId}`}

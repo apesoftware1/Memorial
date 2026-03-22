@@ -830,16 +830,27 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   }
 
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [mobileFilterOpening, setMobileFilterOpening] = useState(false);
   const [mobileFilterClosing, setMobileFilterClosing] = useState(false);
+  const mobileFilterOpenTimerRef = useRef(null);
   const mobileFilterCloseTimerRef = useRef(null);
 
   const openMobileFilter = useCallback(() => {
+    if (mobileFilterOpenTimerRef.current) {
+      clearTimeout(mobileFilterOpenTimerRef.current);
+      mobileFilterOpenTimerRef.current = null;
+    }
     if (mobileFilterCloseTimerRef.current) {
       clearTimeout(mobileFilterCloseTimerRef.current);
       mobileFilterCloseTimerRef.current = null;
     }
     setMobileFilterClosing(false);
     setMobileFilterOpen(true);
+    setMobileFilterOpening(true);
+    mobileFilterOpenTimerRef.current = setTimeout(() => {
+      setMobileFilterOpening(false);
+      mobileFilterOpenTimerRef.current = null;
+    }, 20);
   }, []);
 
   const closeMobileFilter = useCallback(() => {
@@ -857,6 +868,10 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
   useEffect(() => {
     return () => {
+      if (mobileFilterOpenTimerRef.current) {
+        clearTimeout(mobileFilterOpenTimerRef.current);
+        mobileFilterOpenTimerRef.current = null;
+      }
       if (mobileFilterCloseTimerRef.current) {
         clearTimeout(mobileFilterCloseTimerRef.current);
         mobileFilterCloseTimerRef.current = null;
@@ -1107,12 +1122,16 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       {mobileFilterOpen && (
         <div className="fixed inset-0 z-50 sm:hidden">
           <div
-            className={`absolute inset-0 bg-black/40 transition-opacity duration-500 ${mobileFilterClosing ? "opacity-0" : "opacity-100"}`}
+            className={`absolute inset-0 bg-black/40 transition-opacity duration-500 ${
+              mobileFilterClosing || mobileFilterOpening ? "opacity-0" : "opacity-100"
+            }`}
             onClick={closeMobileFilter}
           />
           <div
             className={`absolute inset-0 bg-white flex flex-col transition-all duration-500 ease-in-out will-change-transform origin-top-left ${
-              mobileFilterClosing ? "-translate-y-20 -translate-x-20 opacity-0 scale-90" : "translate-y-0 translate-x-0 opacity-100 scale-100"
+              mobileFilterClosing || mobileFilterOpening
+                ? "-translate-y-20 -translate-x-20 opacity-0 scale-90"
+                : "translate-y-0 translate-x-0 opacity-100 scale-100"
             }`}
             onClick={(e) => e.stopPropagation()}
           >
