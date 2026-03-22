@@ -1095,6 +1095,8 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
             getActiveCategory={getActiveCategory}
             showCategoryDropdown={true}
             locationsData={locationHierarchy}
+            initialCount={activeCategoryAggCount}
+            isBackgroundLoading={!enableQueries || loading}
           />
           </div>
         </div>
@@ -1141,6 +1143,8 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                   getActiveCategory={getActiveCategory}
                   showCategoryDropdown={true}
                   locationsData={locationHierarchy}
+                  initialCount={activeCategoryAggCount}
+                  isBackgroundLoading={!enableQueries || loading}
                 />
               </div>
             )}

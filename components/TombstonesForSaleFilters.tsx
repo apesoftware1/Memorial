@@ -16,6 +16,8 @@ interface TombstonesForSaleFiltersProps {
   getActiveCategory?: () => string;
   showCategoryDropdown?: boolean;
   locationsData?: any[];
+  initialCount?: number | null;
+  isBackgroundLoading?: boolean;
 }
 
 // Use the same filter options as SearchContainer
@@ -159,9 +161,12 @@ const getIconForOption = (filterName: string, option: string) => {
   }
 };
 
-export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions, filteredListings, handleSearch, getActiveCategory, showCategoryDropdown = true, locationsData }: TombstonesForSaleFiltersProps) {
+export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions, filteredListings, handleSearch, getActiveCategory, showCategoryDropdown = true, locationsData, initialCount = null, isBackgroundLoading = false }: TombstonesForSaleFiltersProps) {
   const [showMore, setShowMore] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const calcTimerRef = useRef<any>(null);
   const { categories, loading } = useListingCategories();
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
@@ -204,6 +209,10 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
 
   // New selectOption for FilterDropdown.js
   const selectOption = (name: string, value: any, keepOpen: boolean = false) => {
+    setHasUserInteracted(true);
+    setIsCalculating(true);
+    if (calcTimerRef.current) clearTimeout(calcTimerRef.current);
+    calcTimerRef.current = setTimeout(() => setIsCalculating(false), 500);
     // If selecting 'Any', handle clearing logic
     if (value === 'Any' || value === 'All' || value === 'All Categories' || (Array.isArray(value) && value.length === 0)) {
        // Check if it's location to clear specific fields if needed
@@ -232,6 +241,12 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
       setShowFilters(null);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (calcTimerRef.current) clearTimeout(calcTimerRef.current);
+    };
+  }, []);
 
   // Helper to remove a specific filter tag
   const removeFilterTag = (category: string, value: string) => {
@@ -282,7 +297,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
           <select
             className="w-full p-2 border border-teal-700/60 bg-[#0D7C99] text-white rounded-none text-sm min-h-[36px] h-[36px] sm:min-h-[56px] sm:h-[56px]"
             value={activeFilters.minPrice}
-            onChange={(e) => setActiveFilters({ ...activeFilters, minPrice: e.target.value })}
+            onChange={(e) => selectOption('minPrice', e.target.value, true)}
           >
             {mergedOptions.minPrice.map((option: string) => (
               <option key={option}>{option}</option>
@@ -291,7 +306,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
           <select
             className="w-full p-2 border border-teal-700/60 bg-[#0D7C99] text-white rounded-none text-sm min-h-[36px] h-[36px] sm:min-h-[56px] sm:h-[56px]"
             value={activeFilters.maxPrice}
-            onChange={(e) => setActiveFilters({ ...activeFilters, maxPrice: e.target.value })}
+            onChange={(e) => selectOption('maxPrice', e.target.value, true)}
           >
             {mergedOptions.maxPrice.map((option: string) => (
               <option key={option}>{option}</option>
@@ -350,13 +365,36 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
             className="w-full bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white p-3 px-4 rounded transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm font-medium min-h-[44px] touch-manipulation"
             onClick={handleSearch}
           >
-            <Search className="h-4 w-4 flex-shrink-0" />
-            <span className="truncate">{`Search (${filteredListings.length}) ${getActiveCategory()} Tombstones`}</span>
+            {isCalculating ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
+                <span>Loading...</span>
+              </div>
+            ) : (
+              <>
+                <Search className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate">
+                  {`Search (${
+                    isBackgroundLoading && !hasUserInteracted && typeof initialCount === "number"
+                      ? initialCount
+                      : filteredListings.length
+                  }) ${getActiveCategory()} Tombstones`}
+                </span>
+              </>
+            )}
           </button>
           {/* Clear All button */}
           <button
             className="mt-3 w-full bg-transparent border border-white/40 text-white hover:bg-white/10 active:bg-white/20 p-2 rounded text-sm"
             onClick={() => {
+              setHasUserInteracted(true);
+              setIsCalculating(true);
+              if (calcTimerRef.current) clearTimeout(calcTimerRef.current);
+              calcTimerRef.current = setTimeout(() => setIsCalculating(false), 500);
               setActiveFilters({
                 minPrice: "Min Price",
                 maxPrice: "Max Price",
