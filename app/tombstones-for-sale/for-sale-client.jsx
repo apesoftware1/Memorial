@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect, useMemo } from "react"
+import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
 import { ChevronDown, Search, ChevronRight, Menu, X } from "lucide-react"
 import Header from "@/components/Header"
@@ -830,6 +830,39 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   }
 
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [mobileFilterClosing, setMobileFilterClosing] = useState(false);
+  const mobileFilterCloseTimerRef = useRef(null);
+
+  const openMobileFilter = useCallback(() => {
+    if (mobileFilterCloseTimerRef.current) {
+      clearTimeout(mobileFilterCloseTimerRef.current);
+      mobileFilterCloseTimerRef.current = null;
+    }
+    setMobileFilterClosing(false);
+    setMobileFilterOpen(true);
+  }, []);
+
+  const closeMobileFilter = useCallback(() => {
+    if (mobileFilterClosing) return;
+    setMobileFilterClosing(true);
+    if (mobileFilterCloseTimerRef.current) {
+      clearTimeout(mobileFilterCloseTimerRef.current);
+    }
+    mobileFilterCloseTimerRef.current = setTimeout(() => {
+      setMobileFilterOpen(false);
+      setMobileFilterClosing(false);
+      mobileFilterCloseTimerRef.current = null;
+    }, 520);
+  }, [mobileFilterClosing]);
+
+  useEffect(() => {
+    return () => {
+      if (mobileFilterCloseTimerRef.current) {
+        clearTimeout(mobileFilterCloseTimerRef.current);
+        mobileFilterCloseTimerRef.current = null;
+      }
+    };
+  }, []);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
   const [isDesktopViewport, setIsDesktopViewport] = useState(false);
@@ -1019,7 +1052,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         handleMobileMenuToggle={handleMobileMenuToggle}
         mobileDropdown={mobileDropdown}
         handleMobileDropdownToggle={handleMobileDropdownToggle}
-        onMobileFilterClick={() => setMobileFilterOpen(true)}
+        onMobileFilterClick={openMobileFilter}
         autoHideOnScroll={true}
       />
 
@@ -1028,7 +1061,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       <MobileResultsBar 
         count={filteredListings.length} 
         onSortClick={() => setShowSortDropdown(true)}
-        onFilterClick={() => setMobileFilterOpen(true)}
+        onFilterClick={openMobileFilter}
       />
 
       {showSortDropdown && (
@@ -1072,32 +1105,47 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         ></div>
       )}
       {mobileFilterOpen && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col sm:hidden">
-          <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
-            <span className="font-bold text-lg">Filters</span>
-            <button
-              className="p-2 rounded-full hover:bg-gray-100 touch-manipulation"
-              onClick={() => setMobileFilterOpen(false)}
-              aria-label="Close Filters"
-            >
-              <X className="h-6 w-6 text-gray-700" />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto w-full p-0">
-            <TombstonesForSaleFilters
-            activeFilters={activeFilters}
-            setActiveFilters={setActiveFilters}
-            showFilters={showFilters}
-            setShowFilters={setShowFilters}
-            filterOptions={filterOptions}
-            filteredListings={filteredListings}
-            handleSearch={handleSearch}
-            getActiveCategory={getActiveCategory}
-            showCategoryDropdown={true}
-            locationsData={locationHierarchy}
-            initialCount={activeCategoryAggCount}
-            isBackgroundLoading={!enableQueries || loading}
+        <div className="fixed inset-0 z-50 sm:hidden">
+          <div
+            className={`absolute inset-0 bg-black/40 transition-opacity duration-500 ${mobileFilterClosing ? "opacity-0" : "opacity-100"}`}
+            onClick={closeMobileFilter}
           />
+          <div
+            className={`absolute inset-0 bg-white flex flex-col transition-all duration-500 ease-in-out will-change-transform origin-top-left ${
+              mobileFilterClosing ? "-translate-y-20 -translate-x-20 opacity-0 scale-90" : "translate-y-0 translate-x-0 opacity-100 scale-100"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
+              <span className="font-bold text-lg">Filters</span>
+              <button
+                className="p-2 rounded-full hover:bg-gray-100 touch-manipulation"
+                onClick={closeMobileFilter}
+                aria-label="Close Filters"
+                type="button"
+              >
+                <X className="h-6 w-6 text-gray-700" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto w-full p-0">
+              <TombstonesForSaleFilters
+                activeFilters={activeFilters}
+                setActiveFilters={setActiveFilters}
+                showFilters={showFilters}
+                setShowFilters={setShowFilters}
+                filterOptions={filterOptions}
+                filteredListings={filteredListings}
+                handleSearch={() => {
+                  handleSearch();
+                  closeMobileFilter();
+                }}
+                getActiveCategory={getActiveCategory}
+                showCategoryDropdown={true}
+                locationsData={locationHierarchy}
+                initialCount={activeCategoryAggCount}
+                isBackgroundLoading={!enableQueries || loading}
+              />
+            </div>
           </div>
         </div>
       )}
