@@ -24,7 +24,8 @@ const fixIconPath = (path) => {
     .replace('/Adv_vpe_Icon_', '/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_')
     .replace('%20', '')
     .replace('/public/', '/')
-    .replace('//', '/');
+    .replace('//', '/')
+    .replace(/_Mausoleum\.svg$/i, '_Mausolean.svg');
   
   // Fix nested directory structure issues
   if (fixedPath.includes('/AdvertCreator_StoneType_Icons/')) {

@@ -9,7 +9,9 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
   // Function to fix icon paths that might contain "last icons" instead of "last_icons"
   const fixIconPath = (iconPath) => {
     if (!iconPath) return null;
-    return iconPath.replace("/last icons/", "/last_icons/");
+    return iconPath
+      .replace("/last icons/", "/last_icons/")
+      .replace(/_Mausoleum\.svg$/i, "_Mausolean.svg");
   };
 
   // Map common color names to swatch colors

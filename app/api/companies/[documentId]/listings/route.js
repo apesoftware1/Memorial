@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET(request, { params }) {
   try {
     const { documentId } = await params;
@@ -75,7 +78,7 @@ export async function GET(request, { params }) {
         query,
         variables: { documentId, limit },
       }),
-      next: { revalidate: 3600 },
+      next: { revalidate: 60 },
     });
 
     const result = await response.json();

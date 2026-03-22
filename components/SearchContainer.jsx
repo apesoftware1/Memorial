@@ -9,7 +9,6 @@ import LocationModal from "@/components/LocationModal";
 import CategoryTabs from "@/components/CategoryTabs.jsx";
 import MobileFilterTags from "@/components/MobileFilterTags.jsx";
 import { SearchLoader } from "@/components/ui/loader";
-import { useSearchFilters } from "@/hooks/useSearchFilters";
 import { useHomepageAggregations } from "@/hooks/useHomepageAggregations";
 import { AnimatePresence, motion } from "framer-motion";
 import { toTitleCase } from "@/lib/locationHelpers";
@@ -205,14 +204,91 @@ const SearchContainer = ({
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
-  // --- New Filtering Engine Integration ---
-  // Define hook and state early to ensure locationHierarchy is available for memoized values
-  const { loading: filtersLoading, computeFilteredResults, buildLocationTree } = useSearchFilters();
-  const [hookFilteredCount, setHookFilteredCount] = useState(0);
-  const [locationHierarchyState, setLocationHierarchyState] = useState([]); 
-  const locationHierarchy = locationHierarchyState; // Defined here for access in mobileLocationsData
+  const provinceOptionSet = useMemo(() => {
+    const raw = Array.isArray(filterOptions?.location) ? filterOptions.location : [];
+    const set = new Set();
+    raw.forEach((v) => {
+      if (typeof v !== "string") return;
+      const trimmed = v.trim();
+      if (!trimmed) return;
+      const lowered = trimmed.toLowerCase();
+      if (lowered === "any" || lowered === "all" || lowered === "near me") return;
+      set.add(lowered);
+    });
+    return set;
+  }, [filterOptions?.location]);
 
-  const { data: homepageAggData } = useHomepageAggregations();
+  const normalizeScalar = useCallback((v) => {
+    if (typeof v !== "string") return null;
+    const trimmed = v.trim();
+    if (!trimmed) return null;
+    const lowered = trimmed.toLowerCase();
+    if (lowered === "any" || lowered === "all") return null;
+    return trimmed;
+  }, []);
+
+  const pickScalar = useCallback(
+    (v) => {
+      if (Array.isArray(v)) {
+        for (let i = v.length - 1; i >= 0; i -= 1) {
+          const normalized = normalizeScalar(v[i]);
+          if (normalized) return normalized;
+        }
+        return null;
+      }
+      return normalizeScalar(v);
+    },
+    [normalizeScalar]
+  );
+
+  const parseLocationSelection = useCallback(
+    (value) => {
+      if (!value) return { province: null, city: null, town: null };
+      if (Array.isArray(value)) {
+        const province = normalizeScalar(value[0]);
+        const city = normalizeScalar(value[1]);
+        const town = normalizeScalar(value[2]);
+        return { province, city, town };
+      }
+      if (typeof value === "string") {
+        const lowered = value.trim().toLowerCase();
+        if (lowered === "near me") return { province: null, city: null, town: null };
+        const normalized = normalizeScalar(value);
+        if (!normalized) return { province: null, city: null, town: null };
+        if (provinceOptionSet.has(normalized.toLowerCase())) {
+          return { province: normalized, city: null, town: null };
+        }
+        return { province: null, city: normalized, town: null };
+      }
+      return { province: null, city: null, town: null };
+    },
+    [normalizeScalar, provinceOptionSet]
+  );
+
+  const effectiveAggFilters = useMemo(() => {
+    const loc = parseLocationSelection(filters?.location);
+    const minPrice =
+      filters?.minPrice && filters.minPrice !== "Min Price" ? parsePrice(filters.minPrice) : null;
+    const maxPrice =
+      filters?.maxPrice && filters.maxPrice !== "Max Price" ? parsePrice(filters.maxPrice) : null;
+
+    return {
+      province: loc.province,
+      city: loc.city,
+      town: loc.town,
+      minPrice: Number.isFinite(minPrice) && minPrice > 0 ? minPrice : null,
+      maxPrice: Number.isFinite(maxPrice) && maxPrice > 0 ? maxPrice : null,
+      color: pickScalar(filters?.colour || filters?.color),
+      style: pickScalar(filters?.style),
+      stoneType: pickScalar(filters?.stoneType),
+      customization: pickScalar(filters?.custom),
+      slabStyle: pickScalar(filters?.slabStyle),
+    };
+  }, [filters, parseLocationSelection, pickScalar]);
+
+  const { data: homepageAggData, loading: aggLoading } = useHomepageAggregations({
+    filters: effectiveAggFilters,
+  });
 
   const homepageAggByCategory = useMemo(() => {
     const categories = homepageAggData?.homepageAggregations?.categories;
@@ -347,11 +423,6 @@ const SearchContainer = ({
     [filterOptions?.custom, filterSimpleOptions]
   );
 
-  const visibleLocationHierarchy = useMemo(
-    () => filterLocationHierarchy(locationHierarchy),
-    [filterLocationHierarchy, locationHierarchy]
-  );
-
   // Read URL query params and keep a filtered listings array in state
   const searchParams = useSearchParams();
   const [filteredListings, setFilteredListings] = useState([]);
@@ -393,17 +464,6 @@ const SearchContainer = ({
       setHasUserInteracted(true);
     }
   }, [activeTab]);
-
-  const mobileLocationsData = useMemo(() => {
-    return locationHierarchy.map((prov, index) => ({
-      id: prov.name === 'Any' ? 'all' : String(index),
-      name: prov.name,
-      count: prov.count,
-      lat: prov.lat || null,
-      lng: prov.lng || null
-    }));
-  }, [locationHierarchy]);
-
 
   // Effect: filter allListings based on URL params on load and whenever params change
   useEffect(() => {
@@ -780,68 +840,25 @@ const SearchContainer = ({
       .filter((p) => p.name);
   }, [currentCategoryAgg]);
 
-  // Combined filters for the hook
-  const effectiveFilters = useMemo(() => {
-    // When a location is selected from the dropdown (string), we need to parse it
-    // If it's just a province name, set province. If city, set city etc.
-    // However, the current UI likely just sets filters.location to the string.
-    // The hook expects separate province/city/town fields OR a generic location field.
-    // Let's ensure we pass the generic location field correctly if it's set.
-    
-    return {
-      ...filters,
-      category: currentCategoryName || 'Any',
-      // Ensure 'location' is passed if set (it usually is from FilterDropdown)
-      location: filters.location === 'Any' ? null : filters.location
-    };
-  }, [filters, currentCategoryName]);
+  const hasAggCount = typeof currentCategoryAggCount === "number";
+  const searchButtonCount = hasAggCount ? currentCategoryAggCount : 0;
+  const locationHierarchy = homepageAggLocationHierarchy;
+  const filtersLoading = aggLoading || !hasAggCount;
 
-  const inMemoryApproxCount = useMemo(() => {
-    if (!hasUserInteracted) return null;
-    if (!(filtersLoading || isCalculating)) return null;
-    if (!Array.isArray(allListings) || allListings.length === 0) return null;
+  const visibleLocationHierarchy = useMemo(
+    () => filterLocationHierarchy(locationHierarchy),
+    [filterLocationHierarchy, locationHierarchy]
+  );
 
-    const MAX_SAMPLE = 800;
-    const sample = allListings.length > MAX_SAMPLE ? allListings.slice(0, MAX_SAMPLE) : allListings;
-    try {
-      const results = filterListingsFrom(sample, effectiveFilters);
-      return Array.isArray(results) ? results.length : null;
-    } catch {
-      return null;
-    }
-  }, [hasUserInteracted, filtersLoading, isCalculating, allListings, filterListingsFrom, effectiveFilters]);
-
-  useEffect(() => {
-    if (filtersLoading) {
-      if (homepageAggLocationHierarchy.length > 0) {
-        setLocationHierarchyState(homepageAggLocationHierarchy);
-      }
-      if (typeof currentCategoryAggCount === "number") {
-        setHookFilteredCount(currentCategoryAggCount);
-      }
-      return;
-    }
-
-    const ids = computeFilteredResults(effectiveFilters);
-    setHookFilteredCount(ids.size);
-
-    const filtersNoLoc = { ...effectiveFilters, province: 'Any', city: 'Any', town: 'Any', location: null };
-    const baseIds = computeFilteredResults(filtersNoLoc);
-    const tree = buildLocationTree(baseIds);
-    setLocationHierarchyState(tree);
-  }, [
-    filtersLoading,
-    effectiveFilters,
-    computeFilteredResults,
-    buildLocationTree,
-    homepageAggLocationHierarchy,
-    currentCategoryAggCount,
-  ]);
-
-  // Use the hook's data instead of client-side props processing
-  const searchButtonCount = hookFilteredCount;
-  // locationHierarchy is defined above
-  const isEngineLoaded = !filtersLoading;
+  const mobileLocationsData = useMemo(() => {
+    return locationHierarchy.map((prov, index) => ({
+      id: prov.name === "Any" ? "all" : String(index),
+      name: prov.name,
+      count: prov.count,
+      lat: prov.lat || null,
+      lng: prov.lng || null,
+    }));
+  }, [locationHierarchy]);
 
   /* 
   // OLD CLIENT-SIDE LOGIC (Replaced by useSearchFilters)

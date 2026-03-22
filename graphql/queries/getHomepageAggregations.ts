@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client"
 
 export const GET_HOMEPAGE_AGGREGATIONS = gql`
-  query HomepageAggregations {
-    homepageAggregations {
+  query GetHomepageAggregations($filters: AggregationFilters) {
+    homepageAggregations(filters: $filters) {
       categories {
         name
         count
@@ -22,4 +22,3 @@ export const GET_HOMEPAGE_AGGREGATIONS = gql`
     }
   }
 `
-
