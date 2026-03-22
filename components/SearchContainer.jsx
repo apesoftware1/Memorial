@@ -204,29 +204,65 @@ const SearchContainer = ({
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
-  const pickScalar = useCallback((v) => {
-    if (Array.isArray(v)) return v.length > 0 ? v[v.length - 1] : null;
-    if (v === undefined || v === null) return null;
-    if (v === "Any" || v === "All" || v === "") return null;
-    return v;
+  const provinceOptionSet = useMemo(() => {
+    const raw = Array.isArray(filterOptions?.location) ? filterOptions.location : [];
+    const set = new Set();
+    raw.forEach((v) => {
+      if (typeof v !== "string") return;
+      const trimmed = v.trim();
+      if (!trimmed) return;
+      const lowered = trimmed.toLowerCase();
+      if (lowered === "any" || lowered === "all" || lowered === "near me") return;
+      set.add(lowered);
+    });
+    return set;
+  }, [filterOptions?.location]);
+
+  const normalizeScalar = useCallback((v) => {
+    if (typeof v !== "string") return null;
+    const trimmed = v.trim();
+    if (!trimmed) return null;
+    const lowered = trimmed.toLowerCase();
+    if (lowered === "any" || lowered === "all") return null;
+    return trimmed;
   }, []);
+
+  const pickScalar = useCallback(
+    (v) => {
+      if (Array.isArray(v)) {
+        for (let i = v.length - 1; i >= 0; i -= 1) {
+          const normalized = normalizeScalar(v[i]);
+          if (normalized) return normalized;
+        }
+        return null;
+      }
+      return normalizeScalar(v);
+    },
+    [normalizeScalar]
+  );
 
   const parseLocationSelection = useCallback(
     (value) => {
       if (!value) return { province: null, city: null, town: null };
       if (Array.isArray(value)) {
-        const province = typeof value[0] === "string" ? value[0] : null;
-        const city = typeof value[1] === "string" ? value[1] : null;
-        const town = typeof value[2] === "string" ? value[2] : null;
+        const province = normalizeScalar(value[0]);
+        const city = normalizeScalar(value[1]);
+        const town = normalizeScalar(value[2]);
         return { province, city, town };
       }
       if (typeof value === "string") {
-        if (value.toLowerCase() === "near me") return { province: null, city: null, town: null };
-        return { province: value, city: null, town: null };
+        const lowered = value.trim().toLowerCase();
+        if (lowered === "near me") return { province: null, city: null, town: null };
+        const normalized = normalizeScalar(value);
+        if (!normalized) return { province: null, city: null, town: null };
+        if (provinceOptionSet.has(normalized.toLowerCase())) {
+          return { province: normalized, city: null, town: null };
+        }
+        return { province: null, city: normalized, town: null };
       }
       return { province: null, city: null, town: null };
     },
-    []
+    [normalizeScalar, provinceOptionSet]
   );
 
   const effectiveAggFilters = useMemo(() => {
@@ -250,11 +286,7 @@ const SearchContainer = ({
     };
   }, [filters, parseLocationSelection, pickScalar]);
 
-  const {
-    data: homepageAggData,
-    loading: aggLoading,
-    error: aggError,
-  } = useHomepageAggregations({
+  const { data: homepageAggData, loading: aggLoading } = useHomepageAggregations({
     filters: effectiveAggFilters,
   });
 
@@ -808,113 +840,10 @@ const SearchContainer = ({
       .filter((p) => p.name);
   }, [currentCategoryAgg]);
 
-  const fallbackListingsNoLocation = useMemo(() => {
-    const nextFilters = filters ? { ...filters, location: "Any" } : { location: "Any" };
-    return filterListingsFrom(allListings, nextFilters);
-  }, [allListings, filters, filterListingsFrom]);
-
-  const fallbackCount = useMemo(() => {
-    const nextFilters = filters || {};
-    const results = filterListingsFrom(allListings, nextFilters);
-    return Array.isArray(results) ? results.length : 0;
-  }, [allListings, filters, filterListingsFrom]);
-
-  const fallbackLocationHierarchy = useMemo(() => {
-    const provinceMap = new Map();
-
-    const normalizeName = (v) => (typeof v === "string" ? v.trim() : "");
-    const normalizeNodeName = (v) => toTitleCase(normalizeName(v));
-    const getListingId = (l) => String(l?.documentId || l?.id || "");
-
-    for (const listing of fallbackListingsNoLocation) {
-      const listingId = getListingId(listing);
-      if (!listingId) continue;
-
-      const tuples = new Set();
-
-      const branches = Array.isArray(listing?.branches) ? listing.branches : [];
-      for (const b of branches) {
-        const loc = b?.location;
-        if (!loc) continue;
-        const prov = normalizeNodeName(loc.province);
-        const city = normalizeNodeName(loc.city);
-        const town = normalizeNodeName(loc.town);
-        if (!prov) continue;
-        tuples.add(`${prov}|${city}|${town}`);
-      }
-
-      const branchListings = Array.isArray(listing?.branch_listings) ? listing.branch_listings : [];
-      for (const bl of branchListings) {
-        const loc = bl?.branch?.location;
-        if (!loc) continue;
-        const prov = normalizeNodeName(loc.province);
-        const city = normalizeNodeName(loc.city);
-        const town = normalizeNodeName(loc.town);
-        if (!prov) continue;
-        tuples.add(`${prov}|${city}|${town}`);
-      }
-
-      for (const tuple of tuples) {
-        const [prov, city, town] = tuple.split("|");
-
-        if (!provinceMap.has(prov)) {
-          provinceMap.set(prov, { ids: new Set(), cities: new Map() });
-        }
-        const provNode = provinceMap.get(prov);
-        provNode.ids.add(listingId);
-
-        if (city) {
-          if (!provNode.cities.has(city)) {
-            provNode.cities.set(city, { ids: new Set(), towns: new Map() });
-          }
-          const cityNode = provNode.cities.get(city);
-          cityNode.ids.add(listingId);
-
-          if (town) {
-            if (!cityNode.towns.has(town)) {
-              cityNode.towns.set(town, { ids: new Set() });
-            }
-            const townNode = cityNode.towns.get(town);
-            townNode.ids.add(listingId);
-          }
-        }
-      }
-    }
-
-    const toSortedArray = (map, toItem) =>
-      Array.from(map.entries())
-        .map(([name, node]) => toItem(name, node))
-        .sort((a, b) => (b.count || 0) - (a.count || 0) || String(a.name).localeCompare(String(b.name)));
-
-    return toSortedArray(provinceMap, (provName, provNode) => ({
-      name: provName,
-      count: provNode.ids.size,
-      cities: toSortedArray(provNode.cities, (cityName, cityNode) => ({
-        name: cityName,
-        count: cityNode.ids.size,
-        towns: toSortedArray(cityNode.towns, (townName, townNode) => ({
-          name: townName,
-          count: townNode.ids.size,
-        })),
-      })),
-    }));
-  }, [fallbackListingsNoLocation]);
-
-  const searchButtonCount =
-    typeof currentCategoryAggCount === "number"
-      ? currentCategoryAggCount
-      : aggError
-      ? fallbackCount
-      : 0;
-
-  const locationHierarchy =
-    homepageAggLocationHierarchy.length > 0
-      ? homepageAggLocationHierarchy
-      : aggError
-      ? fallbackLocationHierarchy
-      : [];
-
-  const filtersLoading = aggLoading && !aggError;
+  const hasAggCount = typeof currentCategoryAggCount === "number";
+  const searchButtonCount = hasAggCount ? currentCategoryAggCount : 0;
+  const locationHierarchy = homepageAggLocationHierarchy;
+  const filtersLoading = aggLoading || !hasAggCount;
 
   const visibleLocationHierarchy = useMemo(
     () => filterLocationHierarchy(locationHierarchy),
