@@ -840,10 +840,12 @@ const SearchContainer = ({
       .filter((p) => p.name);
   }, [currentCategoryAgg]);
 
+  const aggHasCategories = Array.isArray(homepageAggData?.homepageAggregations?.categories);
+  const aggResolved = !aggLoading && aggHasCategories;
   const hasAggCount = typeof currentCategoryAggCount === "number";
-  const searchButtonCount = hasAggCount ? currentCategoryAggCount : 0;
+  const searchButtonCount = aggResolved && hasAggCount ? currentCategoryAggCount : aggResolved ? 0 : 0;
   const locationHierarchy = homepageAggLocationHierarchy;
-  const filtersLoading = aggLoading || !hasAggCount;
+  const filtersLoading = aggLoading || !aggResolved;
 
   const visibleLocationHierarchy = useMemo(
     () => filterLocationHierarchy(locationHierarchy),
@@ -859,6 +861,8 @@ const SearchContainer = ({
       lng: prov.lng || null,
     }));
   }, [locationHierarchy]);
+
+  const inMemoryApproxCount = null;
 
   /* 
   // OLD CLIENT-SIDE LOGIC (Replaced by useSearchFilters)
