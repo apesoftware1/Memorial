@@ -309,7 +309,7 @@ const SearchContainer = ({
     }, {});
   }, [homepageAggData]);
 
-  // Internal state for search functionality if not provided
+  // Internal state for search functionality if not providedd
   const [internalIsSearching, setInternalIsSearching] = useState(false);
 
   useEffect(() => {
