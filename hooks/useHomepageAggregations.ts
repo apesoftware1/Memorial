@@ -22,8 +22,17 @@ export const useHomepageAggregations = (
         continue
       }
       if (Array.isArray(value)) {
-        if (value.length === 0) continue
-        cleaned[key] = value
+        const next = value
+          .map((v) => (typeof v === "string" ? v.trim() : v))
+          .filter((v) => v !== undefined && v !== null)
+          .filter((v) => {
+            if (typeof v !== "string") return true
+            if (!v) return false
+            const lowered = v.toLowerCase()
+            return lowered !== "any" && lowered !== "all"
+          })
+        if (next.length === 0) continue
+        cleaned[key] = next
         continue
       }
       cleaned[key] = value
