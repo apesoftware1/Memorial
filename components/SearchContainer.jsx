@@ -245,10 +245,19 @@ const SearchContainer = ({
     (value) => {
       if (!value) return { province: null, city: null, town: null };
       if (Array.isArray(value)) {
-        const province = normalizeScalar(value[0]);
-        const city = normalizeScalar(value[1]);
-        const town = normalizeScalar(value[2]);
-        return { province, city, town };
+        const arr = value.map(normalizeScalar).filter(Boolean);
+        if (arr.length === 0) return { province: null, city: null, town: null };
+        // If first looks like a province, map by position; else treat last as most-specific city/town
+        const first = arr[0]?.toLowerCase?.();
+        if (first && provinceOptionSet.has(first)) {
+          return {
+            province: arr[0] || null,
+            city: arr[1] || null,
+            town: arr[2] || null,
+          };
+        }
+        // Non-province array: select last as city (most specific)
+        return { province: null, city: arr[arr.length - 1] || null, town: null };
       }
       if (typeof value === "string") {
         const lowered = value.trim().toLowerCase();

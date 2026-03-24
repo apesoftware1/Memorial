@@ -116,41 +116,6 @@ export function PremiumListingCard({
     const target = e.target as HTMLElement;
     if (target.closest(".manufacturer-link")) return;
 
-    // Get branches array
-    let branches: any[] = [];
-    if (Array.isArray(listing?.branch_listings) && listing.branch_listings.length > 0) {
-      branches = listing.branch_listings.map((bl: any) => bl.branch).filter(Boolean);
-    } else {
-      branches = Array.isArray(listing?.branches) ? listing.branches : [];
-    }
-    
-    // If listing has more than one branch, prevent navigation and call ViewListingByBranchesModal
-    if (branches.length > 1) {
-      e.preventDefault();
-      // Use onPrimaryClick to open the modal
-      if (typeof onPrimaryClick === "function") {
-        onPrimaryClick(listing);
-        return;
-      }
-    } 
-    // If listing has exactly one branch, navigate directly to the product page
-    else if (branches.length === 1) {
-      const branchId = branches[0]?.id || branches[0]?.documentId;
-      const listingId = listing?.documentId || listing?.id;
-      if (listingId && branchId) {
-        e.preventDefault();
-        // Route to tombstone listing detail with branch context
-        router.push(`/tombstones-for-sale/${listingId}?branch=${branchId}`);
-        return;
-      }
-    }
-    
-    // Keep existing onPrimaryClick logic intact for other cases
-    if (typeof onPrimaryClick === "function") {
-      const handled = onPrimaryClick(listing);
-      if (handled) return;
-    }
-
     // Only navigate if not handled by any of the above
     e.preventDefault(); // Prevent any default behavior
     router.push(productUrl);
@@ -236,9 +201,17 @@ export function PremiumListingCard({
   return (
     <div className="relative mt-7" ref={cardRef} onContextMenu={(e) => e.preventDefault()} onDragStart={(e) => e.preventDefault()}>
       {hasBranches && isTombstonesForSalePage && (
-        <div className="absolute -top-7 right-0 z-10 bg-gray-800 text-white px-3 py-1 text-sm font-medium rounded-t-md">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (typeof onPrimaryClick === "function") onPrimaryClick(listing);
+          }}
+          className="absolute -top-7 right-0 z-10 bg-gray-800 text-white px-3 py-1 text-sm font-medium rounded-t-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-white/60"
+          aria-label={`Show branches for ${listing?.title || 'listing'}`}
+        >
           Available at {branches.length} {branches.length === 1 ? 'Branch' : 'Branches'}
-        </div>
+        </button>
       )}
       <div
         className={cn(
@@ -352,11 +325,17 @@ export function PremiumListingCard({
                 {listing.adFlasher || "Unique Design"}
               </Badge>
               {hasBranches && branches.length > 1 && isTombstonesForSalePage && (
-                <Badge
-                  className={cn("bg-blue-600 text-white text-sm px-3 py-1 rounded")}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (typeof onPrimaryClick === "function") onPrimaryClick(listing);
+                  }}
+                  className={cn("bg-blue-600 text-white text-sm px-3 py-1 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300")}
+                  aria-label={`Show branches for ${listing?.title || 'listing'}`}
                 >
-                  Available at {branches.length} Branches
-                </Badge>
+                  View More Branches
+                </button>
               )}
             </div>
           </div>
@@ -871,4 +850,3 @@ const shouldShowDetail = (value: any) => {
   // show only if contains any non-digit character
   return /[^\d]/.test(str);
 };
-
