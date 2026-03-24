@@ -537,17 +537,37 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     return v;
   };
 
+  const provinces = new Set([
+    "gauteng",
+    "western cape",
+    "kwazulu-natal",
+    "eastern cape",
+    "free state",
+    "limpopo",
+    "northern cape",
+    "mpumalanga",
+    "north west",
+    "northwest", // tolerate variant
+  ]);
+
+  const norm = (v) => (typeof v === "string" ? v.trim() : null);
+  const normLower = (v) => (typeof v === "string" ? v.trim().toLowerCase() : null);
+
   const parseLocationSelection = (value) => {
     if (!value) return { province: null, city: null, town: null };
     if (Array.isArray(value)) {
-      const province = typeof value[0] === "string" ? value[0] : null;
-      const city = typeof value[1] === "string" ? value[1] : null;
-      const town = typeof value[2] === "string" ? value[2] : null;
+      const province = norm(value[0]);
+      const city = norm(value[1]);
+      const town = norm(value[2]);
       return { province, city, town };
     }
     if (typeof value === "string") {
-      if (value.toLowerCase() === "near me") return { province: null, city: null, town: null };
-      return { province: value, city: null, town: null };
+      const lowered = normLower(value);
+      if (lowered === "near me") return { province: null, city: null, town: null };
+      if (provinces.has(lowered)) {
+        return { province: norm(value), city: null, town: null };
+      }
+      return { province: null, city: norm(value), town: null };
     }
     return { province: null, city: null, town: null };
   };
