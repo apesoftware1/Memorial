@@ -448,13 +448,24 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         const id = (listing?.id || '').toString().toLowerCase();
         const productId = (listing?.productDetails?.id || '').toLowerCase();
         const listingSlug = (listing?.slug || '').toLowerCase();
-        
+        const categoryName = (listing?.listing_category?.name || '').toLowerCase();
+        const pd = listing?.productDetails || {};
+        const arrVals = [
+          ...(Array.isArray(pd.style) ? pd.style.map(v => v?.value || '') : []),
+          ...(Array.isArray(pd.slabStyle) ? pd.slabStyle.map(v => v?.value || '') : []),
+          ...(Array.isArray(pd.stoneType) ? pd.stoneType.map(v => v?.value || '') : []),
+          ...(Array.isArray(pd.color) ? pd.color.map(v => v?.value || '') : []),
+          ...(Array.isArray(pd.customization) ? pd.customization.map(v => v?.value || '') : []),
+        ].map(s => (s || '').toLowerCase());
+        const matchDetail = arrVals.some(s => s.includes(searchQuery));
         return title.includes(searchQuery) || 
                companyName.includes(searchQuery) || 
                documentId.includes(searchQuery) ||
                id.includes(searchQuery) ||
                productId.includes(searchQuery) ||
-               listingSlug.includes(searchQuery);
+               listingSlug.includes(searchQuery) ||
+               categoryName.includes(searchQuery) ||
+               matchDetail;
       });
     }
     
@@ -537,6 +548,49 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     return v;
   };
 
+  const canonicalizeFromOptions = (value, options) => {
+    if (!value || typeof value !== "string") return value;
+    if (!Array.isArray(options) || options.length === 0) return value;
+    const lowered = value.trim().toLowerCase();
+    if (!lowered) return value;
+    const match = options.find(
+      (opt) => typeof opt === "string" && opt.trim().toLowerCase() === lowered
+    );
+    return typeof match === "string" ? match : value;
+  };
+
+  const stoneTypeOptions = [
+    "Biodegradable",
+    "Brass",
+    "Ceramic/Porcelain",
+    "Composite",
+    "Concrete",
+    "Copper",
+    "Glass",
+    "Granite",
+    "Limestone",
+    "Marble",
+    "Perspex",
+    "Quartzite",
+    "Sandstone",
+    "Slate",
+    "Steel",
+    "Stone",
+    "Tile",
+    "Wood",
+  ];
+
+  const slabStyleOptions = [
+    "Curved Slab",
+    "Frame with Infill",
+    "Full Slab",
+    "Glass Slab",
+    "Half Slab",
+    "Stepped Slab",
+    "Tiled Slab",
+    "Double",
+  ];
+
   const provinces = new Set([
     "gauteng",
     "western cape",
@@ -591,9 +645,9 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       maxPrice: Number.isFinite(maxPrice) && maxPrice > 0 ? maxPrice : null,
       color: pickScalar(activeFilters?.colour || activeFilters?.color),
       style: pickScalar(activeFilters?.style),
-      stoneType: pickScalar(activeFilters?.stoneType),
+      stoneType: canonicalizeFromOptions(pickScalar(activeFilters?.stoneType), stoneTypeOptions),
       customization: pickScalar(activeFilters?.custom),
-      slabStyle: pickScalar(activeFilters?.slabStyle),
+      slabStyle: canonicalizeFromOptions(pickScalar(activeFilters?.slabStyle), slabStyleOptions),
     };
   }, [activeFilters]);
 
@@ -694,10 +748,16 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     }, {});
   }, [homepageAggData]);
 
+  const hasSearchTerm = useMemo(() => {
+    const s = activeFilters?.search;
+    return typeof s === "string" && s.trim() !== "";
+  }, [activeFilters?.search]);
+
   const categoryCounts = useMemo(() => {
+    if (hasSearchTerm) return computedCategoryCounts;
     if (!homepageAggError && homepageAggCategoryCounts) return homepageAggCategoryCounts;
     return computedCategoryCounts;
-  }, [homepageAggError, homepageAggCategoryCounts, computedCategoryCounts]);
+  }, [hasSearchTerm, homepageAggError, homepageAggCategoryCounts, computedCategoryCounts]);
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -1229,7 +1289,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                 getActiveCategory={getActiveCategory}
                 showCategoryDropdown={true}
                 locationsData={locationHierarchy}
-                initialCount={activeCategoryAggCount}
+                initialCount={hasSearchTerm ? filteredListings.length : activeCategoryAggCount}
                 isBackgroundLoading={!enableQueries || loading}
               />
             </div>
@@ -1278,7 +1338,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                   getActiveCategory={getActiveCategory}
                   showCategoryDropdown={true}
                   locationsData={locationHierarchy}
-                  initialCount={activeCategoryAggCount}
+                  initialCount={hasSearchTerm ? filteredListings.length : activeCategoryAggCount}
                   isBackgroundLoading={!enableQueries || loading}
                 />
               </div>
