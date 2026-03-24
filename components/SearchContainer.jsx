@@ -241,6 +241,17 @@ const SearchContainer = ({
     [normalizeScalar]
   );
 
+  const canonicalizeFromOptions = useCallback((value, options) => {
+    if (!value || typeof value !== "string") return value;
+    if (!Array.isArray(options) || options.length === 0) return value;
+    const lowered = value.trim().toLowerCase();
+    if (!lowered) return value;
+    const match = options.find(
+      (opt) => typeof opt === "string" && opt.trim().toLowerCase() === lowered
+    );
+    return typeof match === "string" ? match : value;
+  }, []);
+
   const parseLocationSelection = useCallback(
     (value) => {
       if (!value) return { province: null, city: null, town: null };
@@ -275,25 +286,30 @@ const SearchContainer = ({
   );
 
   const effectiveAggFilters = useMemo(() => {
-    const loc = parseLocationSelection(filters?.location);
     const minPrice =
       filters?.minPrice && filters.minPrice !== "Min Price" ? parsePrice(filters.minPrice) : null;
     const maxPrice =
       filters?.maxPrice && filters.maxPrice !== "Max Price" ? parsePrice(filters.maxPrice) : null;
 
+    const rawColor = pickScalar(filters?.colour || filters?.color);
+    const rawStyle = pickScalar(filters?.style);
+    const rawStoneType = pickScalar(filters?.stoneType);
+    const rawCustomization = pickScalar(filters?.custom);
+    const rawSlabStyle = pickScalar(filters?.slabStyle);
+
     return {
-      province: loc.province,
-      city: loc.city,
-      town: loc.town,
+      province: null,
+      city: null,
+      town: null,
       minPrice: Number.isFinite(minPrice) && minPrice > 0 ? minPrice : null,
       maxPrice: Number.isFinite(maxPrice) && maxPrice > 0 ? maxPrice : null,
-      color: pickScalar(filters?.colour || filters?.color),
-      style: pickScalar(filters?.style),
-      stoneType: pickScalar(filters?.stoneType),
-      customization: pickScalar(filters?.custom),
-      slabStyle: pickScalar(filters?.slabStyle),
+      color: canonicalizeFromOptions(rawColor, filterOptions?.colour),
+      style: canonicalizeFromOptions(rawStyle, filterOptions?.style),
+      stoneType: canonicalizeFromOptions(rawStoneType, filterOptions?.stoneType),
+      customization: canonicalizeFromOptions(rawCustomization, filterOptions?.custom),
+      slabStyle: canonicalizeFromOptions(rawSlabStyle, filterOptions?.slabStyle),
     };
-  }, [filters, parseLocationSelection, pickScalar]);
+  }, [filters, pickScalar, canonicalizeFromOptions, filterOptions]);
 
   const { data: homepageAggData, loading: aggLoading } = useHomepageAggregations({
     filters: effectiveAggFilters,
@@ -668,6 +684,15 @@ const SearchContainer = ({
           const id = (listing?.id || "").toString().toLowerCase();
           const productId = (listing?.productDetails?.id || "").toLowerCase();
           const listingSlug = (listing?.slug || "").toLowerCase();
+          const categoryName = (listing?.listing_category?.name || "").toLowerCase();
+          const pd = listing?.productDetails || {};
+          const arrVals = [
+            ...(Array.isArray(pd.style) ? pd.style.map(v => v?.value || "") : []),
+            ...(Array.isArray(pd.slabStyle) ? pd.slabStyle.map(v => v?.value || "") : []),
+            ...(Array.isArray(pd.stoneType) ? pd.stoneType.map(v => v?.value || "") : []),
+            ...(Array.isArray(pd.color) ? pd.color.map(v => v?.value || "") : []),
+            ...(Array.isArray(pd.customization) ? pd.customization.map(v => v?.value || "") : []),
+          ].map(s => (s || "").toLowerCase());
 
           return (
             title.includes(searchQuery) ||
@@ -675,7 +700,9 @@ const SearchContainer = ({
             documentId.includes(searchQuery) ||
             id.includes(searchQuery) ||
             productId.includes(searchQuery) ||
-            listingSlug.includes(searchQuery)
+            listingSlug.includes(searchQuery) ||
+            categoryName.includes(searchQuery) ||
+            arrVals.some(s => s.includes(searchQuery))
           );
         })
           // Category
@@ -852,9 +879,66 @@ const SearchContainer = ({
   const aggHasCategories = Array.isArray(homepageAggData?.homepageAggregations?.categories);
   const aggResolved = !aggLoading && aggHasCategories;
   const hasAggCount = typeof currentCategoryAggCount === "number";
-  const searchButtonCount = aggResolved && hasAggCount ? currentCategoryAggCount : aggResolved ? 0 : 0;
   const locationHierarchy = homepageAggLocationHierarchy;
   const filtersLoading = aggLoading || !aggResolved;
+
+  const selectedLocationValues = useMemo(() => {
+    const value = filters?.location;
+    if (!value) return [];
+    if (Array.isArray(value)) {
+      return value
+        .map((v) => (typeof v === "string" ? v.trim() : ""))
+        .filter((v) => v && v.toLowerCase() !== "any" && v.toLowerCase() !== "all");
+    }
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) return [];
+      const lowered = trimmed.toLowerCase();
+      if (lowered === "any" || lowered === "all") return [];
+      return [trimmed];
+    }
+    return [];
+  }, [filters?.location]);
+
+  const selectedLocationCount = useMemo(() => {
+    if (!Array.isArray(locationHierarchy) || locationHierarchy.length === 0) return null;
+    if (!Array.isArray(selectedLocationValues) || selectedLocationValues.length === 0) return null;
+
+    const provCounts = new Map();
+    const cityCounts = new Map();
+    const townCounts = new Map();
+
+    for (const prov of locationHierarchy) {
+      if (prov?.name) provCounts.set(String(prov.name).toLowerCase(), prov?.count || 0);
+      const cities = Array.isArray(prov?.cities) ? prov.cities : [];
+      for (const city of cities) {
+        if (city?.name) cityCounts.set(String(city.name).toLowerCase(), city?.count || 0);
+        const towns = Array.isArray(city?.towns) ? city.towns : [];
+        for (const town of towns) {
+          if (town?.name) townCounts.set(String(town.name).toLowerCase(), town?.count || 0);
+        }
+      }
+    }
+
+    const normalizedSelections = selectedLocationValues.map((v) => v.toLowerCase());
+    const matchedTown = normalizedSelections.filter((k) => townCounts.has(k));
+    const matchedCity = normalizedSelections.filter((k) => cityCounts.has(k));
+    const matchedProv = normalizedSelections.filter((k) => provCounts.has(k));
+
+    const sum = (keys, map) => keys.reduce((acc, k) => acc + (map.get(k) || 0), 0);
+
+    if (matchedTown.length > 0) return sum(matchedTown, townCounts);
+    if (matchedCity.length > 0) return sum(matchedCity, cityCounts);
+    if (matchedProv.length > 0) return sum(matchedProv, provCounts);
+    return 0;
+  }, [locationHierarchy, selectedLocationValues]);
+
+  const searchButtonCount =
+    aggResolved && typeof selectedLocationCount === "number"
+      ? selectedLocationCount
+      : aggResolved && hasAggCount
+      ? currentCategoryAggCount
+      : 0;
 
   const visibleLocationHierarchy = useMemo(
     () => filterLocationHierarchy(locationHierarchy),
@@ -1088,6 +1172,11 @@ const SearchContainer = ({
   // Select option from dropdown
   const selectOption = useCallback(
     (name, value, keepOpen = false) => {
+      const forceKeepOpen =
+        name === "location" &&
+        typeof window !== "undefined" &&
+        window.innerWidth >= 768;
+
       setHasUserInteracted(true);
       setIsCalculating(true);
     
@@ -1102,7 +1191,7 @@ const SearchContainer = ({
           return newFilters;
         });
       }
-      if (!keepOpen) {
+      if (!(keepOpen || forceKeepOpen)) {
         setUiState((prev) => ({
           ...prev,
           openDropdown: null,
@@ -1158,7 +1247,25 @@ const SearchContainer = ({
 
                   // Update search filter in real-time as user types
                   if (setFilters) {
-                    setFilters((prev) => ({ ...prev, search: searchTerm }));
+                    setFilters((prev) => {
+                      const next = { ...prev, search: searchTerm };
+
+                      if (
+                        searchTermLower.includes("cheap") ||
+                        searchTermLower.includes("affordable")
+                      ) {
+                        next.minPrice = "R 5,001";
+                        next.maxPrice = "R 15,000";
+                      }
+
+                      if (searchTermLower.includes("granite")) {
+                        next.stoneType = "Granite";
+                      } else if (searchTermLower.includes("marble")) {
+                        next.stoneType = "Marble";
+                      }
+
+                      return next;
+                    });
                   }
 
                   if (setSelectedCategory) {
@@ -1173,26 +1280,6 @@ const SearchContainer = ({
                     } else if (searchTermLower.includes("cremation")) {
                       setSelectedCategory("CREMATION");
                     }
-                  }
-
-                  if (setFilters) {
-                    const newFilters = { ...filters };
-
-                    if (
-                      searchTermLower.includes("cheap") ||
-                      searchTermLower.includes("affordable")
-                    ) {
-                      newFilters.minPrice = "R 5,001";
-                      newFilters.maxPrice = "R 15,000";
-                    }
-
-                    if (searchTermLower.includes("granite")) {
-                      newFilters.stoneType = "Granite";
-                    } else if (searchTermLower.includes("marble")) {
-                      newFilters.stoneType = "Marble";
-                    }
-
-                    setFilters(newFilters);
                   }
                 }}
                 onSubmit={(searchContent) => {
