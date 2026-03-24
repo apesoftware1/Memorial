@@ -199,6 +199,7 @@ const SearchContainer = ({
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const hasMountedRef = useRef(false);
   const prevActiveTabRef = useRef(activeTab);
+  const [stickyLocationHierarchy, setStickyLocationHierarchy] = useState([]);
 
   // Check if screen is desktop/laptop
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
@@ -241,15 +242,43 @@ const SearchContainer = ({
     [normalizeScalar]
   );
 
+  const pickMulti = useCallback(
+    (v) => {
+      if (Array.isArray(v)) {
+        const out = v
+          .map(normalizeScalar)
+          .filter(Boolean)
+          .filter((x, idx, arr) => arr.indexOf(x) === idx);
+        return out.length > 0 ? out : null;
+      }
+      return normalizeScalar(v);
+    },
+    [normalizeScalar]
+  );
+
   const canonicalizeFromOptions = useCallback((value, options) => {
-    if (!value || typeof value !== "string") return value;
+    if (!value) return value;
     if (!Array.isArray(options) || options.length === 0) return value;
-    const lowered = value.trim().toLowerCase();
-    if (!lowered) return value;
-    const match = options.find(
-      (opt) => typeof opt === "string" && opt.trim().toLowerCase() === lowered
-    );
-    return typeof match === "string" ? match : value;
+
+    const canonicalizeOne = (v) => {
+      if (!v || typeof v !== "string") return v;
+      const lowered = v.trim().toLowerCase();
+      if (!lowered) return v;
+      const match = options.find(
+        (opt) => typeof opt === "string" && opt.trim().toLowerCase() === lowered
+      );
+      return typeof match === "string" ? match : v;
+    };
+
+    if (Array.isArray(value)) {
+      const out = value
+        .map(canonicalizeOne)
+        .filter((v) => typeof v === "string" && v.trim() !== "")
+        .filter((x, idx, arr) => arr.indexOf(x) === idx);
+      return out.length > 0 ? out : null;
+    }
+
+    return canonicalizeOne(value);
   }, []);
 
   const parseLocationSelection = useCallback(
@@ -258,17 +287,32 @@ const SearchContainer = ({
       if (Array.isArray(value)) {
         const arr = value.map(normalizeScalar).filter(Boolean);
         if (arr.length === 0) return { province: null, city: null, town: null };
-        // If first looks like a province, map by position; else treat last as most-specific city/town
-        const first = arr[0]?.toLowerCase?.();
-        if (first && provinceOptionSet.has(first)) {
+        const provinces = arr.filter((v) => provinceOptionSet.has(v.toLowerCase()));
+        const others = arr.filter((v) => !provinceOptionSet.has(v.toLowerCase()));
+
+        if (others.length > 0) {
           return {
-            province: arr[0] || null,
-            city: arr[1] || null,
-            town: arr[2] || null,
+            province:
+              provinces.length === 0
+                ? null
+                : provinces.length === 1
+                ? provinces[0]
+                : provinces,
+            city: others.length === 1 ? others[0] : others,
+            town: null,
           };
         }
-        // Non-province array: select last as city (most specific)
-        return { province: null, city: arr[arr.length - 1] || null, town: null };
+
+        return {
+          province:
+            provinces.length === 0
+              ? null
+              : provinces.length === 1
+              ? provinces[0]
+              : provinces,
+          city: null,
+          town: null,
+        };
       }
       if (typeof value === "string") {
         const lowered = value.trim().toLowerCase();
@@ -286,21 +330,22 @@ const SearchContainer = ({
   );
 
   const effectiveAggFilters = useMemo(() => {
+    const loc = parseLocationSelection(filters?.location);
     const minPrice =
       filters?.minPrice && filters.minPrice !== "Min Price" ? parsePrice(filters.minPrice) : null;
     const maxPrice =
       filters?.maxPrice && filters.maxPrice !== "Max Price" ? parsePrice(filters.maxPrice) : null;
 
-    const rawColor = pickScalar(filters?.colour || filters?.color);
-    const rawStyle = pickScalar(filters?.style);
-    const rawStoneType = pickScalar(filters?.stoneType);
-    const rawCustomization = pickScalar(filters?.custom);
-    const rawSlabStyle = pickScalar(filters?.slabStyle);
+    const rawColor = pickMulti(filters?.colour || filters?.color);
+    const rawStyle = pickMulti(filters?.style);
+    const rawStoneType = pickMulti(filters?.stoneType);
+    const rawCustomization = pickMulti(filters?.custom);
+    const rawSlabStyle = pickMulti(filters?.slabStyle);
 
     return {
-      province: null,
-      city: null,
-      town: null,
+      province: loc.province,
+      city: loc.city,
+      town: loc.town,
       minPrice: Number.isFinite(minPrice) && minPrice > 0 ? minPrice : null,
       maxPrice: Number.isFinite(maxPrice) && maxPrice > 0 ? maxPrice : null,
       color: canonicalizeFromOptions(rawColor, filterOptions?.colour),
@@ -309,7 +354,7 @@ const SearchContainer = ({
       customization: canonicalizeFromOptions(rawCustomization, filterOptions?.custom),
       slabStyle: canonicalizeFromOptions(rawSlabStyle, filterOptions?.slabStyle),
     };
-  }, [filters, pickScalar, canonicalizeFromOptions, filterOptions]);
+  }, [filters, parseLocationSelection, pickMulti, canonicalizeFromOptions, filterOptions]);
 
   const { data: homepageAggData, loading: aggLoading } = useHomepageAggregations({
     filters: effectiveAggFilters,
@@ -830,9 +875,8 @@ const SearchContainer = ({
 
   const currentCategoryAgg = useMemo(() => {
     const name = typeof currentCategoryName === "string" ? currentCategoryName.toUpperCase() : "";
-    if (name && homepageAggByCategory[name]) return homepageAggByCategory[name];
-    if (homepageAggByCategory["SINGLE"]) return homepageAggByCategory["SINGLE"];
-    return null;
+    if (name) return homepageAggByCategory[name] || null;
+    return homepageAggByCategory["SINGLE"] || null;
   }, [currentCategoryName, homepageAggByCategory]);
 
   const currentCategoryAggCount = useMemo(() => {
@@ -876,12 +920,6 @@ const SearchContainer = ({
       .filter((p) => p.name);
   }, [currentCategoryAgg]);
 
-  const aggHasCategories = Array.isArray(homepageAggData?.homepageAggregations?.categories);
-  const aggResolved = !aggLoading && aggHasCategories;
-  const hasAggCount = typeof currentCategoryAggCount === "number";
-  const locationHierarchy = homepageAggLocationHierarchy;
-  const filtersLoading = aggLoading || !aggResolved;
-
   const selectedLocationValues = useMemo(() => {
     const value = filters?.location;
     if (!value) return [];
@@ -900,45 +938,30 @@ const SearchContainer = ({
     return [];
   }, [filters?.location]);
 
-  const selectedLocationCount = useMemo(() => {
-    if (!Array.isArray(locationHierarchy) || locationHierarchy.length === 0) return null;
-    if (!Array.isArray(selectedLocationValues) || selectedLocationValues.length === 0) return null;
+  const aggHasCategories = Array.isArray(homepageAggData?.homepageAggregations?.categories);
+  const aggResolved = !aggLoading && aggHasCategories;
+  const hasAggCount = typeof currentCategoryAggCount === "number";
+  const hasLocationSelection = selectedLocationValues.length > 0;
 
-    const provCounts = new Map();
-    const cityCounts = new Map();
-    const townCounts = new Map();
-
-    for (const prov of locationHierarchy) {
-      if (prov?.name) provCounts.set(String(prov.name).toLowerCase(), prov?.count || 0);
-      const cities = Array.isArray(prov?.cities) ? prov.cities : [];
-      for (const city of cities) {
-        if (city?.name) cityCounts.set(String(city.name).toLowerCase(), city?.count || 0);
-        const towns = Array.isArray(city?.towns) ? city.towns : [];
-        for (const town of towns) {
-          if (town?.name) townCounts.set(String(town.name).toLowerCase(), town?.count || 0);
-        }
-      }
+  useEffect(() => {
+    if (hasLocationSelection) return;
+    if (
+      Array.isArray(homepageAggLocationHierarchy) &&
+      homepageAggLocationHierarchy.length > 0
+    ) {
+      setStickyLocationHierarchy(homepageAggLocationHierarchy);
     }
+  }, [hasLocationSelection, homepageAggLocationHierarchy]);
 
-    const normalizedSelections = selectedLocationValues.map((v) => v.toLowerCase());
-    const matchedTown = normalizedSelections.filter((k) => townCounts.has(k));
-    const matchedCity = normalizedSelections.filter((k) => cityCounts.has(k));
-    const matchedProv = normalizedSelections.filter((k) => provCounts.has(k));
+  const locationHierarchy =
+    hasLocationSelection &&
+    Array.isArray(stickyLocationHierarchy) &&
+    stickyLocationHierarchy.length > 0
+      ? stickyLocationHierarchy
+      : homepageAggLocationHierarchy;
+  const filtersLoading = aggLoading || !aggResolved;
 
-    const sum = (keys, map) => keys.reduce((acc, k) => acc + (map.get(k) || 0), 0);
-
-    if (matchedTown.length > 0) return sum(matchedTown, townCounts);
-    if (matchedCity.length > 0) return sum(matchedCity, cityCounts);
-    if (matchedProv.length > 0) return sum(matchedProv, provCounts);
-    return 0;
-  }, [locationHierarchy, selectedLocationValues]);
-
-  const searchButtonCount =
-    aggResolved && typeof selectedLocationCount === "number"
-      ? selectedLocationCount
-      : aggResolved && hasAggCount
-      ? currentCategoryAggCount
-      : 0;
+  const searchButtonCount = aggResolved ? (hasAggCount ? currentCategoryAggCount : 0) : 0;
 
   const visibleLocationHierarchy = useMemo(
     () => filterLocationHierarchy(locationHierarchy),
