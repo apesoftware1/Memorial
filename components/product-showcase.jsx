@@ -272,7 +272,6 @@ export default function ProductShowcase({ listing, id, allListings = [], current
         }
         // If user denied/disabled location and we have no stored coordinates, avoid prompting and use fallback UI
         if (!storedGuestLocation && guestLocError) {
-          console.warn("[Location] Guest location unavailable/denied. Using fallback UI.");
           setDistanceOverride(null);
           return;
         }

@@ -53,6 +53,48 @@ export function PremiumListingCardModal({
   onBranchSelect,
 }: PremiumListingCardModalProps): React.ReactElement {
   if (!listing) return <></>;
+  const overrideBranches = (listing as any)?.__branchesOverride;
+  if (Array.isArray(overrideBranches) && overrideBranches.length > 0) {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+          <div className="flex justify-between items-center p-4 border-b bg-black text-white">
+            <h2 className="text-xl font-bold">{listing.title}</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700"
+              aria-label="Close modal"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="p-4">
+            <div className="grid grid-cols-1 gap-4 mt-7">
+              {overrideBranches.map((branch: any, index: number) => (
+                <PremiumBranchCard
+                  key={`${branch.id || branch.documentId || "branch"}-${index}`}
+                  branch={branch}
+                  listing={listing}
+                  onSelect={onBranchSelect}
+                  branchCount={overrideBranches.length}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="p-4 border-t">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   // Get branches array from both sources to ensure we don't miss any
   const branchesFromListings = Array.isArray(listing?.branch_listings) 
     ? listing.branch_listings.map((bl: any) => bl.branch).filter(Boolean)
@@ -79,7 +121,6 @@ export function PremiumListingCardModal({
   
   const branches = Array.from(uniqueBranches.values());
   
-  // Only show this component if there are multiple branches
   if (branches.length <= 1) return <></>;
 
   return (

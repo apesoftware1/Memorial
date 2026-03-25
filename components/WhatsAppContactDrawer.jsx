@@ -110,6 +110,7 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
       setSubmitting(false);
     }
   };
+  console.log(reps);
 
   return (
     <div className={className}>

@@ -29,6 +29,7 @@ import { useListingCategories } from "@/hooks/use-ListingCategories"
 import { useLocationHierarchy } from '@/hooks/useLocationHierarchy';
 import { useHomepageAggregations } from '@/hooks/useHomepageAggregations';
 import { checkListingLocation, toTitleCase, DEFAULT_PROVINCES, normalizeCityName } from '@/lib/locationHelpers';
+import { useGuestLocation } from "@/hooks/useGuestLocation";
 
 export default function TombstonesForSaleClient({ initialListings = [], initialCategories = [] }) {
   const [enableQueries, setEnableQueries] = useState(false);
@@ -64,6 +65,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   const [featuredActiveIndex, setFeaturedActiveIndex] = useState(0);
   const featuredScrollRef = useRef(null);
   const router = useRouter();
+  const { location: guestLocation } = useGuestLocation();
   
   const handleFeaturedScroll = () => {
     if (featuredScrollRef.current) {
@@ -365,29 +367,177 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
   const activeCategory = sortedCategories[activeTab] || null;
 
-  const handleListingPrimaryClick = (listing) => {
-    try {
-      console.log(listing.branch_listings)
-      
-      let branches = [];
-      if (Array.isArray(listing?.branch_listings) && listing.branch_listings.length > 0) {
-        branches = listing.branch_listings.map(bl => bl.branch).filter(Boolean);
-      } else {
-        branches = Array.isArray(listing?.branches) ? listing.branches : [];
+  const getBranchesForListing = useCallback((listing) => {
+    const map = new Map();
+
+    const direct = Array.isArray(listing?.branches) ? listing.branches : [];
+    for (const b of direct) {
+      const id = b?.documentId || b?.id || b?.name;
+      if (id) map.set(String(id), b);
+    }
+
+    const fromListings = Array.isArray(listing?.branch_listings) ? listing.branch_listings : [];
+    for (const bl of fromListings) {
+      const b = bl?.branch;
+      if (!b) continue;
+      const id = b?.documentId || b?.id || b?.name;
+      if (id) map.set(String(id), b);
+    }
+
+    return Array.from(map.values());
+  }, []);
+
+  const normalizeLocationToken = useCallback((v) => {
+    const s = typeof v === "string" ? v.trim() : "";
+    if (!s) return "";
+    const knownProv = DEFAULT_PROVINCES.find((p) => p.toLowerCase() === s.toLowerCase());
+    if (knownProv) return knownProv.toLowerCase();
+    return normalizeCityName(s).toLowerCase();
+  }, []);
+
+  const selectedLocationTokens = useMemo(() => {
+    const loc = activeFilters?.location;
+    if (!Array.isArray(loc) || loc.length === 0) return [];
+    return loc.map(normalizeLocationToken).filter(Boolean);
+  }, [activeFilters?.location, normalizeLocationToken]);
+
+  const getBranchCoords = useCallback((branch) => {
+    const lat = Number(
+      branch?.location?.latitude ??
+        branch?.location?.lat ??
+        branch?.latitude ??
+        branch?.lat
+    );
+    const lng = Number(
+      branch?.location?.longitude ??
+        branch?.location?.lng ??
+        branch?.longitude ??
+        branch?.lng
+    );
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
+  }, []);
+
+  const haversineKm = useCallback((a, b) => {
+    if (!a || !b) return null;
+    const R = 6371;
+    const toRad = (v) => (v * Math.PI) / 180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const aa =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(a.lat)) *
+        Math.cos(toRad(b.lat)) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa));
+    const km = R * c;
+    return Number.isFinite(km) ? km : null;
+  }, []);
+
+  const branchMatchesSelectedLocations = useCallback(
+    (branch) => {
+      if (!branch) return false;
+      if (selectedLocationTokens.length === 0) return true;
+      const province = normalizeLocationToken(branch?.location?.province);
+      const city = normalizeLocationToken(branch?.location?.city);
+      const town = normalizeLocationToken(branch?.location?.town);
+      return selectedLocationTokens.some(
+        (t) => t && (t === town || t === city || t === province)
+      );
+    },
+    [normalizeLocationToken, selectedLocationTokens]
+  );
+
+  const buildListingItem = useCallback(
+    (listing) => {
+      const listingId = listing?.documentId || listing?.id;
+      const allBranches = getBranchesForListing(listing);
+      const relevantBranches =
+        selectedLocationTokens.length > 0
+          ? allBranches.filter(branchMatchesSelectedLocations)
+          : allBranches;
+
+      const userCoords =
+        guestLocation && Number.isFinite(guestLocation.lat) && Number.isFinite(guestLocation.lng)
+          ? { lat: guestLocation.lat, lng: guestLocation.lng }
+          : null;
+
+      let primaryBranch = relevantBranches.length > 0 ? relevantBranches[0] : null;
+      let primaryDistanceKm = null;
+
+      if (relevantBranches.length > 0 && userCoords) {
+        let best = null;
+        let bestKm = null;
+        for (const b of relevantBranches) {
+          const coords = getBranchCoords(b);
+          const km = haversineKm(userCoords, coords);
+          if (km === null) continue;
+          if (bestKm === null || km < bestKm) {
+            bestKm = km;
+            best = b;
+          }
+        }
+        if (best) {
+          primaryBranch = best;
+          primaryDistanceKm = bestKm;
+        }
       }
 
-      if (branches.length > 1) {
-        setSelectedListing(listing);
+      const otherBranches = primaryBranch
+        ? relevantBranches.filter((b) => {
+            const a = b?.documentId || b?.id || b?.name;
+            const bb = primaryBranch?.documentId || primaryBranch?.id || primaryBranch?.name;
+            return a && bb ? String(a) !== String(bb) : b !== primaryBranch;
+          })
+        : [];
+
+      const href = listingId
+        ? primaryBranch?.name
+          ? `/tombstones-for-sale/${listingId}?branch=${encodeURIComponent(primaryBranch.name)}`
+          : `/tombstones-for-sale/${listingId}`
+        : "#";
+
+      const hideBranchesTag = selectedLocationTokens.length === 1;
+
+      const listingForCard =
+        relevantBranches.length > 0
+          ? {
+              ...listing,
+              branches: relevantBranches,
+              branch_listings: [],
+              currentBranch: primaryBranch,
+              __hideBranchesTag: hideBranchesTag,
+            }
+          : listing;
+
+      return {
+        id: listingId,
+        href,
+        listingForCard,
+        primaryBranch,
+        primaryDistanceKm,
+        modalBranches: otherBranches,
+        listingForModal: otherBranches.length > 0 ? { ...listing, __branchesOverride: otherBranches } : listing,
+      };
+    },
+    [
+      branchMatchesSelectedLocations,
+      getBranchCoords,
+      getBranchesForListing,
+      guestLocation,
+      haversineKm,
+      selectedLocationTokens.length,
+    ]
+  );
+
+  const handleListingPrimaryClick = (listingItem) => {
+    try {
+      const modalBranches = Array.isArray(listingItem?.modalBranches) ? listingItem.modalBranches : [];
+      if (modalBranches.length > 0) {
+        setSelectedListing(listingItem.listingForModal);
         setShowBranchesModal(true);
         return true;
-      }
-      if (branches.length === 1) {
-        const branchId = branches[0]?.id || branches[0]?.documentId;
-        const listingId = listing?.documentId || listing?.id;
-        if (listingId && branchId) {
-          router.push(`/tombstones-for-sale/${listingId}?branch=${branchId}`);
-          return true;
-        }
       }
     } catch (e) {
       console.error('Failed handling primary click for listing', e);
@@ -398,11 +548,11 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   const handleBranchSelect = (branch) => {
     try {
       const listingId = selectedListing?.documentId || selectedListing?.id;
-      const branchId = branch?.id || branch?.documentId;
+      const branchId = branch?.name || branch?.id || branch?.documentId;
       if (listingId && branchId) {
         setShowBranchesModal(false);
         const branchData = encodeURIComponent(JSON.stringify(branch));
-        router.push(`/tombstones-for-sale/${listingId}?branch=${branchId}&branchData=${branchData}`);
+        router.push(`/tombstones-for-sale/${listingId}?branch=${encodeURIComponent(branchId)}&branchData=${branchData}`);
       }
     } catch (e) {
       console.error('Failed to navigate to product showcase from branch selection', e);
@@ -754,10 +904,11 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   }, [activeFilters?.search]);
 
   const categoryCounts = useMemo(() => {
-    if (hasSearchTerm) return computedCategoryCounts;
-    if (!homepageAggError && homepageAggCategoryCounts) return homepageAggCategoryCounts;
-    return computedCategoryCounts;
-  }, [hasSearchTerm, homepageAggError, homepageAggCategoryCounts, computedCategoryCounts]);
+    const base = computedCategoryCounts || {};
+    const agg = !homepageAggError && homepageAggCategoryCounts ? homepageAggCategoryCounts : null;
+    if (!agg) return base;
+    return { ...base, ...agg };
+  }, [homepageAggError, homepageAggCategoryCounts, computedCategoryCounts]);
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -765,22 +916,25 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
   const [sortOrder, setSortOrder] = useState("Default");
 
-  let sortedListings = [...filteredListings];
-  if (sortOrder === "Price: Low to High") {
-    sortedListings.sort((a, b) => {
-      const priceA = a.price ? parsePrice(a.price) : 0;
-      const priceB = b.price ? parsePrice(b.price) : 0;
-      return priceA - priceB;
-    });
-  } else if (sortOrder === "Price: High to Low") {
-    sortedListings.sort((a, b) => {
-      const priceA = a.price ? parsePrice(a.price) : 0;
-      const priceB = b.price ? parsePrice(b.price) : 0;
-      return priceB - priceA;
-    });
-  } else if (sortOrder === "Newest First") {
-    sortedListings.sort((a, b) => (b.id > a.id ? 1 : -1));
-  }
+  const baseSortedListings = useMemo(() => {
+    const next = [...filteredListings];
+    if (sortOrder === "Price: Low to High") {
+      next.sort((a, b) => {
+        const priceA = a.price ? parsePrice(a.price) : 0;
+        const priceB = b.price ? parsePrice(b.price) : 0;
+        return priceA - priceB;
+      });
+    } else if (sortOrder === "Price: High to Low") {
+      next.sort((a, b) => {
+        const priceA = a.price ? parsePrice(a.price) : 0;
+        const priceB = b.price ? parsePrice(b.price) : 0;
+        return priceB - priceA;
+      });
+    } else if (sortOrder === "Newest First") {
+      next.sort((a, b) => (b.id > a.id ? 1 : -1));
+    }
+    return next;
+  }, [filteredListings, sortOrder]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const listingsPerPage = 20;
@@ -791,13 +945,29 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     return listings.slice(start, end);
   }
 
-  const paginatedListings = getPageListings(sortedListings, currentPage);
+  const listingItems = useMemo(() => {
+    const next = baseSortedListings.map(buildListingItem).filter((x) => x?.id);
+    const hasMultiLocations = selectedLocationTokens.length >= 2;
+    const hasUserCoords =
+      guestLocation &&
+      Number.isFinite(guestLocation.lat) &&
+      Number.isFinite(guestLocation.lng);
+    if (sortOrder === "Default" && hasMultiLocations && hasUserCoords) {
+      next.sort(
+        (a, b) =>
+          (a.primaryDistanceKm ?? Infinity) - (b.primaryDistanceKm ?? Infinity)
+      );
+    }
+    return next;
+  }, [baseSortedListings, buildListingItem, guestLocation, selectedLocationTokens.length, sortOrder]);
+
+  const paginatedListingItems = getPageListings(listingItems, currentPage);
 
   const fallbackCard = (type = "listing") => (
     <CardSkeleton className="h-full" />
   );
 
-  function getCustomFlow(listings) {
+  function getCustomFlow(listingItems) {
     let idx = 0;
     const flow = [];
     flow.push(
@@ -808,17 +978,17 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         <div className="md:hidden">
           <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide" ref={featuredScrollRef}>
             
-             {listings?.filter(l => l.isFeatured).length > 0
-               ? listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
-                   Array.isArray(product.branches) && product.branches.length > 0 ? (
-                     product.branches.map((branch) => (
-                       <div key={`${product.documentId || product.id}-${branch.documentId || branch.id}`} className="flex-shrink-0 w-64 snap-start">
-                         <FeaturedListings listing={{...product, currentBranch: branch}} />
+             {listingItems?.filter((x) => x?.listingForCard?.isFeatured).length > 0
+               ? listingItems?.filter((x) => x?.listingForCard?.isFeatured).slice(0, 3).map((item, index) => (
+                   Array.isArray(item.listingForCard.branches) && item.listingForCard.branches.length > 0 ? (
+                     item.listingForCard.branches.map((branch) => (
+                       <div key={`${item.listingForCard.documentId || item.listingForCard.id}-${branch.documentId || branch.id}`} className="flex-shrink-0 w-64 snap-start">
+                         <FeaturedListings listing={{...item.listingForCard, currentBranch: branch}} />
                        </div>
                      ))
                    ) : (
-                     <div key={product.id || index} className="flex-shrink-0 w-64 snap-start">
-                       <FeaturedListings listing={product} />
+                     <div key={item.listingForCard.id || index} className="flex-shrink-0 w-64 snap-start">
+                       <FeaturedListings listing={item.listingForCard} />
                      </div>
                    )
                  ))
@@ -843,9 +1013,9 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         </div>
 
         <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {listings?.filter(l => l.isFeatured).length > 0
-            ? listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
-                <FeaturedListings key={product.id || index} listing={product} />
+          {listingItems?.filter((x) => x?.listingForCard?.isFeatured).length > 0
+            ? listingItems?.filter((x) => x?.listingForCard?.isFeatured).slice(0, 3).map((item, index) => (
+                <FeaturedListings key={item.listingForCard.id || index} listing={item.listingForCard} />
               ))
             : fallbackCard("featured listings")}
         </div>
@@ -854,8 +1024,16 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     flow.push(<div key="banner-1" className="my-6"><BannerAd /></div>);
     flow.push(
       <div key="listings-1" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {listings.slice(idx, idx + 5).length > 0
-          ? listings.slice(idx, idx + 5).map((listing, i) => <PremiumListingCard compact={true} key={listing.id || i} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} onPrimaryClick={(e) => handleListingPrimaryClick(listing, e)} />)
+        {listingItems.slice(idx, idx + 5).length > 0
+          ? listingItems.slice(idx, idx + 5).map((item, i) => (
+              <PremiumListingCard
+                compact={true}
+                key={item.id || i}
+                listing={item.listingForCard}
+                href={item.href}
+                onPrimaryClick={() => handleListingPrimaryClick(item)}
+              />
+            ))
           : fallbackCard("listings")}
       </div>
     );
@@ -863,14 +1041,14 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     flow.push(<div key="banner-2" className="my-6"><BannerAd /></div>);
     flow.push(
       <div key="listings-2" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {listings.slice(idx, idx + 5).length > 0
-          ? listings.slice(idx, idx + 5).map((listing, i) => (
+        {listingItems.slice(idx, idx + 5).length > 0
+          ? listingItems.slice(idx, idx + 5).map((item, i) => (
               <PremiumListingCard
                 compact={true}
-                key={listing.id || i}
-                listing={listing}
-                href={`/tombstones-for-sale/${listing.documentId || listing.id}`}
-                onPrimaryClick={() => handleListingPrimaryClick(listing)}
+                key={item.id || i}
+                listing={item.listingForCard}
+                href={item.href}
+                onPrimaryClick={() => handleListingPrimaryClick(item)}
               />
             ))
            : fallbackCard("listings")}
@@ -895,14 +1073,14 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     }
     flow.push(
       <div key="listings-3" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {listings.slice(idx, idx + 5).length > 0
-          ? listings.slice(idx, idx + 5).map((listing, i) => (
+        {listingItems.slice(idx, idx + 5).length > 0
+          ? listingItems.slice(idx, idx + 5).map((item, i) => (
               <PremiumListingCard
                 compact={true}
-                key={listing.id || i}
-                listing={listing}
-                href={`/tombstones-for-sale/${listing.documentId || listing.id}`}
-                onPrimaryClick={() => handleListingPrimaryClick(listing)}
+                key={item.id || i}
+                listing={item.listingForCard}
+                href={item.href}
+                onPrimaryClick={() => handleListingPrimaryClick(item)}
               />
             ))
            : fallbackCard("listings")}
@@ -912,14 +1090,14 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     flow.push(<div key="banner-3" className="my-6"><BannerAd /></div>);
     flow.push(
       <div key="listings-4" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {listings.slice(idx, idx + 5).length > 0
-          ? listings.slice(idx, idx + 5).map((listing, i) => (
+        {listingItems.slice(idx, idx + 5).length > 0
+          ? listingItems.slice(idx, idx + 5).map((item, i) => (
               <PremiumListingCard
                 compact={true}
-                key={listing.id || i}
-                listing={listing}
-                href={`/tombstones-for-sale/${listing.documentId || listing.id}`}
-                onPrimaryClick={() => handleListingPrimaryClick(listing)}
+                key={item.id || i}
+                listing={item.listingForCard}
+                href={item.href}
+                onPrimaryClick={() => handleListingPrimaryClick(item)}
               />
             ))
            : fallbackCard("listings")}
@@ -928,9 +1106,9 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     return flow;
   }
 
-  const customFlow = getCustomFlow(paginatedListings);
+  const customFlow = getCustomFlow(paginatedListingItems);
 
-  const totalPages = Math.ceil(sortedListings.length / listingsPerPage);
+  const totalPages = Math.ceil(listingItems.length / listingsPerPage);
   
   const { totalFavorites } = useFavorites()
 
@@ -1427,11 +1605,17 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                     <p className="text-center text-xs text-gray-500 -mt-2 mb-2">*Sponsored</p>
 
                     <div className="space-y-6">
-                      {paginatedListings.length === 0 ? (
+                      {paginatedListingItems.length === 0 ? (
                         <div className="text-center text-gray-500 py-8">No tombstones found for your selected filters.</div>
                       ) : (
-                        paginatedListings.map((listing) => (
-                          <PremiumListingCard compact={true} key={listing.documentId} listing={listing} href={`/tombstones-for-sale/${listing.documentId || listing.id}`} onPrimaryClick={(e) => handleListingPrimaryClick(listing, e)} />
+                        paginatedListingItems.map((item) => (
+                          <PremiumListingCard
+                            compact={true}
+                            key={item.id}
+                            listing={item.listingForCard}
+                            href={item.href}
+                            onPrimaryClick={() => handleListingPrimaryClick(item)}
+                          />
                         ))
                       )}
                     </div>
