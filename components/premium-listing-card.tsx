@@ -121,11 +121,20 @@ export function PremiumListingCard({
     router.push(productUrl);
   };
 
-  // Calculate distance when component mounts or listing changes
-  const companyLocation = {
-    lat: Number(listing?.company?.latitude),
-    lng: Number(listing?.company?.longitude),
-  };
+  const distanceLat = Number(
+    (listing as any)?.currentBranch?.location?.latitude ??
+      (listing as any)?.currentBranch?.location?.lat ??
+      listing?.company?.location?.latitude ??
+      listing?.company?.location?.lat ??
+      listing?.company?.latitude
+  );
+  const distanceLng = Number(
+    (listing as any)?.currentBranch?.location?.longitude ??
+      (listing as any)?.currentBranch?.location?.lng ??
+      listing?.company?.location?.longitude ??
+      listing?.company?.location?.lng ??
+      listing?.company?.longitude
+  );
 
   // Defer distance calculation until the card is visible and the main thread is idle
   useEffect(() => {
@@ -134,7 +143,7 @@ export function PremiumListingCard({
     const node = cardRef.current;
     const observer = new IntersectionObserver((entries) => {
       const entry = entries[0];
-      if (entry && entry.isIntersecting && companyLocation.lat && companyLocation.lng) {
+      if (entry && entry.isIntersecting && distanceLat && distanceLng) {
         const schedule = (cb: () => void) => {
           if (typeof (window as any).requestIdleCallback === 'function') {
             (window as any).requestIdleCallback(cb, { timeout: 2000 });
@@ -145,7 +154,7 @@ export function PremiumListingCard({
 
         schedule(async () => {
           try {
-            const result = await calculateDistanceFrom(companyLocation);
+            const result = await calculateDistanceFrom({ lat: distanceLat, lng: distanceLng });
             setDistanceInfo(result);
             setHasFetchedDistance(true);
           } catch (_) {
@@ -159,7 +168,7 @@ export function PremiumListingCard({
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, [companyLocation.lat, companyLocation.lng, calculateDistanceFrom, hasFetchedDistance, location]);
+  }, [distanceLat, distanceLng, calculateDistanceFrom, hasFetchedDistance, location]);
   // Handle keyboard navigation for accessibility
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -192,6 +201,17 @@ export function PremiumListingCard({
   
   const branches = Array.from(uniqueBranches.values());
   const hasBranches = branches.length > 0;
+  const hideBranchesTag = Boolean((listing as any)?.__hideBranchesTag);
+  const branchForDisplay =
+    (listing as any)?.currentBranch ||
+    (branches.length === 1 ? branches[0] : null);
+  const branchAddress =
+    typeof branchForDisplay?.location?.address === "string"
+      ? branchForDisplay.location.address.trim()
+      : "";
+  const companyLocationText =
+    typeof listing.company?.location === "string" ? listing.company.location.trim() : "";
+  const locationText = branchAddress || companyLocationText || "location not set";
   
   const pathname = usePathname();
   
@@ -200,7 +220,7 @@ export function PremiumListingCard({
   
   return (
     <div className="relative mt-7" ref={cardRef} onContextMenu={(e) => e.preventDefault()} onDragStart={(e) => e.preventDefault()}>
-      {hasBranches && isTombstonesForSalePage && (
+      {hasBranches && branches.length > 1 && isTombstonesForSalePage && !hideBranchesTag && (
         <button
           type="button"
           onClick={(e) => {
@@ -503,10 +523,7 @@ export function PremiumListingCard({
               )}
               {/* Location display */}
               <div className="text-xs text-gray-600">
-                {listing.company?.location &&
-                listing.company.location.trim() !== ""
-                  ? listing.company.location
-                  : "location not set"}
+                {locationText}
               </div>
               <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
                 <Image
@@ -766,10 +783,7 @@ export function PremiumListingCard({
                       className="text-xs text-gray-800 mt-1"
                       style={{ minHeight: 18 }}
                     >
-                      {listing.company?.location &&
-                      listing.company.location.trim() !== ""
-                        ? listing.company.location
-                        : "location not set"}
+                      {locationText}
                     </div>
 
                     <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">

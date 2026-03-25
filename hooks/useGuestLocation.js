@@ -47,10 +47,14 @@ export const useGuestLocation = () => {
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setLocation({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        });
+        const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setLocation(next);
+        try {
+          localStorage.setItem(
+            "guestLocation",
+            JSON.stringify({ ...next, updatedAt: Date.now() })
+          );
+        } catch (_) {}
         setLoading(false);
       },
       (err) => {
