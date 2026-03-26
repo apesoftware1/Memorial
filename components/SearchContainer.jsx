@@ -1130,12 +1130,7 @@ const SearchContainer = ({
     }
     
     // If we have a search term
-    if (filters?.search && filters.search !== "") {
-      if (categoryLabel) {
-         return `Found ${searchButtonCount} ${categoryLabel}`;
-      }
-      return `Found ${searchButtonCount} results`;
-    }
+    // (removed specific search override text so the main button behaves normally)
 
     const displayCount = searchButtonCount;
     return `View ${displayCount}${categoryLabel ? " " + categoryLabel : ""}`;
@@ -1347,6 +1342,7 @@ const SearchContainer = ({
                 categories={categories}
                 activeTab={activeTab}
                 currentQuery={currentQuery}
+                searchButtonCount={searchButtonCount}
                 onQueryChange={(q) => setCurrentQuery(q)}
                 onTypingChange={useCallback((typing) => setIsSearchFormFocused(typing), [])}
               />

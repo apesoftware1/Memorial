@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { cloudinaryOptimized } from "@/lib/cloudinary";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FavoriteButton } from "./favorite-button";
 import Header from "@/components/Header";
 import ProductContactForm from "./product-contact-form";
@@ -19,6 +19,7 @@ import { trackAnalyticsEvent } from "@/lib/analytics";
 import MapModal from "./MapModal";
 import { useProductShowcaseLogic } from "@/hooks/product-showcase-logic";
 import { useGuestLocation } from "@/hooks/useGuestLocation";
+import { PremiumListingCardModal } from "@/components/premium-listing-card-modal";
 // Added missing modular component imports
 import ProductGallery from "./ProductGallery";
 import ProductDetails from "./ProductDetails";
@@ -42,6 +43,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileDropdown, setMobileDropdown] = useState(null);
   const [selectedBranch, setSelectedBranch] = useState(null);
+  const [showBranchesModal, setShowBranchesModal] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [shouldFetchExtras, setShouldFetchExtras] = useState(false);
   const searchParams = useSearchParams();
@@ -73,6 +75,27 @@ export default function ProductShowcase({ listing, id, allListings = [], current
   const extrasListing = extrasData?.listing;
   const branchesFromExtras = Array.isArray(extrasListing?.branches) ? extrasListing.branches : null;
   const companyListingsFromExtras = extrasListing?.company?.listings;
+
+  const branchesForModal = useMemo(() => {
+    const branches = Array.isArray(branchesFromExtras)
+      ? branchesFromExtras
+      : Array.isArray(listing?.branches)
+      ? listing.branches
+      : [];
+    if (!Array.isArray(branches) || branches.length === 0) return [];
+    if (!selectedBranch?.name) return branches;
+    const others = branches.filter((b) => b?.name && b.name !== selectedBranch.name);
+    return others.length > 0 ? others : branches;
+  }, [branchesFromExtras, listing?.branches, selectedBranch?.name]);
+
+  const hasMultipleBranches = useMemo(() => {
+    const branches = Array.isArray(branchesFromExtras)
+      ? branchesFromExtras
+      : Array.isArray(listing?.branches)
+      ? listing.branches
+      : [];
+    return Array.isArray(branches) && branches.length > 1;
+  }, [branchesFromExtras, listing?.branches]);
 
   // Navigation functions for Next/Previous
   const handlePrevious = () => {
@@ -350,32 +373,43 @@ export default function ProductShowcase({ listing, id, allListings = [], current
         handleMobileDropdownToggle={handleMobileDropdownToggle}
       />
       {/* Breadcrumbs (outside the main container) */}
-      <nav className="text-sm text-gray-600 mb-4 max-w-6xl mx-auto px-4 md:px-0 pt-6">
-        <Link
-          href="/"
-          className="text-blue-600 hover:text-blue-800 transition-colors"
-        >
-          Home
-        </Link>
-        <span className="mx-1">&gt;</span>
-        <Link href="/tombstones-for-sale" className="hover:underline">
-          Tombstones for sale
-        </Link>
-        <span className="mx-1">&gt;</span>
-        <Link 
-          href={`/manufacturers/manufacturers-Profile-Page/${listing.company?.documentId || listing.companyId}`}
-          className="text-blue-600 hover:text-blue-800 transition-colors"
-        >
-          {listing.company?.name || "Company"}
-        </Link>
-        {selectedBranch && (
-          <>
-            <span className="mx-1">&gt;</span>
-            <span className="text-gray-600">{selectedBranch.name}</span>
-          </>
+      <nav className="text-sm text-gray-600 mb-4 max-w-6xl mx-auto px-4 md:px-0 pt-6 flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center">
+          <Link
+            href="/"
+            className="text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            Home
+          </Link>
+          <span className="mx-1">&gt;</span>
+          <Link href="/tombstones-for-sale" className="hover:underline">
+            Tombstones for sale
+          </Link>
+          <span className="mx-1">&gt;</span>
+          <Link 
+            href={`/manufacturers/manufacturers-Profile-Page/${listing.company?.documentId || listing.companyId}`}
+            className="text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            {listing.company?.name || "Company"}
+          </Link>
+          {selectedBranch && (
+            <>
+              <span className="mx-1">&gt;</span>
+              <span className="text-gray-600">{selectedBranch.name}</span>
+            </>
+          )}
+          <span className="mx-1">&gt;</span>
+          <span className="text-gray-900 font-semibold">{listing.title}</span>
+        </div>
+        {hasMultipleBranches && (
+          <button
+            type="button"
+            onClick={() => setShowBranchesModal(true)}
+            className="hidden"
+          >
+            View More Branches Here
+          </button>
         )}
-        <span className="mx-1">&gt;</span>
-        <span className="text-gray-900 font-semibold">{listing.title}</span>
       </nav>
       <div className={`bg-white rounded shadow max-w-6xl mx-auto px-0 mt-2 transition-opacity duration-300 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
         {/* Product Header */}
@@ -387,49 +421,126 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                   {listing.badge}
                 </span>
               )}
-              {/* Title and Price on the same horizontal line */}
-              <div className="flex flex-row items-center justify-between w-full mb-0">
-                <h1 className="text-2xl font-bold text-gray-800 uppercase">
-                  {listing.title}
-                </h1>
-                <span className="text-blue-600 text-3xl font-bold">
-                  {formatPrice(listing.price)}
-                </span>
-              </div>
-              {/* Location and navigation links on the same horizontal line */}
-              <div className="flex flex-row items-center justify-between w-full mb-1 flex-wrap">
-                <p className="text-sm text-gray-700 mt-2 w-full sm:w-auto">
-                  {selectedBranch?.location?.address || listing.company?.location || "N/A"} |
-                  <>
-                    {effectiveDistanceInfo?.distance?.text ? (
-                      <>
-                        <span className="text-blue-600">
-                          {`${effectiveDistanceInfo.distance.text} from you`}
-                        </span>
-                        <span
-                          onClick={() => {
-                            try { refreshLocation?.(); } catch (err) { console.warn('[Location] refresh failed:', err); }
-                          }}
-                          className="text-blue-600 ml-1 cursor-pointer hover:underline"
-                        >
-                          (refresh)
-                        </span>
-                      </>
+              <div className="md:hidden">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 items-start">
+                  <div className="min-w-0">
+                    <h1 className="text-2xl font-bold text-gray-800 uppercase min-w-0">
+                      {listing.title}
+                    </h1>
+                    <p className="text-sm text-gray-600 font-bold break-words">
+                      {selectedBranch?.location?.address || listing.company?.location || "N/A"}
+                    </p>
+                    <p className={`text-sm text-gray-700 ${effectiveDistanceInfo?.distance?.text ? "" : "font-bold"}`}>
+                      {"| "}
+                      {effectiveDistanceInfo?.distance?.text ? (
+                        <>
+                          <span className="text-blue-600">
+                            {`${effectiveDistanceInfo.distance.text} from you`}
+                          </span>
+                          <span
+                            onClick={() => {
+                              try { refreshLocation?.(); } catch (err) { console.warn('[Location] refresh failed:', err); }
+                            }}
+                            className="text-blue-600 ml-1 cursor-pointer hover:underline"
+                          >
+                            (refresh)
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-gray-800">Distance unavailable</span>
+                          <span
+                            onClick={() => {
+                              try { refreshLocation?.(); } catch (err) { console.warn('[Location] refresh failed:', err); }
+                            }}
+                            className="text-blue-600 ml-1 cursor-pointer hover:underline font-bold"
+                          >
+                            (set location)
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <div className="justify-self-end flex flex-col items-end">
+                    <span className="text-blue-600 text-3xl font-bold">
+                      {formatPrice(listing.price)}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-sm text-gray-600 flex items-center justify-between gap-2 mt-2">
+                    {hasMultipleBranches ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowBranchesModal(true)}
+                        className="inline-flex bg-[#0D7C99] text-white text-xs px-2 py-1 rounded shadow hover:bg-[#0D7C99]/90 whitespace-nowrap"
+                      >
+                        View More Branches Here
+                      </button>
                     ) : (
-                      <>
-                        <span className="text-gray-600">Distance unavailable</span>
-                        <span
-                          onClick={() => {
-                            try { refreshLocation?.(); } catch (err) { console.warn('[Location] refresh failed:', err); }
-                          }}
-                          className="text-blue-600 ml-1 cursor-pointer hover:underline"
-                        >
-                          (set location)
-                        </span>
-                      </>
+                      <span />
                     )}
-                  </>
-                </p>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={handlePrevious} 
+                        className="hover:underline cursor-pointer"
+                      >
+                        &lt; Prev
+                      </button>
+                      <span className="mx-1">|</span>
+                      <button 
+                        onClick={handleNext} 
+                        className="hover:underline cursor-pointer"
+                      >
+                        Next &gt;
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="hidden md:flex flex-row items-center justify-between w-full mb-1 flex-wrap">
+                <div className="w-full sm:w-auto">
+                  <p className={`text-sm text-gray-600 font-bold mt-2 ${effectiveDistanceInfo?.distance?.text ? "" : "font-bold"}`}>
+                    {selectedBranch?.location?.address || listing.company?.location || "N/A"}
+                    {" | "}
+                    <>
+                      {effectiveDistanceInfo?.distance?.text ? (
+                        <>
+                          <span className="text-blue-600">
+                            {`${effectiveDistanceInfo.distance.text} from you`}
+                          </span>
+                          <span
+                            onClick={() => {
+                              try { refreshLocation?.(); } catch (err) { console.warn('[Location] refresh failed:', err); }
+                            }}
+                            className="text-blue-600 ml-1 cursor-pointer hover:underline"
+                          >
+                            (refresh)
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-gray-800">Distance unavailable</span>
+                          <span
+                            onClick={() => {
+                              try { refreshLocation?.(); } catch (err) { console.warn('[Location] refresh failed:', err); }
+                            }}
+                            className="text-blue-600 ml-1 cursor-pointer hover:underline font-bold"
+                          >
+                            (set location)
+                          </span>
+                        </>
+                      )}
+                    </>
+                  </p>
+                  {hasMultipleBranches && (
+                    <button
+                      type="button"
+                      onClick={() => setShowBranchesModal(true)}
+                    className="mt-2 inline-flex bg-[#0D7C99] text-white text-sm px-3 py-2 rounded shadow hover:bg-[#0D7C99]/90 whitespace-nowrap"
+                    >
+                      View More Branches Here
+                    </button>
+                  )}
+                </div>
                 <div className="text-sm text-gray-600 flex items-center gap-2 mt-2 w-full sm:w-auto justify-end">
                   <button 
                     onClick={handlePrevious} 
@@ -856,6 +967,19 @@ export default function ProductShowcase({ listing, id, allListings = [], current
           mapUrl={selectedBranch?.location?.mapUrl || listing.company?.mapUrl}
           
         />
+        {showBranchesModal && (
+          <PremiumListingCardModal
+            listing={{
+              ...listing,
+              __branchesOverride: branchesForModal.length > 0 ? branchesForModal : undefined,
+            }}
+            onClose={() => setShowBranchesModal(false)}
+            onBranchSelect={(branch) => {
+              setSelectedBranch(branch);
+              setShowBranchesModal(false);
+            }}
+          />
+        )}
       </div>
     </>
   );

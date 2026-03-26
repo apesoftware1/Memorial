@@ -212,6 +212,8 @@ export function PremiumListingCard({
   const companyLocationText =
     typeof listing.company?.location === "string" ? listing.company.location.trim() : "";
   const locationText = branchAddress || companyLocationText || "location not set";
+  const isDistanceUnavailable =
+    hasFetchedDistance && !(distanceInfo && distanceInfo.distance && distanceInfo.distance.text);
   
   const pathname = usePathname();
   
@@ -523,22 +525,34 @@ export function PremiumListingCard({
               )}
               {/* Location display */}
               <div className="text-xs text-gray-600">
-                {locationText}
+                {isDistanceUnavailable ? (
+                  <span className="font-bold text-gray-800">
+                    {locationText}{" | "}Distance unavailable(set location)
+                  </span>
+                ) : (
+                  locationText
+                )}
               </div>
               <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
-                <Image
-                  src="/new files/newIcons/Google_Pin_Icon/GooglePin_Icon.svg"
-                  alt="Location Pin Icon"
-                  width={14}
-                  height={14}
-                  className="object-contain"
-                  style={{ width: "14px", height: "auto" }}
-                />
-                <span>
-                  {distanceInfo
-                    ? `${distanceInfo.distance.text} from you..`
-                    : "Calculating distance…"}
-                </span>
+                {!isDistanceUnavailable && (
+                  <>
+                    <Image
+                      src="/new files/newIcons/Google_Pin_Icon/GooglePin_Icon.svg"
+                      alt="Location Pin Icon"
+                      width={14}
+                      height={14}
+                      className="object-contain"
+                      style={{ width: "14px", height: "auto" }}
+                    />
+                    <span>
+                      {distanceInfo
+                        ? `${distanceInfo.distance.text} from you..`
+                        : hasFetchedDistance
+                        ? "Distance unavailable(set location)"
+                        : "Calculating distance…"}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -783,23 +797,35 @@ export function PremiumListingCard({
                       className="text-xs text-gray-800 mt-1"
                       style={{ minHeight: 18 }}
                     >
-                      {locationText}
+                      {isDistanceUnavailable ? (
+                        <span className="font-bold text-gray-900">
+                          {locationText}{" | "}Distance unavailable(set location)
+                        </span>
+                      ) : (
+                        locationText
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
-                      <Image
-                        src="/new files/newIcons/Google_Pin_Icon/GooglePin_Icon.svg"
-                        alt="Location Pin Icon"
-                        width={14}
-                        height={14}
-                        className="object-contain"
-                        style={{ width: "14px", height: "auto" }}
-                      />
-                      <span>
-                        {distanceInfo
-                          ? `${distanceInfo.distance.text} from you..`
-                          : "Calculating distance…"}
-                      </span>
+                      {!isDistanceUnavailable && (
+                        <>
+                          <Image
+                            src="/new files/newIcons/Google_Pin_Icon/GooglePin_Icon.svg"
+                            alt="Location Pin Icon"
+                            width={14}
+                            height={14}
+                            className="object-contain"
+                            style={{ width: "14px", height: "auto" }}
+                          />
+                          <span>
+                            {distanceInfo
+                              ? `${distanceInfo.distance.text} from you..`
+                              : hasFetchedDistance
+                              ? "Distance unavailable(set location)"
+                              : "Calculating distance…"}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                   {/* Right Column for Logo (Desktop only) */}
