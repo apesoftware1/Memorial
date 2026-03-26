@@ -465,6 +465,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
       let primaryBranch = relevantBranches.length > 0 ? relevantBranches[0] : null;
       let primaryDistanceKm = null;
+      let sortedBranches = relevantBranches;
 
       if (relevantBranches.length > 0 && userCoords) {
         let best = null;
@@ -482,15 +483,25 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
           primaryBranch = best;
           primaryDistanceKm = bestKm;
         }
+
+        sortedBranches = [...relevantBranches]
+          .map((b) => {
+            const coords = getBranchCoords(b);
+            const km = haversineKm(userCoords, coords);
+            return { b, km };
+          })
+          .sort((x, y) => {
+            const ax = x.km;
+            const by = y.km;
+            if (ax === null && by === null) return 0;
+            if (ax === null) return 1;
+            if (by === null) return -1;
+            return ax - by;
+          })
+          .map((x) => x.b);
       }
 
-      const otherBranches = primaryBranch
-        ? relevantBranches.filter((b) => {
-            const a = b?.documentId || b?.id || b?.name;
-            const bb = primaryBranch?.documentId || primaryBranch?.id || primaryBranch?.name;
-            return a && bb ? String(a) !== String(bb) : b !== primaryBranch;
-          })
-        : [];
+      const modalBranches = sortedBranches;
 
       const href = listingId
         ? primaryBranch?.name
@@ -517,8 +528,9 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         listingForCard,
         primaryBranch,
         primaryDistanceKm,
-        modalBranches: otherBranches,
-        listingForModal: otherBranches.length > 0 ? { ...listing, __branchesOverride: otherBranches } : listing,
+        modalBranches,
+        listingForModal:
+          modalBranches.length > 1 ? { ...listing, __branchesOverride: modalBranches } : listing,
       };
     },
     [
