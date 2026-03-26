@@ -353,7 +353,7 @@ export function PremiumListingCard({
                     e.stopPropagation();
                     if (typeof onPrimaryClick === "function") onPrimaryClick(listing);
                   }}
-                  className={cn("bg-blue-600 text-white text-sm px-3 py-1 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300")}
+                  className={cn("bg-[#0D7C99] text-white text-sm px-3 py-1 rounded hover:bg-[#0D7C99]/90 focus:outline-none focus:ring-2 focus:ring-[#0D7C99]/30")}
                   aria-label={`Show branches for ${listing?.title || 'listing'}`}
                 >
                   View More Branches
