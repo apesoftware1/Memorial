@@ -8,6 +8,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { toast } from "@/hooks/use-toast";
 
 // Import shadcn UI components
 import { Button } from "@/components/ui/button";
@@ -143,6 +144,11 @@ const FILTER_OPTION_VALUES = {
   ],
 };
 
+const PAGE_OPTIONS = [
+  { key: "services", label: "Services pages" },
+  { key: "tombstonesOnSpecial", label: "Tombstones on Special page" },
+];
+
 // Floating Action Button to navigate to blogs page
 function FloatingBlogsButton() {
   return (
@@ -189,6 +195,10 @@ export default function DashboardClient() {
   const [filterVisibilitySaving, setFilterVisibilitySaving] = useState(false);
   const [filterVisibilityError, setFilterVisibilityError] = useState("");
   const [expandedFilters, setExpandedFilters] = useState([]);
+  const [pageVisibility, setPageVisibility] = useState({ hidden: [], updatedAt: "" });
+  const [pageVisibilityLoading, setPageVisibilityLoading] = useState(false);
+  const [pageVisibilitySaving, setPageVisibilitySaving] = useState(false);
+  const [pageVisibilityError, setPageVisibilityError] = useState("");
 
   useLayoutEffect(() => {
     const el = headerRef.current;
@@ -221,6 +231,72 @@ export default function DashboardClient() {
       if (stored) setIsDark(stored === 'dark');
     } catch {}
   }, []);
+
+  useEffect(() => {
+    const loadPageVisibility = async () => {
+      if (!session?.user?.isAdmin) return;
+      try {
+        setPageVisibilityError("");
+        setPageVisibilityLoading(true);
+        const res = await fetch("/api/page-visibility", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = await res.json();
+        setPageVisibility({
+          hidden: Array.isArray(json?.hidden) ? json.hidden : [],
+          updatedAt: typeof json?.updatedAt === "string" ? json.updatedAt : "",
+        });
+      } catch {
+      } finally {
+        setPageVisibilityLoading(false);
+      }
+    };
+    loadPageVisibility();
+  }, [session?.user?.isAdmin]);
+
+  const isPageHidden = (key) => {
+    const hidden = Array.isArray(pageVisibility?.hidden) ? pageVisibility.hidden : [];
+    return hidden.includes(key);
+  };
+
+  const togglePageHidden = (key) => {
+    setPageVisibility((prev) => {
+      const current = Array.isArray(prev?.hidden) ? prev.hidden : [];
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return { ...prev, hidden: Array.from(next.values()) };
+    });
+  };
+
+  const savePageVisibility = async () => {
+    if (!session?.user?.isAdmin) return;
+    try {
+      setPageVisibilityError("");
+      setPageVisibilitySaving(true);
+      const res = await fetch("/api/page-visibility", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ hidden: pageVisibility.hidden }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        const msg = json?.error || "Failed to save.";
+        setPageVisibilityError(msg);
+        toast({ title: "Save failed", description: msg, variant: "destructive" });
+        return;
+      }
+      setPageVisibility({
+        hidden: Array.isArray(json?.hidden) ? json.hidden : [],
+        updatedAt: typeof json?.updatedAt === "string" ? json.updatedAt : "",
+      });
+      toast({ title: "Saved", description: "Page visibility updated." });
+    } catch {
+      setPageVisibilityError("Failed to save.");
+      toast({ title: "Save failed", description: "Failed to save.", variant: "destructive" });
+    } finally {
+      setPageVisibilitySaving(false);
+    }
+  };
 
   useEffect(() => {
     const loadMaintenance = async () => {
@@ -417,6 +493,11 @@ export default function DashboardClient() {
       });
       if (!res.ok) {
         setFilterVisibilityError("Failed to save settings");
+        toast({
+          title: "Save failed",
+          description: "Failed to save settings.",
+          variant: "destructive",
+        });
         return;
       }
       const json = await res.json();
@@ -428,8 +509,14 @@ export default function DashboardClient() {
             : {},
         updatedAt: typeof json?.updatedAt === "string" ? json.updatedAt : "",
       });
+      toast({ title: "Saved", description: "Filter visibility updated." });
     } catch {
       setFilterVisibilityError("Failed to save settings");
+      toast({
+        title: "Save failed",
+        description: "Failed to save settings.",
+        variant: "destructive",
+      });
     } finally {
       setFilterVisibilitySaving(false);
     }
@@ -534,6 +621,18 @@ export default function DashboardClient() {
                       Hide Filters
                     </button>
                   ) : null}
+                  {session?.user?.isAdmin ? (
+                    <button
+                      className={`w-full text-left px-3 py-2 rounded-md font-medium ${
+                        currentView === "pages"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+                      }`}
+                      onClick={() => setCurrentView("pages")}
+                    >
+                      Hide Pages
+                    </button>
+                  ) : null}
                 </div>
               );
 
@@ -632,6 +731,47 @@ export default function DashboardClient() {
                 ) : currentView === "categories" ? (
                   <div className="container mx-auto px-4 py-8">
                     <ListingCategoryManager />
+                  </div>
+                ) : currentView === "pages" ? (
+                  <div className="container mx-auto px-4 py-8 max-w-3xl">
+                    <Card>
+                      <CardHeader>
+                        <h2 className="text-xl font-bold">Hide Pages</h2>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {pageVisibilityLoading ? (
+                          <div className="text-sm text-muted-foreground">Loading settings…</div>
+                        ) : (
+                          <div className="space-y-3">
+                            {PAGE_OPTIONS.map((opt) => (
+                              <div key={opt.key} className="rounded-md border p-3">
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="text-sm font-medium">{opt.label}</div>
+                                  <div className="flex items-center gap-3">
+                                    <div className="text-xs text-muted-foreground">Hide page</div>
+                                    <Switch
+                                      checked={isPageHidden(opt.key)}
+                                      onCheckedChange={() => togglePageHidden(opt.key)}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {pageVisibilityError ? (
+                          <div className="text-sm text-destructive">{pageVisibilityError}</div>
+                        ) : null}
+                      </CardContent>
+                      <CardFooter className="flex items-center justify-between">
+                        <div className="text-xs text-muted-foreground">
+                          {pageVisibility.updatedAt ? `Updated: ${new Date(pageVisibility.updatedAt).toLocaleString()}` : ""}
+                        </div>
+                        <Button onClick={savePageVisibility} disabled={pageVisibilitySaving}>
+                          {pageVisibilitySaving ? "Saving…" : "Save"}
+                        </Button>
+                      </CardFooter>
+                    </Card>
                   </div>
                 ) : (
                   <div className="container mx-auto px-4 py-8 max-w-3xl">

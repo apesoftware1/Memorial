@@ -28,6 +28,7 @@ export default function Header({
   // Scroll behavior state
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
+  const [pageVisibility, setPageVisibility] = useState({ hidden: [] });
 
   useEffect(() => {
     if (!autoHideOnScroll) {
@@ -57,6 +58,26 @@ export default function Header({
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [autoHideOnScroll]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch("/api/page-visibility", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = await res.json();
+        setPageVisibility({ hidden: Array.isArray(json?.hidden) ? json.hidden : [] });
+      } catch {
+      }
+    };
+    load();
+  }, []);
+
+  const hideSpecialsPage = Array.isArray(pageVisibility?.hidden)
+    ? pageVisibility.hidden.includes("tombstonesOnSpecial")
+    : false;
+  const hideServicesPages = Array.isArray(pageVisibility?.hidden)
+    ? pageVisibility.hidden.includes("services")
+    : false;
 
   // Custom logout function to ensure proper cleanup
   const handleLogout = async () => {
@@ -132,12 +153,14 @@ export default function Header({
                         >
                           TOMBSTONES
                         </Link>
-                        <Link
-                          href="/tombstones-on-special"
-                          className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
-                        >
-                          TOMBSTONES ON SPECIAL
-                        </Link>
+                        {!hideSpecialsPage ? (
+                          <Link
+                            href="/tombstones-on-special"
+                            className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
+                          >
+                            TOMBSTONES ON SPECIAL
+                          </Link>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -160,41 +183,42 @@ export default function Header({
                     </div>
                   </div>
 
-                  {/* Services Dropdown */}
-                  <div className="relative group">
-                    <button className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors flex items-center">
-                      Services
-                      <ChevronDown className="ml-1 h-4 w-4" />
-                    </button>
-                    <div className="absolute left-0 top-full min-w-max bg-white rounded-none overflow-hidden shadow-xl hidden group-hover:block animate-slide-in z-50 px-0 origin-top-left">
-                      <div className="p-0">
-                        <Link
-                          href="/blog"
-                          className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
-                        >
-                          INSIGHTS , GUIDES & BLOGS
-                        </Link>
-                        <Link
-                          href="/services/tombstone-finance"
-                          className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
-                        >
-                          TOMBSTONE FINANCE
-                        </Link>
-                        <Link
-                          href="/services/installation-guide"
-                          className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
-                        >
-                          TOMBSTONE INSTALLATION GUIDE
-                        </Link>
-                        <Link
-                          href="/services/life-insurance"
-                          className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors"
-                        >
-                          LIFE INSURANCE
-                        </Link>
+                  {!hideServicesPages ? (
+                    <div className="relative group">
+                      <button className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors flex items-center">
+                        Services
+                        <ChevronDown className="ml-1 h-4 w-4" />
+                      </button>
+                      <div className="absolute left-0 top-full min-w-max bg-white rounded-none overflow-hidden shadow-xl hidden group-hover:block animate-slide-in z-50 px-0 origin-top-left">
+                        <div className="p-0">
+                          <Link
+                            href="/blog"
+                            className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
+                          >
+                            INSIGHTS , GUIDES & BLOGS
+                          </Link>
+                          <Link
+                            href="/services/tombstone-finance"
+                            className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
+                          >
+                            TOMBSTONE FINANCE
+                          </Link>
+                          <Link
+                            href="/services/installation-guide"
+                            className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
+                          >
+                            TOMBSTONE INSTALLATION GUIDE
+                          </Link>
+                          <Link
+                            href="/services/life-insurance"
+                            className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors"
+                          >
+                            LIFE INSURANCE
+                          </Link>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : null}
 
                   {/* Favourites Dropdown */}
                   <div className="relative group">
@@ -333,12 +357,14 @@ export default function Header({
               >
                 TOMBSTONES
               </Link>
-              <Link
-                href="/tombstones-on-special"
-                className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                TOMBSTONES ON SPECIAL
-              </Link>
+              {!hideSpecialsPage ? (
+                <Link
+                  href="/tombstones-on-special"
+                  className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  TOMBSTONES ON SPECIAL
+                </Link>
+              ) : null}
             </div>
           )}
         </div>
@@ -363,43 +389,51 @@ export default function Header({
           )}
         </div>
 
-        {/* Mobile Services */}
-        <div className="py-2">
-          <button
-            className="flex justify-between items-center w-full text-gray-700 hover:text-gray-900 transition-colors"
-            onClick={() => handleMobileDropdownToggle("services")}
-          >
-            <span>Services</span>
-            <ChevronDown
-              className={`h-4 w-4 transition-transform duration-200 ${mobileDropdown === "services" ? "transform rotate-180" : ""}`}
-            />
-          </button>
-          {mobileDropdown === "services" && (
-            <div className="pl-4 mt-2 space-y-2">
-              <Link href="/blog" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
-                Insights, Guides & blogs
-              </Link>
-              <Link href="#" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
-                LET US HANDLE EVERYTHING
-              </Link>
-              <Link href="/services/tombstone-finance" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
-                TOMBSTONE FINANCE
-              </Link>
-              <Link
-                href="/services/installation-guide"
-                className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                TOMBSTONE INSTALLATION GUIDE
-              </Link>
-              <Link
-                href="/services/life-insurance"
-                className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                LIFE INSURANCE
-              </Link>
-            </div>
-          )}
-        </div>
+        {!hideServicesPages ? (
+          <div className="py-2">
+            <button
+              className="flex justify-between items-center w-full text-gray-700 hover:text-gray-900 transition-colors"
+              onClick={() => handleMobileDropdownToggle("services")}
+            >
+              <span>Services</span>
+              <ChevronDown
+                className={`h-4 w-4 transition-transform duration-200 ${mobileDropdown === "services" ? "transform rotate-180" : ""}`}
+              />
+            </button>
+            {mobileDropdown === "services" && (
+              <div className="pl-4 mt-2 space-y-2">
+                <Link
+                  href="/blog"
+                  className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
+                  onClick={handleMobileMenuToggle}
+                >
+                  Insights, Guides & blogs
+                </Link>
+                <Link
+                  href="/services/tombstone-finance"
+                  className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
+                  onClick={handleMobileMenuToggle}
+                >
+                  TOMBSTONE FINANCE
+                </Link>
+                <Link
+                  href="/services/installation-guide"
+                  className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
+                  onClick={handleMobileMenuToggle}
+                >
+                  TOMBSTONE INSTALLATION GUIDE
+                </Link>
+                <Link
+                  href="/services/life-insurance"
+                  className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
+                  onClick={handleMobileMenuToggle}
+                >
+                  LIFE INSURANCE
+                </Link>
+              </div>
+            )}
+          </div>
+        ) : null}
 
         {/* Mobile Favourites */}
         <div className="py-2">
