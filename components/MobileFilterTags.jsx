@@ -10,11 +10,26 @@ const MobileFilterTags = ({ activeFilters, setActiveFilters }) => {
   if (!activeFilters) return null;
 
   // Helper to remove a filter
-  const removeFilter = (key) => {
-    setActiveFilters(prev => ({
-      ...prev,
-      [key]: key === 'minPrice' ? 'Min Price' : key === 'maxPrice' ? 'Max Price' : null
-    }));
+  const removeFilter = (key, itemToRemove = undefined) => {
+    setActiveFilters((prev) => {
+      const current = prev?.[key];
+      if (Array.isArray(current) && itemToRemove !== undefined) {
+        const nextArr = current.filter((v) => String(v) !== String(itemToRemove));
+        return {
+          ...prev,
+          [key]: nextArr.length > 0 ? nextArr : null,
+        };
+      }
+      return {
+        ...prev,
+        [key]:
+          key === "minPrice"
+            ? "Min Price"
+            : key === "maxPrice"
+            ? "Max Price"
+            : null,
+      };
+    });
   };
 
   const removePriceFilter = () => {
@@ -83,11 +98,33 @@ const MobileFilterTags = ({ activeFilters, setActiveFilters }) => {
 
         {Object.entries(activeFilters).map(([key, value]) => {
           if (key === 'category' || key === 'minPrice' || key === 'maxPrice' || !value || value === 'All' || value === 'Any') return null;
-          
+
+          if (Array.isArray(value)) {
+            const items = value.map((v) => (typeof v === "string" ? v.trim() : String(v))).filter(Boolean);
+            if (items.length === 0) return null;
+            return items.map((item) => (
+              <div
+                key={`${key}:${item}`}
+                className="flex items-center bg-[#095c72] rounded px-2 py-1 text-xs border border-[#1a8dae] shadow-sm"
+              >
+                <span className="min-w-0 truncate max-w-[220px]">{item}</span>
+                <button
+                  type="button"
+                  onClick={() => removeFilter(key, item)}
+                  className="ml-2 text-white/80 hover:text-white flex items-center justify-center"
+                  aria-label={`Remove ${key} ${item}`}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ));
+          }
+
+          const displayValue = typeof value === "string" ? value : String(value);
           return (
             <div key={key} className="flex items-center bg-[#095c72] rounded px-2 py-1 text-xs border border-[#1a8dae] shadow-sm">
-              <span>{value}</span>
-              <button onClick={() => removeFilter(key)} className="ml-2 text-white/80 hover:text-white">
+              <span className="min-w-0 truncate max-w-[220px]">{displayValue}</span>
+              <button type="button" onClick={() => removeFilter(key)} className="ml-2 text-white/80 hover:text-white flex items-center justify-center" aria-label={`Remove ${key}`}>
                 <X size={12} />
               </button>
             </div>
