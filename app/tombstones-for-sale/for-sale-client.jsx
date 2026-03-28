@@ -502,6 +502,24 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       }
 
       const modalBranches = sortedBranches;
+      let modalBranchesAll = allBranches;
+      if (allBranches.length > 0 && userCoords) {
+        modalBranchesAll = [...allBranches]
+          .map((b) => {
+            const coords = getBranchCoords(b);
+            const km = haversineKm(userCoords, coords);
+            return { b, km };
+          })
+          .sort((x, y) => {
+            const ax = x.km;
+            const by = y.km;
+            if (ax === null && by === null) return 0;
+            if (ax === null) return 1;
+            if (by === null) return -1;
+            return ax - by;
+          })
+          .map((x) => x.b);
+      }
 
       const href = listingId
         ? primaryBranch?.name
@@ -531,6 +549,11 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         modalBranches,
         listingForModal:
           modalBranches.length > 1 ? { ...listing, __branchesOverride: modalBranches } : listing,
+        modalBranchesAll,
+        listingForModalAll:
+          modalBranchesAll.length > 1
+            ? { ...listing, __branchesOverride: modalBranchesAll }
+            : listing,
       };
     },
     [
@@ -553,6 +576,22 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       }
     } catch (e) {
       console.error('Failed handling primary click for listing', e);
+    }
+    return false;
+  };
+
+  const handleListingViewMoreBranchesClick = (listingItem) => {
+    try {
+      const modalBranchesAll = Array.isArray(listingItem?.modalBranchesAll)
+        ? listingItem.modalBranchesAll
+        : [];
+      if (modalBranchesAll.length > 1) {
+        setSelectedListing(listingItem.listingForModalAll);
+        setShowBranchesModal(true);
+        return true;
+      }
+    } catch (e) {
+      console.error("Failed handling view more branches for listing", e);
     }
     return false;
   };
@@ -1044,6 +1083,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                 listing={item.listingForCard}
                 href={item.href}
                 onPrimaryClick={() => handleListingPrimaryClick(item)}
+                onViewMoreBranchesClick={() => handleListingViewMoreBranchesClick(item)}
               />
             ))
           : fallbackCard("listings")}
@@ -1061,6 +1101,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                 listing={item.listingForCard}
                 href={item.href}
                 onPrimaryClick={() => handleListingPrimaryClick(item)}
+                onViewMoreBranchesClick={() => handleListingViewMoreBranchesClick(item)}
               />
             ))
            : fallbackCard("listings")}
@@ -1093,6 +1134,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                 listing={item.listingForCard}
                 href={item.href}
                 onPrimaryClick={() => handleListingPrimaryClick(item)}
+                onViewMoreBranchesClick={() => handleListingViewMoreBranchesClick(item)}
               />
             ))
            : fallbackCard("listings")}
@@ -1110,6 +1152,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                 listing={item.listingForCard}
                 href={item.href}
                 onPrimaryClick={() => handleListingPrimaryClick(item)}
+                onViewMoreBranchesClick={() => handleListingViewMoreBranchesClick(item)}
               />
             ))
            : fallbackCard("listings")}
@@ -1627,6 +1670,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                             listing={item.listingForCard}
                             href={item.href}
                             onPrimaryClick={() => handleListingPrimaryClick(item)}
+                            onViewMoreBranchesClick={() => handleListingViewMoreBranchesClick(item)}
                           />
                         ))
                       )}

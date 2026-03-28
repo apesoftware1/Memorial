@@ -25,6 +25,7 @@ interface PremiumListingCardProps {
   isFirstCard?: boolean;
   isOwner?: boolean;
   onPrimaryClick?: (listing: any) => boolean | void;
+  onViewMoreBranchesClick?: (listing: any) => boolean | void;
   compact?: boolean;
 }
 
@@ -34,6 +35,7 @@ export function PremiumListingCard({
   isFirstCard = false,
   isOwner = false,
   onPrimaryClick,
+  onViewMoreBranchesClick,
   compact = false,
   maxThumbnails = 3,
   fixedHeight = false,
@@ -351,6 +353,10 @@ export function PremiumListingCard({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (typeof onViewMoreBranchesClick === "function") {
+                      onViewMoreBranchesClick(listing);
+                      return;
+                    }
                     if (typeof onPrimaryClick === "function") onPrimaryClick(listing);
                   }}
                   className={cn("bg-[#0D7C99] text-white text-sm px-3 py-1 rounded hover:bg-[#0D7C99]/90 focus:outline-none focus:ring-2 focus:ring-[#0D7C99]/30")}
