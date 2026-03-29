@@ -6,6 +6,42 @@ export const useGuestLocation = () => {
   const [loading, setLoading] = useState(true);
   const mounted = useRef(false);
 
+  const readStoredLocation = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const savedGuest =
+        localStorage.getItem("guestLocation") ||
+        localStorage.getItem("GuestLocation");
+      const savedUser = localStorage.getItem("userLocation");
+      const raw = savedGuest || savedUser;
+
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const lat = Number(parsed?.lat ?? parsed?.latitude);
+      const lng = Number(parsed?.lng ?? parsed?.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      return { lat, lng };
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const persistLocation = useCallback((next) => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(
+        "guestLocation",
+        JSON.stringify({ ...next, updatedAt: Date.now() })
+      );
+    } catch {
+    }
+
+    try {
+      window.dispatchEvent(new Event("guestLocation:updated"));
+    } catch {
+    }
+  }, []);
+
   // ✅ Prefer saved location from localStorage; fallback to Geolocation API
   useEffect(() => {
     // Prevent double-invocation in Strict Mode or re-mounts if undesired
@@ -18,25 +54,12 @@ export const useGuestLocation = () => {
     }
 
     // 1) Try localStorage first
-    try {
-      const savedGuest = localStorage.getItem("guestLocation");
-      const savedUser = localStorage.getItem("userLocation");
-      const raw = savedGuest || savedUser;
-
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        // Support both {lat,lng} and {latitude,longitude} shapes
-        const lat = Number(parsed.lat ?? parsed.latitude);
-        const lng = Number(parsed.lng ?? parsed.longitude);
-
-        if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-          setLocation({ lat, lng });
-          setLoading(false);
-          return; // Skip geolocation if we have a stored location
-        }
-      }
-    } catch (_) {
-      // Ignore JSON parse errors and continue to geolocation
+    const stored = readStoredLocation();
+    if (stored) {
+      setLocation(stored);
+      setError(null);
+      setLoading(false);
+      return; // Skip geolocation if we have a stored location
     }
 
     // 2) Fallback to Geolocation API
@@ -49,12 +72,8 @@ export const useGuestLocation = () => {
       (pos) => {
         const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setLocation(next);
-        try {
-          localStorage.setItem(
-            "guestLocation",
-            JSON.stringify({ ...next, updatedAt: Date.now() })
-          );
-        } catch (_) {}
+        setError(null);
+        persistLocation(next);
         setLoading(false);
       },
       (err) => {
@@ -62,6 +81,89 @@ export const useGuestLocation = () => {
         setLoading(false);
       }
     );
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncFromStorage = () => {
+      const stored = readStoredLocation();
+      if (stored) {
+        setLocation(stored);
+        setError(null);
+        setLoading(false);
+      }
+    };
+
+    const onStorage = (e) => {
+      if (!e || (e.key !== "guestLocation" && e.key !== "GuestLocation" && e.key !== "userLocation")) return;
+      syncFromStorage();
+    };
+
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("guestLocation:updated", syncFromStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("guestLocation:updated", syncFromStorage);
+    };
+  }, [readStoredLocation]);
+
+  const refreshLocation = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setError("Geolocation is not supported in this browser.");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setLocation(next);
+        setError(null);
+        persistLocation(next);
+        setLoading(false);
+      },
+      (err) => {
+        setError(err.message);
+        setLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  }, [persistLocation]);
+
+  const setGuestLocation = useCallback(
+    (next) => {
+      const lat = Number(next?.lat ?? next?.latitude);
+      const lng = Number(next?.lng ?? next?.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const normalized = { lat, lng };
+      setLocation(normalized);
+      setError(null);
+      setLoading(false);
+      persistLocation(normalized);
+    },
+    [persistLocation]
+  );
+
+  const clearGuestLocation = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.removeItem("guestLocation");
+      localStorage.removeItem("GuestLocation");
+      localStorage.removeItem("userLocation");
+    } catch {
+    }
+    setLocation(null);
+    setError(null);
+    setLoading(false);
+    try {
+      window.dispatchEvent(new Event("guestLocation:updated"));
+    } catch {
+    }
   }, []);
 
   const calculateDistanceFrom = useCallback(
@@ -155,5 +257,13 @@ export const useGuestLocation = () => {
     [location]
   );
 
-  return { location, error, loading, calculateDistanceFrom };
+  return {
+    location,
+    error,
+    loading,
+    calculateDistanceFrom,
+    refreshLocation,
+    setGuestLocation,
+    clearGuestLocation,
+  };
 };

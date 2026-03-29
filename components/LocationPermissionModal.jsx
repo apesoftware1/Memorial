@@ -6,7 +6,7 @@ import { X, MapPin, Loader, Navigation } from 'lucide-react'
 import { useGuestLocation } from '@/hooks/useGuestLocation'
 
 export default function LocationPermissionModal({ isOpen, onClose }) {
-  const { location, error, loading, calculateDistanceFrom } = useGuestLocation()
+  const { location, error, loading, refreshLocation } = useGuestLocation()
 
   const [showManualInput, setShowManualInput] = useState(false)
   const [manualLocationInput, setManualLocationInput] = useState('')
@@ -24,8 +24,9 @@ export default function LocationPermissionModal({ isOpen, onClose }) {
   }, [location, isOpen, loading, onClose])
 
   const handleDetectLocation = () => {
-    // The hook will automatically detect location
-    // We just need to wait for it to complete
+    try {
+      refreshLocation?.()
+    } catch {}
   }
 
   const handleManualLocation = () => {
@@ -38,9 +39,11 @@ export default function LocationPermissionModal({ isOpen, onClose }) {
         locationName: manualLocationInput.trim()
       }
       
-      // Check if we're in the browser before accessing localStorage
       if (typeof window !== 'undefined') {
         localStorage.setItem('guestLocation', JSON.stringify(manualLocation))
+        try {
+          window.dispatchEvent(new Event("guestLocation:updated"))
+        } catch {}
       }
       
       // Close the modal

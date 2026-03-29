@@ -6,7 +6,7 @@ import { useGuestLocation } from '@/hooks/useGuestLocation'
 import LocationPermissionModal from './LocationPermissionModal'
 
 export default function LocationTrigger({ listing, className = "" }) {
-  const { location, error, loading, getDistanceFrom } = useGuestLocation()
+  const { location, error, loading, refreshLocation } = useGuestLocation()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [hasCheckedFirstVisit, setHasCheckedFirstVisit] = useState(false)
 
@@ -58,14 +58,25 @@ export default function LocationTrigger({ listing, className = "" }) {
       return 'location not set'
     }
     
-    if (location && calculateDistanceFrom) {
-      try {
-        const distance = calculateDistanceFrom({ lat: listingLat, lng: listingLon })
-        if (distance !== null) {
-          return `${Math.round(distance)} km from you`
-        }
-      } catch (error) {
-        console.error('Error calculating distance:', error)
+    if (location) {
+      const toRad = (v) => (v * Math.PI) / 180
+      const R = 6371
+      const lat1 = Number(location.lat)
+      const lon1 = Number(location.lng)
+      const lat2 = Number(listingLat)
+      const lon2 = Number(listingLon)
+      if (Number.isFinite(lat1) && Number.isFinite(lon1) && Number.isFinite(lat2) && Number.isFinite(lon2)) {
+        const dLat = toRad(lat2 - lat1)
+        const dLon = toRad(lon2 - lon1)
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRad(lat1)) *
+            Math.cos(toRad(lat2)) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2)
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        const km = R * c
+        if (Number.isFinite(km)) return `${Math.round(km)} km from you`
       }
     }
     
