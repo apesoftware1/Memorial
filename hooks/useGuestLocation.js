@@ -172,6 +172,14 @@ export const useGuestLocation = () => {
         return null;
       }
 
+      const detourFactor =
+        typeof window !== "undefined" && typeof process !== "undefined"
+          ? Number(process?.env?.NEXT_PUBLIC_DISTANCE_DETOUR_FACTOR)
+          : NaN;
+      const effectiveDetourFactor = Number.isFinite(detourFactor) && detourFactor > 0
+        ? detourFactor
+        : 1.25;
+
       const destLat = Number(destination?.lat);
       const destLng = Number(destination?.lng);
 
@@ -195,7 +203,8 @@ export const useGuestLocation = () => {
         return R * c;
       };
 
-      const km = haversineKm(location.lat, location.lng, destLat, destLng);
+      const kmStraight = haversineKm(location.lat, location.lng, destLat, destLng);
+      const km = kmStraight * effectiveDetourFactor;
       
       if (!km || !Number.isFinite(km)) {
         return null;

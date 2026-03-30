@@ -59,6 +59,11 @@ export default function LocationTrigger({ listing, className = "" }) {
     }
     
     if (location) {
+      const detourFactor =
+        typeof process !== "undefined"
+          ? Number(process?.env?.NEXT_PUBLIC_DISTANCE_DETOUR_FACTOR)
+          : NaN
+      const effectiveDetourFactor = Number.isFinite(detourFactor) && detourFactor > 0 ? detourFactor : 1.25
       const toRad = (v) => (v * Math.PI) / 180
       const R = 6371
       const lat1 = Number(location.lat)
@@ -75,7 +80,7 @@ export default function LocationTrigger({ listing, className = "" }) {
             Math.sin(dLon / 2) *
             Math.sin(dLon / 2)
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-        const km = R * c
+        const km = R * c * effectiveDetourFactor
         if (Number.isFinite(km)) return `${Math.round(km)} km from you`
       }
     }
