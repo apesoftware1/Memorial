@@ -20,6 +20,7 @@ import {
   formatManufacturingLeadTimeText, 
   ICON_PATHS,
   STYLE_OPTIONS,
+  OVERALL_STYLE_OPTIONS,
   SLAB_STYLE_OPTIONS,
   COLOR_OPTIONS,
   STONE_TYPE_OPTIONS,
@@ -65,6 +66,7 @@ export default function UpdateListingPage() {
   const [images, setImages] = useState(Array(11).fill(null));
   // Product Details state
   const [selectedStyle, setSelectedStyle] = useState([]);
+  const [selectedOverallStyle, setSelectedOverallStyle] = useState([]);
   const [selectedColour, setSelectedColour] = useState([]);
   const [selectedStoneType, setSelectedStoneType] = useState([]);
   const [selectedCulture, setSelectedCulture] = useState([]);
@@ -191,6 +193,7 @@ export default function UpdateListingPage() {
         ...(listing.thumbnailUrls || [])
       ]);
       setSelectedStyle((listing.productDetails?.style || []).map(s => s.value));
+      setSelectedOverallStyle((listing.productDetails?.overallStyle || []).map(s => s.value));
       setSelectedColour((listing.productDetails?.color || []).map(c => c.value));
       setSelectedStoneType((listing.productDetails?.stoneType || []).map(st => st.value));
       setSelectedCulture((listing.productDetails?.culture || []).map(cu => cu.value));
@@ -241,7 +244,9 @@ export default function UpdateListingPage() {
 
   // Function to get the appropriate icon path for each attribute
   const getIconPath = (type, value) => {
-    return ICON_PATHS[type]?.[value] || ICON_PATHS.style["Plain"];
+    if (ICON_PATHS[type]?.[value]) return ICON_PATHS[type][value];
+    if (type === "style") return ICON_PATHS.style?.["Plain"] || null;
+    return null;
   };
 
   const handleSubmit = async (e) => {
@@ -350,6 +355,10 @@ export default function UpdateListingPage() {
             style: selectedStyle.map((value) => ({
               value,
               icon: getIconPath('style', value),
+            })),
+            overallStyle: selectedOverallStyle.map((value) => ({
+              value,
+              icon: getIconPath('overallStyle', value),
             })),
             slabStyle: selectedSlabStyle.map((value) => ({
               value,
@@ -724,6 +733,46 @@ export default function UpdateListingPage() {
                   className={styles.checkboxInput}
                 />
                 {icon && <Image src={icon} alt={`${s} icon`} width={22} height={22} className={styles.checkboxIcon} />}
+                <span>{s}</span>
+              </label>
+            );
+          })}
+        </div>
+
+        {/* STYLE (overallStyle) (max 1) */}
+        <div>
+          <div className={styles.detailsHeader}>
+            <Image src="/new files/newIcons/Styles_Icons/Styles_Icons-11.svg" alt="Style" width={18} height={18} className={styles.detailsIcon} />
+            Style
+          </div>
+          <div className={styles.detailsSubHeader}>Can choose up to X1 Style Option</div>
+          {OVERALL_STYLE_OPTIONS.map((s) => {
+            const icon = getIconPath('overallStyle', s);
+            return (
+              <label key={s} className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={selectedOverallStyle.includes(s)}
+                  onChange={() => handleCheckboxChange(selectedOverallStyle, setSelectedOverallStyle, s, 1)}
+                  className={styles.checkboxInput}
+                />
+                {icon ? (
+                  <span
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 999,
+                      background: "#005bac",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginRight: 8,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Image src={icon} alt={`${s} icon`} width={16} height={16} style={{ display: "block" }} />
+                  </span>
+                ) : null}
                 <span>{s}</span>
               </label>
             );

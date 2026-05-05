@@ -53,6 +53,11 @@ export const GET_LISTING_BY_ID = gql`
           value
           icon
         }
+        overallStyle {
+          id
+          value
+          icon
+        }
         stoneType {
           id
           value
@@ -75,14 +80,22 @@ export const GET_LISTING_BY_ID = gql`
         transportAndInstallation {
           id
           value
+          info
         }
         foundationOptions {
           id
           value
+          info
         }
         warrantyOrGuarantee {
           id
           value
+          info
+        }
+        installationGuarantee {
+          id
+          value
+          info
         }
       }
       manufacturingTimeframe

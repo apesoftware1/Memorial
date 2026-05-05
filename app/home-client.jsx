@@ -118,6 +118,7 @@ export default function HomeClient({ initialListings = [], initialCategories = [
     maxPrice: "Max Price",
     colour: "Any",
     style: "Any",
+    overallStyle: "Any",
     slabStyle: "Any",
     location: "Any",
     stoneType: "Any",
@@ -307,4 +308,3 @@ export default function HomeClient({ initialListings = [], initialCategories = [
     </div>
   )
 }
-

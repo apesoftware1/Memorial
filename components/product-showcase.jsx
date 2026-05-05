@@ -17,6 +17,8 @@ import Header from "@/components/Header";
 import ProductContactForm from "./product-contact-form";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import MapModal from "./MapModal";
+import LaybuyModal from "./LaybuyModal";
+import SpecialOfferModal from "./SpecialOfferModal";
 import { useProductShowcaseLogic } from "@/hooks/product-showcase-logic";
 import { useGuestLocation } from "@/hooks/useGuestLocation";
 import { PremiumListingCardModal } from "@/components/premium-listing-card-modal";
@@ -40,6 +42,8 @@ export default function ProductShowcase({ listing, id, allListings = [], current
   }
 
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [isLaybuyOpen, setIsLaybuyOpen] = useState(false);
+  const [isSpecialOfferOpen, setIsSpecialOfferOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileDropdown, setMobileDropdown] = useState(null);
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -467,17 +471,6 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                     </span>
                   </div>
                   <div className="col-span-2 text-sm text-gray-600 flex items-center justify-between gap-2 mt-2">
-                    {hasMultipleBranches ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowBranchesModal(true)}
-                        className="inline-flex bg-[#0D7C99] text-white text-xs px-2 py-1 rounded shadow hover:bg-[#0D7C99]/90 whitespace-nowrap"
-                      >
-                        View More Branches Here
-                      </button>
-                    ) : (
-                      <span />
-                    )}
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={handlePrevious} 
@@ -531,17 +524,8 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                       )}
                     </>
                   </p>
-                  {hasMultipleBranches && (
-                    <button
-                      type="button"
-                      onClick={() => setShowBranchesModal(true)}
-                    className="mt-2 inline-flex bg-[#0D7C99] text-white text-sm px-3 py-2 rounded shadow hover:bg-[#0D7C99]/90 whitespace-nowrap"
-                    >
-                      View More Branches Here
-                    </button>
-                  )}
                 </div>
-                <div className="text-sm text-gray-600 flex items-center gap-2 mt-2 w-full sm:w-auto justify-end">
+                <div className="text-sm text-gray-600 flex items-center gap-3 mt-2 w-full sm:w-auto justify-end">
                   <button 
                     onClick={handlePrevious} 
                     className="hover:underline cursor-pointer"
@@ -574,6 +558,34 @@ export default function ProductShowcase({ listing, id, allListings = [], current
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Left Column - Product Images and Details */}
           <div className="md:col-span-2">
+            <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
+              {hasMultipleBranches ? (
+                <button
+                  type="button"
+                  onClick={() => setShowBranchesModal(true)}
+                  className="inline-flex bg-[#0D7C99] text-white text-sm px-3 py-2 rounded shadow hover:bg-[#0D7C99]/90 whitespace-nowrap"
+                >
+                  View More Branches Here
+                </button>
+              ) : (
+                <span />
+              )}
+              <button
+                type="button"
+                onClick={() => setIsLaybuyOpen(true)}
+                className="inline-flex items-center hover:opacity-90 transition-opacity"
+                aria-label="View lay-by options"
+              >
+                <Image
+                  src="/Icons&Lay-By2026/Lay-By/2026_TombstonesFinder_Icons-71.svg"
+                  alt="View lay-by options"
+                  width={246}
+                  height={89}
+                  className="h-20 w-auto sm:h-18"
+                  unoptimized
+                />
+              </button>
+            </div>
             {/* Gallery */}
             <ProductGallery
               images={allImages}
@@ -589,11 +601,31 @@ export default function ProductShowcase({ listing, id, allListings = [], current
               getFirstValue={getFirstValue}
               getAllValues={getAllValues}
             />
+            <button
+              type="button"
+              onClick={() => setIsSpecialOfferOpen(true)}
+              className="mt-1 mb-4 w-full rounded border border-gray-200 bg-[#F7F2D5] p-3 sm:p-4 text-left shadow-sm hover:shadow transition-shadow"
+            >
+              <div className="flex items-start gap-3">
+                <div className="text-2xl leading-none">🔥</div>
+                <div className="min-w-0">
+                  <div className="text-lg font-extrabold text-[#0D7C99]">
+                    Special Offer - Spend R5,000 or more and receive:
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-[#0D7C99]">
+                    FREE T-shirt on every R5000 spent + 5% Cashback
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-[#0D7C99] underline">
+                    View Full Offer &gt;&gt;
+                  </div>
+                </div>
+              </div>
+            </button>
             {/* Product Description and Additional Details */}
             <ProductDescription
               description={listing.description}
               additionalDetails={additionalDetails}
-              getAllValues={getAllValues}
+              manufacturingTimeframe={listing.manufacturingTimeframe}
             />
 
             {/* Price and Notes Card (unchanged) */}
@@ -966,6 +998,20 @@ export default function ProductShowcase({ listing, id, allListings = [], current
           onClose={() => setIsMapOpen(false)}
           mapUrl={selectedBranch?.location?.mapUrl || listing.company?.mapUrl}
           
+        />
+        {isLaybuyOpen ? (
+          <LaybuyModal
+            isOpen
+            onClose={() => setIsLaybuyOpen(false)}
+            companyId={listing?.company?.documentId || listing?.companyId}
+            companyName={listing?.company?.name}
+            logoSrc={info?.logo ? cloudinaryOptimized(info.logo, 300) : null}
+          />
+        ) : null}
+        <SpecialOfferModal
+          isOpen={isSpecialOfferOpen}
+          onClose={() => setIsSpecialOfferOpen(false)}
+          logoSrc={info?.logo ? cloudinaryOptimized(info.logo, 300) : null}
         />
         {showBranchesModal && (
           <PremiumListingCardModal

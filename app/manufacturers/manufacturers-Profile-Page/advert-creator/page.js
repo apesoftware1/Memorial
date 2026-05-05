@@ -11,7 +11,7 @@ import { useApolloClient } from '@apollo/client'
 import { GET_LISTINGS } from '@/graphql/queries/getListings'
 import { useListingCategories } from '@/hooks/use-ListingCategories'
 import { desiredOrder } from '@/lib/categories'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Info } from 'lucide-react'
 import { createListingSlug } from '../constants'
 
 const colorOptions = [
@@ -44,6 +44,15 @@ const styleOptions = [
   'Car',
   'Bike',
   'Sports',
+];
+const overallStyleOptions = [
+  "Traditional",
+  "Modern",
+  "Simple",
+  "Decorative",
+  "Religious",
+  "Premium",
+  "Traditional African Style",
 ];
 const stoneTypeOptions = [
   'Biodegradable',
@@ -184,6 +193,7 @@ export default function CreateListingForm() {
     productDetails: {
       color: [],
       headStyle: [],
+      overallStyle: [],
       stoneType: [],
       slabStyle: [],
       customization: []
@@ -192,6 +202,7 @@ export default function CreateListingForm() {
       transportAndInstallation: [],
       foundationOptions: [],
       warrantyOrGuarantee: [],
+      installationGuarantee: [],
       manufacturingLeadTime: [] // ADDED: store the single selected lead time here
     },
     // Remove companyDocumentId from the form, but keep in state for payload
@@ -223,6 +234,16 @@ export default function CreateListingForm() {
   const [priceMinor, setPriceMinor] = useState('00')
   const [priceInput, setPriceInput] = useState('')
   const [branchPrices, setBranchPrices] = useState({})
+  const [moreInfoModalOpen, setMoreInfoModalOpen] = useState(false)
+  const [moreInfoTarget, setMoreInfoTarget] = useState(null)
+  const [moreInfoDraft, setMoreInfoDraft] = useState("")
+  const [moreInfoByOption, setMoreInfoByOption] = useState({
+    transportAndInstallation: {},
+    foundationOptions: {},
+    warrantyOrGuarantee: {},
+    manufacturingLeadTime: {},
+    installationGuarantee: {},
+  })
 
   // Optional preload of price display from existing formData.price
   useEffect(() => {
@@ -278,6 +299,33 @@ export default function CreateListingForm() {
     })
   }
 
+  const openMoreInfoModal = (field, optionValue, optionLabel) => {
+    setMoreInfoTarget({ field, optionValue, optionLabel })
+    setMoreInfoDraft(moreInfoByOption?.[field]?.[optionValue] || "")
+    setMoreInfoModalOpen(true)
+  }
+
+  const saveMoreInfo = () => {
+    if (!moreInfoTarget) return
+    const { field, optionValue } = moreInfoTarget
+    setMoreInfoByOption((prev) => ({
+      ...prev,
+      [field]: {
+        ...(prev?.[field] || {}),
+        [optionValue]: moreInfoDraft,
+      },
+    }))
+    setMoreInfoModalOpen(false)
+    setMoreInfoTarget(null)
+    setMoreInfoDraft("")
+  }
+
+  const closeMoreInfo = () => {
+    setMoreInfoModalOpen(false)
+    setMoreInfoTarget(null)
+    setMoreInfoDraft("")
+  }
+
   const handleAdditionalProductDetailsChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -293,6 +341,16 @@ export default function CreateListingForm() {
       const str = String(days);
       const isSelected = prev.additionalProductDetails.manufacturingLeadTime.includes(str);
       const nextArray = isSelected ? [] : [str];
+      if (isSelected) {
+        setMoreInfoByOption((prevInfo) => {
+          const next = { ...(prevInfo?.manufacturingLeadTime || {}) }
+          delete next[str]
+          return { ...prevInfo, manufacturingLeadTime: next }
+        })
+        if (moreInfoTarget?.field === "manufacturingLeadTime" && moreInfoTarget?.optionValue === str) {
+          closeMoreInfo()
+        }
+      }
       return {
         ...prev,
         manufacturingTimeframe: isSelected ? '' : str, // mirror into existing payload field
@@ -333,6 +391,22 @@ export default function CreateListingForm() {
       setThumbnails(newThumbnails)
       
     }
+  }
+
+  const handleRemoveMainImage = () => {
+    setMainImage(null)
+    const input = document.getElementById(`img-upload-main`)
+    if (input) input.value = ""
+  }
+
+  const handleRemoveThumbnail = (index) => {
+    setThumbnails((prev) => {
+      const next = [...prev]
+      next[index] = null
+      return next
+    })
+    const input = document.getElementById(`img-upload-${index + 1}`)
+    if (input) input.value = ""
   }
 
   const handlePriceMajorChange = (e) => {
@@ -414,7 +488,6 @@ export default function CreateListingForm() {
   const handleCheckboxChange = (section, field, value, max) => {
     const currentSelected = formData[section][field];
     if (currentSelected.includes(value)) {
-      // Remove the value
       const newSelected = currentSelected.filter(x => x !== value);
       setFormData((prev) => ({
         ...prev,
@@ -423,8 +496,17 @@ export default function CreateListingForm() {
           [field]: newSelected
         }
       }));
+      if (section === "additionalProductDetails") {
+        setMoreInfoByOption((prevInfo) => {
+          const nextForField = { ...(prevInfo?.[field] || {}) }
+          delete nextForField[value]
+          return { ...prevInfo, [field]: nextForField }
+        })
+        if (moreInfoTarget?.field === field && moreInfoTarget?.optionValue === value) {
+          closeMoreInfo()
+        }
+      }
     } else if (currentSelected.length < max) {
-      // Add the value
       const newSelected = [...currentSelected, value];
       setFormData((prev) => ({
         ...prev,
@@ -471,6 +553,16 @@ export default function CreateListingForm() {
     "Car": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Car.svg",
     "Bike": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bike.svg",
     "Sports": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Sport.svg",
+  };
+
+  const OVERALL_STYLE_ICON_MAP = {
+    Traditional: "/Icons&Lay-By2026/Style-DropDown-Icons/traditional.svg",
+    Modern: "/Icons&Lay-By2026/Style-DropDown-Icons/modern.svg",
+    Simple: "/Icons&Lay-By2026/Style-DropDown-Icons/simple.svg",
+    Decorative: "/Icons&Lay-By2026/Style-DropDown-Icons/decorative.svg",
+    Religious: "/Icons&Lay-By2026/Style-DropDown-Icons/religious.svg",
+    Premium: "/Icons&Lay-By2026/Style-DropDown-Icons/premium.svg",
+    "Traditional African Style": "/Icons&Lay-By2026/Style-DropDown-Icons/Traditional-african-style.svg",
   };
 
 
@@ -528,6 +620,10 @@ export default function CreateListingForm() {
       case 'style': {
         const key = String(value).trim();
         return HEAD_STYLE_ICON_MAP[key] || '/new files/newIcons/Styles_Icons/Styles_Icons-11.svg';
+      }
+      case 'overallStyle': {
+        const key = String(value).trim();
+        return OVERALL_STYLE_ICON_MAP[key] || null;
       }
       case 'slabStyle': {
         const key = String(value).trim();
@@ -650,6 +746,10 @@ export default function CreateListingForm() {
             value,
             icon: getIconPath('style', value)
           })), // map headStyle -> style for backend
+          overallStyle: formData.productDetails.overallStyle.map((value) => ({
+            value,
+            icon: getIconPath('overallStyle', value),
+          })),
           slabStyle: formData.productDetails.slabStyle.map((value) => ({
             value,
             icon: getIconPath('slabStyle', value)
@@ -665,9 +765,22 @@ export default function CreateListingForm() {
         },
 
         additionalProductDetails: {
-          transportAndInstallation: formData.additionalProductDetails.transportAndInstallation.map((value) => ({ value })),
-          foundationOptions: formData.additionalProductDetails.foundationOptions.map((value) => ({ value })),
-          warrantyOrGuarantee: formData.additionalProductDetails.warrantyOrGuarantee.map((value) => ({ value }))
+          transportAndInstallation: formData.additionalProductDetails.transportAndInstallation.map((value) => {
+            const info = moreInfoByOption?.transportAndInstallation?.[value];
+            return info ? { value, info } : { value };
+          }),
+          foundationOptions: formData.additionalProductDetails.foundationOptions.map((value) => {
+            const info = moreInfoByOption?.foundationOptions?.[value];
+            return info ? { value, info } : { value };
+          }),
+          warrantyOrGuarantee: formData.additionalProductDetails.warrantyOrGuarantee.map((value) => {
+            const info = moreInfoByOption?.warrantyOrGuarantee?.[value];
+            return info ? { value, info } : { value };
+          }),
+          installationGuarantee: formData.additionalProductDetails.installationGuarantee.map((value) => {
+            const info = moreInfoByOption?.installationGuarantee?.[value];
+            return info ? { value, info } : { value };
+          })
         }
       }
           }
@@ -727,31 +840,48 @@ export default function CreateListingForm() {
               thumbnailUrls: uploadedThumbnails.map(thumb => thumb.url),
               thumbnailPublicIds: uploadedThumbnails.map(thumb => thumb.public_id),
               productDetails: {
-            color: formData.productDetails.color.map((value) => ({
-              value,
-              icon: getIconPath('color', value)
-            })),
-            style: formData.productDetails.headStyle.map((value) => ({
-              value,
-              icon: getIconPath('style', value)
-            })),
-            slabStyle: formData.productDetails.slabStyle.map((value) => ({
-              value,
-              icon: getIconPath('slabStyle', value)
-            })),
-            stoneType: formData.productDetails.stoneType.map((value) => ({
-              value,
-              icon: getIconPath('stoneType', value)
-            })),
-            customization: formData.productDetails.customization.map((value) => ({
-              value,
-              icon: getIconPath('customization', value)
-            }))
-          },
+                color: formData.productDetails.color.map((value) => ({
+                  value,
+                  icon: getIconPath('color', value)
+                })),
+                style: formData.productDetails.headStyle.map((value) => ({
+                  value,
+                  icon: getIconPath('style', value)
+                })),
+                overallStyle: formData.productDetails.overallStyle.map((value) => ({
+                  value,
+                  icon: getIconPath('overallStyle', value)
+                })),
+                slabStyle: formData.productDetails.slabStyle.map((value) => ({
+                  value,
+                  icon: getIconPath('slabStyle', value)
+                })),
+                stoneType: formData.productDetails.stoneType.map((value) => ({
+                  value,
+                  icon: getIconPath('stoneType', value)
+                })),
+                customization: formData.productDetails.customization.map((value) => ({
+                  value,
+                  icon: getIconPath('customization', value)
+                }))
+              },
               additionalProductDetails: {
-                transportAndInstallation: formData.additionalProductDetails.transportAndInstallation.map((value) => ({ value })),
-                foundationOptions: formData.additionalProductDetails.foundationOptions.map((value) => ({ value })),
-                warrantyOrGuarantee: formData.additionalProductDetails.warrantyOrGuarantee.map((value) => ({ value }))
+                transportAndInstallation: formData.additionalProductDetails.transportAndInstallation.map((value) => {
+                  const info = moreInfoByOption?.transportAndInstallation?.[value];
+                  return info ? { value, info } : { value };
+                }),
+                foundationOptions: formData.additionalProductDetails.foundationOptions.map((value) => {
+                  const info = moreInfoByOption?.foundationOptions?.[value];
+                  return info ? { value, info } : { value };
+                }),
+                warrantyOrGuarantee: formData.additionalProductDetails.warrantyOrGuarantee.map((value) => {
+                  const info = moreInfoByOption?.warrantyOrGuarantee?.[value];
+                  return info ? { value, info } : { value };
+                }),
+                installationGuarantee: formData.additionalProductDetails.installationGuarantee.map((value) => {
+                  const info = moreInfoByOption?.installationGuarantee?.[value];
+                  return info ? { value, info } : { value };
+                })
               },
               company: company,
               listing_category: { name: selectedCategory?.name || 'Unknown' }
@@ -812,6 +942,7 @@ export default function CreateListingForm() {
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {options.map((option) => {
             const optionIcon = getIconPath(iconPathKey, option);
+            const showIconWithBackground = iconPathKey === "overallStyle";
             return (
               <label
                 key={option}
@@ -824,13 +955,37 @@ export default function CreateListingForm() {
                   style={{ marginRight: 8 }}
                 />
                 {optionIcon && (
-                  <Image
-                    src={optionIcon}
-                    alt={`${option} icon`}
-                    width={22}
-                    height={22}
-                    style={{ marginRight: 8, display: 'inline-block', objectFit: 'contain' }}
-                  />
+                  showIconWithBackground ? (
+                    <span
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 999,
+                        background: "#005bac",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: 8,
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Image
+                        src={optionIcon}
+                        alt={`${option} icon`}
+                        width={16}
+                        height={16}
+                        style={{ display: "inline-block", objectFit: "contain" }}
+                      />
+                    </span>
+                  ) : (
+                    <Image
+                      src={optionIcon}
+                      alt={`${option} icon`}
+                      width={22}
+                      height={22}
+                      style={{ marginRight: 8, display: 'inline-block', objectFit: 'contain' }}
+                    />
+                  )
                 )}
                 <span>{option}</span>
               </label>
@@ -1154,6 +1309,35 @@ export default function CreateListingForm() {
                   ) : (
                     <span style={{ color: "#bbb", fontSize: 36, fontWeight: 700 }}>+</span>
                   )}
+                  {mainImage ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRemoveMainImage()
+                      }}
+                      style={{
+                        position: "absolute",
+                        top: -10,
+                        right: -10,
+                        width: 26,
+                        height: 26,
+                        borderRadius: "50%",
+                        background: "#e11d48",
+                        color: "#fff",
+                        border: "none",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+                      }}
+                      aria-label="Remove main image"
+                    >
+                      X
+                    </button>
+                  ) : null}
                   <input
                     id={`img-upload-main`}
                     name="mainImage"
@@ -1178,36 +1362,62 @@ export default function CreateListingForm() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        background: idx > 5 ? "#e0e0e0" : "#fafbfc",
-                        cursor: idx > 5 ? "not-allowed" : "pointer",
+                        background: "#fafbfc",
+                        cursor: "pointer",
                         position: "relative",
-                        opacity: idx > 5 ? 0.6 : 1,
+                        opacity: 1,
                       }}
                       onClick={() => {
-                        if (idx <= 5) {
-                        
-                          const input = document.getElementById(`img-upload-${idx}`);
-                          if (input) {
-                            input.click();
-                          } else {
-                            console.error(`Thumbnail ${idx} input not found`);
-                          }
+                        const input = document.getElementById(`img-upload-${idx}`);
+                        if (input) {
+                          input.click();
+                        } else {
+                          console.error(`Thumbnail ${idx} input not found`);
                         }
                       }}
                     >
                       {thumbnails[idx-1] ? (
                         <img src={URL.createObjectURL(thumbnails[idx-1])} alt="" style={{ width: 40, height: 40, borderRadius: 8 }} />
                       ) : (
-                        <span style={{ color: idx > 5 ? "#999" : "#bbb", fontSize: 22, fontWeight: 700 }}>{idx > 5 ? "×" : "+"}</span>
+                        <span style={{ color: "#bbb", fontSize: 22, fontWeight: 700 }}>+</span>
                       )}
+                      {thumbnails[idx-1] ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleRemoveThumbnail(idx - 1)
+                          }}
+                          style={{
+                            position: "absolute",
+                            top: -10,
+                            right: -10,
+                            width: 22,
+                            height: 22,
+                            borderRadius: "50%",
+                            background: "#e11d48",
+                            color: "#fff",
+                            border: "none",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontWeight: 800,
+                            cursor: "pointer",
+                            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+                          }}
+                          aria-label={`Remove additional image ${idx}`}
+                        >
+                          X
+                        </button>
+                      ) : null}
                       <input
                         id={`img-upload-${idx}`}
                         name="thumbnails"
                         type="file"
                         accept="image/*"
                         style={{ display: "none" }}
-                        onChange={(e) => idx <= 5 && handleThumbnailChange(e, idx-1)}
-                        disabled={idx > 5}
+                        onChange={(e) => handleThumbnailChange(e, idx-1)}
+                        disabled={false}
                       />
                     </div>
                   ))}
@@ -1225,8 +1435,9 @@ export default function CreateListingForm() {
         <div style={{ height: 12 }} />
         
         {/* Product Details Grid with Icons */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 24, marginBottom: 32 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 24, marginBottom: 32 }}>
           {renderCheckboxGroup(styleOptions, 'headStyle', 'productDetails', 'Head Style', 'Can choose up to X2 HEAD STYLE Options', '/new files/newIcons/Styles_Icons/Styles_Icons-11.svg')}
+          {renderCheckboxGroup(overallStyleOptions, 'overallStyle', 'productDetails', 'Style', 'Can choose up to X1 Style Option', '/new files/newIcons/Styles_Icons/Styles_Icons-11.svg', 1)}
           {renderCheckboxGroup(slabStyleOptions, 'slabStyle', 'productDetails', 'Slab Style', 'Can choose up to X1 Slab Style Option', null, 1)}
           {renderCheckboxGroup(colorOptions, 'color', 'productDetails', 'Colour', 'Can choose up to X2 Colour Options', '/new files/newIcons/Colour_Icons/Colour_Icons-28.svg')}
           {renderCheckboxGroup(stoneTypeOptions, 'stoneType', 'productDetails', 'Stone Type', 'Can choose up to X2 Material Options', '/new files/newIcons/Material_Icons/Material_Icons-39.svg')}
@@ -1255,24 +1466,51 @@ export default function CreateListingForm() {
                 "FREE TRANSPORT AND INSTALLATION",
                 "DISCOUNTED TRANSPORT AND INSTALLATION COST INCLUDED IN SALE",
                 "FINAL TRANSPORT AND INSTALLATION COST TO BE CONFIRMED BY MANUFACTURER",
-              ].map((option) => (
-                <label key={option} style={{ display: "block", fontSize: 13 }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.additionalProductDetails.transportAndInstallation.includes(option)}
-                    onChange={() =>
-                      handleCheckboxChange(
-                        "additionalProductDetails",
-                        "transportAndInstallation",
-                        option,
-                        2
-                      )
-                    }
-                    style={{ marginRight: 6 }}
-                  />
-                  {option}
-                </label>
-              ))}
+              ].map((option) => {
+                const checked = formData.additionalProductDetails.transportAndInstallation.includes(option)
+                const hasMoreInfo = Boolean(moreInfoByOption?.transportAndInstallation?.[option])
+                return (
+                  <div key={option} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <label style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 13, flex: 1, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() =>
+                          handleCheckboxChange(
+                            "additionalProductDetails",
+                            "transportAndInstallation",
+                            option,
+                            2
+                          )
+                        }
+                        style={{ marginTop: 3 }}
+                      />
+                      <span>{option}</span>
+                    </label>
+                    {checked ? (
+                      <button
+                        type="button"
+                        onClick={() => openMoreInfoModal("transportAndInstallation", option, option)}
+                        style={{
+                          border: "none",
+                          background: hasMoreInfo ? "#005bac" : "#e5e7eb",
+                          color: hasMoreInfo ? "#fff" : "#111827",
+                          borderRadius: 999,
+                          width: 26,
+                          height: 26,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                        }}
+                        aria-label="Add more info"
+                      >
+                        <Info size={16} />
+                      </button>
+                    ) : null}
+                  </div>
+                )
+              })}
             </div>
           </div>
 
@@ -1292,31 +1530,58 @@ export default function CreateListingForm() {
                 "X1 LAYER BRICK FOUNDATION COST INCLUDED IN PRICE",
                 "X2 LAYER BRICK FOUNDATION COST INCLUDED IN PRICE",
                 "X3 LAYER BRICK FOUNDATION COST INCLUDED IN PRICE",
-              ].map((option) => (
-                <label key={option} style={{ display: "block", fontSize: 13 }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.additionalProductDetails.foundationOptions.includes(option)}
-                    onChange={() =>
-                      handleCheckboxChange(
-                        "additionalProductDetails",
-                        "foundationOptions",
-                        option,
-                        3
-                      )
-                    }
-                    style={{ marginRight: 6 }}
-                  />
-                  {option}
-                </label>
-              ))}
+              ].map((option) => {
+                const checked = formData.additionalProductDetails.foundationOptions.includes(option)
+                const hasMoreInfo = Boolean(moreInfoByOption?.foundationOptions?.[option])
+                return (
+                  <div key={option} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <label style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 13, flex: 1, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() =>
+                          handleCheckboxChange(
+                            "additionalProductDetails",
+                            "foundationOptions",
+                            option,
+                            3
+                          )
+                        }
+                        style={{ marginTop: 3 }}
+                      />
+                      <span>{option}</span>
+                    </label>
+                    {checked ? (
+                      <button
+                        type="button"
+                        onClick={() => openMoreInfoModal("foundationOptions", option, option)}
+                        style={{
+                          border: "none",
+                          background: hasMoreInfo ? "#005bac" : "#e5e7eb",
+                          color: hasMoreInfo ? "#fff" : "#111827",
+                          borderRadius: 999,
+                          width: 26,
+                          height: 26,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                        }}
+                        aria-label="Add more info"
+                      >
+                        <Info size={16} />
+                      </button>
+                    ) : null}
+                  </div>
+                )
+              })}
             </div>
           </div>
 
           {/* 3. WARRANTY/GUARANTEE (max 1) */}
           <div>
-            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>3. WARRANTY/GUARANTEE</div>
-            <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X1 Warranty/Guarantee Options)</div>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>3. MANUFACTURERS GUARANTEE</div>
+            <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X1 Manufacturers Guarantee Options)</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {[
                 "5   YEAR MANUFACTURES WARRANTY",
@@ -1329,24 +1594,51 @@ export default function CreateListingForm() {
                 "20 YEAR MANUFACTURES GUARANTEE",
                 "LIFETIME MANUFACTURERS WARRANTY",
                 "LIFETIME MANUFACTURERS GUARANTEE",
-              ].map((option) => (
-                <label key={option} style={{ display: "block", fontSize: 13 }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.additionalProductDetails.warrantyOrGuarantee.includes(option)}
-                    onChange={() =>
-                      handleCheckboxChange(
-                        "additionalProductDetails",
-                        "warrantyOrGuarantee",
-                        option,
-                        1
-                      )
-                    }
-                    style={{ marginRight: 6 }}
-                  />
-                  {option}
-                </label>
-              ))}
+              ].map((option) => {
+                const checked = formData.additionalProductDetails.warrantyOrGuarantee.includes(option)
+                const hasMoreInfo = Boolean(moreInfoByOption?.warrantyOrGuarantee?.[option])
+                return (
+                  <div key={option} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <label style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 13, flex: 1, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() =>
+                          handleCheckboxChange(
+                            "additionalProductDetails",
+                            "warrantyOrGuarantee",
+                            option,
+                            1
+                          )
+                        }
+                        style={{ marginTop: 3 }}
+                      />
+                      <span>{option}</span>
+                    </label>
+                    {checked ? (
+                      <button
+                        type="button"
+                        onClick={() => openMoreInfoModal("warrantyOrGuarantee", option, option)}
+                        style={{
+                          border: "none",
+                          background: hasMoreInfo ? "#005bac" : "#e5e7eb",
+                          color: hasMoreInfo ? "#fff" : "#111827",
+                          borderRadius: 999,
+                          width: 26,
+                          height: 26,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                        }}
+                        aria-label="Add more info"
+                      >
+                        <Info size={16} />
+                      </button>
+                    ) : null}
+                  </div>
+                )
+              })}
             </div>
           </div>
 
@@ -1358,17 +1650,97 @@ export default function CreateListingForm() {
               {manufacturingLeadTimeOptions.map((days) => {
                 const str = String(days);
                 const checked = formData.additionalProductDetails.manufacturingLeadTime.includes(str);
+                const hasMoreInfo = Boolean(moreInfoByOption?.manufacturingLeadTime?.[str])
+                const label = formatManufacturingLeadTimeText(days)
                 return (
-                  <label key={str} style={{ display: "block", fontSize: 13 }}>
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => handleManufacturingLeadTimeToggle(days)}
-                      style={{ marginRight: 6 }}
-                    />
-                    {formatManufacturingLeadTimeText(days)}
-                  </label>
+                  <div key={str} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <label style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 13, flex: 1, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => handleManufacturingLeadTimeToggle(days)}
+                        style={{ marginTop: 3 }}
+                      />
+                      <span>{label}</span>
+                    </label>
+                    {checked ? (
+                      <button
+                        type="button"
+                        onClick={() => openMoreInfoModal("manufacturingLeadTime", str, label)}
+                        style={{
+                          border: "none",
+                          background: hasMoreInfo ? "#005bac" : "#e5e7eb",
+                          color: hasMoreInfo ? "#fff" : "#111827",
+                          borderRadius: 999,
+                          width: 26,
+                          height: 26,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                        }}
+                        aria-label="Add more info"
+                      >
+                        <Info size={16} />
+                      </button>
+                    ) : null}
+                  </div>
                 );
+              })}
+            </div>
+          </div>
+
+          {/* 5. INSTALLATION GUARANTEE (max 1) */}
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>5. INSTALLATION GUARANTEE</div>
+            <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X1 Installation Guarantee Option)</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {[
+                "1 YEAR INSTALLATION GUARANTEE ",
+              ].map((option) => {
+                const checked = formData.additionalProductDetails.installationGuarantee.includes(option)
+                const hasMoreInfo = Boolean(moreInfoByOption?.installationGuarantee?.[option])
+                return (
+                  <div key={option} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <label style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 13, flex: 1, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() =>
+                          handleCheckboxChange(
+                            "additionalProductDetails",
+                            "installationGuarantee",
+                            option,
+                            1
+                          )
+                        }
+                        style={{ marginTop: 3 }}
+                      />
+                      <span>{option}</span>
+                    </label>
+                    {checked ? (
+                      <button
+                        type="button"
+                        onClick={() => openMoreInfoModal("installationGuarantee", option, option)}
+                        style={{
+                          border: "none",
+                          background: hasMoreInfo ? "#005bac" : "#e5e7eb",
+                          color: hasMoreInfo ? "#fff" : "#111827",
+                          borderRadius: 999,
+                          width: 26,
+                          height: 26,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                        }}
+                        aria-label="Add more info"
+                      >
+                        <Info size={16} />
+                      </button>
+                    ) : null}
+                  </div>
+                )
               })}
             </div>
           </div>
@@ -1594,6 +1966,36 @@ export default function CreateListingForm() {
             animation: 'slideIn 0.3s ease'
           }}>
             {submitMessage}
+          </div>
+        )}
+
+        {moreInfoModalOpen && (
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.45)', zIndex: 9998, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div style={{ background: '#fff', borderRadius: 12, padding: 20, width: '100%', maxWidth: 520, boxShadow: '0 2px 16px rgba(0,0,0,0.18)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                <div style={{ fontWeight: 800, fontSize: 16, color: '#111' }}>More Info</div>
+                <button type="button" onClick={closeMoreInfo} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1, color: '#555' }} aria-label="Close">
+                  ✕
+                </button>
+              </div>
+              <div style={{ marginTop: 8, fontSize: 12, color: '#444', fontWeight: 700 }}>
+                {moreInfoTarget?.optionLabel || moreInfoTarget?.optionValue}
+              </div>
+              <textarea
+                value={moreInfoDraft}
+                onChange={(e) => setMoreInfoDraft(e.target.value)}
+                placeholder="Type more info for this option..."
+                style={{ width: '100%', marginTop: 10, border: '1px solid #ccc', borderRadius: 8, padding: '10px 12px', minHeight: 120, outline: 'none', resize: 'vertical' }}
+              />
+              <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button type="button" onClick={closeMoreInfo} style={{ background: '#e5e7eb', color: '#111', border: 'none', borderRadius: 8, padding: '10px 14px', fontWeight: 700, cursor: 'pointer' }}>
+                  Cancel
+                </button>
+                <button type="button" onClick={saveMoreInfo} style={{ background: '#005bac', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 14px', fontWeight: 700, cursor: 'pointer' }}>
+                  Save
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

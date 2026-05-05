@@ -36,6 +36,11 @@ export const GET_LISTING_BY_ID_FAST = gql`
           value
           icon
         }
+        overallStyle {
+          id
+          value
+          icon
+        }
         stoneType {
           id
           value
@@ -57,14 +62,22 @@ export const GET_LISTING_BY_ID_FAST = gql`
         transportAndInstallation {
           id
           value
+          info
         }
         foundationOptions {
           id
           value
+          info
         }
         warrantyOrGuarantee {
           id
           value
+          info
+        }
+        installationGuarantee {
+          id
+          value
+          info
         }
       }
       inquiries_c {
@@ -116,4 +129,3 @@ export const GET_LISTING_BY_ID_FAST = gql`
     }
   }
 `;
-

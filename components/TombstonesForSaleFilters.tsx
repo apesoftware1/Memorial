@@ -29,6 +29,16 @@ const defaultFilterOptions = {
     "Christian Cross", "Heart", "Bible", "Pillars", "Traditional African", "Abstract", "Praying Hands", "Scroll", "Angel", "Mausoleum", "Obelisk", "Plain", "Teddy Bear", "Butterfly", "Car", "Bike", "Sports",
     "Wave", "Church", "House", "Square", "Organic", "Arch"
   ],
+  overallStyle: [
+    "Any",
+    "Traditional",
+    "Modern",
+    "Simple",
+    "Decorative",
+    "Religious",
+    "Premium",
+    "Traditional African Style",
+  ],
   slabStyle: [
     "Curved Slab", "Frame with Infill", "Full Slab", "Glass Slab", "Half Slab", "Stepped Slab", "Tiled Slab", "Double"
   ],
@@ -205,7 +215,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
   }
 
   // Helper for multi-select
-  const isMultiSelect = (name: string) => ['style', 'slabStyle', 'stoneType', 'colour', 'custom', 'location'].includes(name);
+  const isMultiSelect = (name: string) => ['style', 'overallStyle', 'slabStyle', 'stoneType', 'colour', 'custom', 'location'].includes(name);
 
   // New selectOption for FilterDropdown.js
   const selectOption = (name: string, value: any, keepOpen: boolean = false) => {
@@ -353,6 +363,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
       />
 
       <FilterDropdown name="style" label="Head Style" options={mergedOptions.style} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
+      <FilterDropdown name="overallStyle" label="Style" options={mergedOptions.overallStyle || defaultFilterOptions.overallStyle} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
       <FilterDropdown name="slabStyle" label="Slab Style" options={mergedOptions.slabStyle} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
       <FilterDropdown name="stoneType" label="Stone Type" options={mergedOptions.stoneType} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
       <FilterDropdown name="colour" label="Colour" options={mergedOptions.colour} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />

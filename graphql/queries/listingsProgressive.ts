@@ -86,6 +86,7 @@ export const LISTINGS_FULL_QUERY = gql`
         id
         color { id value }
         style { id value }
+        overallStyle { id value }
         stoneType { id value }
         slabStyle { id value }
         customization { id value }
@@ -160,6 +161,7 @@ export const LISTINGS_DELTA_QUERY = gql`
         id
         color { id value }
         style { id value }
+        overallStyle { id value }
         stoneType { id value }
         slabStyle { id value }
         customization { id value }

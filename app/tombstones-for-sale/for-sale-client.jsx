@@ -126,6 +126,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     stoneType: null,
     color: null,
     style: null,
+    overallStyle: null,
     slabStyle: null,
     custom: null,
     colour: null,
@@ -216,6 +217,12 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         }
       });
 
+      const overallStyle = getParam('overallStyle');
+      if (JSON.stringify(overallStyle) !== JSON.stringify(prev.overallStyle)) {
+        newFilters.overallStyle = overallStyle;
+        hasChanges = true;
+      }
+
       if (hasChanges) {
         return newFilters;
       }
@@ -233,6 +240,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         !activeFilters.stoneType &&
         !activeFilters.colour &&
         !activeFilters.style &&
+        !activeFilters.overallStyle &&
         !activeFilters.slabStyle &&
         !activeFilters.custom &&
         !activeFilters.search;
@@ -244,6 +252,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         searchParams.has('stoneType') || 
         searchParams.has('colour') || 
         searchParams.has('style') || 
+        searchParams.has('overallStyle') || 
         searchParams.has('slabStyle') || 
         searchParams.has('custom') ||
         searchParams.has('search');
@@ -281,6 +290,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     if (params.has('color')) params.delete('color');
     
     updateParam('style', activeFilters.style);
+    updateParam('overallStyle', activeFilters.overallStyle);
     updateParam('slabStyle', activeFilters.slabStyle);
     updateParam('custom', activeFilters.custom);
     
@@ -653,6 +663,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         const pd = listing?.productDetails || {};
         const arrVals = [
           ...(Array.isArray(pd.style) ? pd.style.map(v => v?.value || '') : []),
+          ...(Array.isArray(pd.overallStyle) ? pd.overallStyle.map(v => v?.value || '') : []),
           ...(Array.isArray(pd.slabStyle) ? pd.slabStyle.map(v => v?.value || '') : []),
           ...(Array.isArray(pd.stoneType) ? pd.stoneType.map(v => v?.value || '') : []),
           ...(Array.isArray(pd.color) ? pd.color.map(v => v?.value || '') : []),
@@ -699,6 +710,12 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         const values = listing.productDetails?.style?.map(v => v.value) || [];
         if (values.length === 0) return checkMatch(null, f.style);
         return values.some(val => checkMatch(val, f.style));
+    });
+
+    filtered = filtered.filter(listing => {
+        const values = listing.productDetails?.overallStyle?.map(v => v.value) || [];
+        if (values.length === 0) return checkMatch(null, f.overallStyle);
+        return values.some(val => checkMatch(val, f.overallStyle));
     });
 
     filtered = filtered.filter(listing => {

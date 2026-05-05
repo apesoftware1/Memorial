@@ -37,6 +37,7 @@ import { useApolloClient } from '@apollo/client';
 import { GET_LISTING_BY_ID } from '@/graphql/queries/getListingById';
 import { GET_LISTING_CATEGORY } from '@/graphql/queries/getListingCategory';
 import CompanyMediaUpload from "@/components/CompanyMediaUpload";
+import LaybyModal from "@/components/LaybyModal";
 import { updateBranch } from "@/graphql/mutations/updateBranch";
 import { useGuestLocation } from "@/hooks/useGuestLocation";
 import ListingCardItem from "./ListingCardItem";
@@ -174,6 +175,7 @@ export default function ManufacturerProfileEditor({
   const searchParams = useSearchParams();
   const [mobile, setMobile] = useState(false);
   const [showBannerAdUpdate, setShowBannerAdUpdate] = useState(false);
+  const [showLaybyModal, setShowLaybyModal] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const sortModalRef = useRef();
   const [sortBy, setSortBy] = useState("Price");
@@ -2256,6 +2258,11 @@ export default function ManufacturerProfileEditor({
                   </DropdownMenuItem>
                 )}
                 {isOwner && (
+                  <DropdownMenuItem onClick={() => setShowLaybyModal(true)}>
+                    Configure Lay-By Options
+                  </DropdownMenuItem>
+                )}
+                {isOwner && (
                   <DropdownMenuItem onClick={() => setShowBannerAdUpdate(true)}>
                     Update Banner Ad
                   </DropdownMenuItem>
@@ -3873,6 +3880,12 @@ export default function ManufacturerProfileEditor({
               onClose={closeLocationModal}
               company={company}
               onLocationUpdate={handleLocationUpdate}
+            />
+
+            <LaybyModal
+              isOpen={showLaybyModal}
+              onClose={() => setShowLaybyModal(false)}
+              companyId={company?.documentId}
             />
           </>
         )}

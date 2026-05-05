@@ -34,6 +34,7 @@ const FOR_SALE_INITIAL_QUERY = `
         id
         color { id value }
         style { id value }
+        overallStyle { id value }
         stoneType { id value }
         slabStyle { id value }
         customization { id value }
@@ -202,5 +203,4 @@ export default async function TombstonesForSalePage() {
   const { initialListings, initialCategories } = await fetchForSaleInitialData();
   return <TombstonesForSaleClient initialListings={initialListings} initialCategories={initialCategories} />;
 }
-
 

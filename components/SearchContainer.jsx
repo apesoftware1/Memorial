@@ -72,6 +72,16 @@ const defaultFilterOptions = {
     "Organic",
     "Arch",
   ],
+  overallStyle: [
+    "Any",
+    "Traditional",
+    "Modern",
+    "Simple",
+    "Decorative",
+    "Religious",
+    "Premium",
+    "Traditional African Style",
+  ],
   slabStyle: [
     "Any",
     "Curved Slab",
@@ -458,6 +468,7 @@ const SearchContainer = ({
   const showMaxPrice = !hiddenSet.has("maxPrice");
   const showLocation = !hiddenSet.has("location");
   const showStyle = !hiddenSet.has("style");
+  const showOverallStyle = !hiddenSet.has("overallStyle");
   const showSlabStyle = !hiddenSet.has("slabStyle");
   const showStoneType = !hiddenSet.has("stoneType");
   const showColour = !hiddenSet.has("colour");
@@ -475,6 +486,10 @@ const SearchContainer = ({
   const styleOptions = useMemo(
     () => filterSimpleOptions(filterOptions?.style, "style", ["Any"]),
     [filterOptions?.style, filterSimpleOptions]
+  );
+  const overallStyleOptions = useMemo(
+    () => filterSimpleOptions(filterOptions?.overallStyle, "overallStyle", ["Any"]),
+    [filterOptions?.overallStyle, filterSimpleOptions]
   );
   const slabStyleOptions = useMemo(
     () => filterSimpleOptions(filterOptions?.slabStyle, "slabStyle", ["Any"]),
@@ -548,6 +563,7 @@ const SearchContainer = ({
       searchParams.get("category") || searchParams.get("category_listing.name");
     const paramColor = searchParams.get("color") || searchParams.get("colour");
     const paramStyle = searchParams.get("style");
+    const paramOverallStyle = searchParams.get("overallStyle");
     const paramSlabStyle = searchParams.get("slabStyle");
     const paramMaterial =
       searchParams.get("material") || searchParams.get("stoneType");
@@ -557,6 +573,12 @@ const SearchContainer = ({
     const paramMinPrice = searchParams.get("minPrice");
     const paramMaxPrice = searchParams.get("maxPrice");
     const paramSearch = searchParams.get("search");
+
+    const parseMultiParam = (val) => {
+      if (!val || typeof val !== "string") return null;
+      const parts = val.split(",").map((s) => s.trim()).filter(Boolean);
+      return parts.length > 0 ? parts : null;
+    };
 
     // Build filtered array using case-insensitive partial matches and numeric ranges
     let next = [...allListings];
@@ -595,52 +617,86 @@ const SearchContainer = ({
 
     // Color (array in productDetails.color)
     if (paramColor) {
-      const q = paramColor.toLowerCase();
+      const qs = parseMultiParam(paramColor) || [paramColor];
+      const qLower = qs.map((q) => q.toLowerCase());
       next = next.filter((listing) => {
         const colors = getDetailValues(listing, "color");
         // Also allow fallback to title text search
         const title = (listing?.title || "").toLowerCase();
-        return colors.some((c) => c.includes(q)) || title.includes(q);
+        return (
+          qLower.some((q) => colors.some((c) => c.includes(q))) ||
+          qLower.some((q) => title.includes(q))
+        );
       });
     }
 
     // Style (array in productDetails.style)
     if (paramStyle) {
-      const q = paramStyle.toLowerCase();
+      const qs = parseMultiParam(paramStyle) || [paramStyle];
+      const qLower = qs.map((q) => q.toLowerCase());
       next = next.filter((listing) => {
         const styles = getDetailValues(listing, "style");
         const title = (listing?.title || "").toLowerCase();
-        return styles.some((s) => s.includes(q)) || title.includes(q);
+        return (
+          qLower.some((q) => styles.some((s) => s.includes(q))) ||
+          qLower.some((q) => title.includes(q))
+        );
+      });
+    }
+
+    // Overall Style (array in productDetails.overallStyle)
+    if (paramOverallStyle) {
+      const qs = parseMultiParam(paramOverallStyle) || [paramOverallStyle];
+      const qLower = qs.map((q) => q.toLowerCase());
+      next = next.filter((listing) => {
+        const styles = getDetailValues(listing, "overallStyle");
+        const title = (listing?.title || "").toLowerCase();
+        return (
+          qLower.some((q) => styles.some((s) => s.includes(q))) ||
+          qLower.some((q) => title.includes(q))
+        );
       });
     }
 
     // Slab Style (array in productDetails.slabStyle)
     if (paramSlabStyle) {
-      const q = paramSlabStyle.toLowerCase();
+      const qs = parseMultiParam(paramSlabStyle) || [paramSlabStyle];
+      const qLower = qs.map((q) => q.toLowerCase());
       next = next.filter((listing) => {
         const styles = getDetailValues(listing, "slabStyle");
         const title = (listing?.title || "").toLowerCase();
-        return styles.some((s) => s.includes(q)) || title.includes(q);
+        return (
+          qLower.some((q) => styles.some((s) => s.includes(q))) ||
+          qLower.some((q) => title.includes(q))
+        );
       });
     }
 
     // Material (stoneType array)
     if (paramMaterial) {
-      const q = paramMaterial.toLowerCase();
+      const qs = parseMultiParam(paramMaterial) || [paramMaterial];
+      const qLower = qs.map((q) => q.toLowerCase());
       next = next.filter((listing) => {
         const materials = getDetailValues(listing, "stoneType");
         const title = (listing?.title || "").toLowerCase();
-        return materials.some((m) => m.includes(q)) || title.includes(q);
+        return (
+          qLower.some((q) => materials.some((m) => m.includes(q))) ||
+          qLower.some((q) => title.includes(q))
+        );
       });
     }
 
     // Customization (customization array)
     if (paramCustomization) {
-      const q = paramCustomization.toLowerCase();
+      const qs = parseMultiParam(paramCustomization) || [paramCustomization];
+      const qLower = qs.map((q) => q.toLowerCase());
       next = next.filter((listing) => {
         const customs = getDetailValues(listing, "customization");
         const title = (listing?.title || "").toLowerCase();
-        return customs.some((c) => c.includes(q)) || title.includes(q);
+        return (
+          qLower.some((q) => customs.some((c) => c.includes(q))) ||
+          qLower.some((q) => title.includes(q))
+        );
       });
     }
 
@@ -675,11 +731,12 @@ const SearchContainer = ({
         ...prev,
         // Keep existing keys but update if present in URL
         search: paramSearch || prev?.search || null,
-        colour: paramColor || prev?.colour || null,
-        style: paramStyle || prev?.style || null,
-        slabStyle: paramSlabStyle || prev?.slabStyle || null,
-        stoneType: paramMaterial || prev?.stoneType || null,
-        custom: paramCustomization || prev?.custom || null,
+        colour: parseMultiParam(paramColor) || paramColor || prev?.colour || null,
+        style: parseMultiParam(paramStyle) || paramStyle || prev?.style || null,
+        overallStyle: parseMultiParam(paramOverallStyle) || paramOverallStyle || prev?.overallStyle || null,
+        slabStyle: parseMultiParam(paramSlabStyle) || paramSlabStyle || prev?.slabStyle || null,
+        stoneType: parseMultiParam(paramMaterial) || paramMaterial || prev?.stoneType || null,
+        custom: parseMultiParam(paramCustomization) || paramCustomization || prev?.custom || null,
         location: paramLocation ? toTitleCase(paramLocation) : (prev?.location || null),
         minPrice: paramMinPrice || prev?.minPrice || null,
         maxPrice: paramMaxPrice || prev?.maxPrice || null,
@@ -805,6 +862,20 @@ const SearchContainer = ({
             )
               return true;
             const itemVal = (listing?.productDetails?.style?.[0]?.value || "").toLowerCase();
+            if (Array.isArray(filterVal)) return filterVal.some(v => itemVal.includes(String(v).toLowerCase()));
+            return itemVal.includes(String(filterVal).toLowerCase());
+          })
+          // Style (overallStyle) (partial)
+          .filter((listing) => {
+            const filterVal = f.overallStyle;
+            if (
+              !filterVal ||
+              filterVal === "All" ||
+              filterVal === "Any" ||
+              filterVal === ""
+            )
+              return true;
+            const itemVal = (listing?.productDetails?.overallStyle?.[0]?.value || "").toLowerCase();
             if (Array.isArray(filterVal)) return filterVal.some(v => itemVal.includes(String(v).toLowerCase()));
             return itemVal.includes(String(filterVal).toLowerCase());
           })
@@ -1036,6 +1107,9 @@ const SearchContainer = ({
 
           if (Array.isArray(filters.style) && filters.style.length > 0) params.set('style', filters.style.join(','));
           else if (filters.style && filters.style !== 'Any') params.set('style', filters.style);
+
+          if (Array.isArray(filters.overallStyle) && filters.overallStyle.length > 0) params.set('overallStyle', filters.overallStyle.join(','));
+          else if (filters.overallStyle && filters.overallStyle !== 'Any') params.set('overallStyle', filters.overallStyle);
 
           if (Array.isArray(filters.slabStyle) && filters.slabStyle.length > 0) params.set('slabStyle', filters.slabStyle.join(','));
           else if (filters.slabStyle && filters.slabStyle !== 'Any') params.set('slabStyle', filters.slabStyle);
@@ -1430,6 +1504,18 @@ const SearchContainer = ({
                   name="style"
                   label="Head Style"
                   options={styleOptions}
+                  openDropdown={uiState.openDropdown}
+                  toggleDropdown={toggleDropdown}
+                  selectOption={selectOption}
+                  filters={filters || {}}
+                  dropdownRefs={dropdownRefs}
+                />
+              )}
+              {showOverallStyle && (
+                <FilterDropdown
+                  name="overallStyle"
+                  label="Style"
+                  options={overallStyleOptions}
                   openDropdown={uiState.openDropdown}
                   toggleDropdown={toggleDropdown}
                   selectOption={selectOption}

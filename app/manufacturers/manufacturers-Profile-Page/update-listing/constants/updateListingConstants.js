@@ -49,6 +49,15 @@ export const ICON_PATHS = {
     "Bike": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bike.svg`,
     "Sports": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Sports.svg`,
   },
+  overallStyle: {
+    Traditional: "/Icons&Lay-By2026/Style-DropDown-Icons/traditional.svg",
+    Modern: "/Icons&Lay-By2026/Style-DropDown-Icons/modern.svg",
+    Simple: "/Icons&Lay-By2026/Style-DropDown-Icons/simple.svg",
+    Decorative: "/Icons&Lay-By2026/Style-DropDown-Icons/decorative.svg",
+    Religious: "/Icons&Lay-By2026/Style-DropDown-Icons/religious.svg",
+    Premium: "/Icons&Lay-By2026/Style-DropDown-Icons/premium.svg",
+    "Traditional African Style": "/Icons&Lay-By2026/Style-DropDown-Icons/Traditional-african-style.svg",
+  },
   stoneType: {
     "Biodegradable": `${BASE_ICON_PATH}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg`,
     "Brass": `${BASE_ICON_PATH}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Brass.svg`,
@@ -103,6 +112,16 @@ export const STYLE_OPTIONS = [
   'Christian Cross','Heart','Bible','Pillars','Traditional African','Abstract',
   'Praying Hands','Scroll','Angel','Mausoleum','Obelisk','Plain','Teddy Bear','Butterfly','Car','Bike','Sports',
   'Wave','Church','House','Square','Organic','Arch',
+];
+
+export const OVERALL_STYLE_OPTIONS = [
+  "Traditional",
+  "Modern",
+  "Simple",
+  "Decorative",
+  "Religious",
+  "Premium",
+  "Traditional African Style",
 ];
 
 export const SLAB_STYLE_OPTIONS = [

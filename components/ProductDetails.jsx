@@ -5,6 +5,15 @@ import PropTypes from "prop-types";
 
 export default function ProductDetails({ productDetails, icons, getFirstValue }) {
   const { stoneTypeIcon, headStyleIcon, slabStyleIcon, colourIcon, customIcon } = icons || {};
+  const OVERALL_STYLE_ICON_MAP = {
+    Traditional: "/Icons&Lay-By2026/Style-DropDown-Icons/traditional.svg",
+    Modern: "/Icons&Lay-By2026/Style-DropDown-Icons/modern.svg",
+    Simple: "/Icons&Lay-By2026/Style-DropDown-Icons/simple.svg",
+    Decorative: "/Icons&Lay-By2026/Style-DropDown-Icons/decorative.svg",
+    Religious: "/Icons&Lay-By2026/Style-DropDown-Icons/religious.svg",
+    Premium: "/Icons&Lay-By2026/Style-DropDown-Icons/premium.svg",
+    "Traditional African Style": "/Icons&Lay-By2026/Style-DropDown-Icons/Traditional-african-style.svg",
+  };
 
   // Function to fix icon paths that might contain "last icons" instead of "last_icons"
   const fixIconPath = (iconPath) => {
@@ -40,6 +49,33 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
       onDragStart={(e) => e.preventDefault()}
     >
       <div className="flex flex-wrap gap-2 text-sm text-gray-700">
+        {/* Style */}
+        {getFirstValue(productDetails.overallStyle) && (
+          <div className="flex items-center border border-gray-300 rounded px-2 py-1.5 font-medium bg-white ">
+            <span>Style:</span>
+            {(() => {
+              const first = Array.isArray(productDetails.overallStyle) ? productDetails.overallStyle[0] : null;
+              const rawIcon = first?.icon || OVERALL_STYLE_ICON_MAP[first?.value];
+              const iconPath = fixIconPath(rawIcon);
+              if (iconPath) {
+                return (
+                  <span className="mx-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#0D7C99]">
+                    <Image
+                      src={iconPath}
+                      alt="Style Icon"
+                      width={14}
+                      height={14}
+                      className="object-contain"
+                    />
+                  </span>
+                );
+              }
+              return <Gem size={16} className="text-gray-500 mx-2" />;
+            })()}
+            <span className="font-bold">{getFirstValue(productDetails.overallStyle)}</span>
+          </div>
+        )}
+
         {/* Head Style */}
         {getFirstValue(productDetails.style) && (
           <div className="flex items-center border border-gray-300 rounded px-2 py-1.5 font-medium bg-white ">

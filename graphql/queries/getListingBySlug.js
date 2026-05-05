@@ -22,6 +22,11 @@ export const GET_LISTING_BY_SLUG = gql`
           id
           value
         }
+        overallStyle {
+          id
+          value
+          icon
+        }
         stoneType {
           id
           value
@@ -37,14 +42,22 @@ export const GET_LISTING_BY_SLUG = gql`
         transportAndInstallation {
           id
           value
+          info
         }
         foundationOptions {
           id
           value
+          info
         }
         warrantyOrGuarantee {
           id
           value
+          info
+        }
+        installationGuarantee {
+          id
+          value
+          info
         }
       }
       manufacturingTimeframe
