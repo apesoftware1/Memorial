@@ -25,6 +25,9 @@ const colorOptions = [
   'Red',
   'White',
   'Mixed',
+  'Gold',
+  'Yellow',
+  'Pink',
 ];
 const styleOptions = [
   'Christian Cross',
@@ -63,6 +66,9 @@ const stoneTypeOptions = [
   'Copper',
   'Glass',
   'Granite',
+  'Granite Stones',
+  'Zimbabwe Black',
+  'Zimbabwe Red',
   'Limestone',
   'Marble',
   'Perspex',
@@ -533,6 +539,9 @@ export default function CreateListingForm() {
     Mixed: "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Mixed.svg",
     // Red icon not present in folder listing; add when available
     Red: "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Red.svg",
+    Gold: "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Gold.svg",
+    Yellow: "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Yellow.svg",
+    Pink: "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Pink.svg",
   };
 
   const HEAD_STYLE_ICON_MAP = {
@@ -577,6 +586,7 @@ export default function CreateListingForm() {
     "Copper": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Copper.svg",
     "Glass": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Glass.svg",
     "Granite": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Granite.svg",
+    "Granite Stones": "/Icons&Lay-By2026/Material-DropDown-Icons/granite-stones.svg",
     "Limestone": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Limestone.svg",
     "Marble": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Marble.svg",
     "Perspex": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Perspex.svg",
@@ -587,11 +597,13 @@ export default function CreateListingForm() {
     "Stone": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg",
     "Tile": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Tile.svg",
     "Wood": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Wood.svg",
+    "Zimbabwe Black": "/Icons&Lay-By2026/Material-DropDown-Icons/zimbabwe-black.svg",
+    "Zimbabwe Red": "/Icons&Lay-By2026/Material-DropDown-Icons/zimbabwe-red.svg",
   };
 
   // Customization icons map
   const CUSTOMIZATION_ICON_MAP = {
-    "Bronze/Stainless Plaques": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_BronzeStainless Plaque.svg",
+    "Bronze/Stainless Plaques": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_Bronze_Stainless Plaque.svg",
     "Ceramic Photo Plaques": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_CeramicPhotoPlaque.svg",
     "Flower Vases": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_FlowerVase.svg",
     "Gold Lettering": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_GoldLettering.svg",
@@ -631,7 +643,18 @@ export default function CreateListingForm() {
       }
       case 'stoneType': {
         const key = String(value).trim();
-        return STONE_TYPE_ICON_MAP[key] || null;
+        if (STONE_TYPE_ICON_MAP[key]) return STONE_TYPE_ICON_MAP[key];
+        const lowered = key.toLowerCase();
+        if (lowered.includes("zimbabwe") && lowered.includes("black")) {
+          return "/Icons&Lay-By2026/Material-DropDown-Icons/zimbabwe-black.svg";
+        }
+        if (lowered.includes("zimbabwe") && lowered.includes("red")) {
+          return "/Icons&Lay-By2026/Material-DropDown-Icons/zimbabwe-red.svg";
+        }
+        if (lowered.includes("granite") && lowered.includes("stones")) {
+          return "/Icons&Lay-By2026/Material-DropDown-Icons/granite-stones.svg";
+        }
+        return null;
       }
       case 'customization': {
         const key = String(value).trim();
@@ -929,6 +952,8 @@ export default function CreateListingForm() {
     const currentSelected = formData[section][field];
     // resolve icon map key: headStyle uses backend key 'style'
     const iconPathKey = field === 'headStyle' ? 'style' : field;
+    const isScrollableList = Array.isArray(options) && options.length >= 19;
+    const maxListHeight = 540;
 
     return (
       <div>
@@ -939,10 +964,9 @@ export default function CreateListingForm() {
         {subtitle && (
           <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>{subtitle}</div>
         )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: isScrollableList ? maxListHeight : undefined, overflowY: isScrollableList ? "auto" : undefined, paddingRight: isScrollableList ? 6 : undefined }}>
           {options.map((option) => {
             const optionIcon = getIconPath(iconPathKey, option);
-            const showIconWithBackground = iconPathKey === "overallStyle";
             return (
               <label
                 key={option}
@@ -955,43 +979,29 @@ export default function CreateListingForm() {
                   style={{ marginRight: 8 }}
                 />
                 {optionIcon && (
-                  showIconWithBackground ? (
-                    <span
-                      style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: 999,
-                        background: "#005bac",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        marginRight: 8,
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Image
-                        src={optionIcon}
-                        alt={`${option} icon`}
-                        width={16}
-                        height={16}
-                        style={{ display: "inline-block", objectFit: "contain" }}
-                      />
-                    </span>
-                  ) : (
-                    <Image
-                      src={optionIcon}
-                      alt={`${option} icon`}
-                      width={22}
-                      height={22}
-                      style={{ marginRight: 8, display: 'inline-block', objectFit: 'contain' }}
-                    />
-                  )
+                  <Image
+                    src={optionIcon}
+                    alt={`${option} icon`}
+                    width={22}
+                    height={22}
+                    style={{
+                      marginRight: 8,
+                      display: 'inline-block',
+                      objectFit: 'contain',
+                      filter: optionIcon.includes('/Icons&Lay-By2026/') ? 'brightness(0) saturate(100%)' : 'none',
+                    }}
+                  />
                 )}
                 <span>{option}</span>
               </label>
             );
           })}
         </div>
+        {isScrollableList ? (
+          <div style={{ marginTop: 6, fontSize: 11, color: "#666" }}>
+            Scroll to see more options
+          </div>
+        ) : null}
       </div>
     );
   };
@@ -1436,8 +1446,8 @@ export default function CreateListingForm() {
         
         {/* Product Details Grid with Icons */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 24, marginBottom: 32 }}>
-          {renderCheckboxGroup(styleOptions, 'headStyle', 'productDetails', 'Head Style', 'Can choose up to X2 HEAD STYLE Options', '/new files/newIcons/Styles_Icons/Styles_Icons-11.svg')}
           {renderCheckboxGroup(overallStyleOptions, 'overallStyle', 'productDetails', 'Style', 'Can choose up to X1 Style Option', '/new files/newIcons/Styles_Icons/Styles_Icons-11.svg', 1)}
+          {renderCheckboxGroup(styleOptions, 'headStyle', 'productDetails', 'Head Style', 'Can choose up to X2 HEAD STYLE Options', '/new files/newIcons/Styles_Icons/Styles_Icons-11.svg')}
           {renderCheckboxGroup(slabStyleOptions, 'slabStyle', 'productDetails', 'Slab Style', 'Can choose up to X1 Slab Style Option', null, 1)}
           {renderCheckboxGroup(colorOptions, 'color', 'productDetails', 'Colour', 'Can choose up to X2 Colour Options', '/new files/newIcons/Colour_Icons/Colour_Icons-28.svg')}
           {renderCheckboxGroup(stoneTypeOptions, 'stoneType', 'productDetails', 'Stone Type', 'Can choose up to X2 Material Options', '/new files/newIcons/Material_Icons/Material_Icons-39.svg')}
@@ -1584,6 +1594,8 @@ export default function CreateListingForm() {
             <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X1 Manufacturers Guarantee Options)</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {[
+                "1 YEAR MANUFACTURES GUARANTEE",
+                "1 YEAR MANUFACTURES WARRANTY",
                 "5   YEAR MANUFACTURES WARRANTY",
                 "5   YEAR MANUFACTURES GUARANTEE",
                 "10 YEAR MANUFACTURES WARRANTY",
@@ -1696,7 +1708,7 @@ export default function CreateListingForm() {
             <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>(Can choose up to X1 Installation Guarantee Option)</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {[
-                "1 YEAR INSTALLATION GUARANTEE ",
+                "1 YEAR INSTALLATION GUARANTEE",
               ].map((option) => {
                 const checked = formData.additionalProductDetails.installationGuarantee.includes(option)
                 const hasMoreInfo = Boolean(moreInfoByOption?.installationGuarantee?.[option])

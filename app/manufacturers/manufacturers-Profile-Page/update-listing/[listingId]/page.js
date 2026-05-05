@@ -27,7 +27,8 @@ import {
   CUSTOMIZATION_OPTIONS,
   TRANSPORT_OPTIONS,
   FOUNDATION_OPTIONS,
-  WARRANTY_OPTIONS
+  WARRANTY_OPTIONS,
+  INSTALLATION_GUARANTEE_OPTIONS
 } from "../constants/updateListingConstants";
 
 function isMobile() {
@@ -79,6 +80,16 @@ export default function UpdateListingPage() {
   const [selectedTransport, setSelectedTransport] = useState([]);
   const [selectedFoundation, setSelectedFoundation] = useState([]);
   const [selectedWarranty, setSelectedWarranty] = useState([]);
+  const [selectedInstallationGuarantee, setSelectedInstallationGuarantee] = useState([]);
+  const [moreInfoModalOpen, setMoreInfoModalOpen] = useState(false);
+  const [moreInfoTarget, setMoreInfoTarget] = useState(null);
+  const [moreInfoDraft, setMoreInfoDraft] = useState("");
+  const [moreInfoByOption, setMoreInfoByOption] = useState({
+    transportAndInstallation: {},
+    foundationOptions: {},
+    warrantyOrGuarantee: {},
+    installationGuarantee: {},
+  });
   const [price, setPrice] = useState("");
   const [branchPrices, setBranchPrices] = useState({});
   const [branchListingIds, setBranchListingIds] = useState({});
@@ -181,8 +192,23 @@ export default function UpdateListingPage() {
 
   const listing = data?.listing;
 
+  const normalizeOption = (value) => String(value || "").replace(/\s+/g, " ").trim();
+
   useEffect(() => {
     if (listing) {
+      const buildInfoMap = (arr) => {
+        if (!Array.isArray(arr)) return {};
+        return arr.reduce((acc, item) => {
+          const value = item?.value;
+          const info = item?.info;
+          const key = normalizeOption(value);
+          if (key && typeof info === "string" && info.trim() !== "") {
+            acc[key] = info;
+          }
+          return acc;
+        }, {});
+      };
+
       setTitle(listing.title || "");
       setDescription(listing.description || "");
       if (listing.listing_category) {
@@ -201,9 +227,16 @@ export default function UpdateListingPage() {
       setSelectedSlabStyle((listing.productDetails?.slabStyle || []).map(s => s.value));
 
       // Set additional product details (arrays)
-      setSelectedTransport((listing.additionalProductDetails?.transportAndInstallation || []).map(o => o.value));
-      setSelectedFoundation((listing.additionalProductDetails?.foundationOptions || []).map(o => o.value));
-      setSelectedWarranty((listing.additionalProductDetails?.warrantyOrGuarantee || []).map(o => o.value));
+      setSelectedTransport((listing.additionalProductDetails?.transportAndInstallation || []).map(o => normalizeOption(o.value)).filter(Boolean));
+      setSelectedFoundation((listing.additionalProductDetails?.foundationOptions || []).map(o => normalizeOption(o.value)).filter(Boolean));
+      setSelectedWarranty((listing.additionalProductDetails?.warrantyOrGuarantee || []).map(o => normalizeOption(o.value)).filter(Boolean));
+      setSelectedInstallationGuarantee((listing.additionalProductDetails?.installationGuarantee || []).map(o => normalizeOption(o.value)).filter(Boolean));
+      setMoreInfoByOption({
+        transportAndInstallation: buildInfoMap(listing.additionalProductDetails?.transportAndInstallation),
+        foundationOptions: buildInfoMap(listing.additionalProductDetails?.foundationOptions),
+        warrantyOrGuarantee: buildInfoMap(listing.additionalProductDetails?.warrantyOrGuarantee),
+        installationGuarantee: buildInfoMap(listing.additionalProductDetails?.installationGuarantee),
+      });
       setPrice(listing.price?.toString() || "");
       
       // Initialize branch prices
@@ -247,6 +280,54 @@ export default function UpdateListingPage() {
     if (ICON_PATHS[type]?.[value]) return ICON_PATHS[type][value];
     if (type === "style") return ICON_PATHS.style?.["Plain"] || null;
     return null;
+  };
+
+  const openMoreInfoModal = (field, optionValue, optionLabel) => {
+    setMoreInfoTarget({ field, optionValue, optionLabel });
+    setMoreInfoDraft(moreInfoByOption?.[field]?.[optionValue] || "");
+    setMoreInfoModalOpen(true);
+  };
+
+  const closeMoreInfoModal = () => {
+    setMoreInfoModalOpen(false);
+    setMoreInfoTarget(null);
+    setMoreInfoDraft("");
+  };
+
+  const saveMoreInfo = () => {
+    if (!moreInfoTarget) return;
+    const { field, optionValue } = moreInfoTarget;
+    setMoreInfoByOption((prev) => ({
+      ...prev,
+      [field]: {
+        ...(prev?.[field] || {}),
+        [optionValue]: moreInfoDraft,
+      },
+    }));
+    closeMoreInfoModal();
+  };
+
+  const handleCheckboxChangeWithInfo = (selected, setSelected, value, max, field) => {
+    const normalizedValue = normalizeOption(value);
+    const contains = selected.some((x) => normalizeOption(x) === normalizedValue);
+
+    if (contains) {
+      setSelected(selected.filter((x) => normalizeOption(x) !== normalizedValue));
+      setMoreInfoByOption((prev) => {
+        const nextField = { ...(prev?.[field] || {}) };
+        delete nextField[normalizedValue];
+        return { ...prev, [field]: nextField };
+      });
+      return;
+    }
+
+    if (selected.length < max) {
+      setSelected([...selected, normalizedValue]);
+      return;
+    }
+
+    setModalMsg(`You can only add ${max} characteristics.`);
+    setModalOpen(true);
   };
 
   const handleSubmit = async (e) => {
@@ -374,9 +455,26 @@ export default function UpdateListingPage() {
             })),
           },
           additionalProductDetails: {
-            transportAndInstallation: selectedTransport.map((value) => ({ value })),
-            foundationOptions: selectedFoundation.map((value) => ({ value })),
-            warrantyOrGuarantee: selectedWarranty.map((value) => ({ value })),
+            transportAndInstallation: selectedTransport.map((value) => {
+              const key = normalizeOption(value);
+              const info = moreInfoByOption?.transportAndInstallation?.[key];
+              return info ? { value: key, info } : { value: key };
+            }),
+            foundationOptions: selectedFoundation.map((value) => {
+              const key = normalizeOption(value);
+              const info = moreInfoByOption?.foundationOptions?.[key];
+              return info ? { value: key, info } : { value: key };
+            }),
+            warrantyOrGuarantee: selectedWarranty.map((value) => {
+              const key = normalizeOption(value);
+              const info = moreInfoByOption?.warrantyOrGuarantee?.[key];
+              return info ? { value: key, info } : { value: key };
+            }),
+            installationGuarantee: selectedInstallationGuarantee.map((value) => {
+              const key = normalizeOption(value);
+              const info = moreInfoByOption?.installationGuarantee?.[key];
+              return info ? { value: key, info } : { value: key };
+            }),
           }
         }
       };
@@ -518,9 +616,16 @@ export default function UpdateListingPage() {
     }
   };
 
-  if (status === "loading") return <div>Loading session...</div>;
+  const LoadingScreen = ({ label }) => (
+    <div className={styles.loadingScreen} role="status" aria-live="polite" aria-label={label}>
+      <div className={styles.spinner} />
+      <div className={styles.loadingText}>{label}</div>
+    </div>
+  );
+
+  if (status === "loading") return <LoadingScreen label="Loading session..." />;
   if (!session) return <div>You must be logged in to update a listing.</div>;
-  if (loading) return <div>Loading listing data...</div>;
+  if (loading) return <LoadingScreen label="Loading listing data..." />;
   if (error) return <div>Error loading listing data.</div>;
   if (!listing) return <div>Listing not found.</div>;
 
@@ -715,6 +820,43 @@ export default function UpdateListingPage() {
       <div className={styles.spacer12} />
       {/* Product Details Grid with Icons */}
       <div className={styles.productDetailsGrid}>
+        {/* STYLE (overallStyle) (max 1) */}
+        <div>
+          <div className={styles.detailsHeader}>
+            <Image src="/new files/newIcons/Styles_Icons/Styles_Icons-11.svg" alt="Style" width={18} height={18} className={styles.detailsIcon} />
+            Style
+          </div>
+          <div className={styles.detailsSubHeader}>Can choose up to X1 Style Option</div>
+          {OVERALL_STYLE_OPTIONS.map((s) => {
+            const icon = getIconPath('overallStyle', s);
+            const iconStyle =
+              typeof icon === "string" && icon.includes("/Icons&Lay-By2026/")
+                ? { filter: "brightness(0) saturate(100%)" }
+                : undefined;
+            return (
+              <label key={s} className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={selectedOverallStyle.includes(s)}
+                  onChange={() => handleCheckboxChange(selectedOverallStyle, setSelectedOverallStyle, s, 1)}
+                  className={styles.checkboxInput}
+                />
+                {icon ? (
+                  <Image
+                    src={icon}
+                    alt={`${s} icon`}
+                    width={22}
+                    height={22}
+                    className={styles.checkboxIcon}
+                    style={iconStyle}
+                  />
+                ) : null}
+                <span>{s}</span>
+              </label>
+            );
+          })}
+        </div>
+
         {/* HEAD STYLE (max 2) */}
         <div>
           <div className={styles.detailsHeader}>
@@ -733,46 +875,6 @@ export default function UpdateListingPage() {
                   className={styles.checkboxInput}
                 />
                 {icon && <Image src={icon} alt={`${s} icon`} width={22} height={22} className={styles.checkboxIcon} />}
-                <span>{s}</span>
-              </label>
-            );
-          })}
-        </div>
-
-        {/* STYLE (overallStyle) (max 1) */}
-        <div>
-          <div className={styles.detailsHeader}>
-            <Image src="/new files/newIcons/Styles_Icons/Styles_Icons-11.svg" alt="Style" width={18} height={18} className={styles.detailsIcon} />
-            Style
-          </div>
-          <div className={styles.detailsSubHeader}>Can choose up to X1 Style Option</div>
-          {OVERALL_STYLE_OPTIONS.map((s) => {
-            const icon = getIconPath('overallStyle', s);
-            return (
-              <label key={s} className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={selectedOverallStyle.includes(s)}
-                  onChange={() => handleCheckboxChange(selectedOverallStyle, setSelectedOverallStyle, s, 1)}
-                  className={styles.checkboxInput}
-                />
-                {icon ? (
-                  <span
-                    style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 999,
-                      background: "#005bac",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginRight: 8,
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Image src={icon} alt={`${s} icon`} width={16} height={16} style={{ display: "block" }} />
-                  </span>
-                ) : null}
                 <span>{s}</span>
               </label>
             );
@@ -834,21 +936,36 @@ export default function UpdateListingPage() {
             Stone Type
           </div>
           <div className={styles.detailsSubHeader}>Can choose up to X2 Material Options</div>
-          {STONE_TYPE_OPTIONS.map((st) => {
-            const icon = getIconPath('stoneType', st);
-            return (
-              <label key={st} className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={selectedStoneType.includes(st)}
-                  onChange={() => handleCheckboxChange(selectedStoneType, setSelectedStoneType, st, 2)}
-                  className={styles.checkboxInput}
-                />
-                {icon && <Image src={icon} alt={`${st} icon`} width={22} height={22} className={styles.checkboxIcon} />}
-                <span>{st}</span>
-              </label>
-            );
-          })}
+          <div
+            style={
+              STONE_TYPE_OPTIONS.length >= 19
+                ? { maxHeight: 540, overflowY: "auto", paddingRight: 6 }
+                : undefined
+            }
+          >
+            {STONE_TYPE_OPTIONS.map((st) => {
+              const icon = getIconPath('stoneType', st);
+              const iconStyle =
+                typeof icon === "string" && icon.includes("/Icons&Lay-By2026/")
+                  ? { filter: "brightness(0) saturate(100%)" }
+                  : undefined;
+              return (
+                <label key={st} className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={selectedStoneType.includes(st)}
+                    onChange={() => handleCheckboxChange(selectedStoneType, setSelectedStoneType, st, 2)}
+                    className={styles.checkboxInput}
+                  />
+                  {icon && <Image src={icon} alt={`${st} icon`} width={22} height={22} className={styles.checkboxIcon} style={iconStyle} />}
+                  <span>{st}</span>
+                </label>
+              );
+            })}
+          </div>
+          {STONE_TYPE_OPTIONS.length >= 19 ? (
+            <div style={{ marginTop: 6, fontSize: 11, color: "#666" }}>Scroll to see more options</div>
+          ) : null}
         </div>
   
         {/* CUSTOMISATION (max 3) */}
@@ -898,17 +1015,58 @@ export default function UpdateListingPage() {
           <div className={styles.additionalDetailsHeader}>1. TRANSPORT AND INSTALLATION</div>
           <div className={styles.additionalDetailsSubHeader}>(Can choose up to X2 Transport and Installation Options)</div>
           <div className={styles.checkboxGroup}>
-            {TRANSPORT_OPTIONS.map((option) => (
-              <label key={option} className={styles.checkboxBlockLabel}>
-                <input
-                  type="checkbox"
-                  checked={selectedTransport.includes(option)}
-                  onChange={() => handleCheckboxChange(selectedTransport, setSelectedTransport, option, 2)}
-                  className={styles.checkboxInputSmallMargin}
-                />
-                {option}
-              </label>
-            ))}
+            {TRANSPORT_OPTIONS.map((option) => {
+              const key = normalizeOption(option);
+              const checked = selectedTransport.some((x) => normalizeOption(x) === key);
+              const hasMoreInfo = Boolean(moreInfoByOption?.transportAndInstallation?.[key]);
+              return (
+                <div key={option} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                  <label className={styles.checkboxBlockLabel} style={{ flex: 1, display: "flex", alignItems: "flex-start", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        handleCheckboxChangeWithInfo(
+                          selectedTransport,
+                          setSelectedTransport,
+                          key,
+                          2,
+                          "transportAndInstallation"
+                        )
+                      }
+                      className={styles.checkboxInputSmallMargin}
+                    />
+                    <span>{option}</span>
+                  </label>
+                  {checked ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openMoreInfoModal("transportAndInstallation", key, option);
+                      }}
+                      style={{
+                        border: "none",
+                        background: hasMoreInfo ? "#005bac" : "#e5e7eb",
+                        color: hasMoreInfo ? "#fff" : "#111827",
+                        borderRadius: 999,
+                        width: 26,
+                        height: 26,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                      }}
+                      aria-label="Add more info"
+                    >
+                      i
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -917,36 +1075,118 @@ export default function UpdateListingPage() {
           <div className={styles.additionalDetailsHeader}>2. FOUNDATION OPTIONS</div>
           <div className={styles.additionalDetailsSubHeader}>(Can choose up to X3 Foundation Options)</div>
           <div className={styles.checkboxGroup}>
-            {FOUNDATION_OPTIONS.map((option) => (
-              <label key={option} className={styles.checkboxBlockLabel}>
-                <input
-                  type="checkbox"
-                  checked={selectedFoundation.includes(option)}
-                  onChange={() => handleCheckboxChange(selectedFoundation, setSelectedFoundation, option, 3)}
-                  className={styles.checkboxInputSmallMargin}
-                />
-                {option}
-              </label>
-            ))}
+            {FOUNDATION_OPTIONS.map((option) => {
+              const key = normalizeOption(option);
+              const checked = selectedFoundation.some((x) => normalizeOption(x) === key);
+              const hasMoreInfo = Boolean(moreInfoByOption?.foundationOptions?.[key]);
+              return (
+                <div key={option} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                  <label className={styles.checkboxBlockLabel} style={{ flex: 1, display: "flex", alignItems: "flex-start", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        handleCheckboxChangeWithInfo(
+                          selectedFoundation,
+                          setSelectedFoundation,
+                          key,
+                          3,
+                          "foundationOptions"
+                        )
+                      }
+                      className={styles.checkboxInputSmallMargin}
+                    />
+                    <span>{option}</span>
+                  </label>
+                  {checked ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openMoreInfoModal("foundationOptions", key, option);
+                      }}
+                      style={{
+                        border: "none",
+                        background: hasMoreInfo ? "#005bac" : "#e5e7eb",
+                        color: hasMoreInfo ? "#fff" : "#111827",
+                        borderRadius: 999,
+                        width: 26,
+                        height: 26,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                      }}
+                      aria-label="Add more info"
+                    >
+                      i
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         </div>
 
         {/* 3. WARRANTY/GUARANTEE (max 1) */}
         <div>
-          <div className={styles.additionalDetailsHeader}>3. WARRANTY/GUARANTEE</div>
-          <div className={styles.additionalDetailsSubHeader}>(Can choose up to X1 Warranty/Guarantee Options)</div>
+          <div className={styles.additionalDetailsHeader}>3. MANUFACTURERS GUARANTEE</div>
+          <div className={styles.additionalDetailsSubHeader}>(Can choose up to X1 Manufacturers Guarantee Option)</div>
           <div className={styles.checkboxGroup}>
-            {WARRANTY_OPTIONS.map((option) => (
-              <label key={option} className={styles.checkboxBlockLabel}>
-                <input
-                  type="checkbox"
-                  checked={selectedWarranty.includes(option)}
-                  onChange={() => handleCheckboxChange(selectedWarranty, setSelectedWarranty, option, 1)}
-                  className={styles.checkboxInputSmallMargin}
-                />
-                {option}
-              </label>
-            ))}
+            {WARRANTY_OPTIONS.map((option) => {
+              const key = normalizeOption(option);
+              const checked = selectedWarranty.some((x) => normalizeOption(x) === key);
+              const hasMoreInfo = Boolean(moreInfoByOption?.warrantyOrGuarantee?.[key]);
+              return (
+                <div key={option} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                  <label className={styles.checkboxBlockLabel} style={{ flex: 1, display: "flex", alignItems: "flex-start", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        handleCheckboxChangeWithInfo(
+                          selectedWarranty,
+                          setSelectedWarranty,
+                          key,
+                          1,
+                          "warrantyOrGuarantee"
+                        )
+                      }
+                      className={styles.checkboxInputSmallMargin}
+                    />
+                    <span>{option}</span>
+                  </label>
+                  {checked ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openMoreInfoModal("warrantyOrGuarantee", key, option);
+                      }}
+                      style={{
+                        border: "none",
+                        background: hasMoreInfo ? "#005bac" : "#e5e7eb",
+                        color: hasMoreInfo ? "#fff" : "#111827",
+                        borderRadius: 999,
+                        width: 26,
+                        height: 26,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                      }}
+                      aria-label="Add more info"
+                    >
+                      i
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -972,7 +1212,97 @@ export default function UpdateListingPage() {
             })}
           </div>
         </div>
+
+        {/* 5. INSTALLATION GUARANTEE (max 1) */}
+        <div>
+          <div className={styles.additionalDetailsHeader}>5. INSTALLATION GUARANTEE</div>
+          <div className={styles.additionalDetailsSubHeader}>(Can choose up to X1 Installation Guarantee Option)</div>
+          <div className={styles.checkboxGroup}>
+            {INSTALLATION_GUARANTEE_OPTIONS.map((option) => {
+              const key = String(option).trim();
+              const checked = selectedInstallationGuarantee.some((x) => String(x).trim() === key);
+              const hasMoreInfo = Boolean(moreInfoByOption?.installationGuarantee?.[key]);
+              return (
+                <div key={option} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                  <label className={styles.checkboxBlockLabel} style={{ flex: 1, display: "flex", alignItems: "flex-start", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        handleCheckboxChangeWithInfo(
+                          selectedInstallationGuarantee,
+                          setSelectedInstallationGuarantee,
+                          key,
+                          1,
+                          "installationGuarantee"
+                        )
+                      }
+                      className={styles.checkboxInputSmallMargin}
+                    />
+                    <span>{option}</span>
+                  </label>
+                  {checked ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openMoreInfoModal("installationGuarantee", key, option);
+                      }}
+                      style={{
+                        border: "none",
+                        background: hasMoreInfo ? "#005bac" : "#e5e7eb",
+                        color: hasMoreInfo ? "#fff" : "#111827",
+                        borderRadius: 999,
+                        width: 26,
+                        height: 26,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                      }}
+                      aria-label="Add more info"
+                    >
+                      i
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
+
+      {moreInfoModalOpen ? (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 18, width: "min(520px, 100%)", boxShadow: "0 2px 16px rgba(0,0,0,0.18)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ fontWeight: 800, fontSize: 14, color: "#111" }}>More info</div>
+              <button type="button" onClick={closeMoreInfoModal} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 18, lineHeight: 1, color: "#555" }} aria-label="Close">
+                ✕
+              </button>
+            </div>
+            <div style={{ marginTop: 8, fontSize: 12, color: "#444", fontWeight: 700 }}>
+              {moreInfoTarget?.optionLabel || moreInfoTarget?.optionValue}
+            </div>
+            <textarea
+              value={moreInfoDraft}
+              onChange={(e) => setMoreInfoDraft(e.target.value)}
+              placeholder="Type more info for this option..."
+              style={{ width: "100%", marginTop: 10, border: "1px solid #ccc", borderRadius: 8, padding: "10px 12px", minHeight: 120, outline: "none", resize: "vertical" }}
+            />
+            <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button type="button" onClick={closeMoreInfoModal} style={{ background: "#e5e7eb", color: "#111", border: "none", borderRadius: 8, padding: "10px 14px", fontWeight: 700, cursor: "pointer" }}>
+                Cancel
+              </button>
+              <button type="button" onClick={saveMoreInfo} style={{ background: "#005bac", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontWeight: 700, cursor: "pointer" }}>
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
  
       {/* PRICING & ADFLASHER */}
       <div className={`${styles.sectionHeaderGray} ${styles.sectionHeaderFlex} ${styles.marginTopZero}`}>

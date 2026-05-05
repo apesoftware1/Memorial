@@ -553,3 +553,36 @@
   letter-spacing: 0.5px;
   cursor: pointer;
 }
+
+.loadingScreen {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #f8f8f8;
+  color: #111;
+  font-family: Arial, sans-serif;
+}
+
+.spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 4px solid rgba(0, 91, 172, 0.18);
+  border-top-color: #005bac;
+  animation: spin 0.9s linear infinite;
+}
+
+.loadingText {
+  font-size: 13px;
+  color: #444;
+  font-weight: 600;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
