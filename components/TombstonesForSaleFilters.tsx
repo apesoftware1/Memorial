@@ -362,8 +362,8 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
         dropdownRefs={dropdownRefs}
       />
 
-      <FilterDropdown name="style" label="Head Style" options={mergedOptions.style} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
       <FilterDropdown name="overallStyle" label="Style" options={mergedOptions.overallStyle || defaultFilterOptions.overallStyle} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
+      <FilterDropdown name="style" label="Head Style" options={mergedOptions.style} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
       <FilterDropdown name="slabStyle" label="Slab Style" options={mergedOptions.slabStyle} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
       <FilterDropdown name="stoneType" label="Stone Type" options={mergedOptions.stoneType} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
       <FilterDropdown name="colour" label="Colour" options={mergedOptions.colour} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />

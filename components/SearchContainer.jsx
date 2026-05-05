@@ -1499,11 +1499,11 @@ const SearchContainer = ({
                   dropdownRefs={dropdownRefs}
                 />
               )}
-              {showStyle && (
+              {showOverallStyle && (
                 <FilterDropdown
-                  name="style"
-                  label="Head Style"
-                  options={styleOptions}
+                  name="overallStyle"
+                  label="Style"
+                  options={overallStyleOptions}
                   openDropdown={uiState.openDropdown}
                   toggleDropdown={toggleDropdown}
                   selectOption={selectOption}
@@ -1511,11 +1511,11 @@ const SearchContainer = ({
                   dropdownRefs={dropdownRefs}
                 />
               )}
-              {showOverallStyle && (
+              {showStyle && (
                 <FilterDropdown
-                  name="overallStyle"
-                  label="Style"
-                  options={overallStyleOptions}
+                  name="style"
+                  label="Head Style"
+                  options={styleOptions}
                   openDropdown={uiState.openDropdown}
                   toggleDropdown={toggleDropdown}
                   selectOption={selectOption}
