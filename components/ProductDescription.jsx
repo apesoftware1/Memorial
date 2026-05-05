@@ -1,6 +1,6 @@
 import React from "react";
 import Image from "next/image";
-import { Info } from "lucide-react";
+import { Info, X } from "lucide-react";
 import PropTypes from "prop-types";
 
 export default function ProductDescription({ description, additionalDetails, manufacturingTimeframe }) {
@@ -29,6 +29,104 @@ export default function ProductDescription({ description, additionalDetails, man
       .filter((item) => Boolean(item?.value));
   };
 
+  const formatInfoLines = (raw) => {
+    const text = String(raw ?? "").trim();
+    if (!text) return [];
+    const splitByBullet = text.includes("•") ? text.split("•") : null;
+    const lines = (splitByBullet || text.split("\n"))
+      .map((line) => String(line).trim())
+      .filter(Boolean)
+      .map((line) => line.replace(/^[-–—*•\u2022]+\s*/, ""))
+      .map((line) => line.replace(/^\d+[.)]\s*/, ""))
+      .filter(Boolean);
+    return lines.length > 0 ? lines : [text];
+  };
+
+  const InfoTooltip = ({ info }) => {
+    const wrapRef = React.useRef(null);
+    const [openReason, setOpenReason] = React.useState(null);
+    const open = Boolean(openReason);
+
+    React.useEffect(() => {
+      if (!open) return;
+      const onPointerDown = (e) => {
+        const el = wrapRef.current;
+        if (!el) return;
+        if (el.contains(e.target)) return;
+        setOpenReason(null);
+      };
+      document.addEventListener("pointerdown", onPointerDown, true);
+      return () => document.removeEventListener("pointerdown", onPointerDown, true);
+    }, [open]);
+
+    return (
+      <span
+        ref={wrapRef}
+        className="relative shrink-0"
+        onMouseEnter={() => setOpenReason((prev) => (prev === "click" ? prev : "hover"))}
+        onMouseLeave={() => setOpenReason((prev) => (prev === "hover" ? null : prev))}
+      >
+        <button
+          type="button"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label="More info"
+          aria-expanded={open}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpenReason((prev) => (prev === "click" ? null : "click"));
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setOpenReason(null);
+          }}
+        >
+          <Info size={14} />
+        </button>
+
+        {open ? (
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 z-40 md:hidden"
+              aria-label="Close"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setOpenReason(null);
+              }}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center px-4 md:absolute md:inset-auto md:left-1/2 md:top-full md:mt-2 md:block md:px-0 md:-translate-x-1/2">
+              <div className="relative w-full max-w-sm rounded-md bg-gray-900 px-4 py-3 text-xs text-white shadow-lg md:w-64 md:px-3 md:py-2">
+                <button
+                  type="button"
+                  className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white md:hidden"
+                  aria-label="Close"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setOpenReason(null);
+                  }}
+                >
+                  <X size={16} />
+                </button>
+                <div className="max-h-[70vh] overflow-auto">
+                  <ul className="space-y-1">
+                    {formatInfoLines(info).map((line, idx) => (
+                      <li key={idx} className="flex gap-2">
+                        <span className="shrink-0">-</span>
+                        <span className="min-w-0 break-words">{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : null}
+      </span>
+    );
+  };
+
   const renderItems = (items) => (
     <ul className="mt-0 space-y-0 ml-[54px]">
       {items.map((item, i) => (
@@ -37,18 +135,7 @@ export default function ProductDescription({ description, additionalDetails, man
           <div className="min-w-0 flex items-start gap-2">
             <div className="min-w-0 break-words">{item.value}</div>
             {item.info ? (
-              <span className="relative group shrink-0">
-                <button
-                  type="button"
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  aria-label="More info"
-                >
-                  <Info size={14} />
-                </button>
-                <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 hidden w-64 -translate-x-1/2 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-lg group-hover:block group-focus-within:block">
-                  <div className="whitespace-pre-wrap break-words">{item.info}</div>
-                </div>
-              </span>
+              <InfoTooltip info={item.info} />
             ) : null}
           </div>
         </li>

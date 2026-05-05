@@ -756,16 +756,69 @@ export default function ManufacturerProfileEditor({
     try {
       setIsDuplicating(true);
 
-      // 1) Load full listing details via REST API instead of Apollo
-      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
-      const listingResponse = await fetch(`${baseUrl}/listings/${listing.documentId}?populate=*`, {
-          headers: { "Content-Type": "application/json" }
+      const graphqlUrl = process.env.NEXT_PUBLIC_STRAPI_GRAPHQL_URL;
+      if (!graphqlUrl) throw new Error("GraphQL URL is not configured.");
+
+      const fullQuery = `
+        query ListingLight($documentID: ID!) {
+          listing(documentId: $documentID) {
+            documentId
+            branches { documentId name }
+            title
+            mainImageUrl
+            mainImagePublicId
+            thumbnailUrls
+            thumbnailPublicIds
+            description
+            price
+            listing_category { documentId name }
+            isOnSpecial
+            specials { active sale_price start_date end_date }
+            productDetails {
+              id
+              color { id value icon }
+              style { id value icon }
+              overallStyle { id value icon }
+              stoneType { id value icon }
+              slabStyle { id value icon }
+              customization { id value icon }
+            }
+            slug
+            additionalProductDetails {
+              id
+              transportAndInstallation { id value info }
+              foundationOptions { id value info }
+              warrantyOrGuarantee { id value info }
+              installationGuarantee { id value info }
+            }
+            manufacturingTimeframe
+            adFlasher
+            adFlasherColor
+            isPremium
+            isFeatured
+            isStandard
+            company { documentId name }
+            branch_listings { documentId price branch { documentId name } }
+          }
+        }
+      `;
+
+      const listingResponse = await fetch(graphqlUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: fullQuery,
+          variables: { documentID: listing.documentId },
+        }),
       });
-      
+
       if (!listingResponse.ok) throw new Error("Full listing details not found.");
-      
       const listingData = await listingResponse.json();
-      const full = listingData?.data;
+      if (listingData?.errors?.length) {
+        throw new Error("Full listing details not found.");
+      }
+
+      const full = listingData?.data?.listing;
       if (!full) throw new Error("Full listing details not found.");
 
       const duplicatedSlug = createListingSlug(
@@ -774,38 +827,93 @@ export default function ManufacturerProfileEditor({
       );
       const duplicatedTitle = `${full.title || "Listing"} 1`;
 
-      // 4) Resolve category documentId using live categories (match by name)
-      const categoryName = (full.listing_category?.name || "")
-        .trim()
-        .toLowerCase();
-      let categoryDocId = undefined;
-      try {
-        const categoriesResp = await fetch(`${baseUrl}/listing-categories?pagination[limit]=100`, {
-            headers: { "Content-Type": "application/json" }
-        });
-        const categoriesData = await categoriesResp.json();
-        const categories = categoriesData?.data || [];
-        const matched = categories.find(
-          (c) => String(c.name).trim().toLowerCase() === categoryName
-        );
-        categoryDocId = matched?.documentId;
-      } catch {
-        // If categories fetch fails, fall back to leaving category unset
-        categoryDocId = undefined;
-      }
+      const categoryDocId = full.listing_category?.documentId || undefined;
 
       // 5) Build payload mirroring Advert Creator (using existing images—no reupload)
       const mapAdditionalDetail = (arr) => {
         if (!Array.isArray(arr)) return [];
         return arr
           .map((item) => {
-            const value = item?.value;
-            const info = item?.info;
+            const value = typeof item === "string" ? item : item?.value;
+            const info = typeof item === "object" && item ? item.info : undefined;
             if (!value) return null;
             if (typeof info === "string" && info.trim() !== "") return { value, info };
             return { value };
           })
           .filter(Boolean);
+      };
+
+      const mapProductDetail = (arr, typeForFallback) => {
+        if (!Array.isArray(arr)) return [];
+        return arr
+          .map((item) => {
+            const value = typeof item === "string" ? item : item?.value;
+            if (!value) return null;
+            const icon =
+              (typeof item === "object" && item ? item.icon : null) ||
+              (typeForFallback ? getIconPath(typeForFallback, value) : null);
+            return icon ? { value, icon } : { value };
+          })
+          .filter(Boolean);
+      };
+
+      const normalizeSpecials = (raw) => {
+        const s = Array.isArray(raw) ? raw[0] : raw;
+        if (!s || typeof s !== "object") return undefined;
+        const active = Boolean(s.active);
+        const sale_price =
+          s.sale_price === 0 || s.sale_price ? Number(s.sale_price) : undefined;
+        const start_date = s.start_date || undefined;
+        const end_date = s.end_date || undefined;
+        if (!active && sale_price === undefined && !start_date && !end_date) return undefined;
+        return { active, ...(sale_price !== undefined ? { sale_price } : {}), ...(start_date ? { start_date } : {}), ...(end_date ? { end_date } : {}) };
+      };
+
+      const validateReplica = (source, created) => {
+        const norm = (v) => String(v ?? "").trim();
+        const normArrValues = (arr) =>
+          (Array.isArray(arr) ? arr : [])
+            .map((x) => (typeof x === "string" ? x : x?.value))
+            .map(norm)
+            .filter(Boolean)
+            .sort();
+        const normInfoMap = (arr) => {
+          const out = {};
+          (Array.isArray(arr) ? arr : []).forEach((x) => {
+            const value = norm(x?.value);
+            const info = typeof x?.info === "string" ? x.info.trim() : "";
+            if (value) out[value] = info;
+          });
+          return out;
+        };
+        const sameArr = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+        const sameInfo = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+        const checks = [
+          norm(source?.description) === norm(created?.description),
+          Number(source?.price || 0) === Number(created?.price || 0),
+          norm(source?.manufacturingTimeframe || "1") === norm(created?.manufacturingTimeframe || "1"),
+          Boolean(source?.isPremium) === Boolean(created?.isPremium),
+          Boolean(source?.isFeatured) === Boolean(created?.isFeatured),
+          Boolean(source?.isStandard) === Boolean(created?.isStandard),
+          Boolean(source?.isOnSpecial) === Boolean(created?.isOnSpecial),
+          sameArr(normArrValues(source?.productDetails?.color), normArrValues(created?.productDetails?.color)),
+          sameArr(normArrValues(source?.productDetails?.style), normArrValues(created?.productDetails?.style)),
+          sameArr(normArrValues(source?.productDetails?.overallStyle), normArrValues(created?.productDetails?.overallStyle)),
+          sameArr(normArrValues(source?.productDetails?.slabStyle), normArrValues(created?.productDetails?.slabStyle)),
+          sameArr(normArrValues(source?.productDetails?.stoneType), normArrValues(created?.productDetails?.stoneType)),
+          sameArr(normArrValues(source?.productDetails?.customization), normArrValues(created?.productDetails?.customization)),
+          sameArr(normArrValues(source?.additionalProductDetails?.transportAndInstallation), normArrValues(created?.additionalProductDetails?.transportAndInstallation)),
+          sameArr(normArrValues(source?.additionalProductDetails?.foundationOptions), normArrValues(created?.additionalProductDetails?.foundationOptions)),
+          sameArr(normArrValues(source?.additionalProductDetails?.warrantyOrGuarantee), normArrValues(created?.additionalProductDetails?.warrantyOrGuarantee)),
+          sameArr(normArrValues(source?.additionalProductDetails?.installationGuarantee), normArrValues(created?.additionalProductDetails?.installationGuarantee)),
+          sameInfo(normInfoMap(source?.additionalProductDetails?.transportAndInstallation), normInfoMap(created?.additionalProductDetails?.transportAndInstallation)),
+          sameInfo(normInfoMap(source?.additionalProductDetails?.foundationOptions), normInfoMap(created?.additionalProductDetails?.foundationOptions)),
+          sameInfo(normInfoMap(source?.additionalProductDetails?.warrantyOrGuarantee), normInfoMap(created?.additionalProductDetails?.warrantyOrGuarantee)),
+          sameInfo(normInfoMap(source?.additionalProductDetails?.installationGuarantee), normInfoMap(created?.additionalProductDetails?.installationGuarantee)),
+        ];
+
+        return checks.every(Boolean);
       };
 
       const payload = {
@@ -815,11 +923,13 @@ export default function ManufacturerProfileEditor({
           description: full.description || "",
           price: Number(full.price) || 0,
           adFlasher: full.adFlasher || "",
+          adFlasherColor: full.adFlasherColor || "",
           isPremium: Boolean(full.isPremium),
           isFeatured: Boolean(full.isFeatured),
-          isOnSpecial: false,
+          isOnSpecial: Boolean(full.isOnSpecial),
           isStandard: Boolean(full.isStandard),
           manufacturingTimeframe: String(full.manufacturingTimeframe || "1"),
+          specials: normalizeSpecials(full.specials),
 
           mainImageUrl: full.mainImageUrl || null,
           mainImagePublicId: full.mainImagePublicId || null,
@@ -844,23 +954,12 @@ export default function ManufacturerProfileEditor({
             : undefined,
 
           productDetails: {
-            color: (full.productDetails?.color || []).map(({ value }) => ({
-              value,
-              icon: getIconPath("color", value),
-            })),
-            style: (full.productDetails?.style || []).map(({ value }) => ({
-              value,
-              icon: getIconPath("style", value),
-            })),
-            stoneType: (full.productDetails?.stoneType || []).map(
-              ({ value }) => ({ value, icon: getIconPath("stoneType", value) })
-            ),
-            customization: (full.productDetails?.customization || []).map(
-              ({ value }) => ({
-                value,
-                icon: getIconPath("customization", value),
-              })
-            ),
+            color: mapProductDetail(full.productDetails?.color, "color"),
+            style: mapProductDetail(full.productDetails?.style, "style"),
+            overallStyle: mapProductDetail(full.productDetails?.overallStyle),
+            slabStyle: mapProductDetail(full.productDetails?.slabStyle),
+            stoneType: mapProductDetail(full.productDetails?.stoneType, "stoneType"),
+            customization: mapProductDetail(full.productDetails?.customization, "customization"),
           },
 
           additionalProductDetails: {
@@ -897,6 +996,54 @@ export default function ManufacturerProfileEditor({
 
       const created = await res.json();
       const newDocId = created?.data?.documentId || created?.data?.id;
+      if (!newDocId) {
+        throw new Error("Create succeeded but returned no new listing ID.");
+      }
+
+      try {
+        if (Array.isArray(full.branch_listings) && full.branch_listings.length > 0) {
+          for (const bl of full.branch_listings) {
+            const branchId = bl?.branch?.documentId;
+            if (!branchId) continue;
+            const branchPrice = Number(bl?.price || 0);
+            await addListingToBranchListing({
+              listingDocumentId: newDocId,
+              branchDocumentId: branchId,
+              price: branchPrice,
+            });
+          }
+        }
+      } catch (branchErr) {
+        try {
+          await fetch(`${postBaseUrl}/listings/${newDocId}`, { method: "DELETE" });
+        } catch (_) {}
+        throw new Error(`Duplicate failed while copying branch prices. ${branchErr?.message || branchErr}`);
+      }
+
+      try {
+        const createdResp = await fetch(graphqlUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: fullQuery,
+            variables: { documentID: newDocId },
+          }),
+        });
+        if (!createdResp.ok) throw new Error("Failed to load duplicated listing for validation.");
+        const createdData = await createdResp.json();
+        const createdFull = createdData?.data?.listing;
+        if (!createdFull) throw new Error("Failed to load duplicated listing for validation.");
+        const ok = validateReplica(full, createdFull);
+        if (!ok) {
+          try {
+            await fetch(`${postBaseUrl}/listings/${newDocId}`, { method: "DELETE" });
+          } catch (_) {}
+          throw new Error("Validation failed: duplicated listing did not match the source listing.");
+        }
+      } catch (validateErr) {
+        throw validateErr;
+      }
+
       toast({
         title: "Listing duplicated",
         description: `"${duplicatedTitle}" created successfully.`,
