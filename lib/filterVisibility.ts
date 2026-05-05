@@ -6,6 +6,7 @@ export type FilterKey =
   | "maxPrice"
   | "location"
   | "style"
+  | "overallStyle"
   | "slabStyle"
   | "stoneType"
   | "colour"
@@ -22,6 +23,7 @@ const FILTER_KEYS: FilterKey[] = [
   "maxPrice",
   "location",
   "style",
+  "overallStyle",
   "slabStyle",
   "stoneType",
   "colour",

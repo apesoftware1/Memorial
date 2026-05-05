@@ -512,25 +512,23 @@ export default function FilterDropdown({
                         {option === 'Any' ? (
                           <Square className="h-5 w-5 text-gray-300" aria-hidden="true" />
                         ) : (
-                          <div className={name === "overallStyle" ? "h-5 w-5 rounded-full bg-[#0D7C99] flex items-center justify-center" : "h-5 w-5 flex items-center justify-center"}>
-                            <img
-                              src={iconSrc || '/placeholder.svg'}
-                              alt={`${option} icon`}
-                              width={20}
-                              height={20}
-                              className={name === "overallStyle" ? "h-3.5 w-3.5 object-contain inline-block visible opacity-100" : "h-5 w-5 object-contain inline-block visible opacity-100"}
-                              style={{ 
-                                display: 'block',
-                                filter: name === 'colour' || name === 'slabStyle' || name === 'overallStyle' ? 'none' : 'brightness(0) invert(0.9)'
-                              }}
-                              onError={(e) => {
-                                if (name === 'colour') {
-                                  const colorPath = `/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_${option}.svg`;
-                                  e.currentTarget.src = colorPath;
-                                }
-                              }}
-                            />
-                          </div>
+                          <img
+                            src={iconSrc || '/placeholder.svg'}
+                            alt={`${option} icon`}
+                            width={20}
+                            height={20}
+                            className="h-5 w-5 object-contain inline-block visible opacity-100"
+                            style={{ 
+                              display: 'block',
+                              filter: name === 'colour' || name === 'slabStyle' || name === 'overallStyle' ? 'none' : 'brightness(0) invert(0.9)'
+                            }}
+                            onError={(e) => {
+                              if (name === 'colour') {
+                                const colorPath = `/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_${option}.svg`;
+                                e.currentTarget.src = colorPath;
+                              }
+                            }}
+                          />
                         )}
                       </div>
                       <span>{option}</span>

@@ -31,6 +31,7 @@ const FILTER_OPTIONS = [
   { key: "maxPrice", label: "Max Price" },
   { key: "location", label: "Location" },
   { key: "style", label: "Head Style" },
+  { key: "overallStyle", label: "Style" },
   { key: "slabStyle", label: "Slab Style" },
   { key: "stoneType", label: "Stone Type" },
   { key: "colour", label: "Colour" },
@@ -88,6 +89,15 @@ const FILTER_OPTION_VALUES = {
     "Square",
     "Organic",
     "Arch",
+  ],
+  overallStyle: [
+    "Traditional",
+    "Modern",
+    "Simple",
+    "Decorative",
+    "Religious",
+    "Premium",
+    "Traditional African Style",
   ],
   slabStyle: [
     "Curved Slab",
