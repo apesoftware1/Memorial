@@ -761,13 +761,13 @@ export default function UpdateListingPage() {
               </div>
             </div>
             <div className={styles.imageColumn}>
-              <div className={styles.mainImageLabel}>Additional Images only for PREMIUM Packages</div>
+              <div className={styles.mainImageLabel}>Additional Images</div>
               <div className={styles.thumbnailGrid}>
                 {[1,2,3,4,5,6,7,8,9,10].map((idx) => (
                   <div
                     key={idx}
-                    className={`${styles.thumbnailUploadBox} ${idx > 5 ? styles.thumbnailDisabled : styles.thumbnailActive}`}
-                    onClick={() => idx <= 5 && document.getElementById(`img-upload-${idx}`).click()}
+                    className={`${styles.thumbnailUploadBox} ${styles.thumbnailActive}`}
+                    onClick={() => document.getElementById(`img-upload-${idx}`).click()}
                   >
                     {images[idx] ? (
                       <>
@@ -781,9 +781,7 @@ export default function UpdateListingPage() {
                         </button>
                       </>
                     ) : (
-                      <span className={idx > 5 ? styles.thumbnailDisabledIcon : styles.thumbnailPlus}>
-                        {idx > 5 ? "×" : "+"}
-                      </span>
+                      <span className={styles.thumbnailPlus}>+</span>
                     )}
                     <input
                       id={`img-upload-${idx}`}
@@ -791,20 +789,17 @@ export default function UpdateListingPage() {
                       accept="image/*"
                       className={styles.hiddenInput}
                       onChange={e => {
-                        if (idx <= 5) {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
+                        const file = e.target.files?.[0];
+                        if (!file) return;
 
-                          const newImages = [...images];
-                          newImages[idx] = URL.createObjectURL(file);
-                          setImages(newImages);
+                        const newImages = [...images];
+                        newImages[idx] = URL.createObjectURL(file);
+                        setImages(newImages);
 
-                          const newFiles = [...imageFiles];
-                          newFiles[idx] = file;
-                          setImageFiles(newFiles);
-                        }
+                        const newFiles = [...imageFiles];
+                        newFiles[idx] = file;
+                        setImageFiles(newFiles);
                       }}
-                      disabled={idx > 5}
                     />
                   </div>
                 ))}

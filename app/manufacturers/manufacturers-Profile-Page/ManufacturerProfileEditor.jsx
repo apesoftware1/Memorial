@@ -795,6 +795,19 @@ export default function ManufacturerProfileEditor({
       }
 
       // 5) Build payload mirroring Advert Creator (using existing images—no reupload)
+      const mapAdditionalDetail = (arr) => {
+        if (!Array.isArray(arr)) return [];
+        return arr
+          .map((item) => {
+            const value = item?.value;
+            const info = item?.info;
+            if (!value) return null;
+            if (typeof info === "string" && info.trim() !== "") return { value, info };
+            return { value };
+          })
+          .filter(Boolean);
+      };
+
       const payload = {
         data: {
           title: duplicatedTitle,
@@ -806,7 +819,7 @@ export default function ManufacturerProfileEditor({
           isFeatured: Boolean(full.isFeatured),
           isOnSpecial: false,
           isStandard: Boolean(full.isStandard),
-          manufacturingTimeframe: full.manufacturingTimeframe || "1",
+          manufacturingTimeframe: String(full.manufacturingTimeframe || "1"),
 
           mainImageUrl: full.mainImageUrl || null,
           mainImagePublicId: full.mainImagePublicId || null,
@@ -851,15 +864,18 @@ export default function ManufacturerProfileEditor({
           },
 
           additionalProductDetails: {
-            transportAndInstallation: (
-              full.additionalProductDetails?.transportAndInstallation || []
-            ).map(({ value }) => ({ value })),
-            foundationOptions: (
-              full.additionalProductDetails?.foundationOptions || []
-            ).map(({ value }) => ({ value })),
-            warrantyOrGuarantee: (
-              full.additionalProductDetails?.warrantyOrGuarantee || []
-            ).map(({ value }) => ({ value })),
+            transportAndInstallation: mapAdditionalDetail(
+              full.additionalProductDetails?.transportAndInstallation
+            ),
+            foundationOptions: mapAdditionalDetail(
+              full.additionalProductDetails?.foundationOptions
+            ),
+            warrantyOrGuarantee: mapAdditionalDetail(
+              full.additionalProductDetails?.warrantyOrGuarantee
+            ),
+            installationGuarantee: mapAdditionalDetail(
+              full.additionalProductDetails?.installationGuarantee
+            ),
           },
         },
       };
