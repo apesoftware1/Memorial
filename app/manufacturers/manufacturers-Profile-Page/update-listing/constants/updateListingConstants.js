@@ -29,6 +29,9 @@ export const ICON_PATHS = {
     "Red": `${BASE_ICON_PATH}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Red.svg`,
     "White": `${BASE_ICON_PATH}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_White.svg`,
     "Mixed": `${BASE_ICON_PATH}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Mixed.svg`,
+    "Gold": `${BASE_ICON_PATH}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Gold.svg`,
+    "Yellow": `${BASE_ICON_PATH}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Yellow.svg`,
+    "Pink": `${BASE_ICON_PATH}/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Pink.svg`,
   },
   style: {
     "Christian Cross": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_ChristianCross.svg`,
@@ -47,7 +50,13 @@ export const ICON_PATHS = {
     "Butterfly": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Butterfly.svg`,
     "Car": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Car.svg`,
     "Bike": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bike.svg`,
-    "Sports": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Sports.svg`,
+    "Sports": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Sport.svg`,
+    "Wave": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Wave.svg`,
+    "Church": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Church.svg`,
+    "House": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_House.svg`,
+    "Square": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Square.svg`,
+    "Organic": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Organic.svg`,
+    "Arch": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Arch.svg`,
   },
   overallStyle: {
     Traditional: "/Icons&Lay-By2026/Style-DropDown-Icons/traditional.svg",
@@ -67,6 +76,7 @@ export const ICON_PATHS = {
     "Copper": `${BASE_ICON_PATH}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Brass.svg`,
     "Glass": `${BASE_ICON_PATH}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Glass.svg`,
     "Granite": `${BASE_ICON_PATH}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Granite.svg`,
+    "Granite Stones": "/Icons&Lay-By2026/Material-DropDown-Icons/granite-stones.svg",
     "Limestone": `${BASE_ICON_PATH}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Limestone.svg`,
     "Marble": `${BASE_ICON_PATH}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Marble.svg`,
     "Perspex": `${BASE_ICON_PATH}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Glass.svg`,
@@ -77,6 +87,8 @@ export const ICON_PATHS = {
     "Stone": `${BASE_ICON_PATH}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg`,
     "Tile": `${BASE_ICON_PATH}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg`,
     "Wood": `${BASE_ICON_PATH}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Wood.svg`,
+    "Zimbabwe Black": "/Icons&Lay-By2026/Material-DropDown-Icons/zimbabwe-black.svg",
+    "Zimbabwe Red": "/Icons&Lay-By2026/Material-DropDown-Icons/zimbabwe-red.svg",
   },
   slabStyle: {
     "Curved Slab": `${BASE_ICON_PATH}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_CurvedSlab.svg`,
@@ -88,7 +100,7 @@ export const ICON_PATHS = {
     "Tiled Slab": `${BASE_ICON_PATH}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Tiled.svg`,
   },
   customization: {
-    "Bronze/Stainless Plaques": `${BASE_ICON_PATH}/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_BronzeStainless Plaque.svg`,
+    "Bronze/Stainless Plaques": `${BASE_ICON_PATH}/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_Bronze_Stainless Plaque.svg`,
     "Ceramic Photo Plaques": `${BASE_ICON_PATH}/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_CeramicPhotoPlaque.svg`,
     "Flower Vases": `${BASE_ICON_PATH}/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_FlowerVase.svg`,
     "Gold Lettering": `${BASE_ICON_PATH}/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_GoldLettering.svg`,
@@ -135,6 +147,8 @@ export const COLOR_OPTIONS = [
 
 export const STONE_TYPE_OPTIONS = [
   'Biodegradable','Brass','Ceramic/Porcelain','Composite','Concrete','Copper','Glass','Granite',
+  'Granite Stones',
+  'Zimbabwe Black','Zimbabwe Red',
   'Limestone','Marble','Perspex','Quartzite','Sandstone','Slate','Steel','Stone','Tile','Wood',
 ];
 
@@ -166,6 +180,8 @@ export const FOUNDATION_OPTIONS = [
 ];
 
 export const WARRANTY_OPTIONS = [
+  "1 YEAR MANUFACTURES GUARANTEE",
+  "1 YEAR MANUFACTURES WARRANTY",
   "5   YEAR MANUFACTURES WARRANTY",
   "5   YEAR MANUFACTURES GUARANTEE",
   "10 YEAR MANUFACTURES WARRANTY",
@@ -176,4 +192,8 @@ export const WARRANTY_OPTIONS = [
   "20 YEAR MANUFACTURES GUARANTEE",
   "LIFETIME MANUFACTURERS WARRANTY",
   "LIFETIME MANUFACTURERS GUARANTEE",
+];
+
+export const INSTALLATION_GUARANTEE_OPTIONS = [
+  "1 YEAR INSTALLATION GUARANTEE",
 ];
