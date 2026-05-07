@@ -4,6 +4,11 @@ import { useListingCategories } from "@/hooks/use-ListingCategories"
 import Image from "next/image"
 import FilterDropdown from "./FilterDropdown"
 import LocationModal from "./LocationModal"
+import {
+  STYLE_OPTIONS as MANUFACTURER_HEAD_STYLE_OPTIONS,
+  SLAB_STYLE_OPTIONS as MANUFACTURER_SLAB_STYLE_OPTIONS,
+  STONE_TYPE_OPTIONS as MANUFACTURER_STONE_TYPE_OPTIONS,
+} from "@/app/manufacturers/manufacturers-Profile-Page/update-listing/constants/updateListingConstants"
 
 interface TombstonesForSaleFiltersProps {
   activeFilters: any;
@@ -27,7 +32,11 @@ const defaultFilterOptions = {
   location: ["Gauteng", "Western Cape", "KwaZulu-Natal", "Eastern Cape", "Free State"],
   style: [
     "Christian Cross", "Heart", "Bible", "Pillars", "Traditional African", "Abstract", "Praying Hands", "Scroll", "Angel", "Mausoleum", "Obelisk", "Plain", "Teddy Bear", "Butterfly", "Car", "Bike", "Sports",
-    "Wave", "Church", "House", "Square", "Organic", "Arch"
+    "Wave", "Church", "House", "Square", "Organic", "Arch",
+    ...MANUFACTURER_HEAD_STYLE_OPTIONS.filter(s => ![
+      "Christian Cross", "Heart", "Bible", "Pillars", "Traditional African", "Abstract", "Praying Hands", "Scroll", "Angel", "Mausoleum", "Obelisk", "Plain", "Teddy Bear", "Butterfly", "Car", "Bike", "Sports",
+      "Wave", "Church", "House", "Square", "Organic", "Arch"
+    ].includes(s)),
   ],
   overallStyle: [
     "Any",
@@ -40,10 +49,16 @@ const defaultFilterOptions = {
     "Traditional African Style",
   ],
   slabStyle: [
-    "Curved Slab", "Frame with Infill", "Full Slab", "Glass Slab", "Half Slab", "Stepped Slab", "Tiled Slab", "Double"
+    "Curved Slab", "Frame with Infill", "Full Slab", "Glass Slab", "Half Slab", "Stepped Slab", "Tiled Slab", "Double",
+    ...MANUFACTURER_SLAB_STYLE_OPTIONS.filter(s => ![
+      "Curved Slab", "Frame with Infill", "Full Slab", "Glass Slab", "Half Slab", "Stepped Slab", "Tiled Slab", "Double"
+    ].includes(s)),
   ],
   stoneType: [
-    "Biodegradable", "Brass", "Ceramic/Porcelain", "Composite", "Concrete", "Copper", "Glass", "Granite", "Limestone", "Marble", "Perspex", "Quartzite", "Sandstone", "Slate", "Steel", "Stone", "Tile", "Wood"
+    "Biodegradable", "Brass", "Ceramic/Porcelain", "Composite", "Concrete", "Copper", "Glass", "Granite", "Limestone", "Marble", "Perspex", "Quartzite", "Sandstone", "Slate", "Steel", "Stone", "Tile", "Wood",
+    ...MANUFACTURER_STONE_TYPE_OPTIONS.filter(s => ![
+      "Biodegradable", "Brass", "Ceramic/Porcelain", "Composite", "Concrete", "Copper", "Glass", "Granite", "Limestone", "Marble", "Perspex", "Quartzite", "Sandstone", "Slate", "Steel", "Stone", "Tile", "Wood"
+    ].includes(s)),
   ],
   custom: [
     "Bronze/Stainless Plaques", "Ceramic Photo Plaques", "Flower Vases", "Gold Lettering", "Inlaid Glass", "Photo Laser-Edging", "QR Code"

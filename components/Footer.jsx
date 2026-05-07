@@ -32,10 +32,11 @@ export default function Footer() {
           <div>
             <h4 className="text-lg font-semibold mb-4">Contact</h4>
             <address className="text-gray-300 text-sm not-italic">
-              <p>Email: info@tombstonefinder.co.za</p>
+              <p>Email: info@tombstonesfinder.co.za</p>
               <p>Phone: 087 153 1560</p>
-              <p>Address: 18 Emoyeni</p>
-              <p>17 Cockwood Close, Simbithi EcoEstate, Kwa-Zulu Natal, 4399</p>
+              <p>Address: PO Box 6891</p>
+              <p>Zimbali, KZN</p>
+              <p>4418</p>
             </address>
           </div>
         </div>
