@@ -191,7 +191,7 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
         className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 flex flex-col hover:border-b-2 hover:border-[#0090e0] hover:shadow-lg hover:shadow-gray-400 cursor-pointer relative"
       >
       {/* Company Logo - Top Right Corner for Desktop, Bottom Right for Mobile */}
-      <div className="absolute md:top-2 md:right-2 bottom-2 right-2 z-50">
+      <div className="absolute md:top-2 md:right-2 bottom-2 right-2 z-10">
         <div className="bg-white rounded-full" style={{ width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Image
             src={cloudinaryOptimized(listing?.company?.logoUrl, 200) || "/placeholder-logo.svg"}
@@ -319,7 +319,7 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
       </div>
       
       {/* Heart icon at bottom right */}
-      <div className="absolute bottom-2 right-2 z-40 md:block hidden">
+      <div className="absolute bottom-2 right-2 z-10 md:block hidden">
         <div 
           className="bg-white rounded-full p-2 shadow-sm hover:shadow-md transition-all"
           onClick={(e) => e.stopPropagation()}

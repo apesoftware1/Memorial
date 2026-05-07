@@ -57,6 +57,8 @@ export const ICON_PATHS = {
     "Square": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Square.svg`,
     "Organic": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Organic.svg`,
     "Arch": `${BASE_ICON_PATH}/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Arch.svg`,
+    "Cathedral": "/Icons&Lay-By2026/7%20MAy/Head%20Styles/Cathedral_Black_Icon.svg",
+    "Disney": "/Icons&Lay-By2026/7%20MAy/Head%20Styles/Disney_Black_Icon.svg",
   },
   overallStyle: {
     Traditional: "/Icons&Lay-By2026/Style-DropDown-Icons/traditional.svg",
@@ -87,17 +89,18 @@ export const ICON_PATHS = {
     "Stone": `${BASE_ICON_PATH}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg`,
     "Tile": `${BASE_ICON_PATH}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg`,
     "Wood": `${BASE_ICON_PATH}/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Wood.svg`,
-    "Zimbabwe Black": "/Icons&Lay-By2026/Material-DropDown-Icons/zimbabwe-black.svg",
-    "Zimbabwe Red": "/Icons&Lay-By2026/Material-DropDown-Icons/zimbabwe-red.svg",
+    "Zimbabwe Black": "/Icons&Lay-By2026/7%20MAy/Stone%20Type/ZimBlack_Black_Icon.svg",
+    "Zimbabwe Red": "/Icons&Lay-By2026/7%20MAy/Stone%20Type/ZimRed_Black_Icon.svg",
   },
   slabStyle: {
-    "Curved Slab": `${BASE_ICON_PATH}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_CurvedSlab.svg`,
-    "Frame with Infill": `${BASE_ICON_PATH}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_FramewithInfill.svg`,
-    "Full Slab": `${BASE_ICON_PATH}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_FullSlab.svg`,
-    "Glass Slab": `${BASE_ICON_PATH}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_GlassSlab.svg`,
-    "Half Slab": `${BASE_ICON_PATH}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_HalfSlab.svg`,
-    "Stepped Slab": `${BASE_ICON_PATH}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Stepped.svg`,
-    "Tiled Slab": `${BASE_ICON_PATH}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Tiled.svg`,
+    "Curved Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_Black_Curved.svg",
+    "Frame with Infill": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_Black_FrameWithInfill.svg",
+    "Full Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_Black_FullSlab.svg",
+    "Glass Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_Black_Glass.svg",
+    "Half Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_Black_HalfSlab.svg",
+    "Stepped Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_Black_Stepped.svg",
+    "Tiled Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_Black_Tiled.svg",
+    "Double": `${BASE_ICON_PATH}/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Double.svg`,
   },
   customization: {
     "Bronze/Stainless Plaques": `${BASE_ICON_PATH}/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_Bronze_Stainless Plaque.svg`,
@@ -122,7 +125,7 @@ export const ICON_PATHS = {
 
 export const STYLE_OPTIONS = [
   'Christian Cross','Heart','Bible','Pillars','Traditional African','Abstract',
-  'Praying Hands','Scroll','Angel','Mausoleum','Obelisk','Plain','Teddy Bear','Butterfly','Car','Bike','Sports',
+  'Praying Hands','Scroll','Angel','Mausoleum','Obelisk','Cathedral','Disney','Plain','Teddy Bear','Butterfly','Car','Bike','Sports',
   'Wave','Church','House','Square','Organic','Arch',
 ];
 

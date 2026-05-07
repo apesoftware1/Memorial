@@ -3,6 +3,7 @@
 import { ChevronDown, ChevronRight, Check, Square, X } from "lucide-react"
 import { useRef, useState, useEffect } from "react"
 import Image from "next/image"
+import { ICON_PATHS } from "@/app/manufacturers/manufacturers-Profile-Page/update-listing/constants/updateListingConstants";
 
 // Helper function to fix icon paths
 const fixIconPath = (path) => {
@@ -22,25 +23,36 @@ const fixIconPath = (path) => {
   fixedPath = fixedPath
     .replace('/last icons/', '/last_icons/')
     .replace('/Adv_vpe_Icon_', '/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_')
-    .replace('%20', '')
     .replace('/public/', '/')
     .replace('//', '/')
     .replace(/_Mausoleum\.svg$/i, '_Mausolean.svg');
   
   // Fix nested directory structure issues
-  if (fixedPath.includes('/AdvertCreator_StoneType_Icons/')) {
+  if (
+    fixedPath.includes('/AdvertCreator_StoneType_Icons/') &&
+    !fixedPath.includes('/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/')
+  ) {
     fixedPath = fixedPath.replace('/AdvertCreator_StoneType_Icons/', '/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/');
   }
   
-  if (fixedPath.includes('/AdvertCreator_Head_Style_Icons/')) {
+  if (
+    fixedPath.includes('/AdvertCreator_Head_Style_Icons/') &&
+    !fixedPath.includes('/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/')
+  ) {
     fixedPath = fixedPath.replace('/AdvertCreator_Head_Style_Icons/', '/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/');
   }
   
-  if (fixedPath.includes('/AdvertCreator_SlabStyle_Icons/')) {
+  if (
+    fixedPath.includes('/AdvertCreator_SlabStyle_Icons/') &&
+    !fixedPath.includes('/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/')
+  ) {
     fixedPath = fixedPath.replace('/AdvertCreator_SlabStyle_Icons/', '/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/');
   }
   
-  if (fixedPath.includes('/AdvertCreator_Icons_Customisation_Icons/')) {
+  if (
+    fixedPath.includes('/AdvertCreator_Icons_Customisation_Icons/') &&
+    !fixedPath.includes('/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/')
+  ) {
     fixedPath = fixedPath.replace('/AdvertCreator_Icons_Customisation_Icons/', '/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/');
   }
   
@@ -64,105 +76,15 @@ const bodyTypeIcons = {
   "Custom Design": "/MainMenu_Icons_Premium.svg"
 }
 
-// Icons: Head Style (pre-encoded paths for consistent rendering)
-const headStyleIcons = {
-  "Christian Cross": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_ChristianCross.svg",
-  "Heart": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Heart.svg",
-  "Bible": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bible.svg",
-  "Pillars": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Pillars.svg",
-  "Traditional African": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TraditionalAfrican.svg",
-  "Abstract": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Abstract.svg",
-  "Praying Hands": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_PrayingHands.svg",
-  "Scroll": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Scroll.svg",
-  "Angel": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Angel.svg",
-  "Mausoleum": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Mausolean.svg",
-  "Obelisk": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Obelisk.svg",
-  "Plain": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Plain.svg",
-  "Teddy Bear": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_TeddyBear.svg",
-  "Butterfly": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Butterfly.svg",
-  "Car": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Car.svg",
-  "Bike": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bike.svg",
-  "Sports": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Sport.svg",
-  "Wave": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Wave.svg",
-  "Church": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Church.svg",
-  "House": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_House.svg",
-  "Square": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Square.svg",
-  "Organic": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Organic.svg",
-  "Arch": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Arch.svg"
-}
-
-// Icons: Slab Style (pre-encoded paths for consistent rendering)
-// For the slabStyleIcons object
 const slabStyleIcons = {
-  "Curved Slab": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_CurvedSlab.svg",
-  "Frame with Infill": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_FramewithInfill.svg",
-  "Full Slab": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_FullSlab.svg",
-  "Glass Slab": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_GlassSlab.svg",
-  "Half Slab": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_HalfSlab.svg",
-  "Stepped Slab": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Stepped.svg",
-  "Tiled Slab": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Tiled.svg",
+  "Curved Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_White_Curved.svg",
+  "Frame with Infill": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_White_FrameWithInfill.svg",
+  "Full Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_White_FullSlab.svg",
+  "Glass Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_White_Glass.svg",
+  "Half Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_White_HalfSlab.svg",
+  "Stepped Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_White_Stepped.svg",
+  "Tiled Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_White_Tiled.svg",
   "Double": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Double.svg",
-}
-
-// Icons: Stone Type (pre-encoded paths for consistent rendering)
-const stoneTypeIcons = {
-  "Biodegradable": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Biodegradable.svg",
-  "Brass": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Brass.svg",
-  "Ceramic/Porcelain": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Ceramic_Porcelain.svg",
-  "Composite": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Composite.svg",
-  "Concrete": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Concrete.svg",
-  "Copper": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Copper.svg",
-  "Glass": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Glass.svg",
-  "Granite": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Granite.svg",
-  "Limestone": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Limestone.svg",
-  "Marble": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Marble.svg",
-  "Perspex": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Perspex.svg",
-  "Quartzite": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Quartzite.svg",
-  "Sandstone": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Sandstone.svg",
-  "Slate": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Slate.svg",
-  "Steel": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Steel.svg",
-  "Stone": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg",
-  "Tile": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Tile.svg",
-  "Wood": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Wood.svg",
-}
-
-// Icons: Colour
-const colourIcons = {
-  "Black": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Black.svg",
-  "Blue": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Blue.svg",
-  "Gold": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Gold.svg",
-  "Green": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Green.svg",
-  "Grey-Dark": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Dark.svg",
-  "Grey-Light": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Grey-Light.svg",
-  "Maroon": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Maroon.svg",
-  "Pearl": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Pearl.svg",
-  "Pink": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Pink.svg",
-  "Red": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Red.svg",
-  "Yellow": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Yellow.svg",
-  "White": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_White.svg",
-  "Mixed": "/last_icons/AdvertCreator_Colour_Icons/6_Colour_Icons/Colour_Icon_Mixed.svg"
-}
-
-// Icons: Customisation (pre-encoded paths for consistent rendering)
-const customIcons = {
-  "Bronze/Stainless Plaques": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_Bronze_Stainless Plaque.svg",
-  "Bronze_Stainless Plaques": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_Bronze_Stainless Plaque.svg",
-  "Ceramic Photo Plaques": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_CeramicPhotoPlaque.svg",
-  "Flower Vases": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_FlowerVase.svg",
-  "Gold Lettering": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_GoldLettering.svg",
-  "Inlaid Glass": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_InlaidGlass.svg",
-  "Photo Laser-Edging": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_PhotoLaserEdginhg.svg",
-  "QR Code": "/last_icons/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Customisation_Icon_QR Code.svg",
-}
-
-const overallStyleIcons = {
-  "Traditional": "/Icons&Lay-By2026/Style-DropDown-Icons/traditional.svg",
-  "Modern": "/Icons&Lay-By2026/Style-DropDown-Icons/modern.svg",
-  "Simple": "/Icons&Lay-By2026/Style-DropDown-Icons/simple.svg",
-  "Decorative": "/Icons&Lay-By2026/Style-DropDown-Icons/decorative.svg",
-  "Religious": "/Icons&Lay-By2026/Style-DropDown-Icons/religious.svg",
-  "Premium": "/Icons&Lay-By2026/Style-DropDown-Icons/premium.svg",
-  "Traditional African Style": "/Icons&Lay-By2026/Style-DropDown-Icons/Traditional-african-style.svg",
 }
 
 const HierarchyItem = ({ item, level = 0, selectedValues, onSelect, getIconSrc, name }) => {
@@ -322,12 +244,12 @@ export default function FilterDropdown({
     if (typeof option !== 'string') return null;
 
     if (menuName === "bodyType" && bodyTypeIcons[option]) iconPath = bodyTypeIcons[option];
-    if (menuName === "style" && headStyleIcons[option]) iconPath = headStyleIcons[option];
-    if (menuName === "overallStyle" && overallStyleIcons[option]) iconPath = overallStyleIcons[option];
-    if (menuName === "slabStyle" && slabStyleIcons[option]) iconPath = slabStyleIcons[option];
-    if (menuName === "stoneType" && stoneTypeIcons[option]) iconPath = stoneTypeIcons[option];
-    if (menuName === "custom" && customIcons[option]) iconPath = customIcons[option];
-    if (menuName === "colour" && colourIcons[option]) iconPath = colourIcons[option];
+    if (menuName === "style") iconPath = ICON_PATHS?.style?.[option] || null;
+    if (menuName === "overallStyle") iconPath = ICON_PATHS?.overallStyle?.[option] || null;
+    if (menuName === "slabStyle") iconPath = slabStyleIcons[option] || ICON_PATHS?.slabStyle?.[option] || null;
+    if (menuName === "stoneType") iconPath = ICON_PATHS?.stoneType?.[option] || null;
+    if (menuName === "custom") iconPath = ICON_PATHS?.customization?.[option] || null;
+    if (menuName === "colour") iconPath = ICON_PATHS?.color?.[option] || null;
     
     // Apply path fixing to ensure correct format
     const fixedPath = iconPath ? fixIconPath(iconPath) : null;

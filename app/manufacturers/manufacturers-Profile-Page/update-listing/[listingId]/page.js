@@ -885,6 +885,10 @@ export default function UpdateListingPage() {
           <div className={styles.detailsSubHeader}>Can choose up to X1 Slab Style Option</div>
           {SLAB_STYLE_OPTIONS.map((s) => {
             const icon = getIconPath('slabStyle', s);
+            const iconStyle =
+              s === "Double"
+                ? { filter: "brightness(0) saturate(100%)" }
+                : undefined;
             return (
               <label key={s} className={styles.checkboxLabel}>
                 <input
@@ -893,7 +897,7 @@ export default function UpdateListingPage() {
                   onChange={() => handleCheckboxChange(selectedSlabStyle, setSelectedSlabStyle, s, 1)}
                   className={styles.checkboxInput}
                 />
-                {icon && <Image src={icon} alt={`${s} icon`} width={22} height={22} className={styles.checkboxIcon} />}
+                {icon && <Image src={icon} alt={`${s} icon`} width={22} height={22} className={styles.checkboxIcon} style={iconStyle} />}
                 <span>{s}</span>
               </label>
             );

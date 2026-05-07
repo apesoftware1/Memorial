@@ -563,7 +563,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                 <button
                   type="button"
                   onClick={() => setShowBranchesModal(true)}
-                  className="inline-flex bg-[#0D7C99] text-white text-sm px-3 py-2 rounded shadow hover:bg-[#0D7C99]/90 whitespace-nowrap ml-4 sm:ml-0"
+                  className="inline-flex bg-[#0D7C99] text-white text-sm px-3 py-2 rounded shadow hover:bg-[#0D7C99]/90 whitespace-nowrap ml-4 md:ml-0"
                 >
                   View More Branches Here
                 </button>

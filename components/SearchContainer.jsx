@@ -12,6 +12,11 @@ import { SearchLoader } from "@/components/ui/loader";
 import { useHomepageAggregations } from "@/hooks/useHomepageAggregations";
 import { AnimatePresence, motion } from "framer-motion";
 import { toTitleCase } from "@/lib/locationHelpers";
+import {
+  STYLE_OPTIONS as MANUFACTURER_HEAD_STYLE_OPTIONS,
+  SLAB_STYLE_OPTIONS as MANUFACTURER_SLAB_STYLE_OPTIONS,
+  STONE_TYPE_OPTIONS as MANUFACTURER_STONE_TYPE_OPTIONS,
+} from "@/app/manufacturers/manufacturers-Profile-Page/update-listing/constants/updateListingConstants";
 
 // Default filter options with updated price ranges
 const defaultFilterOptions = {
@@ -71,6 +76,34 @@ const defaultFilterOptions = {
     "Square",
     "Organic",
     "Arch",
+    ...MANUFACTURER_HEAD_STYLE_OPTIONS.filter(
+      (s) => ![
+        "Any",
+        "Christian Cross",
+        "Heart",
+        "Bible",
+        "Pillars",
+        "Traditional African",
+        "Abstract",
+        "Praying Hands",
+        "Scroll",
+        "Angel",
+        "Mausoleum",
+        "Obelisk",
+        "Plain",
+        "Teddy Bear",
+        "Butterfly",
+        "Car",
+        "Bike",
+        "Sports",
+        "Wave",
+        "Church",
+        "House",
+        "Square",
+        "Organic",
+        "Arch",
+      ].includes(s)
+    ),
   ],
   overallStyle: [
     "Any",
@@ -92,6 +125,9 @@ const defaultFilterOptions = {
     "Stepped Slab",
     "Tiled Slab",
     "Double",
+    ...MANUFACTURER_SLAB_STYLE_OPTIONS.filter(
+      (s) => !["Any", "Curved Slab", "Frame with Infill", "Full Slab", "Glass Slab", "Half Slab", "Stepped Slab", "Tiled Slab", "Double"].includes(s)
+    ),
   ],
   stoneType: [
     "Any",
@@ -113,6 +149,30 @@ const defaultFilterOptions = {
     "Stone",
     "Tile",
     "Wood",
+    ...MANUFACTURER_STONE_TYPE_OPTIONS.filter(
+      (s) =>
+        ![
+          "Any",
+          "Biodegradable",
+          "Brass",
+          "Ceramic/Porcelain",
+          "Composite",
+          "Concrete",
+          "Copper",
+          "Glass",
+          "Granite",
+          "Limestone",
+          "Marble",
+          "Perspex",
+          "Quartzite",
+          "Sandstone",
+          "Slate",
+          "Steel",
+          "Stone",
+          "Tile",
+          "Wood",
+        ].includes(s)
+    ),
   ],
   custom: [
     "Any",
