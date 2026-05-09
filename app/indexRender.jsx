@@ -17,6 +17,9 @@ const IndexRender = ({
     premListings = [],
     featuredListings = [],
     stdListings = [],
+    featuredManufacturer: featuredManufacturerProp = null,
+    manufacturerListings: manufacturerListingsProp = [],
+    totalPages = 1,
   loading = false,
   error = null,
   currentPage = 1,
@@ -90,38 +93,18 @@ const IndexRender = ({
     }, 100); // Small delay to ensure DOM updates
   };
 
-  // PAGINATION LOGIC (all from strapiListings)
-  const premiumPerPage = 10;
-  const standardPerPage = 5;
-  const featuredPerPage = 3;
-
-  
-  // Featured listings are always shown on all pages (not paginated)
-  const featuredToShow = featuredListings.slice(0, featuredPerPage);
-  
-  // Premium Listings (paginated)
-  const premiumStart = (currentPage - 1) * premiumPerPage;
-  const premiumEnd = premiumStart + premiumPerPage;
-  const premiumToShow = premListings.slice(premiumStart, premiumEnd);
+  const featuredToShow = featuredListings.slice(0, 3);
+  const premiumToShow = premListings;
   const premiumFirstHalf = premiumToShow.slice(0, 5);
   const premiumSecondHalf = premiumToShow.slice(5, 10);
-  const totalPremiumPages = Math.max(1, Math.ceil(premListings.length / premiumPerPage));
-
-  // Standard Listings (paginated)
-  const standardStart = (currentPage - 1) * standardPerPage;
-  const standardEnd = standardStart + standardPerPage;
-  const standardToShow = stdListings.slice(standardStart, standardEnd);
-  
-  // Calculate total pages based on both premium and standard listings
-  const totalStandardPages = Math.max(1, Math.ceil(stdListings.length / standardPerPage));
-  const totalPages = Math.max(totalPremiumPages, totalStandardPages);
+  const standardToShow = stdListings;
   
 
-  // Featured Manufacturer (pick first from premium listings)
-  const featuredManufacturer = premiumToShow[0]?.company || null;
-  const manufacturerListings = premListings
-    .filter((l) => l.company?.name === featuredManufacturer?.name)
-    .slice(0, 3);
+  const featuredManufacturer = featuredManufacturerProp || premiumToShow[0]?.company || null;
+  const manufacturerListings =
+    manufacturerListingsProp && manufacturerListingsProp.length > 0
+      ? manufacturerListingsProp.slice(0, 3)
+      : premiumToShow.filter((l) => l.company?.name === featuredManufacturer?.name).slice(0, 3);
 
   // Fetch companies to build a banner pool
   const { data: manufacturersData } = useQuery(GET_BANNER);
@@ -201,7 +184,7 @@ const IndexRender = ({
                   <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide px-4" ref={featuredScrollRef}>
                     {[0, 1, 2].map(idx =>
                       featuredListings[idx] ? (
-                        <div key={featuredListings[idx].id || idx} className="flex-shrink-0 w-72 snap-start">
+                        <div key={featuredListings[idx].documentId || idx} className="flex-shrink-0 w-72 snap-start">
                           <FeaturedListings listing={featuredListings[idx]} />
                         </div>
                       ) : (
@@ -240,7 +223,7 @@ const IndexRender = ({
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {[0, 1, 2].map(idx =>
                     featuredListings[idx] ? (
-                      <FeaturedListings key={featuredListings[idx].id || idx} listing={featuredListings[idx]} />
+                      <FeaturedListings key={featuredListings[idx].documentId || idx} listing={featuredListings[idx]} />
                     ) : (
                       <div key={"fallback-" + idx} className="flex-1 flex justify-center">
                         {fallbackCard("featured listings")}
@@ -270,7 +253,7 @@ const IndexRender = ({
         </div>
         {premiumFirstHalf.length > 0
           ? premiumFirstHalf.map((item, idx) => (
-              <div key={item.id || idx} className={`${idx === 0 ? 'mb-4 -mt-2' : idx === 1 ? 'mb-6 mt-2' : 'mb-6'}`}>
+              <div key={item.documentId || idx} className={`${idx === 0 ? 'mb-4 -mt-2' : idx === 1 ? 'mb-6 mt-2' : 'mb-6'}`}>
                 <PremiumListingCard listing={item} />
               </div>
             ))
@@ -297,7 +280,7 @@ const IndexRender = ({
         {premiumSecondHalf.length > 0
           ? premiumSecondHalf.map((item, idx) => (
               <div 
-                key={item.id || idx} 
+                key={item.documentId || idx} 
                 className={idx === 0 ? "mb-4 -mt-2" : idx === 1 ? "mb-6 mt-2" : "mb-6"}
               >
                 <PremiumListingCard listing={item} />
@@ -341,7 +324,7 @@ const IndexRender = ({
                   <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide">
                     {[0, 1, 2].map(idx =>
                       manufacturerListings && manufacturerListings[idx] ? (
-                        <div key={manufacturerListings[idx].id || idx} className="flex-shrink-0 w-80 snap-start">
+                        <div key={manufacturerListings[idx].documentId || idx} className="flex-shrink-0 w-80 snap-start">
                           <FeaturedListings listing={manufacturerListings[idx]} />
                         </div>
                       ) : (
@@ -366,7 +349,7 @@ const IndexRender = ({
                 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {[0, 1, 2].map(idx =>
                     manufacturerListings && manufacturerListings[idx] ? (
-                      <FeaturedListings key={manufacturerListings[idx].id || idx} listing={manufacturerListings[idx]} />
+                      <FeaturedListings key={manufacturerListings[idx].documentId || idx} listing={manufacturerListings[idx]} />
                     ) : (
                       <div key={"fallback-manufacturer-" + idx} className="flex-1 flex justify-center">
                         {fallbackCard("manufacturer listings")}
@@ -396,7 +379,7 @@ const IndexRender = ({
         {standardToShow.length > 0 ? (
           <div className="space-y-6">
             {standardToShow.map((item, idx) => (
-              <StandardListingCard key={item.id || idx} listing={item} />
+              <StandardListingCard key={item.documentId || idx} listing={item} />
             ))}
           </div>
         ) : (

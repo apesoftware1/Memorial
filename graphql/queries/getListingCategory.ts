@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client";
 
 export const GET_LISTING_CATEGORY = gql`
-  query GetListingCategory {
-    listingCategories {
+  query GetListingCategory($page: Int = 1, $pageSize: Int = 50) {
+    listingCategories(pagination: { page: $page, pageSize: $pageSize }) {
       documentId
       name
       icon
@@ -10,9 +10,6 @@ export const GET_LISTING_CATEGORY = gql`
       order
       imageUrl
       imagePublicId
-    }
-    listings {
-      title
     }
   }
 `;

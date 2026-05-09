@@ -1,8 +1,17 @@
 import HomeClient from "./home-client"
 
 const HOME_INITIAL_QUERY = `
-  query HomeInitial($featuredLimit: Int = 3, $premiumLimit: Int = 30, $standardLimit: Int = 30) {
-    listingCategories {
+  query HomeInitial(
+    $categoriesPage: Int = 1
+    $categoriesPageSize: Int = 50
+    $featuredPage: Int = 1
+    $featuredPageSize: Int = 3
+    $premiumPage: Int = 1
+    $premiumPageSize: Int = 10
+    $standardPage: Int = 1
+    $standardPageSize: Int = 5
+  ) {
+    listingCategories(pagination: { page: $categoriesPage, pageSize: $categoriesPageSize }) {
       documentId
       updatedAt
       name
@@ -11,56 +20,72 @@ const HOME_INITIAL_QUERY = `
       order
       backgroundImage { url }
     }
-    featured: listings(filters: { isFeatured: { eq: true } }, pagination: { limit: $featuredLimit }) {
+    featured: listings(
+      filters: { isFeatured: { eq: true }, isOnSpecial: { ne: true } }
+      pagination: { page: $featuredPage, pageSize: $featuredPageSize }
+      sort: "updatedAt:desc"
+    ) {
       documentId
       updatedAt
       title
       price
       isFeatured
-      isOnSpecial
-      isPremium
-      isStandard
       slug
-      listing_category { name }
+      listing_category { documentId name }
       mainImageUrl
-      company { documentId name location logoUrl hideStandardCompanyLogo }
-      branch_listings { branch { location { province city town } } }
-      branches { location { province city town } }
-      specials { active sale_price start_date end_date }
+      mainImagePublicId
+      adFlasher
+      adFlasherColor
+      productDetails { id stoneType { id value } style { id value } }
+      company { documentId name }
     }
-    premium: listings(filters: { isPremium: { eq: true } }, pagination: { limit: $premiumLimit }) {
+    premium: listings(
+      filters: { isPremium: { eq: true }, isOnSpecial: { ne: true } }
+      pagination: { page: $premiumPage, pageSize: $premiumPageSize }
+      sort: "documentId:asc"
+    ) {
       documentId
       updatedAt
       title
       price
-      isFeatured
-      isOnSpecial
       isPremium
-      isStandard
       slug
-      listing_category { name }
+      listing_category { documentId name }
       mainImageUrl
-      company { documentId name location logoUrl hideStandardCompanyLogo }
-      branch_listings { branch { location { province city town } } }
-      branches { location { province city town } }
+      mainImagePublicId
+      thumbnailUrls
+      thumbnailPublicIds
+      adFlasher
+      adFlasherColor
+      manufacturingTimeframe
       specials { active sale_price start_date end_date }
+      productDetails { id color { id value } style { id value } overallStyle { id value } stoneType { id value } slabStyle { id value } customization { id value } }
+      additionalProductDetails { id transportAndInstallation { id value } foundationOptions { id value } warrantyOrGuarantee { id value } installationGuarantee { id value } }
+      company { documentId name location logoUrl logoUrlPublicId hideStandardCompanyLogo latitude longitude isFeatured }
     }
-    standard: listings(filters: { isStandard: { eq: true } }, pagination: { limit: $standardLimit }) {
+    standard: listings(
+      filters: { isStandard: { eq: true }, isOnSpecial: { ne: true } }
+      pagination: { page: $standardPage, pageSize: $standardPageSize }
+      sort: "documentId:asc"
+    ) {
       documentId
       updatedAt
       title
       price
-      isFeatured
-      isOnSpecial
-      isPremium
       isStandard
       slug
-      listing_category { name }
+      listing_category { documentId name }
       mainImageUrl
-      company { documentId name location logoUrl hideStandardCompanyLogo }
-      branch_listings { branch { location { province city town } } }
-      branches { location { province city town } }
+      mainImagePublicId
+      thumbnailUrls
+      thumbnailPublicIds
+      adFlasher
+      adFlasherColor
+      manufacturingTimeframe
       specials { active sale_price start_date end_date }
+      productDetails { id color { id value } style { id value } overallStyle { id value } stoneType { id value } slabStyle { id value } customization { id value } }
+      additionalProductDetails { id transportAndInstallation { id value } foundationOptions { id value } warrantyOrGuarantee { id value } installationGuarantee { id value } }
+      company { documentId name location logoUrl logoUrlPublicId hideStandardCompanyLogo latitude longitude isFeatured }
     }
   }
 `
@@ -75,7 +100,16 @@ async function fetchHomeInitialData() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         query: HOME_INITIAL_QUERY,
-        variables: { featuredLimit: 3, premiumLimit: 30, standardLimit: 30 },
+        variables: {
+          categoriesPage: 1,
+          categoriesPageSize: 50,
+          featuredPage: 1,
+          featuredPageSize: 3,
+          premiumPage: 1,
+          premiumPageSize: 10,
+          standardPage: 1,
+          standardPageSize: 5,
+        },
       }),
       next: { revalidate: 300 },
     })

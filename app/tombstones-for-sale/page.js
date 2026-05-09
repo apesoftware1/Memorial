@@ -1,8 +1,15 @@
 import TombstonesForSaleClient from "./for-sale-client";
 
 const FOR_SALE_INITIAL_QUERY = `
-  query ForSaleInitial($featuredLimit: Int = 3, $premiumLimit: Int = 30, $standardLimit: Int = 60) {
-    listingCategories {
+  query ForSaleInitial(
+    $page: Int = 1
+    $pageSize: Int = 20
+    $featuredPageSize: Int = 3
+    $categoriesPageSize: Int = 50
+    $branchesPageSize: Int = 10
+    $branchListingsPageSize: Int = 10
+  ) {
+    listingCategories(pagination: { page: 1, pageSize: $categoriesPageSize }) {
       documentId
       name
       icon
@@ -11,7 +18,11 @@ const FOR_SALE_INITIAL_QUERY = `
       imageUrl
       imagePublicId
     }
-    featured: listings(filters: { isFeatured: { eq: true } }, pagination: { limit: $featuredLimit }) {
+    featured: listings(
+      filters: { isFeatured: { eq: true }, isOnSpecial: { ne: true } }
+      sort: "updatedAt:desc"
+      pagination: { page: 1, pageSize: $featuredPageSize }
+    ) {
       documentId
       updatedAt
       title
@@ -21,7 +32,7 @@ const FOR_SALE_INITIAL_QUERY = `
       isOnSpecial
       isPremium
       isStandard
-      listing_category { name }
+      listing_category { documentId name }
       mainImageUrl
       mainImagePublicId
       thumbnailUrls
@@ -50,17 +61,21 @@ const FOR_SALE_INITIAL_QUERY = `
         longitude
         isFeatured
       }
-      branch_listings {
-        branch { documentId name location { province city town } }
+      branch_listings(pagination: { page: 1, pageSize: $branchListingsPageSize }) {
+        branch { documentId name location { province city town address latitude longitude mapUrl } }
         price
       }
-      branches {
+      branches(pagination: { page: 1, pageSize: $branchesPageSize }) {
         documentId
         name
         location { province city town address latitude longitude mapUrl }
       }
     }
-    premium: listings(filters: { isPremium: { eq: true } }, pagination: { limit: $premiumLimit }) {
+    listings(
+      filters: { isOnSpecial: { ne: true } }
+      sort: "documentId:asc"
+      pagination: { page: $page, pageSize: $pageSize }
+    ) {
       documentId
       updatedAt
       title
@@ -70,7 +85,7 @@ const FOR_SALE_INITIAL_QUERY = `
       isOnSpecial
       isPremium
       isStandard
-      listing_category { name }
+      listing_category { documentId name }
       mainImageUrl
       mainImagePublicId
       thumbnailUrls
@@ -98,59 +113,11 @@ const FOR_SALE_INITIAL_QUERY = `
         longitude
         isFeatured
       }
-      branch_listings {
-        branch { documentId name location { province city town } }
+      branch_listings(pagination: { page: 1, pageSize: $branchListingsPageSize }) {
+        branch { documentId name location { province city town address latitude longitude mapUrl } }
         price
       }
-      branches {
-        documentId
-        name
-        location { province city town address latitude longitude mapUrl }
-      }
-    }
-    standard: listings(filters: { isStandard: { eq: true } }, pagination: { limit: $standardLimit }) {
-      documentId
-      updatedAt
-      title
-      price
-      slug
-      isFeatured
-      isOnSpecial
-      isPremium
-      isStandard
-      listing_category { name }
-      mainImageUrl
-      mainImagePublicId
-      thumbnailUrls
-      thumbnailPublicIds
-      adFlasher
-      adFlasherColor
-      manufacturingTimeframe
-      specials { active sale_price start_date end_date }
-      productDetails {
-        id
-        color { id value }
-        style { id value }
-        stoneType { id value }
-        slabStyle { id value }
-        customization { id value }
-      }
-      company {
-        documentId
-        name
-        location
-        logoUrl
-        logoUrlPublicId
-        hideStandardCompanyLogo
-        latitude
-        longitude
-        isFeatured
-      }
-      branch_listings {
-        branch { documentId name location { province city town } }
-        price
-      }
-      branches {
+      branches(pagination: { page: 1, pageSize: $branchesPageSize }) {
         documentId
         name
         location { province city town address latitude longitude mapUrl }
@@ -169,7 +136,14 @@ async function fetchForSaleInitialData() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         query: FOR_SALE_INITIAL_QUERY,
-        variables: { featuredLimit: 3, premiumLimit: 30, standardLimit: 60 },
+        variables: {
+          page: 1,
+          pageSize: 20,
+          featuredPageSize: 3,
+          categoriesPageSize: 50,
+          branchesPageSize: 10,
+          branchListingsPageSize: 10,
+        },
       }),
       next: { revalidate: 300 },
     });
@@ -179,12 +153,11 @@ async function fetchForSaleInitialData() {
 
     const initialCategories = json?.data?.listingCategories || [];
     const featured = json?.data?.featured || [];
-    const premium = json?.data?.premium || [];
-    const standard = json?.data?.standard || [];
+    const listings = json?.data?.listings || [];
 
     const seen = new Set();
     const initialListings = [];
-    for (const list of [featured, premium, standard]) {
+    for (const list of [featured, listings]) {
       for (const l of list) {
         const id = l?.documentId || l?.id;
         if (!id || seen.has(id)) continue;
@@ -203,4 +176,3 @@ export default async function TombstonesForSalePage() {
   const { initialListings, initialCategories } = await fetchForSaleInitialData();
   return <TombstonesForSaleClient initialListings={initialListings} initialCategories={initialCategories} />;
 }
-

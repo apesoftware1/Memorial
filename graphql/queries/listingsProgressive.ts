@@ -184,3 +184,283 @@ export const LISTINGS_DELTA_QUERY = gql`
     }
   }
 `;
+
+export const HOMEPAGE_LISTINGS_CONNECTION_QUERY = gql`
+  query HomepageListingsConnection(
+    $featuredPage: Int = 1
+    $featuredPageSize: Int = 3
+    $premiumPage: Int = 1
+    $premiumPageSize: Int = 10
+    $standardPage: Int = 1
+    $standardPageSize: Int = 5
+    $featuredSort: [String] = ["updatedAt:desc"]
+    $premiumSort: [String] = ["documentId:asc"]
+    $standardSort: [String] = ["documentId:asc"]
+  ) {
+    featured: listings_connection(
+      filters: { isFeatured: { eq: true }, isOnSpecial: { ne: true } }
+      pagination: { page: $featuredPage, pageSize: $featuredPageSize }
+      sort: $featuredSort
+    ) {
+      nodes {
+        documentId
+        updatedAt
+        title
+        price
+        slug
+        isFeatured
+        listing_category { documentId name }
+        mainImageUrl
+        mainImagePublicId
+        adFlasher
+        adFlasherColor
+        productDetails {
+          id
+          stoneType { id value }
+          style { id value }
+        }
+        company { documentId name }
+      }
+      pageInfo { page pageSize total }
+    }
+
+    premium: listings_connection(
+      filters: { isPremium: { eq: true }, isOnSpecial: { ne: true } }
+      pagination: { page: $premiumPage, pageSize: $premiumPageSize }
+      sort: $premiumSort
+    ) {
+      nodes {
+        documentId
+        updatedAt
+        title
+        price
+        slug
+        isPremium
+        isFeatured
+        isOnSpecial
+        isStandard
+        listing_category { documentId name }
+        mainImageUrl
+        mainImagePublicId
+        thumbnailUrls
+        thumbnailPublicIds
+        adFlasher
+        adFlasherColor
+        manufacturingTimeframe
+        specials { active sale_price start_date end_date }
+        productDetails {
+          id
+          color { id value }
+          style { id value }
+          overallStyle { id value }
+          stoneType { id value }
+          slabStyle { id value }
+          customization { id value }
+        }
+        additionalProductDetails {
+          id
+          transportAndInstallation { id value }
+          foundationOptions { id value }
+          warrantyOrGuarantee { id value }
+          installationGuarantee { id value }
+        }
+        company {
+          documentId
+          name
+          location
+          logoUrl
+          logoUrlPublicId
+          hideStandardCompanyLogo
+          latitude
+          longitude
+          isFeatured
+        }
+      }
+      pageInfo { page pageSize total }
+    }
+
+    standard: listings_connection(
+      filters: { isStandard: { eq: true }, isOnSpecial: { ne: true } }
+      pagination: { page: $standardPage, pageSize: $standardPageSize }
+      sort: $standardSort
+    ) {
+      nodes {
+        documentId
+        updatedAt
+        title
+        price
+        slug
+        isPremium
+        isFeatured
+        isOnSpecial
+        isStandard
+        listing_category { documentId name }
+        mainImageUrl
+        mainImagePublicId
+        thumbnailUrls
+        thumbnailPublicIds
+        adFlasher
+        adFlasherColor
+        manufacturingTimeframe
+        specials { active sale_price start_date end_date }
+        productDetails {
+          id
+          color { id value }
+          style { id value }
+          overallStyle { id value }
+          stoneType { id value }
+          slabStyle { id value }
+          customization { id value }
+        }
+        additionalProductDetails {
+          id
+          transportAndInstallation { id value }
+          foundationOptions { id value }
+          warrantyOrGuarantee { id value }
+          installationGuarantee { id value }
+        }
+        company {
+          documentId
+          name
+          location
+          logoUrl
+          logoUrlPublicId
+          hideStandardCompanyLogo
+          latitude
+          longitude
+          isFeatured
+        }
+      }
+      pageInfo { page pageSize total }
+    }
+  }
+`;
+
+export const LISTINGS_SEARCH_CONNECTION_QUERY = gql`
+  query ListingsSearchConnection(
+    $page: Int = 1
+    $pageSize: Int = 20
+    $filters: ListingFiltersInput
+    $sort: [String]
+    $branchesPageSize: Int = 10
+    $branchListingsPageSize: Int = 10
+  ) {
+    listings_connection(
+      filters: $filters
+      sort: $sort
+      pagination: { page: $page, pageSize: $pageSize }
+    ) {
+      nodes {
+        documentId
+        updatedAt
+        title
+        price
+        slug
+        isFeatured
+        isOnSpecial
+        isPremium
+        isStandard
+        listing_category { documentId name }
+        mainImageUrl
+        mainImagePublicId
+        thumbnailUrls
+        thumbnailPublicIds
+        adFlasher
+        adFlasherColor
+        manufacturingTimeframe
+        specials { active sale_price start_date end_date }
+        productDetails {
+          id
+          color { id value }
+          style { id value }
+          overallStyle { id value }
+          stoneType { id value }
+          slabStyle { id value }
+          customization { id value }
+        }
+        additionalProductDetails {
+          id
+          transportAndInstallation { id value }
+          foundationOptions { id value }
+          warrantyOrGuarantee { id value }
+          installationGuarantee { id value }
+        }
+        company {
+          documentId
+          name
+          location
+          logoUrl
+          logoUrlPublicId
+          hideStandardCompanyLogo
+          latitude
+          longitude
+          isFeatured
+        }
+        branches(pagination: { page: 1, pageSize: $branchesPageSize }) {
+          documentId
+          name
+          location {
+            address
+            latitude
+            longitude
+            mapUrl
+            province
+            city
+            town
+          }
+        }
+        branch_listings(pagination: { page: 1, pageSize: $branchListingsPageSize }) {
+          branch {
+            documentId
+            name
+            location {
+              address
+              latitude
+              longitude
+              mapUrl
+              province
+              city
+              town
+            }
+          }
+          price
+        }
+      }
+      pageInfo {
+        page
+        pageSize
+        total
+      }
+    }
+  }
+`;
+
+export const LISTINGS_FEATURED_CARDS_QUERY = gql`
+  query FeaturedListingsCards(
+    $page: Int = 1
+    $pageSize: Int = 3
+  ) {
+    listings(
+      filters: { isFeatured: { eq: true }, isOnSpecial: { ne: true } }
+      sort: "updatedAt:desc"
+      pagination: { page: $page, pageSize: $pageSize }
+    ) {
+      documentId
+      title
+      price
+      slug
+      isFeatured
+      listing_category { documentId name }
+      mainImageUrl
+      mainImagePublicId
+      adFlasher
+      adFlasherColor
+      productDetails {
+        id
+        stoneType { id value }
+        style { id value }
+      }
+      company { documentId name }
+    }
+  }
+`;

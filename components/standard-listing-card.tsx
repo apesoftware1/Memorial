@@ -8,7 +8,6 @@ import { cloudinaryOptimized } from "@/lib/cloudinary";
 import { Heart, MapPin, Camera, Check, User2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { FavoriteProduct } from "@/context/favorites-context.jsx";
 import { FavoriteButton } from "./favorite-button";
 import LocationTrigger from "./LocationTrigger";
 import { useGuestLocation } from "@/hooks/useGuestLocation";
@@ -17,7 +16,7 @@ import { formatPrice } from "@/lib/priceUtils";
 
 type DistanceInfo = {
   distance: { text: string; value: number };
-  duration: { text: string; value: number };
+  duration?: { text: string; value: number };
 };
 
 interface StandardListingCardProps {
@@ -51,11 +50,13 @@ export function StandardListingCard({
   };
 
   // Create product object for FavoriteButton
-  const favoriteProduct: FavoriteProduct = {
+  const favoriteProduct = {
     id: listing.id || listing.documentId,
-    title: listing.title,
+    name: listing.title,
     price: listing.price,
+    material: listing?.productDetails?.stoneType?.[0]?.value || "",
     image: listing.mainImageUrl,
+    addedAt: 0,
     details: listing.productDetails,
     manufacturer: listing.company?.name,
     location: listing.location,
@@ -110,6 +111,46 @@ export function StandardListingCard({
     };
     fetchDistance();
   }, [companyLocation.lat, companyLocation.lng, calculateDistanceFrom]);
+
+  const formatCardDisclaimerText = (raw: unknown) => {
+    const s = String(raw ?? "").trim();
+    if (!s) return "";
+    const normalized = s.replace(/\s*\|\s*/g, " | ").replace(/\s+/g, " ").trim();
+    const isAllCaps = /[A-Za-z]/.test(normalized) && normalized === normalized.toUpperCase();
+    if (!isAllCaps) return normalized;
+    const parts = normalized.split(" | ").map((p) => p.trim()).filter(Boolean);
+    if (parts.length === 0) return normalized;
+
+    const preserve = new Set(["POP", "KM", "KZN", "RSA", "QR", "UV"]);
+    const titleCaseCore = (core: string) => {
+      if (!core) return core;
+      if (/^\d+$/.test(core)) return core;
+      if (preserve.has(core.toUpperCase())) return core.toUpperCase();
+      const lower = core.toLowerCase();
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    };
+    const titleCaseToken = (token: string) => {
+      const m = token.match(/^([^A-Za-z0-9]*)(.*?)([^A-Za-z0-9]*)$/);
+      if (!m) return token;
+      const leading = m[1] || "";
+      const core = m[2] || "";
+      const trailing = m[3] || "";
+      if (!core) return token;
+      const pieces = core.split(/([-/])/g);
+      const rebuilt = pieces
+        .map((p) => (p === "-" || p === "/" ? p : titleCaseCore(p)))
+        .join("");
+      return `${leading}${rebuilt}${trailing}`;
+    };
+    const titleCaseWords = (text: string) =>
+      text
+        .toLowerCase()
+        .split(/\s+/)
+        .map(titleCaseToken)
+        .join(" ");
+
+    return parts.map(titleCaseWords).join(" | ");
+  };
 
   return (
     <div
@@ -288,8 +329,9 @@ export function StandardListingCard({
                   ?.value && (
                   <>
                     {
-                      listing.additionalProductDetails
-                        .transportAndInstallation[0].value
+                      formatCardDisclaimerText(
+                        listing.additionalProductDetails.transportAndInstallation[0].value
+                      )
                     }
                   </>
                 )}
@@ -313,8 +355,9 @@ export function StandardListingCard({
                       ? " | "
                       : ""}
                     {
-                      listing.additionalProductDetails.foundationOptions[0]
-                        .value
+                      formatCardDisclaimerText(
+                        listing.additionalProductDetails.foundationOptions[0].value
+                      )
                     }
                   </>
                 )}
@@ -348,8 +391,9 @@ export function StandardListingCard({
                       ? " | "
                       : ""}
                     {
-                      listing.additionalProductDetails.warrantyOrGuarantee[0]
-                        .value
+                      formatCardDisclaimerText(
+                        listing.additionalProductDetails.warrantyOrGuarantee[0].value
+                      )
                     }
                   </>
                 )}
@@ -524,8 +568,9 @@ export function StandardListingCard({
                     ?.value && (
                     <>
                       {
-                        listing.additionalProductDetails
-                          .transportAndInstallation[0].value
+                        formatCardDisclaimerText(
+                          listing.additionalProductDetails.transportAndInstallation[0].value
+                        )
                       }
                     </>
                   )}
@@ -549,8 +594,9 @@ export function StandardListingCard({
                     ? " | "
                     : ""}
                   {
-                    listing.additionalProductDetails.foundationOptions[0]
-                      .value
+                    formatCardDisclaimerText(
+                      listing.additionalProductDetails.foundationOptions[0].value
+                    )
                   }
                 </>
                 )}
@@ -584,8 +630,9 @@ export function StandardListingCard({
                       ? " | "
                       : ""}
                   {
-                    listing.additionalProductDetails.warrantyOrGuarantee[0]
-                      .value
+                    formatCardDisclaimerText(
+                      listing.additionalProductDetails.warrantyOrGuarantee[0].value
+                    )
                   }
                 </>
                 )}
