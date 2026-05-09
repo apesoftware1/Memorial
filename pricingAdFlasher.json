@@ -346,6 +346,36 @@
           "Calm Presence"
         ],
         "color": "#1E90FF"
+      },
+      "CATHEDRAL": {
+        "options": [
+          "Sacred Elegance",
+          "Cathedral Tribute",
+          "Timeless Sanctuary",
+          "Architectural Grace",
+          "Heavenly Rest",
+          "Blessed Memorial",
+          "Hallowed Design",
+          "Gothic Beauty",
+          "Sanctuary of Peace",
+          "Eternal Chapel"
+        ],
+        "color": "#2F4F4F"
+      },
+      "DISNEY": {
+        "options": [
+          "Magical Tribute",
+          "Forever in Our Hearts",
+          "Dreams Remembered",
+          "Happily Ever After",
+          "A Life of Wonder",
+          "Pixie Dust Memory",
+          "Storybook Legacy",
+          "Once Upon a Time",
+          "Magic Lives On",
+          "A Wish Remembered"
+        ],
+        "color": "#FF69B4"
       }
     }
   }

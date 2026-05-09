@@ -405,9 +405,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
                 <Search className="h-4 w-4 flex-shrink-0" />
                 <span className="truncate">
                   {`Search (${
-                    isBackgroundLoading && !hasUserInteracted && typeof initialCount === "number"
-                      ? initialCount
-                      : filteredListings.length
+                    typeof initialCount === "number" ? initialCount : filteredListings.length
                   }) ${getActiveCategory()} Tombstones`}
                 </span>
               </>

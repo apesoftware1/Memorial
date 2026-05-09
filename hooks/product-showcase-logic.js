@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { useGuestLocation } from "@/hooks/useGuestLocation";
+import { ICON_PATHS } from "@/app/manufacturers/manufacturers-Profile-Page/update-listing/constants/updateListingConstants";
 
 export function getFirstValue(arr) {
   return Array.isArray(arr) && arr.length > 0 ? arr[0]?.value : undefined;
@@ -11,20 +12,8 @@ export function getAllValues(arr) {
 }
 
 function getFirstIcon(arr) {
-  // If array exists and has items
-  if (Array.isArray(arr) && arr.length > 0) {
-    // First try to get icon from first item
-    if (arr[0]?.icon) {
-      return arr[0].icon;
-    }
-    // If no icon property but value exists, try to construct icon path
-    if (arr[0]?.value) {
-      const value = arr[0].value.toLowerCase().replace(/\s+/g, '-');
-      return `/last_icons/${value}-icon.svg`;
-    }
-  }
-  // Default icon path for each type
-  return `/last_icons/default-icon.svg`;
+  if (!Array.isArray(arr) || arr.length === 0) return null;
+  return arr[0]?.icon || null;
 }
 
 function buildAllImages(listing) {
@@ -54,15 +43,90 @@ export function useProductShowcaseLogic(listing) {
   // Product details and icons
   const productDetails = listing?.productDetails || {};
   const additionalDetails = listing?.additionalProductDetails || {};
+
+  const fixIconPath = useCallback((path) => {
+    if (!path) return null;
+    let fixedPath = path;
+
+    fixedPath = fixedPath.replace(/:\d+\//, "/");
+    if (!fixedPath.startsWith("/")) fixedPath = `/${fixedPath}`;
+
+    fixedPath = fixedPath
+      .replace("/last icons/", "/last_icons/")
+      .replace("/Adv_vpe_Icon_", "/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_")
+      .replace("/public/", "/")
+      .replace(/\/{2,}/g, "/")
+      .replace(/_Mausoleum\.svg$/i, "_Mausolean.svg");
+
+    if (
+      fixedPath.includes("/AdvertCreator_StoneType_Icons/") &&
+      !fixedPath.includes("/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/")
+    ) {
+      fixedPath = fixedPath.replace(
+        "/AdvertCreator_StoneType_Icons/",
+        "/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/"
+      );
+    }
+
+    if (
+      fixedPath.includes("/AdvertCreator_Head_Style_Icons/") &&
+      !fixedPath.includes("/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/")
+    ) {
+      fixedPath = fixedPath.replace(
+        "/AdvertCreator_Head_Style_Icons/",
+        "/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/"
+      );
+    }
+
+    if (
+      fixedPath.includes("/AdvertCreator_SlabStyle_Icons/") &&
+      !fixedPath.includes("/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/")
+    ) {
+      fixedPath = fixedPath.replace(
+        "/AdvertCreator_SlabStyle_Icons/",
+        "/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/"
+      );
+    }
+
+    if (
+      fixedPath.includes("/AdvertCreator_Icons_Customisation_Icons/") &&
+      !fixedPath.includes(
+        "/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/"
+      )
+    ) {
+      fixedPath = fixedPath.replace(
+        "/AdvertCreator_Icons_Customisation_Icons/",
+        "/AdvertCreator_Icons_Customisation_Icons/AdvertCreator_Icons_Customisation_Icons/"
+      );
+    }
+
+    if (fixedPath.includes("/AdvertCreator_Colour_Icons/") && !fixedPath.includes("/6_Colour_Icons/")) {
+      fixedPath = fixedPath.replace("/AdvertCreator_Colour_Icons/", "/AdvertCreator_Colour_Icons/6_Colour_Icons/");
+    }
+
+    return fixedPath;
+  }, []);
+
+  const resolveIcon = useCallback(
+    (key, arr) => {
+      const value = getFirstValue(arr);
+      const mapped = value ? ICON_PATHS?.[key]?.[value] : null;
+      const raw = mapped || getFirstIcon(arr);
+      return fixIconPath(raw);
+    },
+    [fixIconPath]
+  );
+
   const icons = useMemo(() => {
     return {
-      stoneTypeIcon: getFirstIcon(productDetails.stoneType),
-      headStyleIcon: getFirstIcon(productDetails.style),
-      slabStyleIcon: getFirstIcon(productDetails.slabStyle),
-      colourIcon: getFirstIcon(productDetails.color),
-      customIcon: getFirstIcon(productDetails.customization),
+      stoneTypeIcon: resolveIcon("stoneType", productDetails.stoneType),
+      overallStyleIcon: resolveIcon("overallStyle", productDetails.overallStyle),
+      headStyleIcon: resolveIcon("style", productDetails.style),
+      slabStyleIcon: resolveIcon("slabStyle", productDetails.slabStyle),
+      colourIcon: resolveIcon("color", productDetails.color),
+      customIcon: resolveIcon("customization", productDetails.customization),
     };
-  }, [productDetails]);
+  }, [productDetails, resolveIcon]);
 
   // Company location
   const companyLocation = useMemo(

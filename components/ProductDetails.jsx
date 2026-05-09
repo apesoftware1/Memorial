@@ -4,7 +4,7 @@ import { Cross, Gem, Camera } from "lucide-react";
 import PropTypes from "prop-types";
 
 export default function ProductDetails({ productDetails, icons, getFirstValue }) {
-  const { stoneTypeIcon, headStyleIcon, slabStyleIcon, colourIcon, customIcon } = icons || {};
+  const { stoneTypeIcon, overallStyleIcon, headStyleIcon, slabStyleIcon, colourIcon, customIcon } = icons || {};
   const OVERALL_STYLE_ICON_MAP = {
     Traditional: "/Icons&Lay-By2026/Style-DropDown-Icons/traditional.svg",
     Modern: "/Icons&Lay-By2026/Style-DropDown-Icons/modern.svg",
@@ -55,11 +55,11 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
             <span>Style:</span>
             {(() => {
               const first = Array.isArray(productDetails.overallStyle) ? productDetails.overallStyle[0] : null;
-              const rawIcon = first?.icon || OVERALL_STYLE_ICON_MAP[first?.value];
+              const rawIcon = overallStyleIcon || first?.icon || OVERALL_STYLE_ICON_MAP[first?.value];
               const iconPath = fixIconPath(rawIcon);
-              if (iconPath) {
-                return (
-                  <span className="mx-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#0D7C99]">
+              return (
+                <span className="mx-2 inline-flex h-5 w-5 items-center justify-center rounded-full">
+                  {iconPath ? (
                     <Image
                       src={iconPath}
                       alt="Style Icon"
@@ -67,10 +67,11 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
                       height={14}
                       className="object-contain"
                     />
-                  </span>
-                );
-              }
-              return <Gem size={16} className="text-gray-500 mx-2" />;
+                  ) : (
+                    <Gem size={14} className="text-black" />
+                  )}
+                </span>
+              );
             })()}
             <span className="font-bold">{getFirstValue(productDetails.overallStyle)}</span>
           </div>
@@ -149,6 +150,7 @@ ProductDetails.propTypes = {
   productDetails: PropTypes.object.isRequired,
   icons: PropTypes.shape({
     stoneTypeIcon: PropTypes.string,
+    overallStyleIcon: PropTypes.string,
     headStyleIcon: PropTypes.string,
     slabStyleIcon: PropTypes.string,
     colourIcon: PropTypes.string,

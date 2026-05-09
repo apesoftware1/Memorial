@@ -18,6 +18,8 @@ import {
   STONE_TYPE_OPTIONS as MANUFACTURER_STONE_TYPE_OPTIONS,
 } from "@/app/manufacturers/manufacturers-Profile-Page/update-listing/constants/updateListingConstants";
 
+const EMPTY_ARRAY = [];
+
 // Default filter options with updated price ranges
 const defaultFilterOptions = {
   minPrice: [
@@ -243,7 +245,7 @@ const SearchContainer = ({
   setActiveTab,
   totalListings = 0, // Add total listings count
   onNavigateToResults = null, // Add navigation callback
-  allListings = [], // Add all listings for filtering
+  allListings = EMPTY_ARRAY, // Add all listings for filtering
   isFullLoaded = false, // Add this
 }) => {
   const router = useRouter();
@@ -610,11 +612,13 @@ const SearchContainer = ({
     }
   }, [activeTab]);
 
+  const searchParamsKey = searchParams ? searchParams.toString() : "";
+
   // Effect: filter allListings based on URL params on load and whenever params change
   useEffect(() => {
     // If there are no listings yet, skip
     if (!Array.isArray(allListings) || allListings.length === 0) {
-      setFilteredListings([]);
+      setFilteredListings((prev) => (Array.isArray(prev) && prev.length === 0 ? prev : []));
       return;
     }
 
@@ -802,7 +806,7 @@ const SearchContainer = ({
         maxPrice: paramMaxPrice || prev?.maxPrice || null,
       }));
     }
-  }, [allListings, searchParams, setFilters]);
+  }, [allListings, searchParamsKey, setFilters]);
 
   // Shared filtering logic (same as TombstonesForSale): derive category and apply filters
   const filterListingsFrom = useCallback(

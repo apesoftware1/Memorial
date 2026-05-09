@@ -19,12 +19,11 @@ import MobileResultsBar from "@/components/MobileResultsBar";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { PageLoader, CardSkeleton } from "@/components/ui/loader";
 
-import { useProgressiveQuery } from '@/hooks/useProgressiveQuery';
 import {
-  LISTINGS_INITIAL_QUERY,
-  LISTINGS_FULL_QUERY,
-  LISTINGS_DELTA_QUERY,
+  LISTINGS_FEATURED_CARDS_QUERY,
+  LISTINGS_SEARCH_CONNECTION_QUERY,
 } from '@/graphql/queries';
+import { useQuery } from "@apollo/client";
 import { useListingCategories } from "@/hooks/use-ListingCategories"
 import { useLocationHierarchy } from '@/hooks/useLocationHierarchy';
 import { useHomepageAggregations } from '@/hooks/useHomepageAggregations';
@@ -39,28 +38,14 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
   const { categories: fetchedCategories, loading: categoriesLoading } = useListingCategories({ skip: !enableQueries });
   const categories = fetchedCategories?.length ? fetchedCategories : initialCategories;
+  const topFeaturedManufacturers = useMemo(() => [], []);
 
   const [activeTab, setActiveTab] = useState(0);
   const searchParams = useSearchParams();
   const searchParamsKey = searchParams ? searchParams.toString() : '';
-  const queryVariables = useMemo(() => ({}), []);
-  
-  const { data,loading, error } = useProgressiveQuery({
-    initialQuery: LISTINGS_INITIAL_QUERY,
-    fullQuery: LISTINGS_FULL_QUERY,
-    deltaQuery: LISTINGS_DELTA_QUERY,
-    variables: queryVariables,
-    storageKey: 'listings:lastUpdated',
-    refreshInterval: 0,
-    staleTime: 1000 * 60 * 5,
-    skip: !enableQueries,
-  });
-
-  const listings = useMemo(() => {
-    const fromQuery = data?.listings;
-    if (Array.isArray(fromQuery) && fromQuery.length > 0) return fromQuery;
-    return Array.isArray(initialListings) ? initialListings : [];
-  }, [data, initialListings]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const listingsPerPage = 20;
+  const [sortOrder, setSortOrder] = useState("Default");
 
   const [featuredActiveIndex, setFeaturedActiveIndex] = useState(0);
   const featuredScrollRef = useRef(null);
@@ -96,26 +81,12 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     }
   }, []);
   
-  const allListings = useMemo(() => {
-    return Array.isArray(listings) 
-      ? listings.filter(listing => {
-          return !(listing.specials && Array.isArray(listing.specials) && 
-                  listing.specials.some(special => special.active === true));
-        })
-      : [];
-  }, [listings]);
-
-  const featuredManufacturers = [];
-  const seenManufacturers = new Set();
-  if (Array.isArray(listings)) {
-    listings.forEach(l => {
-      if (l.company?.isFeatured && !seenManufacturers.has(l.company.name)) {
-        featuredManufacturers.push(l.company);
-        seenManufacturers.add(l.company.name);
-      }
-    });
-  }
-  const topFeaturedManufacturers = featuredManufacturers.slice(0, 3);
+  const listingsSort = useMemo(() => {
+    if (sortOrder === "Price: Low to High") return ["price:asc"];
+    if (sortOrder === "Price: High to Low") return ["price:desc"];
+    if (sortOrder === "Newest First") return ["updatedAt:desc"];
+    return undefined;
+  }, [sortOrder]);
 
   const [showFilters, setShowFilters] = useState(null)
 
@@ -135,6 +106,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   })
 
   const isUrlUpdating = useRef(false);
+  const didInitUrlSync = useRef(false);
 
   useEffect(() => {
     if (!searchParams) return;
@@ -257,8 +229,9 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         searchParams.has('custom') ||
         searchParams.has('search');
 
-    if (isDefaultState && hasUrlParams) {
-        return;
+    if (!didInitUrlSync.current) {
+      didInitUrlSync.current = true;
+      if (isDefaultState && hasUrlParams) return;
     }
 
     const params = new URLSearchParams(searchParams.toString());
@@ -309,7 +282,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         isUrlUpdating.current = false;
       }, 100);
     }
-  }, [activeFilters, router]);
+  }, [activeFilters, router, searchParamsKey]);
 
   const [showBranchesModal, setShowBranchesModal] = useState(false);
   const [selectedListing, setSelectedListing] = useState(null);
@@ -368,10 +341,6 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     const selected = sortedCategories[index];
     if (selected?.name) {
       setActiveFilters(prev => ({ ...prev, category: selected.name }));
-      
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('category', selected.name);
-      router.push(`?${params.toString()}`, { scroll: false });
     }
   };
 
@@ -625,139 +594,153 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     if (activeFilters.category && activeFilters.category !== 'All Categories') return activeFilters.category;
     return '';
   };
+  const didInitQueryPageRef = useRef(false);
+  useEffect(() => {
+    if (!didInitQueryPageRef.current) {
+      didInitQueryPageRef.current = true;
+      return;
+    }
+    setCurrentPage(1);
+  }, [activeFilters, activeTab]);
 
-  const filterListingsFrom = (filtersObj) => {
-    let filtered = [...allListings];
-    const f = filtersObj || activeFilters;
+  const listingsFilters = useMemo(() => {
+    const and = [{ isOnSpecial: { ne: true } }];
 
-    const checkMatch = (itemVal, filterVal, exact = false) => {
-      if (!filterVal || filterVal === 'All' || filterVal === '' || filterVal === 'Any' || filterVal === 'All Categories' || filterVal === 'Min Price' || filterVal === 'Max Price') return true;
-      
-      if (Array.isArray(filterVal)) {
-        if (filterVal.length === 0) return true;
-        if (filterVal.includes('All') || filterVal.includes('Any') || filterVal.includes('All Categories')) return true;
-        
-        return filterVal.some(fv => {
-           if (!fv) return false;
-           const fStr = fv.toString().toLowerCase();
-           const iStr = (itemVal || '').toString().toLowerCase();
-           return exact ? iStr === fStr : iStr.includes(fStr);
-        });
-      }
-      
-      const fStr = filterVal.toString().toLowerCase();
-      const iStr = (itemVal || '').toString().toLowerCase();
-      return exact ? iStr === fStr : iStr.includes(fStr);
+    const categoryName =
+      typeof activeFilters?.category === "string" &&
+      activeFilters.category &&
+      activeFilters.category !== "All Categories"
+        ? activeFilters.category
+        : activeCategory?.name;
+
+    if (categoryName) {
+      and.push({ listing_category: { name: { eq: categoryName } } });
+    }
+
+    const searchRaw = typeof activeFilters?.search === "string" ? activeFilters.search.trim() : "";
+    if (searchRaw) {
+      and.push({
+        or: [
+          { title: { containsi: searchRaw } },
+          { slug: { containsi: searchRaw } },
+          { documentId: { containsi: searchRaw } },
+          { company: { name: { containsi: searchRaw } } },
+          { listing_category: { name: { containsi: searchRaw } } },
+        ],
+      });
+    }
+
+    const list = (v) => {
+      if (!v) return [];
+      const arr = Array.isArray(v) ? v : [v];
+      return arr
+        .map((x) => (typeof x === "string" ? x.trim() : String(x ?? "").trim()))
+        .filter(Boolean)
+        .filter((x) => x.toLowerCase() !== "any" && x.toLowerCase() !== "all" && x.toLowerCase() !== "all categories");
     };
-    
-    if (f.search && f.search !== '') {
-      const searchQuery = f.search.toLowerCase();
-      filtered = filtered.filter(listing => {
-        const title = (listing?.title || '').toLowerCase();
-        const companyName = (listing?.company?.name || '').toLowerCase();
-        const documentId = (listing?.documentId || '').toLowerCase();
-        const id = (listing?.id || '').toString().toLowerCase();
-        const productId = (listing?.productDetails?.id || '').toLowerCase();
-        const listingSlug = (listing?.slug || '').toLowerCase();
-        const categoryName = (listing?.listing_category?.name || '').toLowerCase();
-        const pd = listing?.productDetails || {};
-        const arrVals = [
-          ...(Array.isArray(pd.style) ? pd.style.map(v => v?.value || '') : []),
-          ...(Array.isArray(pd.overallStyle) ? pd.overallStyle.map(v => v?.value || '') : []),
-          ...(Array.isArray(pd.slabStyle) ? pd.slabStyle.map(v => v?.value || '') : []),
-          ...(Array.isArray(pd.stoneType) ? pd.stoneType.map(v => v?.value || '') : []),
-          ...(Array.isArray(pd.color) ? pd.color.map(v => v?.value || '') : []),
-          ...(Array.isArray(pd.customization) ? pd.customization.map(v => v?.value || '') : []),
-        ].map(s => (s || '').toLowerCase());
-        const matchDetail = arrVals.some(s => s.includes(searchQuery));
-        return title.includes(searchQuery) || 
-               companyName.includes(searchQuery) || 
-               documentId.includes(searchQuery) ||
-               id.includes(searchQuery) ||
-               productId.includes(searchQuery) ||
-               listingSlug.includes(searchQuery) ||
-               categoryName.includes(searchQuery) ||
-               matchDetail;
-      });
-    }
-    
-    if (f.category && f.category !== 'All Categories' && f.category !== '') {
-      filtered = filtered.filter(listing => (listing.listing_category?.name || '').toLowerCase() === f.category.toLowerCase());
-    }
 
-    if (f.location) {
-       if (Array.isArray(f.location) && f.location.length > 0 && !f.location.includes('All')) {
-          filtered = filtered.filter(listing => f.location.some(loc => checkListingLocation(listing, loc)));
-       } else if (f.location && f.location !== 'All' && !Array.isArray(f.location) && f.location !== '') {
-          filtered = filtered.filter(listing => checkListingLocation(listing, f.location));
-       }
+    const addDetailsOr = (values, builder) => {
+      if (!values.length) return;
+      and.push({ or: values.map(builder) });
+    };
+
+    addDetailsOr(list(activeFilters?.stoneType), (v) => ({
+      productDetails: { stoneType: { value: { containsi: v } } },
+    }));
+    addDetailsOr(list(activeFilters?.style), (v) => ({
+      productDetails: { style: { value: { containsi: v } } },
+    }));
+    addDetailsOr(list(activeFilters?.overallStyle), (v) => ({
+      productDetails: { overallStyle: { value: { containsi: v } } },
+    }));
+    addDetailsOr(list(activeFilters?.slabStyle), (v) => ({
+      productDetails: { slabStyle: { value: { containsi: v } } },
+    }));
+    addDetailsOr(list(activeFilters?.custom), (v) => ({
+      productDetails: { customization: { value: { containsi: v } } },
+    }));
+
+    const colorVals = list(activeFilters?.colour || activeFilters?.color);
+    addDetailsOr(colorVals, (v) => ({
+      productDetails: { color: { value: { containsi: v } } },
+    }));
+
+    const locationVals = list(activeFilters?.location);
+    if (locationVals.length) {
+      const or = [];
+      for (const v of locationVals) {
+        or.push({ company: { location: { containsi: v } } });
+        or.push({ branches: { location: { province: { containsi: v } } } });
+        or.push({ branches: { location: { city: { containsi: v } } } });
+        or.push({ branches: { location: { town: { containsi: v } } } });
+        or.push({ branch_listings: { branch: { location: { province: { containsi: v } } } } });
+        or.push({ branch_listings: { branch: { location: { city: { containsi: v } } } } });
+        or.push({ branch_listings: { branch: { location: { town: { containsi: v } } } } });
+      }
+      and.push({ or });
     }
 
-    filtered = filtered.filter(listing => {
-        const values = listing.productDetails?.stoneType?.map(v => v.value) || [];
-        if (values.length === 0) return checkMatch(null, f.stoneType);
-        return values.some(val => checkMatch(val, f.stoneType));
-    });
+    const minPrice =
+      activeFilters?.minPrice && activeFilters.minPrice !== "Min Price"
+        ? parsePrice(activeFilters.minPrice)
+        : null;
+    const maxPrice =
+      activeFilters?.maxPrice && activeFilters.maxPrice !== "Max Price"
+        ? parsePrice(activeFilters.maxPrice)
+        : null;
 
-    const colorQuery = f.color || f.colour;
-    filtered = filtered.filter(listing => {
-        const values = listing.productDetails?.color?.map(v => v.value) || [];
-        if (values.length === 0) return checkMatch(null, colorQuery);
-        return values.some(val => checkMatch(val, colorQuery));
-    });
+    if (Number.isFinite(minPrice) && minPrice > 0) and.push({ price: { gte: minPrice } });
+    if (Number.isFinite(maxPrice) && maxPrice > 0) and.push({ price: { lte: maxPrice } });
 
-    filtered = filtered.filter(listing => {
-        const values = listing.productDetails?.style?.map(v => v.value) || [];
-        if (values.length === 0) return checkMatch(null, f.style);
-        return values.some(val => checkMatch(val, f.style));
-    });
+    return { and };
+  }, [activeCategory?.name, activeFilters]);
 
-    filtered = filtered.filter(listing => {
-        const values = listing.productDetails?.overallStyle?.map(v => v.value) || [];
-        if (values.length === 0) return checkMatch(null, f.overallStyle);
-        return values.some(val => checkMatch(val, f.overallStyle));
-    });
+  const listingsQueryVars = useMemo(
+    () => ({
+      page: currentPage,
+      pageSize: listingsPerPage,
+      filters: listingsFilters,
+      sort: listingsSort || ["documentId:asc"],
+      branchesPageSize: 25,
+      branchListingsPageSize: 25,
+    }),
+    [currentPage, listingsPerPage, listingsFilters, listingsSort]
+  );
 
-    filtered = filtered.filter(listing => {
-        const values = listing.productDetails?.slabStyle?.map(v => v.value) || [];
-        if (values.length === 0) return checkMatch(null, f.slabStyle);
-        return values.some(val => checkMatch(val, f.slabStyle));
-    });
+  const {
+    data: listingsConnData,
+    loading: listingsLoading,
+    error: listingsError,
+  } = useQuery(LISTINGS_SEARCH_CONNECTION_QUERY, {
+    variables: listingsQueryVars,
+    skip: !enableQueries,
+    fetchPolicy: "cache-first",
+  });
 
-    filtered = filtered.filter(listing => {
-        const values = listing.productDetails?.customization?.map(v => v.value) || [];
-        if (values.length === 0) return checkMatch(null, f.custom);
-        return values.some(val => checkMatch(val, f.custom));
-    });
+  const filteredListings = useMemo(() => {
+    const nodes = listingsConnData?.listings_connection?.nodes;
+    if (Array.isArray(nodes)) return nodes;
+    return Array.isArray(initialListings) ? initialListings : [];
+  }, [initialListings, listingsConnData]);
 
-    if (f.minPrice && f.minPrice !== 'Min Price' && f.minPrice !== '') {
-      const min = parsePrice(f.minPrice);
-      console.log('Filtering Min Price:', min, 'Raw:', f.minPrice);
-      filtered = filtered.filter(listing => {
-        if (!listing.price && listing.price !== 0) return false;
-        const price = parsePrice(listing.price);
-        return price >= min;
-      });
-    }
+  const totalListingsCount = useMemo(() => {
+    const t = listingsConnData?.listings_connection?.pageInfo?.total;
+    return typeof t === "number" ? t : filteredListings.length;
+  }, [filteredListings.length, listingsConnData]);
 
-    if (f.maxPrice && f.maxPrice !== 'Max Price' && f.maxPrice !== '') {
-      const max = parsePrice(f.maxPrice);
-      console.log('Filtering Max Price:', max, 'Raw:', f.maxPrice);
-      filtered = filtered.filter(listing => {
-        if (!listing.price && listing.price !== 0) return false;
-        const price = parsePrice(listing.price);
-        return price <= max;
-      });
-    }
-    return filtered;
-  };
+  const { data: featuredListingsData } = useQuery(LISTINGS_FEATURED_CARDS_QUERY, {
+    variables: { page: 1, pageSize: 3 },
+    skip: !enableQueries,
+    fetchPolicy: "cache-first",
+  });
 
-  const filteredListings = useMemo(() => filterListingsFrom(activeFilters), [activeFilters, allListings]);
+  const featuredListings = useMemo(() => {
+    const items = featuredListingsData?.listings;
+    if (Array.isArray(items)) return items;
+    return Array.isArray(initialListings) ? initialListings.filter((l) => l?.isFeatured).slice(0, 3) : [];
+  }, [featuredListingsData, initialListings]);
 
-  const listingsForLocationCounts = useMemo(() => {
-    const filtersForCounts = { ...activeFilters, location: null }; 
-    return filterListingsFrom(filtersForCounts);
-  }, [activeFilters, allListings]);
+  const listingsForLocationCounts = useMemo(() => [], []);
 
   const pickScalar = (v) => {
     if (Array.isArray(v)) return v.length > 0 ? v[v.length - 1] : null;
@@ -940,20 +923,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     return computedLocationHierarchy;
   }, [homepageAggError, homepageAggLocationHierarchy, computedLocationHierarchy]);
 
-  const computedCategoryCounts = useMemo(() => {
-    const filtersNoCategory = { ...activeFilters, category: 'All Categories' };
-    const potentialListings = filterListingsFrom(filtersNoCategory);
-    
-    const counts = {};
-    potentialListings.forEach(listing => {
-      const catName = listing?.listing_category?.name;
-      if (catName) {
-        counts[catName] = (counts[catName] || 0) + 1;
-      }
-    });
-    
-    return counts;
-  }, [activeFilters, allListings]);
+  const computedCategoryCounts = useMemo(() => ({}), []);
 
   const homepageAggCategoryCounts = useMemo(() => {
     const cats = homepageAggData?.homepageAggregations?.categories;
@@ -974,15 +944,29 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   const categoryCounts = useMemo(() => {
     const base = computedCategoryCounts || {};
     const agg = !homepageAggError && homepageAggCategoryCounts ? homepageAggCategoryCounts : null;
-    if (!agg) return base;
-    return { ...base, ...agg };
-  }, [homepageAggError, homepageAggCategoryCounts, computedCategoryCounts]);
+    const merged = agg ? { ...base, ...agg } : base;
+
+    const activeCategoryLabel =
+      typeof activeCategory?.name === "string" && activeCategory.name.trim()
+        ? activeCategory.name.trim().toUpperCase()
+        : null;
+
+    if (activeCategoryLabel) {
+      return { ...merged, [activeCategoryLabel]: totalListingsCount };
+    }
+
+    return merged;
+  }, [
+    activeCategory?.name,
+    computedCategoryCounts,
+    homepageAggCategoryCounts,
+    homepageAggError,
+    totalListingsCount,
+  ]);
 
   const handleSearch = () => {
     setCurrentPage(1);
   };
-
-  const [sortOrder, setSortOrder] = useState("Default");
 
   const baseSortedListings = useMemo(() => {
     const next = [...filteredListings];
@@ -999,19 +983,14 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         return priceB - priceA;
       });
     } else if (sortOrder === "Newest First") {
-      next.sort((a, b) => (b.id > a.id ? 1 : -1));
+      next.sort((a, b) => {
+        const aT = a?.updatedAt ? Date.parse(a.updatedAt) : 0;
+        const bT = b?.updatedAt ? Date.parse(b.updatedAt) : 0;
+        return bT - aT;
+      });
     }
     return next;
   }, [filteredListings, sortOrder]);
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const listingsPerPage = 20;
-
-  function getPageListings(listings, page) {
-    const start = (page - 1) * listingsPerPage;
-    const end = start + listingsPerPage;
-    return listings.slice(start, end);
-  }
 
   const listingItems = useMemo(() => {
     const next = baseSortedListings.map(buildListingItem).filter((x) => x?.id);
@@ -1028,8 +1007,6 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     }
     return next;
   }, [baseSortedListings, buildListingItem, guestLocation, selectedLocationTokens.length, sortOrder]);
-
-  const paginatedListingItems = getPageListings(listingItems, currentPage);
 
   const fallbackCard = (type = "listing") => (
     <CardSkeleton className="h-full" />
@@ -1178,9 +1155,9 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     return flow;
   }
 
-  const customFlow = getCustomFlow(paginatedListingItems);
-
-  const totalPages = Math.ceil(listingItems.length / listingsPerPage);
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(totalListingsCount / listingsPerPage));
+  }, [totalListingsCount, listingsPerPage]);
   
   const { totalFavorites } = useFavorites()
 
@@ -1298,10 +1275,8 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     }
   }
 
-  const totalListingsCount = filteredListings.length;
-  
-  if (enableQueries && loading && allListings.length === 0) return <PageLoader text="Loading listings..." />;
-  if (error && allListings.length === 0) return (
+  if (enableQueries && listingsLoading && filteredListings.length === 0) return <PageLoader text="Loading listings..." />;
+  if (listingsError && filteredListings.length === 0) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center">
         <p className="text-red-600 font-medium mb-4">Error loading listings</p>
@@ -1314,115 +1289,6 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       </div>
     </div>
   );
-
-  const filteredPremiumListings = filteredListings.filter(listing => {
-    if (activeFilters.location && activeFilters.location !== "All" && activeFilters.location !== "") {
-      const selectedLocations = Array.isArray(activeFilters.location) 
-        ? activeFilters.location 
-        : [activeFilters.location];
-      
-      const listingLocation = listing.location?.toLowerCase() || "";
-      const hasMatch = selectedLocations.some(loc => 
-        listingLocation.includes(loc.toLowerCase())
-      );
-      
-      if (!hasMatch) return false;
-    }
-    if (activeFilters.stoneType && activeFilters.stoneType !== "All" && activeFilters.stoneType !== "") {
-      const selectedTypes = Array.isArray(activeFilters.stoneType)
-        ? activeFilters.stoneType
-        : [activeFilters.stoneType];
-        
-      const stoneType = listing.stoneType || listing.details || "";
-      const hasMatch = selectedTypes.some(type => 
-        stoneType.toLowerCase().includes(type.toLowerCase())
-      );
-      
-      if (!hasMatch) return false;
-    }
-    if (activeFilters.colour && activeFilters.colour !== "All" && activeFilters.colour !== "") {
-      const selectedColors = Array.isArray(activeFilters.colour)
-        ? activeFilters.colour
-        : [activeFilters.colour];
-        
-      const hasMatch = selectedColors.some(color => {
-        const c = color.toLowerCase();
-        if (typeof listing.colour === 'object' && listing.colour !== null) {
-          return listing.colour[color] || listing.colour[c];
-        }
-        return (listing.colour || "").toLowerCase().includes(c);
-      });
-      
-      if (!hasMatch) return false;
-    }
-    if (activeFilters.color && activeFilters.color !== "All" && activeFilters.color !== "") {
-      const selectedColors = Array.isArray(activeFilters.color)
-        ? activeFilters.color
-        : [activeFilters.color];
-        
-      const hasMatch = selectedColors.some(color => {
-        const c = color.toLowerCase();
-        if (typeof listing.colour === 'object' && listing.colour !== null) {
-          return listing.colour[color] || listing.colour[c];
-        }
-        return (listing.colour || "").toLowerCase().includes(c);
-      });
-      
-      if (!hasMatch) return false;
-    }
-    if (activeFilters.culture && activeFilters.culture !== "All" && activeFilters.culture !== "") {
-      if (!listing.culture || !listing.culture.toLowerCase().includes(activeFilters.culture.toLowerCase())) return false;
-    }
-    if (activeFilters.style && activeFilters.style !== "All" && activeFilters.style !== "") {
-      const selectedStyles = Array.isArray(activeFilters.style)
-        ? activeFilters.style
-        : [activeFilters.style];
-        
-      const theme = listing.details || listing.style || "";
-      const hasMatch = selectedStyles.some(style => 
-        theme.toLowerCase().includes(style.toLowerCase())
-      );
-      
-      if (!hasMatch) return false;
-    }
-    if (activeFilters.designTheme && activeFilters.designTheme !== "All" && activeFilters.designTheme !== "") {
-      const theme = listing.details || listing.style || "";
-      if (!theme.toLowerCase().includes(activeFilters.designTheme.toLowerCase())) return false;
-    }
-    if (activeFilters.custom && activeFilters.custom !== "All" && activeFilters.custom !== "") {
-      const selectedCustom = Array.isArray(activeFilters.custom)
-        ? activeFilters.custom
-        : [activeFilters.custom];
-        
-      const features = listing.features || "";
-      const hasMatch = selectedCustom.some(cust => 
-        features.toLowerCase().includes(cust.toLowerCase())
-      );
-      
-      if (!hasMatch) return false;
-    }
-    if (activeFilters.minPrice && activeFilters.minPrice !== "Min Price" && activeFilters.minPrice !== "") {
-      const min = parsePrice(activeFilters.minPrice);
-      if (!listing.price || parsePrice(listing.price) < min) return false;
-    }
-    if (activeFilters.maxPrice && activeFilters.maxPrice !== "Max Price" && activeFilters.maxPrice !== "") {
-      const max = parsePrice(activeFilters.maxPrice);
-      if (!listing.price || parsePrice(listing.price) > max) return false;
-    }
-    if (activeFilters.slabStyle && activeFilters.slabStyle !== "All" && activeFilters.slabStyle !== "") {
-      const selectedSlabStyles = Array.isArray(activeFilters.slabStyle)
-        ? activeFilters.slabStyle
-        : [activeFilters.slabStyle];
-        
-      const slabStyle = listing.slabStyle || "";
-      const hasMatch = selectedSlabStyles.some(style => 
-        slabStyle.toLowerCase().includes(style.toLowerCase())
-      );
-      
-      if (!hasMatch) return false;
-    }
-    return true;
-  });
 
   function handleResetFilters() {
     setActiveFilters({
@@ -1452,7 +1318,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       <MobileFilterTags activeFilters={activeFilters} setActiveFilters={setActiveFilters} />
       
       <MobileResultsBar 
-        count={filteredListings.length} 
+        count={totalListingsCount} 
         onSortClick={() => setShowSortDropdown(true)}
         onFilterClick={openMobileFilter}
       />
@@ -1539,8 +1405,8 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                 getActiveCategory={getActiveCategory}
                 showCategoryDropdown={true}
                 locationsData={locationHierarchy}
-                initialCount={hasSearchTerm ? filteredListings.length : activeCategoryAggCount}
-                isBackgroundLoading={!enableQueries || loading}
+                initialCount={totalListingsCount}
+                isBackgroundLoading={!enableQueries || listingsLoading}
               />
             </div>
           </div>
@@ -1588,8 +1454,8 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                   getActiveCategory={getActiveCategory}
                   showCategoryDropdown={true}
                   locationsData={locationHierarchy}
-                  initialCount={hasSearchTerm ? filteredListings.length : activeCategoryAggCount}
-                  isBackgroundLoading={!enableQueries || loading}
+                  initialCount={totalListingsCount}
+                  isBackgroundLoading={!enableQueries || listingsLoading}
                 />
               </div>
             )}
@@ -1597,11 +1463,9 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
             <div className="w-full md:w-3/4">
               <div className="hidden sm:flex justify-between items-center mt-3 sm:mt-4 mb-4 bg-gray-100 rounded px-4 py-2 shadow-sm">
                 <p className="text-gray-600">
-                  {filteredListings.length === 0
+                  {totalListingsCount === 0
                     ? `No results found for your filters.`
-                    : filteredListings.length === allListings.length
-                    ? `${allListings.length} Listings For Sale`
-                    : `${filteredListings.length} Results (of ${allListings.length})`}
+                    : `Showing ${filteredListings.length} of ${totalListingsCount}`}
                 </p>
                 <div className="flex items-center">
                   <div className="hidden sm:flex items-center">
@@ -1627,19 +1491,11 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                 <div className="md:hidden">
                   <div className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide" ref={featuredScrollRef}>
                    
-                    {listings?.filter(l => l.isFeatured).length > 0
-                      ? listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
-                          Array.isArray(product.branches) && product.branches.length > 0 ? (
-                            product.branches.map((branch, branchIndex) => (
-                              <div key={`${product.documentId || product.id}-${branch.documentId || branch.id || branchIndex}`} className="flex-shrink-0 w-64 snap-start">
-                                <FeaturedListings listing={{...product, currentBranch: branch}} />
-                              </div>
-                            ))
-                          ) : (
-                            <div key={product.id || index} className="flex-shrink-0 w-64 snap-start">
-                              <FeaturedListings listing={product} />
-                            </div>
-                          )
+                    {featuredListings.length > 0
+                      ? featuredListings.slice(0, 3).map((product, index) => (
+                          <div key={product.documentId || index} className="flex-shrink-0 w-64 snap-start">
+                            <FeaturedListings listing={product} />
+                          </div>
                         ))
                       : (
                         <div className="flex-shrink-0 w-64 snap-start flex justify-center">
@@ -1662,9 +1518,9 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                 </div>
 
                 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {listings?.filter(l => l.isFeatured).length > 0
-                    ? listings?.filter(l => l.isFeatured).slice(0, 3).map((product, index) => (
-                        <FeaturedListings key={product.id || index} listing={product} />
+                  {featuredListings.length > 0
+                    ? featuredListings.slice(0, 3).map((product, index) => (
+                        <FeaturedListings key={product.documentId || index} listing={product} />
                       ))
                     : fallbackCard("featured listings")}
                 </div>
@@ -1677,10 +1533,10 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                     <p className="text-center text-xs text-gray-500 -mt-2 mb-2">*Sponsored</p>
 
                     <div className="space-y-6">
-                      {paginatedListingItems.length === 0 ? (
+                      {listingItems.length === 0 ? (
                         <div className="text-center text-gray-500 py-8">No tombstones found for your selected filters.</div>
                       ) : (
-                        paginatedListingItems.map((item) => (
+                        listingItems.map((item) => (
                           <PremiumListingCard
                             compact={true}
                             key={item.id}
