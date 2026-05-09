@@ -66,6 +66,7 @@ export default function ProductDetails({ productDetails, icons, getFirstValue })
                       width={14}
                       height={14}
                       className="object-contain"
+                      style={{ filter: "brightness(0)" }}
                     />
                   ) : (
                     <Gem size={14} className="text-black" />
