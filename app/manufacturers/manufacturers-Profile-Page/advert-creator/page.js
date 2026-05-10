@@ -984,20 +984,20 @@ export default function CreateListingForm() {
                   style={{ marginRight: 8 }}
                 />
                 {optionIcon && (
-                  <Image
+                  <img
                     src={optionIcon}
                     alt={`${option} icon`}
                     width={22}
                     height={22}
                     style={{
                       marginRight: 8,
-                      display: 'inline-block',
-                      objectFit: 'contain',
+                      display: "inline-block",
+                      objectFit: "contain",
                       filter:
-                        optionIcon.includes('/Icons&Lay-By2026/') ||
-                        (iconPathKey === 'slabStyle' && option === 'Double')
-                          ? 'brightness(0) saturate(100%)'
-                          : 'none',
+                        optionIcon.includes("/Icons&Lay-By2026/") ||
+                        (iconPathKey === "slabStyle" && option === "Double")
+                          ? "brightness(0) saturate(100%)"
+                          : "none",
                     }}
                   />
                 )}
