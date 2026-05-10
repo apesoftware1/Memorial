@@ -282,6 +282,12 @@ export default function UpdateListingPage() {
     return null;
   };
 
+  const normalizeAssetSrc = (src) => {
+    if (!src) return src;
+    const asString = String(src);
+    return asString.startsWith("/") ? encodeURI(asString) : encodeURI(`/${asString}`);
+  };
+
   const openMoreInfoModal = (field, optionValue, optionLabel) => {
     setMoreInfoTarget({ field, optionValue, optionLabel });
     setMoreInfoDraft(moreInfoByOption?.[field]?.[optionValue] || "");
@@ -824,6 +830,7 @@ export default function UpdateListingPage() {
           <div className={styles.detailsSubHeader}>Can choose up to X1 Style Option</div>
           {OVERALL_STYLE_OPTIONS.map((s) => {
             const icon = getIconPath('overallStyle', s);
+            const iconSrc = normalizeAssetSrc(icon);
             const iconStyle =
               typeof icon === "string" && icon.includes("/Icons&Lay-By2026/")
                 ? { filter: "brightness(0) saturate(100%)" }
@@ -836,14 +843,15 @@ export default function UpdateListingPage() {
                   onChange={() => handleCheckboxChange(selectedOverallStyle, setSelectedOverallStyle, s, 1)}
                   className={styles.checkboxInput}
                 />
-                {icon ? (
+                {iconSrc ? (
                   <Image
-                    src={icon}
+                    src={iconSrc}
                     alt={`${s} icon`}
                     width={22}
                     height={22}
                     className={styles.checkboxIcon}
                     style={iconStyle}
+                    unoptimized
                   />
                 ) : null}
                 <span>{s}</span>
@@ -861,6 +869,7 @@ export default function UpdateListingPage() {
           <div className={styles.detailsSubHeader}>Can choose up to X2 HEAD STYLE Options</div>
           {STYLE_OPTIONS.map((s) => {
             const icon = getIconPath('style', s);
+            const iconSrc = normalizeAssetSrc(icon);
             return (
               <label key={s} className={styles.checkboxLabel}>
                 <input
@@ -869,7 +878,16 @@ export default function UpdateListingPage() {
                   onChange={() => handleCheckboxChange(selectedStyle, setSelectedStyle, s, 2)}
                   className={styles.checkboxInput}
                 />
-                {icon && <Image src={icon} alt={`${s} icon`} width={22} height={22} className={styles.checkboxIcon} />}
+                {iconSrc && (
+                  <Image
+                    src={iconSrc}
+                    alt={`${s} icon`}
+                    width={22}
+                    height={22}
+                    className={styles.checkboxIcon}
+                    unoptimized
+                  />
+                )}
                 <span>{s}</span>
               </label>
             );
@@ -885,6 +903,7 @@ export default function UpdateListingPage() {
           <div className={styles.detailsSubHeader}>Can choose up to X1 Slab Style Option</div>
           {SLAB_STYLE_OPTIONS.map((s) => {
             const icon = getIconPath('slabStyle', s);
+            const iconSrc = normalizeAssetSrc(icon);
             const iconStyle =
               s === "Double"
                 ? { filter: "brightness(0) saturate(100%)" }
@@ -897,7 +916,17 @@ export default function UpdateListingPage() {
                   onChange={() => handleCheckboxChange(selectedSlabStyle, setSelectedSlabStyle, s, 1)}
                   className={styles.checkboxInput}
                 />
-                {icon && <Image src={icon} alt={`${s} icon`} width={22} height={22} className={styles.checkboxIcon} style={iconStyle} />}
+                {iconSrc && (
+                  <Image
+                    src={iconSrc}
+                    alt={`${s} icon`}
+                    width={22}
+                    height={22}
+                    className={styles.checkboxIcon}
+                    style={iconStyle}
+                    unoptimized
+                  />
+                )}
                 <span>{s}</span>
               </label>
             );
@@ -913,6 +942,7 @@ export default function UpdateListingPage() {
           <div className={styles.detailsSubHeader}>Can choose up to X2 Colour Options</div>
           {COLOR_OPTIONS.map((c) => {
             const icon = getIconPath('color', c);
+            const iconSrc = normalizeAssetSrc(icon);
             return (
               <label key={c} className={styles.checkboxLabel}>
                 <input
@@ -921,7 +951,16 @@ export default function UpdateListingPage() {
                   onChange={() => handleCheckboxChange(selectedColour, setSelectedColour, c, 2)}
                   className={styles.checkboxInput}
                 />
-                {icon && <Image src={icon} alt={`${c} icon`} width={22} height={22} className={styles.checkboxIcon} />}
+                {iconSrc && (
+                  <Image
+                    src={iconSrc}
+                    alt={`${c} icon`}
+                    width={22}
+                    height={22}
+                    className={styles.checkboxIcon}
+                    unoptimized
+                  />
+                )}
                 <span>{c}</span>
               </label>
             );
@@ -944,6 +983,7 @@ export default function UpdateListingPage() {
           >
             {STONE_TYPE_OPTIONS.map((st) => {
               const icon = getIconPath('stoneType', st);
+              const iconSrc = normalizeAssetSrc(icon);
               const iconStyle =
                 typeof icon === "string" && icon.includes("/Icons&Lay-By2026/")
                   ? { filter: "brightness(0) saturate(100%)" }
@@ -956,7 +996,17 @@ export default function UpdateListingPage() {
                     onChange={() => handleCheckboxChange(selectedStoneType, setSelectedStoneType, st, 2)}
                     className={styles.checkboxInput}
                   />
-                  {icon && <Image src={icon} alt={`${st} icon`} width={22} height={22} className={styles.checkboxIcon} style={iconStyle} />}
+                  {iconSrc && (
+                    <Image
+                      src={iconSrc}
+                      alt={`${st} icon`}
+                      width={22}
+                      height={22}
+                      className={styles.checkboxIcon}
+                      style={iconStyle}
+                      unoptimized
+                    />
+                  )}
                   <span>{st}</span>
                 </label>
               );
@@ -976,6 +1026,7 @@ export default function UpdateListingPage() {
           <div className={styles.detailsSubHeader}>Can choose up to X3 Custom Options</div>
           {CUSTOMIZATION_OPTIONS.map((cu) => {
             const icon = getIconPath('customization', cu);
+            const iconSrc = normalizeAssetSrc(icon);
             return (
               <label key={cu} className={styles.checkboxLabel}>
                 <input
@@ -984,7 +1035,16 @@ export default function UpdateListingPage() {
                   onChange={() => handleCheckboxChange(selectedCustomisation, setSelectedCustomisation, cu, 3)}
                   className={styles.checkboxInput}
                 />
-                {icon && <Image src={icon} alt={`${cu} icon`} width={22} height={22} className={styles.checkboxIcon} />}
+                {iconSrc && (
+                  <Image
+                    src={iconSrc}
+                    alt={`${cu} icon`}
+                    width={22}
+                    height={22}
+                    className={styles.checkboxIcon}
+                    unoptimized
+                  />
+                )}
                 <span>{cu}</span>
               </label>
             );
