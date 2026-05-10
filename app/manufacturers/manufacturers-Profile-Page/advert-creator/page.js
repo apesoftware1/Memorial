@@ -564,8 +564,8 @@ export default function CreateListingForm() {
     "Car": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Car.svg",
     "Bike": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Bike.svg",
     "Sports": "/last_icons/AdvertCreator_Head_Style_Icons/AdvertCreator_Head_Style_Icons/AdvertCreator_HeadStyle_Icon_Sport.svg",
-    "Cathedral": "/Icons&Lay-By2026/7%20MAy/Head%20Styles/Cathedral_Black_Icon.svg",
-    "Disney": "/Icons&Lay-By2026/7%20MAy/Head%20Styles/Disney_Black_Icon.svg",
+    "Cathedral": "/Icons&Lay-By2026/7 MAy/Head Styles/Cathedral_Black_Icon.svg",
+    "Disney": "/Icons&Lay-By2026/7 MAy/Head Styles/Disney_Black_Icon.svg",
   };
 
   const OVERALL_STYLE_ICON_MAP = {
@@ -601,8 +601,8 @@ export default function CreateListingForm() {
     "Stone": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Stone.svg",
     "Tile": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Tile.svg",
     "Wood": "/last_icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icons/AdvertCreator_StoneType_Icon_Wood.svg",
-    "Zimbabwe Black": "/Icons&Lay-By2026/7%20MAy/Stone%20Type/ZimBlack_Black_Icon.svg",
-    "Zimbabwe Red": "/Icons&Lay-By2026/7%20MAy/Stone%20Type/ZimRed_Black_Icon.svg",
+    "Zimbabwe Black": "/Icons&Lay-By2026/7 MAy/Stone Type/ZimBlack_Black_Icon.svg",
+    "Zimbabwe Red": "/Icons&Lay-By2026/7 MAy/Stone Type/ZimRed_Black_Icon.svg",
   };
 
   // Customization icons map
@@ -618,13 +618,13 @@ export default function CreateListingForm() {
 
   // Slab Style icons map
   const SLAB_STYLE_ICON_MAP = {
-    "Curved Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_Black_Curved.svg",
-    "Frame with Infill": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_Black_FrameWithInfill.svg",
-    "Full Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_Black_FullSlab.svg",
-    "Glass Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_Black_Glass.svg",
-    "Half Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_Black_HalfSlab.svg",
-    "Stepped Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_Black_Stepped.svg",
-    "Tiled Slab": "/Icons&Lay-By2026/7%20MAy/Slab%20Styles/Slab_Black_Tiled.svg",
+    "Curved Slab": "/Icons&Lay-By2026/7 MAy/Slab Styles/Slab_Black_Curved.svg",
+    "Frame with Infill": "/Icons&Lay-By2026/7 MAy/Slab Styles/Slab_Black_FrameWithInfill.svg",
+    "Full Slab": "/Icons&Lay-By2026/7 MAy/Slab Styles/Slab_Black_FullSlab.svg",
+    "Glass Slab": "/Icons&Lay-By2026/7 MAy/Slab Styles/Slab_Black_Glass.svg",
+    "Half Slab": "/Icons&Lay-By2026/7 MAy/Slab Styles/Slab_Black_HalfSlab.svg",
+    "Stepped Slab": "/Icons&Lay-By2026/7 MAy/Slab Styles/Slab_Black_Stepped.svg",
+    "Tiled Slab": "/Icons&Lay-By2026/7 MAy/Slab Styles/Slab_Black_Tiled.svg",
     "Double": "/last_icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons/AdvertCreator_SlabStyle_Icons_Double.svg",
   };
 
@@ -651,10 +651,10 @@ export default function CreateListingForm() {
         if (STONE_TYPE_ICON_MAP[key]) return STONE_TYPE_ICON_MAP[key];
         const lowered = key.toLowerCase();
         if (lowered.includes("zimbabwe") && lowered.includes("black")) {
-          return "/Icons&Lay-By2026/7%20MAy/Stone%20Type/ZimBlack_Black_Icon.svg";
+          return "/Icons&Lay-By2026/7 MAy/Stone Type/ZimBlack_Black_Icon.svg";
         }
         if (lowered.includes("zimbabwe") && lowered.includes("red")) {
-          return "/Icons&Lay-By2026/7%20MAy/Stone%20Type/ZimRed_Black_Icon.svg";
+          return "/Icons&Lay-By2026/7 MAy/Stone Type/ZimRed_Black_Icon.svg";
         }
         if (lowered.includes("granite") && lowered.includes("stones")) {
           return "/Icons&Lay-By2026/Material-DropDown-Icons/granite-stones.svg";
