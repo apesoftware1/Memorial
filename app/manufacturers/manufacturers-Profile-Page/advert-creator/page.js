@@ -959,6 +959,11 @@ export default function CreateListingForm() {
     const iconPathKey = field === 'headStyle' ? 'style' : field;
     const isScrollableList = Array.isArray(options) && options.length >= 19;
     const maxListHeight = 540;
+    const normalizeAssetSrc = (src) => {
+      if (!src) return src;
+      const asString = String(src);
+      return asString.startsWith("/") ? encodeURI(asString) : encodeURI(`/${asString}`);
+    };
 
     return (
       <div>
@@ -972,6 +977,7 @@ export default function CreateListingForm() {
         <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: isScrollableList ? maxListHeight : undefined, overflowY: isScrollableList ? "auto" : undefined, paddingRight: isScrollableList ? 6 : undefined }}>
           {options.map((option) => {
             const optionIcon = getIconPath(iconPathKey, option);
+            const optionIconSrc = normalizeAssetSrc(optionIcon);
             return (
               <label
                 key={option}
@@ -983,18 +989,19 @@ export default function CreateListingForm() {
                   onChange={() => handleCheckboxChange(section, field, option, max)}
                   style={{ marginRight: 8 }}
                 />
-                {optionIcon && (
-                  <img
-                    src={optionIcon}
+                {optionIconSrc && (
+                  <Image
+                    src={optionIconSrc}
                     alt={`${option} icon`}
                     width={22}
                     height={22}
+                    unoptimized
                     style={{
                       marginRight: 8,
                       display: "inline-block",
                       objectFit: "contain",
                       filter:
-                        optionIcon.includes("/Icons&Lay-By2026/") ||
+                        optionIconSrc.includes("/Icons&Lay-By2026/") ||
                         (iconPathKey === "slabStyle" && option === "Double")
                           ? "brightness(0) saturate(100%)"
                           : "none",
