@@ -23,6 +23,7 @@ interface TombstonesForSaleFiltersProps {
   locationsData?: any[];
   initialCount?: number | null;
   isBackgroundLoading?: boolean;
+  locationCountBaseFilters?: any;
 }
 
 // Use the same filter options as SearchContainer
@@ -186,7 +187,7 @@ const getIconForOption = (filterName: string, option: string) => {
   }
 };
 
-export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions, filteredListings, handleSearch, getActiveCategory, showCategoryDropdown = true, locationsData, initialCount = null, isBackgroundLoading = false }: TombstonesForSaleFiltersProps) {
+export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions, filteredListings, handleSearch, getActiveCategory, showCategoryDropdown = true, locationsData, initialCount = null, isBackgroundLoading = false, locationCountBaseFilters }: TombstonesForSaleFiltersProps) {
   const [showMore, setShowMore] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
@@ -375,6 +376,8 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
         selectOption={selectOption}
         filters={activeFilters}
         dropdownRefs={dropdownRefs}
+        selectedLocationTotal={initialCount}
+        locationCountBaseFilters={locationCountBaseFilters}
       />
 
       <FilterDropdown name="overallStyle" label="Style" options={mergedOptions.overallStyle || defaultFilterOptions.overallStyle} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />

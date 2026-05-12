@@ -21,7 +21,9 @@ import { PageLoader, CardSkeleton } from "@/components/ui/loader";
 
 import {
   LISTINGS_FEATURED_CARDS_QUERY,
-  LISTINGS_SEARCH_CONNECTION_QUERY,
+  LISTING_SEARCH_INDEX_CONNECTION_QUERY,
+  LISTING_SEARCH_LOCATION_OPTIONS_QUERY,
+  LISTINGS_BY_DOCUMENT_IDS_QUERY,
 } from '@/graphql/queries';
 import { useQuery } from "@apollo/client";
 import { useListingCategories } from "@/hooks/use-ListingCategories"
@@ -51,6 +53,42 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   const featuredScrollRef = useRef(null);
   const router = useRouter();
   const { location: guestLocation } = useGuestLocation();
+
+  const { data: listingSearchLocationOptionsData } = useQuery(LISTING_SEARCH_LOCATION_OPTIONS_QUERY, {
+    skip: !enableQueries,
+    fetchPolicy: "cache-first",
+  });
+
+  const locationOptionsHierarchy = useMemo(() => {
+    const raw = listingSearchLocationOptionsData?.listingSearchLocationOptions;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((prov) => {
+        const provinceName = typeof prov?.province === "string" ? prov.province : "";
+        const cities = Array.isArray(prov?.cities) ? prov.cities : [];
+        return {
+          name: provinceName,
+          count: 0,
+          cities: cities
+            .map((city) => {
+              const cityName = typeof city?.city === "string" ? city.city : "";
+              const towns = Array.isArray(city?.towns) ? city.towns : [];
+              return {
+                name: cityName,
+                count: 0,
+                towns: towns
+                  .map((town) => ({
+                    name: typeof town?.town === "string" ? town.town : "",
+                    count: 0,
+                  }))
+                  .filter((t) => t.name),
+              };
+            })
+            .filter((c) => c.name),
+        };
+      })
+      .filter((p) => p.name);
+  }, [listingSearchLocationOptionsData]);
   
   const handleFeaturedScroll = () => {
     if (featuredScrollRef.current) {
@@ -105,8 +143,21 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     search: null,
   })
 
+  const [debouncedActiveFilters, setDebouncedActiveFilters] = useState(activeFilters);
+  const debounceTimerRef = useRef(null);
+  useEffect(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedActiveFilters(activeFilters);
+    }, 400);
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [activeFilters]);
+
   const isUrlUpdating = useRef(false);
   const didInitUrlSync = useRef(false);
+  const didEverSyncNonDefaultRef = useRef(false);
 
   useEffect(() => {
     if (!searchParams) return;
@@ -122,25 +173,33 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         return val.includes(',') ? val.split(',') : [val];
       };
 
-    const locationVal = searchParams.get('location');
-    let locationNormalized = null;
-    if (locationVal) {
-      const raw = locationVal.split(',').map(s => s.trim()).filter(Boolean);
-      
-      locationNormalized = raw.map(l => {
-        const knownProv = DEFAULT_PROVINCES.find(p => p.toLowerCase() === l.toLowerCase());
-        if (knownProv) return knownProv;
-        
-        return normalizeCityName(l);
-      });
-      
-      if (locationNormalized.length === 0) locationNormalized = null;
-    }
+      const isEncodedLocation = (v) => typeof v === "string" && /^[pct]\|/.test(v);
+      const locationVal = searchParams.get('location');
+      let locationNormalized = null;
+      if (locationVal) {
+        const raw = locationVal
+          .split(';')
+          .map(s => s.trim())
+          .filter(Boolean);
 
-    if (JSON.stringify(locationNormalized) !== JSON.stringify(prev.location)) {
-      newFilters.location = locationNormalized;
-      hasChanges = true;
-    }
+        if (raw.length > 0 && raw.every(isEncodedLocation)) {
+          locationNormalized = raw;
+        } else {
+          const legacyRaw = locationVal.split(',').map(s => s.trim()).filter(Boolean);
+          locationNormalized = legacyRaw.map(l => {
+            const knownProv = DEFAULT_PROVINCES.find(p => p.toLowerCase() === l.toLowerCase());
+            if (knownProv) return knownProv;
+            return normalizeCityName(l);
+          });
+        }
+
+        if (Array.isArray(locationNormalized) && locationNormalized.length === 0) locationNormalized = null;
+      }
+
+      if (JSON.stringify(locationNormalized) !== JSON.stringify(prev.location)) {
+        newFilters.location = locationNormalized;
+        hasChanges = true;
+      }
 
       const minPrice = searchParams.get('minPrice') || "Min Price";
       if (minPrice !== prev.minPrice) {
@@ -204,18 +263,38 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
   useEffect(() => {
     if (!searchParams) return;
+    if (isUrlUpdating.current) return;
 
-    const isDefaultState = 
-        activeFilters.minPrice === "Min Price" &&
-        activeFilters.maxPrice === "Max Price" &&
-        !activeFilters.location &&
-        !activeFilters.stoneType &&
-        !activeFilters.colour &&
-        !activeFilters.style &&
-        !activeFilters.overallStyle &&
-        !activeFilters.slabStyle &&
-        !activeFilters.custom &&
-        !activeFilters.search;
+    const isEmpty = (v) => {
+      if (!v) return true;
+      if (typeof v === "string") {
+        const t = v.trim();
+        if (!t) return true;
+        return t === "Any" || t === "All" || t === "All Categories";
+      }
+      if (Array.isArray(v)) {
+        if (v.length === 0) return true;
+        return v.every((x) => {
+          if (typeof x !== "string") return false;
+          const t = x.trim();
+          if (!t) return true;
+          return t === "Any" || t === "All" || t === "All Categories";
+        });
+      }
+      return false;
+    };
+
+    const isDefaultState =
+      activeFilters.minPrice === "Min Price" &&
+      activeFilters.maxPrice === "Max Price" &&
+      isEmpty(activeFilters.location) &&
+      isEmpty(activeFilters.stoneType) &&
+      isEmpty(activeFilters.colour || activeFilters.color) &&
+      isEmpty(activeFilters.style) &&
+      isEmpty(activeFilters.overallStyle) &&
+      isEmpty(activeFilters.slabStyle) &&
+      isEmpty(activeFilters.custom) &&
+      isEmpty(activeFilters.search);
 
     const hasUrlParams = 
         searchParams.has('minPrice') || 
@@ -228,6 +307,14 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         searchParams.has('slabStyle') || 
         searchParams.has('custom') ||
         searchParams.has('search');
+
+    if (!didEverSyncNonDefaultRef.current && isDefaultState && hasUrlParams) {
+      return;
+    }
+
+    if (!isDefaultState) {
+      didEverSyncNonDefaultRef.current = true;
+    }
 
     if (!didInitUrlSync.current) {
       didInitUrlSync.current = true;
@@ -246,7 +333,13 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
           hasUpdates = true;
         }
       } else {
-        const strVal = Array.isArray(value) ? value.join(',') : value;
+        const isEncodedLocation = (v) => typeof v === "string" && /^[pct]\|/.test(v);
+        const strVal =
+          key === "location" && Array.isArray(value) && value.length > 0 && value.every(isEncodedLocation)
+            ? value.join(";")
+            : Array.isArray(value)
+              ? value.join(',')
+              : value;
         if (current !== strVal) {
           params.set(key, strVal);
           hasUpdates = true;
@@ -603,130 +696,289 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     setCurrentPage(1);
   }, [activeFilters, activeTab]);
 
-  const listingsFilters = useMemo(() => {
-    const and = [{ isOnSpecial: { ne: true } }];
+  const isMeaningfulToken = (x) =>
+    typeof x === "string" &&
+    x.trim() !== "" &&
+    x.trim().toLowerCase() !== "any" &&
+    x.trim().toLowerCase() !== "all" &&
+    x.trim().toLowerCase() !== "all categories";
+
+  const getLocationTokensForServerFilter = (raw) => {
+    if (!raw) return [];
+    if (typeof raw === "string") {
+      const v = raw.trim();
+      if (!isMeaningfulToken(v) || v.toLowerCase() === "near me") return [];
+      return [v];
+    }
+
+    if (Array.isArray(raw)) {
+      const tokens = raw.map((x) => (typeof x === "string" ? x.trim() : String(x ?? "").trim())).filter(Boolean);
+      if (tokens.length === 0) return [];
+
+      const provinceSet = new Set([
+        "gauteng",
+        "western cape",
+        "kwazulu-natal",
+        "eastern cape",
+        "free state",
+        "limpopo",
+        "northern cape",
+        "mpumalanga",
+        "north west",
+        "northwest",
+      ]);
+
+      const firstLower = tokens[0]?.toLowerCase();
+      const looksHierarchical = tokens.length === 3 && (provinceSet.has(firstLower) || firstLower === "any");
+      if (looksHierarchical) {
+        const mostSpecific = [tokens[2], tokens[1], tokens[0]].find((t) => isMeaningfulToken(t));
+        return mostSpecific ? [mostSpecific] : [];
+      }
+
+      return tokens.filter(isMeaningfulToken);
+    }
+
+    return [];
+  };
+
+  const normalizeLower = (v) => (typeof v === "string" ? v.trim().toLowerCase() : "");
+
+  const listTokens = (v) => {
+    if (!v) return [];
+    const arr = Array.isArray(v) ? v : [v];
+    return arr
+      .map((x) => (typeof x === "string" ? x.trim() : String(x ?? "").trim()))
+      .filter(Boolean)
+      .filter((x) => isMeaningfulToken(x));
+  };
+
+  const packedTokenVariants = (raw) => {
+    const base = normalizeLower(raw);
+    if (!base) return [];
+    const kebab = base.replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+    const variants = new Set([base, kebab]);
+    return Array.from(variants).filter(Boolean).map((v) => `|${v}|`);
+  };
+
+  const searchIndexFilters = useMemo(() => {
+    const and = [];
+
+    and.push({ published: { eq: true } });
+    and.push({ is_on_special: { eq: false } });
 
     const categoryName =
-      typeof activeFilters?.category === "string" &&
-      activeFilters.category &&
-      activeFilters.category !== "All Categories"
-        ? activeFilters.category
+      typeof debouncedActiveFilters?.category === "string" &&
+      debouncedActiveFilters.category &&
+      debouncedActiveFilters.category !== "All Categories"
+        ? debouncedActiveFilters.category
         : activeCategory?.name;
 
     if (categoryName) {
-      and.push({ listing_category: { name: { eq: categoryName } } });
+      and.push({ category: { eq: normalizeLower(categoryName) } });
     }
 
-    const searchRaw = typeof activeFilters?.search === "string" ? activeFilters.search.trim() : "";
-    if (searchRaw) {
-      and.push({
-        or: [
-          { title: { containsi: searchRaw } },
-          { slug: { containsi: searchRaw } },
-          { documentId: { containsi: searchRaw } },
-          { company: { name: { containsi: searchRaw } } },
-          { listing_category: { name: { containsi: searchRaw } } },
-        ],
-      });
-    }
-
-    const list = (v) => {
-      if (!v) return [];
-      const arr = Array.isArray(v) ? v : [v];
-      return arr
-        .map((x) => (typeof x === "string" ? x.trim() : String(x ?? "").trim()))
-        .filter(Boolean)
-        .filter((x) => x.toLowerCase() !== "any" && x.toLowerCase() !== "all" && x.toLowerCase() !== "all categories");
+    const locationRaw = debouncedActiveFilters?.location;
+    const isEncodedLocation = (v) => typeof v === "string" && /^[pct]\|/.test(v);
+    const decodeEncodedLocation = (v) => {
+      if (!isEncodedLocation(v)) return null;
+      const parts = v.split("|").map((p) => p.trim());
+      const level = parts[0];
+      if (level === "p") return { level: "province", province: parts[1] || "" };
+      if (level === "c") return { level: "city", province: parts[1] || "", city: parts[2] || "" };
+      if (level === "t")
+        return { level: "town", province: parts[1] || "", city: parts[2] || "", town: parts[3] || "" };
+      return null;
     };
 
-    const addDetailsOr = (values, builder) => {
-      if (!values.length) return;
-      and.push({ or: values.map(builder) });
-    };
+    const encodedSelections = Array.isArray(locationRaw) ? locationRaw.filter(isEncodedLocation) : [];
+    if (encodedSelections.length) {
+      const decoded = encodedSelections.map(decodeEncodedLocation).filter(Boolean);
+      const provinceVals = decoded
+        .filter((d) => d.level === "province" && d.province)
+        .map((d) => d.province);
+      const cityVals = decoded
+        .filter((d) => d.level === "city" && d.city)
+        .map((d) => d.city);
+      const townVals = decoded
+        .filter((d) => d.level === "town" && d.town)
+        .map((d) => d.town);
 
-    addDetailsOr(list(activeFilters?.stoneType), (v) => ({
-      productDetails: { stoneType: { value: { containsi: v } } },
-    }));
-    addDetailsOr(list(activeFilters?.style), (v) => ({
-      productDetails: { style: { value: { containsi: v } } },
-    }));
-    addDetailsOr(list(activeFilters?.overallStyle), (v) => ({
-      productDetails: { overallStyle: { value: { containsi: v } } },
-    }));
-    addDetailsOr(list(activeFilters?.slabStyle), (v) => ({
-      productDetails: { slabStyle: { value: { containsi: v } } },
-    }));
-    addDetailsOr(list(activeFilters?.custom), (v) => ({
-      productDetails: { customization: { value: { containsi: v } } },
-    }));
+      const unique = (arr) => Array.from(new Set(arr.map((x) => String(x).trim()).filter(Boolean)));
 
-    const colorVals = list(activeFilters?.colour || activeFilters?.color);
-    addDetailsOr(colorVals, (v) => ({
-      productDetails: { color: { value: { containsi: v } } },
-    }));
-
-    const locationVals = list(activeFilters?.location);
-    if (locationVals.length) {
-      const or = [];
-      for (const v of locationVals) {
-        or.push({ company: { location: { containsi: v } } });
-        or.push({ branches: { location: { province: { containsi: v } } } });
-        or.push({ branches: { location: { city: { containsi: v } } } });
-        or.push({ branches: { location: { town: { containsi: v } } } });
-        or.push({ branch_listings: { branch: { location: { province: { containsi: v } } } } });
-        or.push({ branch_listings: { branch: { location: { city: { containsi: v } } } } });
-        or.push({ branch_listings: { branch: { location: { town: { containsi: v } } } } });
+      if (townVals.length) {
+        const toks = unique(townVals).flatMap((v) => packedTokenVariants(v));
+        if (toks.length) and.push({ or: toks.map((tok) => ({ towns: { contains: tok } })) });
+      } else if (cityVals.length) {
+        const toks = unique(cityVals).flatMap((v) => packedTokenVariants(v));
+        if (toks.length) and.push({ or: toks.map((tok) => ({ cities: { contains: tok } })) });
+      } else if (provinceVals.length) {
+        const toks = unique(provinceVals).flatMap((v) => packedTokenVariants(v));
+        if (toks.length) and.push({ or: toks.map((tok) => ({ provinces: { contains: tok } })) });
       }
-      and.push({ or });
+    } else if (Array.isArray(locationRaw) && locationRaw.length === 3) {
+      const [prov, city, town] = locationRaw;
+      const townV = normalizeLower(town);
+      const cityV = normalizeLower(city);
+      const provV = normalizeLower(prov);
+      if (townV && townV !== "any") {
+        const toks = packedTokenVariants(townV);
+        if (toks.length) and.push({ or: toks.map((tok) => ({ towns: { contains: tok } })) });
+      } else if (cityV && cityV !== "any") {
+        const toks = packedTokenVariants(cityV);
+        if (toks.length) and.push({ or: toks.map((tok) => ({ cities: { contains: tok } })) });
+      } else if (provV && provV !== "any") {
+        const toks = packedTokenVariants(provV);
+        if (toks.length) and.push({ or: toks.map((tok) => ({ provinces: { contains: tok } })) });
+      }
+    } else {
+      const locationVals = listTokens(getLocationTokensForServerFilter(locationRaw));
+      if (locationVals.length) {
+        and.push({
+          or: locationVals.flatMap((v) =>
+            packedTokenVariants(v).flatMap((tok) => [
+              { provinces: { contains: tok } },
+              { cities: { contains: tok } },
+              { towns: { contains: tok } },
+            ])
+          ),
+        });
+      }
+    }
+
+    const addPackedOr = (field, values) => {
+      const all = values.flatMap((v) => packedTokenVariants(v));
+      const unique = Array.from(new Set(all));
+      if (!unique.length) return;
+      and.push({ or: unique.map((tok) => ({ [field]: { contains: tok } })) });
+    };
+
+    addPackedOr("stone_type", listTokens(debouncedActiveFilters?.stoneType));
+    addPackedOr("head_style", listTokens(debouncedActiveFilters?.style));
+    addPackedOr("style", listTokens(debouncedActiveFilters?.overallStyle));
+    addPackedOr("slab_style", listTokens(debouncedActiveFilters?.slabStyle));
+    addPackedOr("customization", listTokens(debouncedActiveFilters?.custom));
+    addPackedOr("color", listTokens(debouncedActiveFilters?.colour || debouncedActiveFilters?.color));
+
+    const searchRaw = typeof debouncedActiveFilters?.search === "string" ? debouncedActiveFilters.search.trim() : "";
+    if (searchRaw) {
+      const term = normalizeLower(searchRaw);
+      const packed = packedTokenVariants(term);
+      const or = [];
+      for (const tok of packed) {
+        or.push({ stone_type: { contains: tok } });
+        or.push({ color: { contains: tok } });
+        or.push({ head_style: { contains: tok } });
+        or.push({ style: { contains: tok } });
+        or.push({ customization: { contains: tok } });
+        or.push({ provinces: { contains: tok } });
+        or.push({ cities: { contains: tok } });
+        or.push({ towns: { contains: tok } });
+      }
+      if (or.length) and.push({ or });
     }
 
     const minPrice =
-      activeFilters?.minPrice && activeFilters.minPrice !== "Min Price"
-        ? parsePrice(activeFilters.minPrice)
+      debouncedActiveFilters?.minPrice && debouncedActiveFilters.minPrice !== "Min Price"
+        ? parsePrice(debouncedActiveFilters.minPrice)
         : null;
     const maxPrice =
-      activeFilters?.maxPrice && activeFilters.maxPrice !== "Max Price"
-        ? parsePrice(activeFilters.maxPrice)
+      debouncedActiveFilters?.maxPrice && debouncedActiveFilters.maxPrice !== "Max Price"
+        ? parsePrice(debouncedActiveFilters.maxPrice)
         : null;
 
     if (Number.isFinite(minPrice) && minPrice > 0) and.push({ price: { gte: minPrice } });
     if (Number.isFinite(maxPrice) && maxPrice > 0) and.push({ price: { lte: maxPrice } });
 
-    return { and };
-  }, [activeCategory?.name, activeFilters]);
+    return and.length ? { and } : undefined;
+  }, [activeCategory?.name, debouncedActiveFilters]);
 
-  const listingsQueryVars = useMemo(
+  const locationCountBaseFilters = useMemo(() => {
+    if (!searchIndexFilters || !Array.isArray(searchIndexFilters.and)) return searchIndexFilters;
+    const isLocObj = (obj) => {
+      if (!obj || typeof obj !== "object") return false;
+      if (obj.provinces || obj.cities || obj.towns) return true;
+      if (obj.province || obj.city || obj.town) return true;
+      if (Array.isArray(obj.or)) {
+        return obj.or.some((o) => o && typeof o === "object" && (o.provinces || o.cities || o.towns || o.province || o.city || o.town));
+      }
+      return false;
+    };
+    const and = searchIndexFilters.and.filter((clause) => !isLocObj(clause));
+    return { and };
+  }, [searchIndexFilters]);
+
+  const searchIndexQueryVars = useMemo(
     () => ({
       page: currentPage,
       pageSize: listingsPerPage,
-      filters: listingsFilters,
-      sort: listingsSort || ["documentId:asc"],
-      branchesPageSize: 25,
-      branchListingsPageSize: 25,
+      filters: searchIndexFilters,
     }),
-    [currentPage, listingsPerPage, listingsFilters, listingsSort]
+    [currentPage, listingsPerPage, searchIndexFilters]
   );
 
   const {
-    data: listingsConnData,
-    loading: listingsLoading,
-    error: listingsError,
-  } = useQuery(LISTINGS_SEARCH_CONNECTION_QUERY, {
-    variables: listingsQueryVars,
+    data: searchIndexConnData,
+    loading: searchIndexLoading,
+    error: searchIndexError,
+  } = useQuery(LISTING_SEARCH_INDEX_CONNECTION_QUERY, {
+    variables: searchIndexQueryVars,
     skip: !enableQueries,
     fetchPolicy: "cache-first",
   });
 
+  const searchIndexPageInfo = searchIndexConnData?.listingSearchIndices_connection?.pageInfo;
+  const searchIndexNodes = searchIndexConnData?.listingSearchIndices_connection?.nodes;
+
+  const listingDocumentIds = useMemo(() => {
+    if (!Array.isArray(searchIndexNodes)) return [];
+    return searchIndexNodes
+      .map((n) => (n?.listing_document_id ? String(n.listing_document_id) : ""))
+      .filter(Boolean);
+  }, [searchIndexNodes]);
+
+  const listingsByIdsVars = useMemo(
+    () => ({
+      ids: listingDocumentIds,
+      pageSize: Math.max(1, listingDocumentIds.length),
+      branchesPageSize: 25,
+      branchListingsPageSize: 25,
+    }),
+    [listingDocumentIds]
+  );
+
+  const {
+    data: listingsByIdsData,
+    loading: listingsByIdsLoading,
+    error: listingsByIdsError,
+  } = useQuery(LISTINGS_BY_DOCUMENT_IDS_QUERY, {
+    variables: listingsByIdsVars,
+    skip: !enableQueries || listingDocumentIds.length === 0,
+    fetchPolicy: "cache-first",
+  });
+
   const filteredListings = useMemo(() => {
-    const nodes = listingsConnData?.listings_connection?.nodes;
-    if (Array.isArray(nodes)) return nodes;
+    if (enableQueries && listingDocumentIds.length > 0) {
+      const items = listingsByIdsData?.listings;
+      const map = new Map();
+      if (Array.isArray(items)) {
+        for (const l of items) {
+          const id = l?.documentId ? String(l.documentId) : "";
+          if (id) map.set(id, l);
+        }
+      }
+      const ordered = listingDocumentIds.map((id) => map.get(id)).filter(Boolean);
+      if (ordered.length > 0) return ordered;
+    }
     return Array.isArray(initialListings) ? initialListings : [];
-  }, [initialListings, listingsConnData]);
+  }, [enableQueries, initialListings, listingDocumentIds, listingsByIdsData]);
 
   const totalListingsCount = useMemo(() => {
-    const t = listingsConnData?.listings_connection?.pageInfo?.total;
+    const t = searchIndexPageInfo?.total;
     return typeof t === "number" ? t : filteredListings.length;
-  }, [filteredListings.length, listingsConnData]);
+  }, [filteredListings.length, searchIndexPageInfo?.total]);
+
+  const listingsLoading = searchIndexLoading || listingsByIdsLoading;
+  const listingsError = searchIndexError || listingsByIdsError;
 
   const { data: featuredListingsData } = useQuery(LISTINGS_FEATURED_CARDS_QUERY, {
     variables: { page: 1, pageSize: 3 },
@@ -811,12 +1063,16 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   const parseLocationSelection = (value) => {
     if (!value) return { province: null, city: null, town: null };
     if (Array.isArray(value)) {
+      if (value.some((v) => typeof v === "string" && /^[pct]\|/.test(v))) {
+        return { province: null, city: null, town: null };
+      }
       const province = norm(value[0]);
       const city = norm(value[1]);
       const town = norm(value[2]);
       return { province, city, town };
     }
     if (typeof value === "string") {
+      if (/^[pct]\|/.test(value)) return { province: null, city: null, town: null };
       const lowered = normLower(value);
       if (lowered === "near me") return { province: null, city: null, town: null };
       if (provinces.has(lowered)) {
@@ -918,10 +1174,85 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
   const computedLocationHierarchy = useLocationHierarchy(listingsForLocationCounts, categories, activeTab);
 
+  const normalizeLocKey = useCallback((v) => {
+    if (typeof v !== "string") return "";
+    return v
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+  }, []);
+
+  const mergeLocationCounts = useCallback(
+    (structure, countsSource) => {
+      if (!Array.isArray(structure) || structure.length === 0) return structure;
+      if (!Array.isArray(countsSource) || countsSource.length === 0) return structure;
+
+      const countsByProv = new Map();
+      countsSource.forEach((p) => {
+        const key = normalizeLocKey(p?.name);
+        if (key) countsByProv.set(key, p);
+      });
+
+      return structure.map((prov) => {
+        const provKey = normalizeLocKey(prov?.name);
+        const provCounts = provKey ? countsByProv.get(provKey) : null;
+        const provCount = typeof provCounts?.count === "number" ? provCounts.count : prov?.count || 0;
+
+        const provCities = Array.isArray(prov?.cities) ? prov.cities : [];
+        const countCities = Array.isArray(provCounts?.cities) ? provCounts.cities : [];
+        const countsByCity = new Map();
+        countCities.forEach((c) => {
+          const key = normalizeLocKey(c?.name);
+          if (key) countsByCity.set(key, c);
+        });
+
+        const mergedCities = provCities.map((city) => {
+          const cityKey = normalizeLocKey(city?.name);
+          const cityCounts = cityKey ? countsByCity.get(cityKey) : null;
+          const cityCount = typeof cityCounts?.count === "number" ? cityCounts.count : city?.count || 0;
+
+          const cityTowns = Array.isArray(city?.towns) ? city.towns : [];
+          const countTowns = Array.isArray(cityCounts?.towns) ? cityCounts.towns : [];
+          const countsByTown = new Map();
+          countTowns.forEach((t) => {
+            const key = normalizeLocKey(t?.name);
+            if (key) countsByTown.set(key, t);
+          });
+
+          const mergedTowns = cityTowns.map((town) => {
+            const townKey = normalizeLocKey(town?.name);
+            const townCounts = townKey ? countsByTown.get(townKey) : null;
+            const townCount = typeof townCounts?.count === "number" ? townCounts.count : town?.count || 0;
+            return { ...town, count: townCount };
+          });
+
+          return { ...city, count: cityCount, towns: mergedTowns };
+        });
+
+        return { ...prov, count: provCount, cities: mergedCities };
+      });
+    },
+    [normalizeLocKey]
+  );
+
   const locationHierarchy = useMemo(() => {
+    if (Array.isArray(locationOptionsHierarchy) && locationOptionsHierarchy.length > 0) {
+      if (!homepageAggError && homepageAggLocationHierarchy.length > 0) {
+        return mergeLocationCounts(locationOptionsHierarchy, homepageAggLocationHierarchy);
+      }
+      return locationOptionsHierarchy;
+    }
     if (!homepageAggError && homepageAggLocationHierarchy.length > 0) return homepageAggLocationHierarchy;
     return computedLocationHierarchy;
-  }, [homepageAggError, homepageAggLocationHierarchy, computedLocationHierarchy]);
+  }, [
+    computedLocationHierarchy,
+    homepageAggError,
+    homepageAggLocationHierarchy,
+    locationOptionsHierarchy,
+    mergeLocationCounts,
+  ]);
 
   const computedCategoryCounts = useMemo(() => ({}), []);
 
@@ -1156,8 +1487,10 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   }
 
   const totalPages = useMemo(() => {
+    const pc = searchIndexPageInfo?.pageCount;
+    if (typeof pc === "number" && pc > 0) return pc;
     return Math.max(1, Math.ceil(totalListingsCount / listingsPerPage));
-  }, [totalListingsCount, listingsPerPage]);
+  }, [searchIndexPageInfo?.pageCount, totalListingsCount, listingsPerPage]);
   
   const { totalFavorites } = useFavorites()
 
@@ -1407,6 +1740,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                 locationsData={locationHierarchy}
                 initialCount={totalListingsCount}
                 isBackgroundLoading={!enableQueries || listingsLoading}
+                locationCountBaseFilters={locationCountBaseFilters}
               />
             </div>
           </div>
@@ -1456,6 +1790,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                   locationsData={locationHierarchy}
                   initialCount={totalListingsCount}
                   isBackgroundLoading={!enableQueries || listingsLoading}
+                  locationCountBaseFilters={locationCountBaseFilters}
                 />
               </div>
             )}

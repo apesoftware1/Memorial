@@ -2,13 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Search } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 export default function SearchForm({ 
   onQueryChange, 
   onSearchResults, 
   onSubmit,
-  router: passedRouter,
   selectedCategory,
   categories,
   activeTab,
@@ -18,7 +16,6 @@ export default function SearchForm({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const router = useRouter();
   const formRef = useRef(null);
 
   // Use passed currentQuery if available, otherwise use local state
@@ -79,13 +76,10 @@ export default function SearchForm({
   // Handle form submission (Enter key)
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (onQueryChange) onQueryChange(searchQuery); // update parent with current query
-    performSearch(searchQuery);
-    
-    // Call onSubmit handler if provided (for navigation)
-    if (onSubmit) {
-      onSubmit(searchQuery);
-    }
+    const q = String(searchQuery || "").trim();
+    if (onQueryChange) onQueryChange(q);
+    performSearch(q);
+    if (onSubmit) onSubmit(q);
   };
 
   // Live search as user types (debounced)
@@ -127,38 +121,13 @@ export default function SearchForm({
     };
   }, [onQueryChange]);
 
-  // Shared click handler for magnifying glass button
-  const handleSearchClick = (e) => {
-    e.preventDefault();
-    if (currentQuery.trim()) {
-      // Include category in URL if selected
-      let searchUrl = `/tombstones-for-sale?search=${encodeURIComponent(currentQuery)}`;
-      
-      // Add category parameter if available
-      if (selectedCategory) {
-        searchUrl += `&category=${encodeURIComponent(selectedCategory)}`;
-      } else if (categories && categories.length > 0 && activeTab !== undefined) {
-        const desiredOrder = [
-          "SINGLE",
-          "DOUBLE",
-          "CHILD",
-          "HEAD",
-          "PLAQUES",
-          "CREMATION"
-        ];
-        const sortedCategories = desiredOrder
-          .map((name) =>
-            categories.find((cat) => cat?.name && cat.name.toUpperCase() === name)
-          )
-          .filter(Boolean);
-        const selectedCategoryObj = sortedCategories[activeTab];
-        if (selectedCategoryObj) {
-          searchUrl += `&category=${encodeURIComponent(selectedCategoryObj.name)}`;
-        }
-      }
-      
-      router.push(searchUrl);
-    }
+  const triggerSearch = (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    const q = String(currentQuery || "").trim();
+    if (!q) return;
+    if (onQueryChange) onQueryChange(q);
+    performSearch(q);
+    if (onSubmit) onSubmit(q);
   };
 
   return (
@@ -175,10 +144,10 @@ export default function SearchForm({
           {/* Initially inside the form; fades out when typing starts */}
           {!isTyping && (
             <button
-              type="submit"
+              type="button"
               className="absolute right-2 p-2 bg-white rounded-lg text-gray-700 hover:text-gray-900 transition-all duration-300"
               disabled={isSearching}
-              onClick={handleSearchClick}
+              onClick={triggerSearch}
             >
               <Search className="w-5 h-5" />
             </button>
@@ -202,7 +171,7 @@ export default function SearchForm({
             type="button"
             className="flex items-center justify-center w-full h-10 bg-[#D4AF37] text-white rounded-none transition duration-300 hover:brightness-95"
             disabled={isSearching}
-            onClick={handleSearchClick}
+            onClick={triggerSearch}
           >
             Custom Search
           </button>
