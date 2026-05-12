@@ -25,7 +25,7 @@ import {
   LISTING_SEARCH_LOCATION_OPTIONS_QUERY,
   LISTINGS_BY_DOCUMENT_IDS_QUERY,
 } from '@/graphql/queries';
-import { useQuery } from "@apollo/client";
+import { useApolloClient, useQuery } from "@apollo/client";
 import { useListingCategories } from "@/hooks/use-ListingCategories"
 import { useLocationHierarchy } from '@/hooks/useLocationHierarchy';
 import { useHomepageAggregations } from '@/hooks/useHomepageAggregations';
@@ -923,7 +923,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   } = useQuery(LISTING_SEARCH_INDEX_CONNECTION_QUERY, {
     variables: searchIndexQueryVars,
     skip: !enableQueries,
-    fetchPolicy: "cache-first",
+    fetchPolicy: "cache-and-network",
   });
 
   const searchIndexPageInfo = searchIndexConnData?.listingSearchIndices_connection?.pageInfo;
@@ -1254,7 +1254,84 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     mergeLocationCounts,
   ]);
 
-  const computedCategoryCounts = useMemo(() => ({}), []);
+  const apolloClient = useApolloClient()
+
+  const categoryCountBaseFilters = useMemo(() => {
+    if (!searchIndexFilters || !Array.isArray(searchIndexFilters.and)) return searchIndexFilters
+    const and = searchIndexFilters.and.filter((clause) => {
+      if (!clause || typeof clause !== "object") return true
+      return !("category" in clause)
+    })
+    return { and }
+  }, [searchIndexFilters])
+
+  const categoryCountBaseKey = useMemo(() => {
+    try {
+      return JSON.stringify(categoryCountBaseFilters ?? null)
+    } catch {
+      return ""
+    }
+  }, [categoryCountBaseFilters])
+
+  const [categoryBadgeCounts, setCategoryBadgeCounts] = useState({})
+  const categoryCountsReqRef = useRef(0)
+
+  useEffect(() => {
+    if (!enableQueries) return
+    if (!Array.isArray(sortedCategories) || sortedCategories.length === 0) return
+
+    const categoryNames = sortedCategories
+      .map((c) => (typeof c?.name === "string" ? c.name.trim().toUpperCase() : ""))
+      .filter(Boolean)
+
+    if (categoryNames.length === 0) return
+
+    const reqId = (categoryCountsReqRef.current += 1)
+    let cancelled = false
+
+    ;(async () => {
+      let parsedBase = null
+      try {
+        parsedBase = categoryCountBaseKey ? JSON.parse(categoryCountBaseKey) : null
+      } catch {
+        parsedBase = null
+      }
+      const baseAnd = Array.isArray(parsedBase?.and) ? [...parsedBase.and] : []
+
+      const results = await Promise.all(
+        categoryNames.map(async (name) => {
+          const and = [...baseAnd, { category: { eq: normalizeLower(name) } }]
+          try {
+            const res = await apolloClient.query({
+              query: LISTING_SEARCH_INDEX_CONNECTION_QUERY,
+              variables: { filters: { and }, page: 1, pageSize: 1 },
+              fetchPolicy: "network-only",
+            })
+            const total = res?.data?.listingSearchIndices_connection?.pageInfo?.total
+            return [name, typeof total === "number" ? total : null]
+          } catch {
+            return [name, null]
+          }
+        })
+      )
+
+      if (cancelled) return
+      if (reqId !== categoryCountsReqRef.current) return
+
+      const next = {}
+      for (const [name, total] of results) {
+        if (typeof total === "number") next[name] = total
+      }
+
+      if (Object.keys(next).length) {
+        setCategoryBadgeCounts((prev) => ({ ...(prev || {}), ...next }))
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [apolloClient, categoryCountBaseKey, enableQueries, sortedCategories])
 
   const homepageAggCategoryCounts = useMemo(() => {
     const cats = homepageAggData?.homepageAggregations?.categories;
@@ -1273,9 +1350,9 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   }, [activeFilters?.search]);
 
   const categoryCounts = useMemo(() => {
-    const base = computedCategoryCounts || {};
+    const base = categoryBadgeCounts || {};
     const agg = !homepageAggError && homepageAggCategoryCounts ? homepageAggCategoryCounts : null;
-    const merged = agg ? { ...base, ...agg } : base;
+    const merged = agg ? { ...agg, ...base } : base;
 
     const activeCategoryLabel =
       typeof activeCategory?.name === "string" && activeCategory.name.trim()
@@ -1289,7 +1366,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     return merged;
   }, [
     activeCategory?.name,
-    computedCategoryCounts,
+    categoryBadgeCounts,
     homepageAggCategoryCounts,
     homepageAggError,
     totalListingsCount,
