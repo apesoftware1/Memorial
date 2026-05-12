@@ -1,5 +1,4 @@
 import type React from "react"
-import { Suspense } from 'react'
 import "./globals.css"
 import type { Metadata } from "next"
 import Script from 'next/script'
@@ -40,9 +39,9 @@ export const metadata: Metadata = {
       index: true,
       follow: true,
       noimageindex: false,
-      maxSnippet: -1,
-      maxImagePreview: "large",
-      maxVideoPreview: -1,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
     },
   },
   openGraph: {
@@ -86,34 +85,45 @@ export const metadata: Metadata = {
 }
 
 import { Toaster } from "@/components/ui/toaster";
-import GAEvents from './components/GAEvents'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const gtmId = process.env.NEXT_PUBLIC_GTM_ID ?? "GTM-N7KQXS34"
+  const gaId = process.env.NEXT_PUBLIC_GA_ID
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Preconnect to media origins to speed up image loading */}
         <link rel="preconnect" href="https://typical-car-e0b66549b3.media.strapiapp.com" crossOrigin="anonymous" />
-        {/* Google Analytics – paste your GA4 Measurement ID in NEXT_PUBLIC_GA_ID inside .env.local */}
-        <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID ?? 'G-PASTE_MEASUREMENT_ID_HERE'}`}
-          strategy="afterInteractive"
-        />
-        <Script id="ga-init" strategy="afterInteractive">
-          {`
-            // Paste your GA4 Measurement ID into NEXT_PUBLIC_GA_ID in .env.local
-            // Example:
-            // NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', '${process.env.NEXT_PUBLIC_GA_ID ?? 'G-PASTE_MEASUREMENT_ID_HERE'}', {
-              page_path: window.location.pathname,
-            });
-          `}
-        </Script>
+        {gaId ? (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga-init" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${gaId}', {
+                  page_path: window.location.pathname,
+                });
+              `}
+            </Script>
+          </>
+        ) : null}
       </head>
       <body className="font-sans">
+        <GoogleTagManager gtmId={gtmId} />
+        <noscript>
+          <iframe
+            src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+          />
+        </noscript>
         <Script id="image-protection" strategy="afterInteractive">
           {`
             (function() {
@@ -154,7 +164,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </ApolloWrapper>
         </SessionWrapper>
         <Toaster />
-        <GoogleTagManager gtmId="GTM-N7KQXS34" />
       </body>
     </html>
   )
