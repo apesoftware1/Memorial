@@ -28,6 +28,19 @@ const nextConfig = {
     ],
     formats: ['image/avif', 'image/webp'],
   },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "geolocation=(self)",
+          },
+        ],
+      },
+    ];
+  },
   // Optimized webpack config to fix chunk and 404 errors
   // Note: This only applies when using 'next build' or 'next dev --webpack'
   // When using 'next dev' (Turbopack), this block is skipped.

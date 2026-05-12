@@ -12,6 +12,8 @@ import { SearchLoader } from "@/components/ui/loader";
 import { useHomepageAggregations } from "@/hooks/useHomepageAggregations";
 import { AnimatePresence, motion } from "framer-motion";
 import { toTitleCase } from "@/lib/locationHelpers";
+import { useQuery } from "@apollo/client";
+import { LISTING_SEARCH_INDEX_CONNECTION_QUERY, LISTING_SEARCH_LOCATION_OPTIONS_QUERY } from "@/graphql/queries";
 import {
   STYLE_OPTIONS as MANUFACTURER_HEAD_STYLE_OPTIONS,
   SLAB_STYLE_OPTIONS as MANUFACTURER_SLAB_STYLE_OPTIONS,
@@ -277,8 +279,50 @@ const SearchContainer = ({
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
+  const { data: listingSearchLocationOptionsData } = useQuery(LISTING_SEARCH_LOCATION_OPTIONS_QUERY, {
+    fetchPolicy: "cache-first",
+  });
+
+  const locationOptionsHierarchy = useMemo(() => {
+    const raw = listingSearchLocationOptionsData?.listingSearchLocationOptions;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((prov) => {
+        const provinceName = typeof prov?.province === "string" ? prov.province : "";
+        const cities = Array.isArray(prov?.cities) ? prov.cities : [];
+        return {
+          name: provinceName,
+          count: 0,
+          cities: cities
+            .map((city) => {
+              const cityName = typeof city?.city === "string" ? city.city : "";
+              const towns = Array.isArray(city?.towns) ? city.towns : [];
+              return {
+                name: cityName,
+                count: 0,
+                towns: towns
+                  .map((town) => ({
+                    name: typeof town?.town === "string" ? town.town : "",
+                    count: 0,
+                  }))
+                  .filter((t) => t.name),
+              };
+            })
+            .filter((c) => c.name),
+        };
+      })
+      .filter((p) => p.name);
+  }, [listingSearchLocationOptionsData]);
+
   const provinceOptionSet = useMemo(() => {
-    const raw = Array.isArray(filterOptions?.location) ? filterOptions.location : [];
+    const hierarchy = Array.isArray(locationOptionsHierarchy) && locationOptionsHierarchy.length > 0
+      ? locationOptionsHierarchy
+      : null;
+    const raw = hierarchy
+      ? hierarchy.map((p) => p?.name).filter(Boolean)
+      : Array.isArray(filterOptions?.location)
+        ? filterOptions.location
+        : [];
     const set = new Set();
     raw.forEach((v) => {
       if (typeof v !== "string") return;
@@ -289,7 +333,7 @@ const SearchContainer = ({
       set.add(lowered);
     });
     return set;
-  }, [filterOptions?.location]);
+  }, [filterOptions?.location, locationOptionsHierarchy]);
 
   const normalizeScalar = useCallback((v) => {
     if (typeof v !== "string") return null;
@@ -357,6 +401,9 @@ const SearchContainer = ({
     (value) => {
       if (!value) return { province: null, city: null, town: null };
       if (Array.isArray(value)) {
+        if (value.some((v) => typeof v === "string" && /^[pct]\|/.test(v))) {
+          return { province: null, city: null, town: null };
+        }
         const arr = value.map(normalizeScalar).filter(Boolean);
         if (arr.length === 0) return { province: null, city: null, town: null };
         const provinces = arr.filter((v) => provinceOptionSet.has(v.toLowerCase()));
@@ -387,6 +434,7 @@ const SearchContainer = ({
         };
       }
       if (typeof value === "string") {
+        if (/^[pct]\|/.test(value)) return { province: null, city: null, town: null };
         const lowered = value.trim().toLowerCase();
         if (lowered === "near me") return { province: null, city: null, town: null };
         const normalized = normalizeScalar(value);
@@ -1088,15 +1136,283 @@ const SearchContainer = ({
     }
   }, [hasLocationSelection, homepageAggLocationHierarchy]);
 
-  const locationHierarchy =
-    hasLocationSelection &&
-    Array.isArray(stickyLocationHierarchy) &&
-    stickyLocationHierarchy.length > 0
+  const normalizeLocKey = useCallback((v) => {
+    if (typeof v !== "string") return "";
+    return v
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+  }, []);
+
+  const mergeLocationCounts = useCallback(
+    (structure, countsSource) => {
+      if (!Array.isArray(structure) || structure.length === 0) return structure;
+      if (!Array.isArray(countsSource) || countsSource.length === 0) return structure;
+
+      const countsByProv = new Map();
+      countsSource.forEach((p) => {
+        const key = normalizeLocKey(p?.name);
+        if (key) countsByProv.set(key, p);
+      });
+
+      return structure.map((prov) => {
+        const provKey = normalizeLocKey(prov?.name);
+        const provCounts = provKey ? countsByProv.get(provKey) : null;
+        const provCount = typeof provCounts?.count === "number" ? provCounts.count : prov?.count || 0;
+
+        const provCities = Array.isArray(prov?.cities) ? prov.cities : [];
+        const countCities = Array.isArray(provCounts?.cities) ? provCounts.cities : [];
+        const countsByCity = new Map();
+        countCities.forEach((c) => {
+          const key = normalizeLocKey(c?.name);
+          if (key) countsByCity.set(key, c);
+        });
+
+        const mergedCities = provCities.map((city) => {
+          const cityKey = normalizeLocKey(city?.name);
+          const cityCounts = cityKey ? countsByCity.get(cityKey) : null;
+          const cityCount = typeof cityCounts?.count === "number" ? cityCounts.count : city?.count || 0;
+
+          const cityTowns = Array.isArray(city?.towns) ? city.towns : [];
+          const countTowns = Array.isArray(cityCounts?.towns) ? cityCounts.towns : [];
+          const countsByTown = new Map();
+          countTowns.forEach((t) => {
+            const key = normalizeLocKey(t?.name);
+            if (key) countsByTown.set(key, t);
+          });
+
+          const mergedTowns = cityTowns.map((town) => {
+            const townKey = normalizeLocKey(town?.name);
+            const townCounts = townKey ? countsByTown.get(townKey) : null;
+            const townCount = typeof townCounts?.count === "number" ? townCounts.count : town?.count || 0;
+            return { ...town, count: townCount };
+          });
+
+          return { ...city, count: cityCount, towns: mergedTowns };
+        });
+
+        return { ...prov, count: provCount, cities: mergedCities };
+      });
+    },
+    [normalizeLocKey]
+  );
+
+  const locationHierarchy = useMemo(() => {
+    if (Array.isArray(locationOptionsHierarchy) && locationOptionsHierarchy.length > 0) {
+      if (Array.isArray(homepageAggLocationHierarchy) && homepageAggLocationHierarchy.length > 0) {
+        return mergeLocationCounts(locationOptionsHierarchy, homepageAggLocationHierarchy);
+      }
+      return locationOptionsHierarchy;
+    }
+    return hasLocationSelection &&
+      Array.isArray(stickyLocationHierarchy) &&
+      stickyLocationHierarchy.length > 0
       ? stickyLocationHierarchy
       : homepageAggLocationHierarchy;
+  }, [
+    hasLocationSelection,
+    homepageAggLocationHierarchy,
+    locationOptionsHierarchy,
+    mergeLocationCounts,
+    stickyLocationHierarchy,
+  ]);
   const filtersLoading = aggLoading || !aggResolved;
 
-  const searchButtonCount = aggResolved ? (hasAggCount ? currentCategoryAggCount : 0) : 0;
+  const categoryForIndexCount = useMemo(() => {
+    if (typeof selectedCategory === "string" && selectedCategory.trim()) return selectedCategory;
+    if (typeof currentCategoryName === "string" && currentCategoryName.trim()) return currentCategoryName;
+    return "";
+  }, [currentCategoryName, selectedCategory]);
+
+  const normalizeLower = useCallback((v) => (typeof v === "string" ? v.trim().toLowerCase() : ""), []);
+
+  const packedTokenVariants = useCallback(
+    (raw) => {
+      const base = normalizeLower(raw);
+      if (!base) return [];
+      const kebab = base.replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+      const variants = new Set([base, kebab]);
+      return Array.from(variants).filter(Boolean).map((v) => `|${v}|`);
+    },
+    [normalizeLower]
+  );
+
+  const listTokens = useCallback(
+    (v) => {
+      if (!v) return [];
+      const arr = Array.isArray(v) ? v : [v];
+      return arr
+        .map((x) => (typeof x === "string" ? x.trim() : String(x ?? "").trim()))
+        .filter(Boolean)
+        .filter((x) => {
+          const lowered = x.toLowerCase();
+          return lowered !== "any" && lowered !== "all" && lowered !== "all categories";
+        });
+    },
+    []
+  );
+
+  const searchIndexCountFilters = useMemo(() => {
+    const and = [];
+    and.push({ published: { eq: true } });
+    and.push({ is_on_special: { eq: false } });
+
+    if (categoryForIndexCount) {
+      and.push({ category: { eq: normalizeLower(categoryForIndexCount) } });
+    }
+
+    const locationRaw = filters?.location;
+    const isEncodedLocation = (v) => typeof v === "string" && /^[pct]\|/.test(v);
+    const decodeEncodedLocation = (v) => {
+      if (!isEncodedLocation(v)) return null;
+      const parts = v.split("|").map((p) => p.trim());
+      const level = parts[0];
+      if (level === "p") return { level: "province", province: parts[1] || "" };
+      if (level === "c") return { level: "city", province: parts[1] || "", city: parts[2] || "" };
+      if (level === "t")
+        return { level: "town", province: parts[1] || "", city: parts[2] || "", town: parts[3] || "" };
+      return null;
+    };
+
+    const encodedSelections = Array.isArray(locationRaw) ? locationRaw.filter(isEncodedLocation) : [];
+    if (encodedSelections.length) {
+      const decoded = encodedSelections.map(decodeEncodedLocation).filter(Boolean);
+      const provinceVals = decoded
+        .filter((d) => d.level === "province" && d.province)
+        .map((d) => d.province);
+      const cityVals = decoded
+        .filter((d) => d.level === "city" && d.city)
+        .map((d) => d.city);
+      const townVals = decoded
+        .filter((d) => d.level === "town" && d.town)
+        .map((d) => d.town);
+
+      const unique = (arr) => Array.from(new Set(arr.map((x) => String(x).trim()).filter(Boolean)));
+
+      if (townVals.length) {
+        const toks = unique(townVals).flatMap((v) => packedTokenVariants(v));
+        if (toks.length) and.push({ or: toks.map((tok) => ({ towns: { contains: tok } })) });
+      } else if (cityVals.length) {
+        const toks = unique(cityVals).flatMap((v) => packedTokenVariants(v));
+        if (toks.length) and.push({ or: toks.map((tok) => ({ cities: { contains: tok } })) });
+      } else if (provinceVals.length) {
+        const toks = unique(provinceVals).flatMap((v) => packedTokenVariants(v));
+        if (toks.length) and.push({ or: toks.map((tok) => ({ provinces: { contains: tok } })) });
+      }
+    } else if (Array.isArray(locationRaw) && locationRaw.length === 3) {
+      const [prov, city, town] = locationRaw;
+      const townV = normalizeLower(town);
+      const cityV = normalizeLower(city);
+      const provV = normalizeLower(prov);
+      if (townV && townV !== "any") {
+        const toks = packedTokenVariants(townV);
+        if (toks.length) and.push({ or: toks.map((tok) => ({ towns: { contains: tok } })) });
+      } else if (cityV && cityV !== "any") {
+        const toks = packedTokenVariants(cityV);
+        if (toks.length) and.push({ or: toks.map((tok) => ({ cities: { contains: tok } })) });
+      } else if (provV && provV !== "any") {
+        const toks = packedTokenVariants(provV);
+        if (toks.length) and.push({ or: toks.map((tok) => ({ provinces: { contains: tok } })) });
+      }
+    } else {
+      const locVals = listTokens(locationRaw);
+      if (locVals.length) {
+        and.push({
+          or: locVals.flatMap((v) =>
+            packedTokenVariants(v).flatMap((tok) => [
+              { provinces: { contains: tok } },
+              { cities: { contains: tok } },
+              { towns: { contains: tok } },
+            ])
+          ),
+        });
+      }
+    }
+
+    const addPackedOr = (field, values) => {
+      const all = values.flatMap((v) => packedTokenVariants(v));
+      const unique = Array.from(new Set(all));
+      if (!unique.length) return;
+      and.push({ or: unique.map((tok) => ({ [field]: { contains: tok } })) });
+    };
+
+    addPackedOr("stone_type", listTokens(filters?.stoneType));
+    addPackedOr("head_style", listTokens(filters?.style));
+    addPackedOr("style", listTokens(filters?.overallStyle));
+    addPackedOr("slab_style", listTokens(filters?.slabStyle));
+    addPackedOr("customization", listTokens(filters?.custom));
+    addPackedOr("color", listTokens(filters?.colour || filters?.color));
+
+    const searchRaw = typeof filters?.search === "string" ? filters.search.trim() : "";
+    if (searchRaw) {
+      const term = normalizeLower(searchRaw);
+      const packed = packedTokenVariants(term);
+      const or = [];
+      for (const tok of packed) {
+        or.push({ stone_type: { contains: tok } });
+        or.push({ color: { contains: tok } });
+        or.push({ head_style: { contains: tok } });
+        or.push({ style: { contains: tok } });
+        or.push({ customization: { contains: tok } });
+        or.push({ provinces: { contains: tok } });
+        or.push({ cities: { contains: tok } });
+        or.push({ towns: { contains: tok } });
+      }
+      if (or.length) and.push({ or });
+    }
+
+    const minPrice = filters?.minPrice && filters.minPrice !== "Min Price" ? parsePrice(filters.minPrice) : null;
+    const maxPrice = filters?.maxPrice && filters.maxPrice !== "Max Price" ? parsePrice(filters.maxPrice) : null;
+    if (Number.isFinite(minPrice) && minPrice > 0) and.push({ price: { gte: minPrice } });
+    if (Number.isFinite(maxPrice) && maxPrice > 0) and.push({ price: { lte: maxPrice } });
+
+    return and.length ? { and } : undefined;
+  }, [categoryForIndexCount, filters, listTokens, normalizeLower, packedTokenVariants]);
+
+  const [debouncedSearchIndexCountFilters, setDebouncedSearchIndexCountFilters] = useState(searchIndexCountFilters);
+  const searchIndexCountTimerRef = useRef(null);
+  useEffect(() => {
+    if (searchIndexCountTimerRef.current) clearTimeout(searchIndexCountTimerRef.current);
+    searchIndexCountTimerRef.current = setTimeout(() => {
+      setDebouncedSearchIndexCountFilters(searchIndexCountFilters);
+    }, 400);
+    return () => {
+      if (searchIndexCountTimerRef.current) clearTimeout(searchIndexCountTimerRef.current);
+    };
+  }, [searchIndexCountFilters]);
+
+  const locationCountBaseFilters = useMemo(() => {
+    if (!debouncedSearchIndexCountFilters || !Array.isArray(debouncedSearchIndexCountFilters.and)) return debouncedSearchIndexCountFilters;
+    const isLocObj = (obj) => {
+      if (!obj || typeof obj !== "object") return false;
+      if (obj.provinces || obj.cities || obj.towns) return true;
+      if (obj.province || obj.city || obj.town) return true;
+      if (Array.isArray(obj.or)) {
+        return obj.or.some(
+          (o) => o && typeof o === "object" && (o.provinces || o.cities || o.towns || o.province || o.city || o.town)
+        );
+      }
+      return false;
+    };
+    return { and: debouncedSearchIndexCountFilters.and.filter((c) => !isLocObj(c)) };
+  }, [debouncedSearchIndexCountFilters]);
+
+  const { data: searchIndexCountData } = useQuery(LISTING_SEARCH_INDEX_CONNECTION_QUERY, {
+    variables: { filters: debouncedSearchIndexCountFilters, page: 1, pageSize: 1 },
+    fetchPolicy: "cache-first",
+  });
+
+  const searchIndexTotal = searchIndexCountData?.listingSearchIndices_connection?.pageInfo?.total;
+  const searchButtonCount =
+    typeof searchIndexTotal === "number"
+      ? searchIndexTotal
+      : aggResolved
+      ? hasAggCount
+        ? currentCategoryAggCount
+        : 0
+      : 0;
 
   const visibleLocationHierarchy = useMemo(
     () => filterLocationHierarchy(locationHierarchy),
@@ -1124,80 +1440,72 @@ const SearchContainer = ({
   }, []);
   */
 
-  // Default functions if not provided
-  const defaultHandleSearch = useCallback(() => {
-    setInternalIsSearching(true);
-    // Note: We no longer need to filter allListings locally for state
-    // But we might simulate a delay for UX
-    setTimeout(() => setInternalIsSearching(false), 300);
-    
-    // Navigate to results page with category parameter
-    if (onNavigateToResults) {
-      // Build query string from all active filters
+  const buildResultsQueryString = useCallback(
+    (overrideFilters) => {
       const params = new URLSearchParams();
-      
-      // Category
+
       if (selectedCategory) {
-        params.set('category', selectedCategory);
+        params.set("category", selectedCategory);
       } else if (categories && categories.length > 0 && activeTab !== undefined) {
-        const desiredOrder = [
-          "SINGLE",
-          "DOUBLE",
-          "CHILD",
-          "HEAD",
-          "PLAQUES",
-          "CREMATION",
-        ];
+        const desiredOrder = ["SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"];
         const sortedCategories = desiredOrder
-          .map((name) =>
-            categories.find((cat) => cat?.name && cat.name.toUpperCase() === name)
-          )
+          .map((name) => categories.find((cat) => cat?.name && cat.name.toUpperCase() === name))
           .filter(Boolean);
         const selectedCategoryObj = sortedCategories[activeTab];
         if (selectedCategoryObj) {
-           params.set('category', selectedCategoryObj.name);
+          params.set("category", selectedCategoryObj.name);
         }
       }
-      
-      // Other filters
-      if (filters) {
-          if (filters.minPrice && filters.minPrice !== 'Min Price') params.set('minPrice', filters.minPrice);
-          if (filters.maxPrice && filters.maxPrice !== 'Max Price') params.set('maxPrice', filters.maxPrice);
-          if (filters.search) params.set('search', filters.search);
-          
-          // Multi-selects (arrays)
-          if (Array.isArray(filters.location) && filters.location.length > 0) params.set('location', filters.location.join(','));
-          else if (filters.location && filters.location !== 'Any') params.set('location', filters.location);
 
-          if (Array.isArray(filters.style) && filters.style.length > 0) params.set('style', filters.style.join(','));
-          else if (filters.style && filters.style !== 'Any') params.set('style', filters.style);
+      const f = overrideFilters || filters;
+      if (f) {
+        if (f.minPrice && f.minPrice !== "Min Price") params.set("minPrice", f.minPrice);
+        if (f.maxPrice && f.maxPrice !== "Max Price") params.set("maxPrice", f.maxPrice);
+        if (f.search) params.set("search", f.search);
 
-          if (Array.isArray(filters.overallStyle) && filters.overallStyle.length > 0) params.set('overallStyle', filters.overallStyle.join(','));
-          else if (filters.overallStyle && filters.overallStyle !== 'Any') params.set('overallStyle', filters.overallStyle);
+        if (Array.isArray(f.location) && f.location.length > 0) {
+          const isEncodedLocation = (v) => typeof v === "string" && /^[pct]\|/.test(v);
+          params.set("location", f.location.every(isEncodedLocation) ? f.location.join(";") : f.location.join(","));
+        }
+        else if (f.location && f.location !== "Any") params.set("location", f.location);
 
-          if (Array.isArray(filters.slabStyle) && filters.slabStyle.length > 0) params.set('slabStyle', filters.slabStyle.join(','));
-          else if (filters.slabStyle && filters.slabStyle !== 'Any') params.set('slabStyle', filters.slabStyle);
+        if (Array.isArray(f.style) && f.style.length > 0) params.set("style", f.style.join(","));
+        else if (f.style && f.style !== "Any") params.set("style", f.style);
 
-          if (Array.isArray(filters.stoneType) && filters.stoneType.length > 0) params.set('stoneType', filters.stoneType.join(','));
-          else if (filters.stoneType && filters.stoneType !== 'Any') params.set('stoneType', filters.stoneType);
+        if (Array.isArray(f.overallStyle) && f.overallStyle.length > 0)
+          params.set("overallStyle", f.overallStyle.join(","));
+        else if (f.overallStyle && f.overallStyle !== "Any") params.set("overallStyle", f.overallStyle);
 
-          if (Array.isArray(filters.colour) && filters.colour.length > 0) params.set('colour', filters.colour.join(','));
-          else if (filters.colour && filters.colour !== 'Any') params.set('colour', filters.colour);
+        if (Array.isArray(f.slabStyle) && f.slabStyle.length > 0) params.set("slabStyle", f.slabStyle.join(","));
+        else if (f.slabStyle && f.slabStyle !== "Any") params.set("slabStyle", f.slabStyle);
 
-          if (Array.isArray(filters.custom) && filters.custom.length > 0) params.set('custom', filters.custom.join(','));
-          else if (filters.custom && filters.custom !== 'Any') params.set('custom', filters.custom);
+        if (Array.isArray(f.stoneType) && f.stoneType.length > 0) params.set("stoneType", f.stoneType.join(","));
+        else if (f.stoneType && f.stoneType !== "Any") params.set("stoneType", f.stoneType);
+
+        if (Array.isArray(f.colour) && f.colour.length > 0) params.set("colour", f.colour.join(","));
+        else if (f.colour && f.colour !== "Any") params.set("colour", f.colour);
+
+        if (Array.isArray(f.custom) && f.custom.length > 0) params.set("custom", f.custom.join(","));
+        else if (f.custom && f.custom !== "Any") params.set("custom", f.custom);
       }
-      
-      // Construct the full query string
-      const queryString = params.toString();
-      const finalParam = queryString ? `&${queryString}` : ""; // onNavigateToResults expects a string starting with & or empty? 
-      // Checking usage in Home page... usually it expects just the params part.
-      // But let's check how onNavigateToResults is used.
-      
-      // Include the category parameter in the navigation
-      onNavigateToResults(finalParam);
+
+      return params.toString();
+    },
+    [activeTab, categories, filters, selectedCategory]
+  );
+
+  // Default functions if not provided
+  const defaultHandleSearch = useCallback(() => {
+    setInternalIsSearching(true);
+    setTimeout(() => setInternalIsSearching(false), 300);
+    
+    const qs = buildResultsQueryString();
+    if (onNavigateToResults) {
+      onNavigateToResults(qs);
+    } else if (router) {
+      router.push(qs ? `/tombstones-for-sale?${qs}` : "/tombstones-for-sale");
     }
-  }, [onNavigateToResults, selectedCategory, categories, activeTab, filters]);
+  }, [buildResultsQueryString, onNavigateToResults, router]);
 
 
   const defaultGetSearchButtonText = useCallback(() => {
@@ -1439,43 +1747,21 @@ const SearchContainer = ({
                   }
                 }}
                 onSubmit={(searchContent) => {
-                  // Add search content to filters for URL params and immediate filtering
+                  const q = String(searchContent || "").trim();
                   if (setFilters) {
-                    setFilters((prev) => ({ ...prev, search: searchContent }));
+                    setFilters((prev) => ({ ...prev, search: q }));
                   }
-                  
-                  // Navigate to search page with query and category
-                  if (router && searchContent.trim()) {
-                    let searchUrl = `/tombstones-for-sale?search=${encodeURIComponent(searchContent)}`;
-                    
-                    // Add category parameter if available
-                    if (selectedCategory) {
-                      searchUrl += `&category=${encodeURIComponent(selectedCategory)}`;
-                    } else if (categories && categories.length > 0 && activeTab !== undefined) {
-                      const desiredOrder = [
-                        "SINGLE",
-                        "DOUBLE",
-                        "CHILD",
-                        "HEAD",
-                        "PLAQUES",
-                        "CREMATION"
-                      ];
-                      const sortedCategories = desiredOrder
-                        .map((name) =>
-                          categories.find((cat) => cat?.name && cat.name.toUpperCase() === name)
-                        )
-                        .filter(Boolean);
-                      const selectedCategoryObj = sortedCategories[activeTab];
-                      if (selectedCategoryObj) {
-                        searchUrl += `&category=${encodeURIComponent(selectedCategoryObj.name)}`;
-                      }
+
+                  if (q) {
+                    const qs = buildResultsQueryString({ ...(filters || {}), search: q });
+                    if (onNavigateToResults) {
+                      onNavigateToResults(qs);
+                    } else if (router) {
+                      router.push(qs ? `/tombstones-for-sale?${qs}` : "/tombstones-for-sale");
                     }
-                    
-                    router.push(searchUrl);
                   }
                 }}
                 // Pass additional props for navigation
-                router={router}
                 selectedCategory={selectedCategory}
                 categories={categories}
                 activeTab={activeTab}
@@ -1561,6 +1847,8 @@ const SearchContainer = ({
                   selectOption={selectOption}
                   filters={filters || {}}
                   dropdownRefs={dropdownRefs}
+                  selectedLocationTotal={searchButtonCount}
+                  locationCountBaseFilters={locationCountBaseFilters}
                 />
               )}
               {showOverallStyle && (

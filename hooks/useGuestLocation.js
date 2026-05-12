@@ -6,6 +6,20 @@ export const useGuestLocation = () => {
   const [loading, setLoading] = useState(true);
   const mounted = useRef(false);
 
+  const formatGeolocationError = useCallback((err) => {
+    const message = String(err?.message || "");
+    if (message.toLowerCase().includes("permissions policy")) {
+      return "Geolocation is blocked by a permissions policy on this page.";
+    }
+    if (message.toLowerCase().includes("only secure origins")) {
+      return "Geolocation only works on HTTPS (secure) sites.";
+    }
+    if (typeof err?.code === "number" && err.code === 1) {
+      return "Geolocation permission was denied or blocked.";
+    }
+    return message || "Unable to retrieve your location.";
+  }, []);
+
   const readStoredLocation = useCallback(() => {
     if (typeof window === "undefined") return null;
     try {
@@ -68,19 +82,60 @@ export const useGuestLocation = () => {
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setLocation(next);
-        setError(null);
-        persistLocation(next);
+    try {
+      if (window.__guestLocationAutoAttempted) {
         setLoading(false);
-      },
-      (err) => {
-        setError(err.message);
+        return;
+      }
+      window.__guestLocationAutoAttempted = true;
+    } catch {
+    }
+
+    const maybeQueryPermission = async () => {
+      try {
+        if (!navigator?.permissions?.query) return null;
+        const status = await navigator.permissions.query({ name: "geolocation" });
+        return status?.state || null;
+      } catch {
+        return null;
+      }
+    };
+
+    let cancelled = false;
+    (async () => {
+      const state = await maybeQueryPermission();
+      if (cancelled) return;
+      if (state === "denied") {
+        setError("Geolocation permission was denied or blocked.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            if (cancelled) return;
+            const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            setLocation(next);
+            setError(null);
+            persistLocation(next);
+            setLoading(false);
+          },
+          (err) => {
+            if (cancelled) return;
+            setError(formatGeolocationError(err));
+            setLoading(false);
+          }
+        );
+      } catch (err) {
+        setError(formatGeolocationError(err));
         setLoading(false);
       }
-    );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -119,21 +174,26 @@ export const useGuestLocation = () => {
     setLoading(true);
     setError(null);
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setLocation(next);
-        setError(null);
-        persistLocation(next);
-        setLoading(false);
-      },
-      (err) => {
-        setError(err.message);
-        setLoading(false);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-    );
-  }, [persistLocation]);
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setLocation(next);
+          setError(null);
+          persistLocation(next);
+          setLoading(false);
+        },
+        (err) => {
+          setError(formatGeolocationError(err));
+          setLoading(false);
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    } catch (err) {
+      setError(formatGeolocationError(err));
+      setLoading(false);
+    }
+  }, [persistLocation, formatGeolocationError]);
 
   const setGuestLocation = useCallback(
     (next) => {

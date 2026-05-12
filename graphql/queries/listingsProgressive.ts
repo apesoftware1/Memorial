@@ -464,3 +464,142 @@ export const LISTINGS_FEATURED_CARDS_QUERY = gql`
     }
   }
 `;
+
+export const LISTING_SEARCH_INDEX_CONNECTION_QUERY = gql`
+  query ListingSearchIndexConnection(
+    $filters: ListingSearchIndexFiltersInput
+    $page: Int = 1
+    $pageSize: Int = 20
+  ) {
+    listingSearchIndices_connection(
+      filters: $filters
+      pagination: { page: $page, pageSize: $pageSize }
+    ) {
+      nodes {
+        listing_document_id
+        category
+        provinces
+        cities
+        towns
+        style
+        price
+        stone_type
+        color
+        head_style
+        customization
+        is_on_special
+        published
+      }
+      pageInfo {
+        total
+        page
+        pageSize
+        pageCount
+      }
+    }
+  }
+`;
+
+export const LISTING_SEARCH_LOCATION_OPTIONS_QUERY = gql`
+  query ListingSearchLocationOptions {
+    listingSearchLocationOptions {
+      province
+      cities {
+        city
+        towns {
+          town
+        }
+      }
+    }
+  }
+`;
+
+export const LISTINGS_BY_DOCUMENT_IDS_QUERY = gql`
+  query ListingsByDocumentIds(
+    $ids: [ID]
+    $pageSize: Int = 20
+    $branchesPageSize: Int = 10
+    $branchListingsPageSize: Int = 10
+  ) {
+    listings(
+      filters: { documentId: { in: $ids } }
+      pagination: { page: 1, pageSize: $pageSize }
+      sort: "documentId:asc"
+    ) {
+      documentId
+      updatedAt
+      title
+      price
+      slug
+      isFeatured
+      isOnSpecial
+      isPremium
+      isStandard
+      listing_category { documentId name }
+      mainImageUrl
+      mainImagePublicId
+      thumbnailUrls
+      thumbnailPublicIds
+      adFlasher
+      adFlasherColor
+      manufacturingTimeframe
+      specials { active sale_price start_date end_date }
+      productDetails {
+        id
+        color { id value }
+        style { id value }
+        overallStyle { id value }
+        stoneType { id value }
+        slabStyle { id value }
+        customization { id value }
+      }
+      additionalProductDetails {
+        id
+        transportAndInstallation { id value }
+        foundationOptions { id value }
+        warrantyOrGuarantee { id value }
+        installationGuarantee { id value }
+      }
+      company {
+        documentId
+        name
+        location
+        logoUrl
+        logoUrlPublicId
+        hideStandardCompanyLogo
+        latitude
+        longitude
+        isFeatured
+      }
+      branches(pagination: { page: 1, pageSize: $branchesPageSize }) {
+        documentId
+        name
+        location {
+          address
+          latitude
+          longitude
+          mapUrl
+          province
+          city
+          town
+        }
+      }
+      branch_listings(pagination: { page: 1, pageSize: $branchListingsPageSize }) {
+        branch {
+          documentId
+          name
+          location {
+            address
+            latitude
+            longitude
+            mapUrl
+            province
+            city
+            town
+          }
+        }
+        price
+      }
+    }
+  }
+`;
