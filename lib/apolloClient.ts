@@ -2,32 +2,35 @@ import { ApolloClient, InMemoryCache, createHttpLink, NormalizedCacheObject, fro
 import { persistCache, LocalStorageWrapper } from 'apollo3-cache-persist';
 import { onError } from '@apollo/client/link/error';
 
+const APOLLO_CACHE_VERSION = '2026-05-12-1';
+const APOLLO_CACHE_META_KEY = 'apollo-cache-meta';
+
 // Shared cache instance so persistence can hydrate it before client creation
 const cache = new InMemoryCache({
   typePolicies: {
     Listing: {
-      keyFields: "documentId",
+      keyFields: ["documentId"],
     },
     Company: {
-      keyFields: "documentId",
+      keyFields: ["documentId"],
     },
     Branch: {
-      keyFields: "documentId",
+      keyFields: ["documentId"],
     },
     ListingCategory: {
-      keyFields: "documentId",
+      keyFields: ["documentId"],
     },
     BlogPost: {
-      keyFields: "documentId",
+      keyFields: ["documentId"],
     },
     UsersPermissionsUser: {
-      keyFields: "documentId",
+      keyFields: ["documentId"],
     },
     InquiryC: {
-      keyFields: "documentId",
+      keyFields: ["documentId"],
     },
     Inquiry: {
-      keyFields: "documentId",
+      keyFields: ["documentId"],
     },
   },
 });
@@ -62,8 +65,8 @@ export function createApolloClient(): ApolloClient<NormalizedCacheObject> {
     link: from([errorLink, httpLink]),
     cache,
     defaultOptions: {
-      watchQuery: { fetchPolicy: 'cache-first' },
-      query: { fetchPolicy: 'cache-first' },
+      watchQuery: { fetchPolicy: 'cache-and-network', nextFetchPolicy: 'cache-first' },
+      query: { fetchPolicy: 'network-only' },
       mutate: { errorPolicy: 'all' },
     },
   });
@@ -73,10 +76,26 @@ export function createApolloClient(): ApolloClient<NormalizedCacheObject> {
 export async function initializeApolloClient(): Promise<ApolloClient<NormalizedCacheObject>> {
   if (typeof window !== 'undefined') {
     try {
+      const storage = window.localStorage;
+      const desiredCacheKey = `apollo-cache:${APOLLO_CACHE_VERSION}`;
+
+      const existingMetaRaw = storage.getItem(APOLLO_CACHE_META_KEY);
+      const existingMeta = existingMetaRaw ? JSON.parse(existingMetaRaw) : null;
+
+      if (!existingMeta || existingMeta.version !== APOLLO_CACHE_VERSION) {
+        if (existingMeta?.cacheKey) storage.removeItem(existingMeta.cacheKey);
+        storage.removeItem('apollo-cache');
+        storage.setItem(
+          APOLLO_CACHE_META_KEY,
+          JSON.stringify({ version: APOLLO_CACHE_VERSION, cacheKey: desiredCacheKey })
+        );
+        await cache.reset();
+      }
+
       await persistCache({
         cache,
-        storage: new LocalStorageWrapper(window.localStorage),
-        key: 'apollo-cache',
+        storage: new LocalStorageWrapper(storage),
+        key: desiredCacheKey,
       });
     } catch (e) {
       console.warn('Apollo cache persistence failed; proceeding without persisted cache.', e);
