@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import "./globals.css"
 import type { Metadata } from "next"
 import Script from 'next/script'
+import { GoogleTagManager } from "@next/third-parties/google"
 import ApolloWrapper from "./ApolloWrapper";
 import SessionWrapper from "./components/SessionWrapper";
 import { FavoritesProvider } from "@/context/favorites-context.jsx";
@@ -153,6 +154,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </ApolloWrapper>
         </SessionWrapper>
         <Toaster />
+        <GoogleTagManager gtmId="GTM-N7KQXS34" />
       </body>
     </html>
   )
