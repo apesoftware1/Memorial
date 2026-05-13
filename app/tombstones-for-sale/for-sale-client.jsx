@@ -65,18 +65,32 @@ const shuffleWithSeed = (arr, seedKey) => {
   return out
 }
 
+const getCompanyKey = (listing) => {
+  const doc =
+    listing?.company?.documentId ??
+    listing?.company?.id ??
+    listing?.companyId ??
+    null
+  const name = typeof listing?.company?.name === "string" ? listing.company.name.trim() : ""
+  if (doc) return String(doc)
+  if (name) return name
+  const fallback = listing?.documentId ?? listing?.id ?? ""
+  return fallback ? `unknown:${String(fallback)}` : "unknown"
+}
+
 const getDiverseInterleavedListingsSeeded = (listings, seedKey) => {
   if (!Array.isArray(listings) || listings.length === 0) return []
 
   const companyMap = new Map()
   for (const listing of listings) {
-    const companyId = listing?.company?.documentId || listing?.company?.id || listing?.company?.name || "unknown"
+    const companyId = getCompanyKey(listing)
     const existing = companyMap.get(companyId) || []
     existing.push(listing)
     companyMap.set(companyId, existing)
   }
 
   let companyIds = Array.from(companyMap.keys())
+  companyIds = companyIds.sort((a, b) => String(a).localeCompare(String(b)))
   companyIds = shuffleWithSeed(companyIds, seedKey)
 
   companyMap.forEach((list, key) => {
@@ -107,18 +121,19 @@ const interleaveCompanyListingsNoAdjacent = (listings, seedKey) => {
 
   const companyMap = new Map()
   for (const listing of listings) {
-    const companyId =
-      listing?.company?.documentId ||
-      listing?.company?.id ||
-      listing?.company?.name ||
-      "unknown"
+    const companyId = getCompanyKey(listing)
     const existing = companyMap.get(companyId) || []
     existing.push(listing)
     companyMap.set(companyId, existing)
   }
 
-  let companyIds = Array.from(companyMap.keys())
-  companyIds = shuffleWithSeed(companyIds, seedKey)
+  const companySortKey = (id) => stableHash(`${seedKey}|${String(id)}`)
+  const companyIds = Array.from(companyMap.keys()).sort((a, b) => {
+    const da = companySortKey(a)
+    const db = companySortKey(b)
+    if (da !== db) return da - db
+    return String(a).localeCompare(String(b))
+  })
 
   companyMap.forEach((list, key) => {
     const sorted = [...list].sort((a, b) =>
@@ -203,6 +218,12 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   const featuredScrollRef = useRef(null);
   const router = useRouter();
   const { location: guestLocation } = useGuestLocation();
+  const apolloClient = useApolloClient()
+  const poolFetchRef = useRef({ key: "", inFlight: false });
+  const [companyOrderPoolIds, setCompanyOrderPoolIds] = useState([]);
+  const [companyOrderPoolMap, setCompanyOrderPoolMap] = useState({});
+  const [companyOrderPoolNextPage, setCompanyOrderPoolNextPage] = useState(1);
+  const [companyOrderPoolPageCount, setCompanyOrderPoolPageCount] = useState(null);
 
   const { data: listingSearchLocationOptionsData } = useQuery(LISTING_SEARCH_LOCATION_OPTIONS_QUERY, {
     skip: !enableQueries,
@@ -943,42 +964,65 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     const encodedSelections = Array.isArray(locationRaw) ? locationRaw.filter(isEncodedLocation) : [];
     if (encodedSelections.length) {
       const decoded = encodedSelections.map(decodeEncodedLocation).filter(Boolean);
+      const unique = (arr) => Array.from(new Set(arr.map((x) => String(x).trim()).filter(Boolean)));
+
       const provinceVals = decoded
         .filter((d) => d.level === "province" && d.province)
         .map((d) => d.province);
-      const cityVals = decoded
-        .filter((d) => d.level === "city" && d.city)
-        .map((d) => d.city);
-      const townVals = decoded
-        .filter((d) => d.level === "town" && d.town)
-        .map((d) => d.town);
-
-      const unique = (arr) => Array.from(new Set(arr.map((x) => String(x).trim()).filter(Boolean)));
-
-      if (townVals.length) {
-        const toks = unique(townVals).flatMap((v) => packedTokenVariants(v));
-        if (toks.length) and.push({ or: toks.map((tok) => ({ towns: { contains: tok } })) });
-      } else if (cityVals.length) {
-        const toks = unique(cityVals).flatMap((v) => packedTokenVariants(v));
-        if (toks.length) and.push({ or: toks.map((tok) => ({ cities: { contains: tok } })) });
-      } else if (provinceVals.length) {
+      if (provinceVals.length) {
         const toks = unique(provinceVals).flatMap((v) => packedTokenVariants(v));
         if (toks.length) and.push({ or: toks.map((tok) => ({ provinces: { contains: tok } })) });
+      }
+
+      const cityPairs = decoded
+        .filter((d) => d.level === "city" && d.province && d.city)
+        .map((d) => ({ province: d.province, city: d.city }));
+      if (cityPairs.length) {
+        and.push({
+          or: cityPairs.map((p) => {
+            const provToks = packedTokenVariants(p.province);
+            const cityToks = packedTokenVariants(p.city);
+            const clauseAnd = [];
+            if (provToks.length) clauseAnd.push({ or: provToks.map((tok) => ({ provinces: { contains: tok } })) });
+            if (cityToks.length) clauseAnd.push({ or: cityToks.map((tok) => ({ cities: { contains: tok } })) });
+            return clauseAnd.length > 1 ? { and: clauseAnd } : clauseAnd[0];
+          }).filter(Boolean),
+        });
+      }
+
+      const townTriples = decoded
+        .filter((d) => d.level === "town" && d.province && d.city && d.town)
+        .map((d) => ({ province: d.province, city: d.city, town: d.town }));
+      if (townTriples.length) {
+        and.push({
+          or: townTriples.map((t) => {
+            const provToks = packedTokenVariants(t.province);
+            const cityToks = packedTokenVariants(t.city);
+            const townToks = packedTokenVariants(t.town);
+            const clauseAnd = [];
+            if (provToks.length) clauseAnd.push({ or: provToks.map((tok) => ({ provinces: { contains: tok } })) });
+            if (cityToks.length) clauseAnd.push({ or: cityToks.map((tok) => ({ cities: { contains: tok } })) });
+            if (townToks.length) clauseAnd.push({ or: townToks.map((tok) => ({ towns: { contains: tok } })) });
+            return clauseAnd.length > 1 ? { and: clauseAnd } : clauseAnd[0];
+          }).filter(Boolean),
+        });
       }
     } else if (Array.isArray(locationRaw) && locationRaw.length === 3) {
       const [prov, city, town] = locationRaw;
       const townV = normalizeLower(town);
       const cityV = normalizeLower(city);
       const provV = normalizeLower(prov);
+      if (provV && provV !== "any") {
+        const toks = packedTokenVariants(provV);
+        if (toks.length) and.push({ or: toks.map((tok) => ({ provinces: { contains: tok } })) });
+      }
+      if (cityV && cityV !== "any") {
+        const toks = packedTokenVariants(cityV);
+        if (toks.length) and.push({ or: toks.map((tok) => ({ cities: { contains: tok } })) });
+      }
       if (townV && townV !== "any") {
         const toks = packedTokenVariants(townV);
         if (toks.length) and.push({ or: toks.map((tok) => ({ towns: { contains: tok } })) });
-      } else if (cityV && cityV !== "any") {
-        const toks = packedTokenVariants(cityV);
-        if (toks.length) and.push({ or: toks.map((tok) => ({ cities: { contains: tok } })) });
-      } else if (provV && provV !== "any") {
-        const toks = packedTokenVariants(provV);
-        if (toks.length) and.push({ or: toks.map((tok) => ({ provinces: { contains: tok } })) });
       }
     } else {
       const locationVals = listTokens(getLocationTokensForServerFilter(locationRaw));
@@ -1048,9 +1092,8 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       if (!obj || typeof obj !== "object") return false;
       if (obj.provinces || obj.cities || obj.towns) return true;
       if (obj.province || obj.city || obj.town) return true;
-      if (Array.isArray(obj.or)) {
-        return obj.or.some((o) => o && typeof o === "object" && (o.provinces || o.cities || o.towns || o.province || o.city || o.town));
-      }
+      if (Array.isArray(obj.and)) return obj.and.some((o) => isLocObj(o));
+      if (Array.isArray(obj.or)) return obj.or.some((o) => isLocObj(o));
       return false;
     };
     const and = searchIndexFilters.and.filter((clause) => !isLocObj(clause));
@@ -1078,6 +1121,179 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
   const searchIndexPageInfo = searchIndexConnData?.listingSearchIndices_connection?.pageInfo;
   const searchIndexNodes = searchIndexConnData?.listingSearchIndices_connection?.nodes;
+  const companyOrderFiltersKey = useMemo(() => {
+    try {
+      return JSON.stringify(searchIndexFilters ?? null);
+    } catch {
+      return "";
+    }
+  }, [searchIndexFilters]);
+
+  useEffect(() => {
+    if (!enableQueries) return;
+    if (sortOrder !== "Default") return;
+
+    if (poolFetchRef.current.key !== companyOrderFiltersKey) {
+      poolFetchRef.current.key = companyOrderFiltersKey;
+      poolFetchRef.current.inFlight = false;
+      setCompanyOrderPoolIds([]);
+      setCompanyOrderPoolMap({});
+      setCompanyOrderPoolNextPage(1);
+      setCompanyOrderPoolPageCount(null);
+    }
+  }, [companyOrderFiltersKey, enableQueries, sortOrder]);
+
+  useEffect(() => {
+    if (!enableQueries) return;
+    if (sortOrder !== "Default") return;
+
+    const POOL_PAGE_SIZE = 100;
+    const IDS_BATCH_SIZE = 40;
+    const MAX_INDEX_PAGES_PER_RUN = 5;
+
+    const desiredVisible = Math.max(1, currentPage) * listingsPerPage;
+    const poolCompanies = new Set(
+      Object.values(companyOrderPoolMap || {})
+        .map((l) => getCompanyKey(l))
+        .filter(Boolean)
+    );
+    const needCompanies = poolCompanies.size < listingsPerPage;
+    const needItems = companyOrderPoolIds.length < desiredVisible;
+    const noMorePages =
+      typeof companyOrderPoolPageCount === "number" &&
+      companyOrderPoolNextPage > companyOrderPoolPageCount;
+
+    if ((!needItems && !needCompanies) || noMorePages) return;
+    if (poolFetchRef.current.inFlight) return;
+
+    poolFetchRef.current.inFlight = true;
+    let cancelled = false;
+
+    const run = async () => {
+      let nextPage = companyOrderPoolNextPage;
+      let pageCount = companyOrderPoolPageCount;
+      let pagesFetched = 0;
+
+      const appendIds = [];
+      const hasEnoughCompanies = !needCompanies;
+      while (!cancelled && pagesFetched < MAX_INDEX_PAGES_PER_RUN) {
+        const res = await apolloClient.query({
+          query: LISTING_SEARCH_INDEX_CONNECTION_QUERY,
+          variables: {
+            filters: searchIndexFilters,
+            page: nextPage,
+            pageSize: POOL_PAGE_SIZE,
+          },
+          fetchPolicy: "network-only",
+        });
+
+        const conn = res?.data?.listingSearchIndices_connection;
+        const nodes = Array.isArray(conn?.nodes) ? conn.nodes : [];
+        const info = conn?.pageInfo;
+        if (typeof info?.pageCount === "number") pageCount = info.pageCount;
+
+        const ids = nodes
+          .map((n) => (n?.listing_document_id ? String(n.listing_document_id) : ""))
+          .filter(Boolean);
+
+        if (ids.length === 0) {
+          nextPage += 1;
+          pagesFetched += 1;
+          if (typeof pageCount === "number" && nextPage > pageCount) break;
+          continue;
+        }
+
+        appendIds.push(...ids);
+        nextPage += 1;
+        pagesFetched += 1;
+
+        if (typeof pageCount === "number" && nextPage > pageCount) break;
+        if (hasEnoughCompanies && companyOrderPoolIds.length + appendIds.length >= desiredVisible) break;
+      }
+
+      if (cancelled) return;
+
+      if (appendIds.length > 0) {
+        const existing = new Set(companyOrderPoolIds);
+        const uniqueNew = appendIds.filter((id) => !existing.has(id));
+
+        if (uniqueNew.length > 0) {
+          const batches = [];
+          for (let i = 0; i < uniqueNew.length; i += IDS_BATCH_SIZE) {
+            batches.push(uniqueNew.slice(i, i + IDS_BATCH_SIZE));
+          }
+
+          const results = await Promise.all(
+            batches.map(async (ids) => {
+              const resp = await apolloClient.query({
+                query: LISTINGS_BY_DOCUMENT_IDS_QUERY,
+                variables: {
+                  ids,
+                  pageSize: Math.max(1, ids.length),
+                  branchesPageSize: 25,
+                  branchListingsPageSize: 25,
+                },
+                fetchPolicy: "network-only",
+              });
+              return Array.isArray(resp?.data?.listings) ? resp.data.listings : [];
+            })
+          );
+
+          if (cancelled) return;
+
+          const nextMap = {};
+          for (const arr of results) {
+            for (const l of arr) {
+              const id = l?.documentId ? String(l.documentId) : "";
+              if (id) nextMap[id] = l;
+            }
+          }
+
+          if (Object.keys(nextMap).length > 0) {
+            setCompanyOrderPoolMap((prev) => ({ ...(prev || {}), ...nextMap }));
+          }
+
+          setCompanyOrderPoolIds((prev) => {
+            const base = Array.isArray(prev) ? prev : [];
+            const baseSet = new Set(base);
+            const merged = [...base];
+            for (const id of uniqueNew) {
+              if (!baseSet.has(id)) {
+                baseSet.add(id);
+                merged.push(id);
+              }
+            }
+            return merged;
+          });
+        }
+      }
+
+      setCompanyOrderPoolNextPage(nextPage);
+      setCompanyOrderPoolPageCount(pageCount);
+    };
+
+    run()
+      .catch(() => {
+      })
+      .finally(() => {
+        if (!cancelled) poolFetchRef.current.inFlight = false;
+      });
+
+    return () => {
+      cancelled = true;
+      poolFetchRef.current.inFlight = false;
+    };
+  }, [
+    apolloClient,
+    companyOrderPoolIds.length,
+    companyOrderPoolNextPage,
+    companyOrderPoolPageCount,
+    currentPage,
+    enableQueries,
+    listingsPerPage,
+    searchIndexFilters,
+    sortOrder,
+  ]);
 
   const listingDocumentIds = useMemo(() => {
     if (!Array.isArray(searchIndexNodes)) return [];
@@ -1107,6 +1323,18 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   });
 
   const filteredListings = useMemo(() => {
+    if (sortOrder === "Default" && enableQueries) {
+      const ordered = companyOrderPoolIds
+        .map((id) => companyOrderPoolMap?.[id])
+        .filter(Boolean);
+      if (ordered.length > 0) {
+        const dayKey = new Date().toISOString().slice(0, 10);
+        const seedKey = `for-sale|company-rotation|${dayKey}`;
+        const rotated = interleaveCompanyListingsNoAdjacent(ordered, seedKey);
+        const start = Math.max(0, (currentPage - 1) * listingsPerPage);
+        return rotated.slice(start, start + listingsPerPage);
+      }
+    }
     if (enableQueries && listingDocumentIds.length > 0) {
       const items = listingsByIdsData?.listings;
       const map = new Map();
@@ -1120,7 +1348,18 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       if (ordered.length > 0) return ordered;
     }
     return Array.isArray(initialListings) ? initialListings : [];
-  }, [enableQueries, initialListings, listingDocumentIds, listingsByIdsData]);
+  }, [
+    companyOrderFiltersKey,
+    companyOrderPoolIds,
+    companyOrderPoolMap,
+    currentPage,
+    enableQueries,
+    initialListings,
+    listingDocumentIds,
+    listingsByIdsData,
+    listingsPerPage,
+    sortOrder,
+  ]);
 
   const totalListingsCount = useMemo(() => {
     const t = searchIndexPageInfo?.total;
@@ -1404,8 +1643,6 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     mergeLocationCounts,
   ]);
 
-  const apolloClient = useApolloClient()
-
   const categoryCountBaseFilters = useMemo(() => {
     if (!searchIndexFilters || !Array.isArray(searchIndexFilters.and)) return searchIndexFilters
     const and = searchIndexFilters.and.filter((clause) => {
@@ -1546,29 +1783,14 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         const bT = b?.updatedAt ? Date.parse(b.updatedAt) : 0;
         return bT - aT;
       });
-    } else if (sortOrder === "Default") {
-      const dayKey = new Date().toISOString().slice(0, 10)
-      const seedKey = `home|premium|${dayKey}|page:${currentPage}`
-      return interleaveCompanyListingsNoAdjacent(next, seedKey)
     }
     return next;
   }, [currentPage, filteredListings, sortOrder]);
 
   const listingItems = useMemo(() => {
     const next = baseSortedListings.map(buildListingItem).filter((x) => x?.id);
-    const hasMultiLocations = selectedLocationTokens.length >= 2;
-    const hasUserCoords =
-      guestLocation &&
-      Number.isFinite(guestLocation.lat) &&
-      Number.isFinite(guestLocation.lng);
-    if (sortOrder === "Default" && hasMultiLocations && hasUserCoords) {
-      next.sort(
-        (a, b) =>
-          (a.primaryDistanceKm ?? Infinity) - (b.primaryDistanceKm ?? Infinity)
-      );
-    }
     return next;
-  }, [baseSortedListings, buildListingItem, guestLocation, selectedLocationTokens.length, sortOrder]);
+  }, [baseSortedListings, buildListingItem]);
 
   const fallbackCard = (type = "listing") => (
     <CardSkeleton className="h-full" />

@@ -416,18 +416,24 @@ export default function FilterDropdown({
           const toks = packedTokenVariants(decoded.province);
           if (toks.length) and.push({ or: toks.map((tok) => ({ provinces: { contains: tok } })) });
         } else if (decoded.level === "city") {
-          const toks = packedTokenVariants(decoded.city);
-          if (toks.length) and.push({ or: toks.map((tok) => ({ cities: { contains: tok } })) });
+          const provToks = packedTokenVariants(decoded.province);
+          if (provToks.length) and.push({ or: provToks.map((tok) => ({ provinces: { contains: tok } })) });
+          const cityToks = packedTokenVariants(decoded.city);
+          if (cityToks.length) and.push({ or: cityToks.map((tok) => ({ cities: { contains: tok } })) });
         } else if (decoded.level === "town") {
-          const toks = packedTokenVariants(decoded.town);
-          if (toks.length) and.push({ or: toks.map((tok) => ({ towns: { contains: tok } })) });
+          const provToks = packedTokenVariants(decoded.province);
+          if (provToks.length) and.push({ or: provToks.map((tok) => ({ provinces: { contains: tok } })) });
+          const cityToks = packedTokenVariants(decoded.city);
+          if (cityToks.length) and.push({ or: cityToks.map((tok) => ({ cities: { contains: tok } })) });
+          const townToks = packedTokenVariants(decoded.town);
+          if (townToks.length) and.push({ or: townToks.map((tok) => ({ towns: { contains: tok } })) });
         }
         const filters = and.length ? { and } : undefined;
 
         const res = await apolloClient.query({
           query: LISTING_SEARCH_INDEX_CONNECTION_QUERY,
           variables: { filters, page: 1, pageSize: 1 },
-          fetchPolicy: "cache-first",
+          fetchPolicy: "network-only",
         });
 
         const total = res?.data?.listingSearchIndices_connection?.pageInfo?.total;
