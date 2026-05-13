@@ -32,6 +32,156 @@ import { useHomepageAggregations } from '@/hooks/useHomepageAggregations';
 import { checkListingLocation, toTitleCase, DEFAULT_PROVINCES, normalizeCityName } from '@/lib/locationHelpers';
 import { useGuestLocation } from "@/hooks/useGuestLocation";
 
+const stableHash = (input) => {
+  const s = String(input ?? "")
+  let h = 2166136261
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+
+const mulberry32 = (seed) => {
+  let a = seed >>> 0
+  return () => {
+    a |= 0
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+const shuffleWithSeed = (arr, seedKey) => {
+  const out = Array.isArray(arr) ? [...arr] : []
+  const rand = mulberry32(stableHash(seedKey))
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    const tmp = out[i]
+    out[i] = out[j]
+    out[j] = tmp
+  }
+  return out
+}
+
+const getDiverseInterleavedListingsSeeded = (listings, seedKey) => {
+  if (!Array.isArray(listings) || listings.length === 0) return []
+
+  const companyMap = new Map()
+  for (const listing of listings) {
+    const companyId = listing?.company?.documentId || listing?.company?.id || listing?.company?.name || "unknown"
+    const existing = companyMap.get(companyId) || []
+    existing.push(listing)
+    companyMap.set(companyId, existing)
+  }
+
+  let companyIds = Array.from(companyMap.keys())
+  companyIds = shuffleWithSeed(companyIds, seedKey)
+
+  companyMap.forEach((list, key) => {
+    const sorted = [...list].sort((a, b) =>
+      String(a?.documentId || a?.id || "").localeCompare(String(b?.documentId || b?.id || ""))
+    )
+    companyMap.set(key, sorted)
+  })
+
+  let maxListings = 0
+  companyMap.forEach((list) => {
+    if (list.length > maxListings) maxListings = list.length
+  })
+
+  const result = []
+  for (let i = 0; i < maxListings; i++) {
+    for (const companyId of companyIds) {
+      const list = companyMap.get(companyId)
+      if (list && i < list.length) result.push(list[i])
+    }
+  }
+
+  return result
+}
+
+const interleaveCompanyListingsNoAdjacent = (listings, seedKey) => {
+  if (!Array.isArray(listings) || listings.length === 0) return []
+
+  const companyMap = new Map()
+  for (const listing of listings) {
+    const companyId =
+      listing?.company?.documentId ||
+      listing?.company?.id ||
+      listing?.company?.name ||
+      "unknown"
+    const existing = companyMap.get(companyId) || []
+    existing.push(listing)
+    companyMap.set(companyId, existing)
+  }
+
+  let companyIds = Array.from(companyMap.keys())
+  companyIds = shuffleWithSeed(companyIds, seedKey)
+
+  companyMap.forEach((list, key) => {
+    const sorted = [...list].sort((a, b) =>
+      String(a?.documentId || a?.id || "").localeCompare(String(b?.documentId || b?.id || ""))
+    )
+    companyMap.set(key, sorted)
+  })
+
+  let remaining = 0
+  companyMap.forEach((list) => {
+    remaining += Array.isArray(list) ? list.length : 0
+  })
+
+  if (!companyIds.length || remaining === 0) return []
+
+  const result = []
+  let lastCompanyId = null
+  let pointer = 0
+
+  while (remaining > 0) {
+    let chosenId = null
+    let candidateSameAsLast = null
+
+    for (let tries = 0; tries < companyIds.length; tries += 1) {
+      const id = companyIds[pointer % companyIds.length]
+      pointer += 1
+      const q = companyMap.get(id)
+      if (!q || q.length === 0) continue
+
+      if (id !== lastCompanyId) {
+        chosenId = id
+        break
+      }
+
+      if (!candidateSameAsLast) candidateSameAsLast = id
+    }
+
+    if (!chosenId) {
+      const hasOther =
+        lastCompanyId &&
+        companyIds.some((id) => id !== lastCompanyId && (companyMap.get(id)?.length || 0) > 0)
+      if (hasOther) {
+        chosenId = companyIds.find(
+          (id) => id !== lastCompanyId && (companyMap.get(id)?.length || 0) > 0
+        )
+      } else {
+        chosenId = candidateSameAsLast
+      }
+    }
+
+    if (!chosenId) break
+
+    const q = companyMap.get(chosenId)
+    if (!q || q.length === 0) continue
+
+    result.push(q.shift())
+    lastCompanyId = chosenId
+    remaining -= 1
+  }
+
+  return result
+}
+
 export default function TombstonesForSaleClient({ initialListings = [], initialCategories = [] }) {
   const [enableQueries, setEnableQueries] = useState(false);
   useEffect(() => {
@@ -1396,9 +1546,13 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         const bT = b?.updatedAt ? Date.parse(b.updatedAt) : 0;
         return bT - aT;
       });
+    } else if (sortOrder === "Default") {
+      const dayKey = new Date().toISOString().slice(0, 10)
+      const seedKey = `home|premium|${dayKey}|page:${currentPage}`
+      return interleaveCompanyListingsNoAdjacent(next, seedKey)
     }
     return next;
-  }, [filteredListings, sortOrder]);
+  }, [currentPage, filteredListings, sortOrder]);
 
   const listingItems = useMemo(() => {
     const next = baseSortedListings.map(buildListingItem).filter((x) => x?.id);

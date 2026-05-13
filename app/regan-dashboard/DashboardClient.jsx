@@ -2,7 +2,7 @@
 
 import { useQuery } from '@apollo/client';
 import { GET_MANUFACTURERS } from '@/graphql/queries/getManufacturers';
-import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { Search, LogOut, Moon, Sun, PanelLeft } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -209,6 +209,10 @@ export default function DashboardClient() {
   const [pageVisibilityLoading, setPageVisibilityLoading] = useState(false);
   const [pageVisibilitySaving, setPageVisibilitySaving] = useState(false);
   const [pageVisibilityError, setPageVisibilityError] = useState("");
+  const [specialOfferVisibility, setSpecialOfferVisibility] = useState({ hiddenCompanyDocumentIds: [], updatedAt: "" });
+  const [specialOfferVisibilityLoading, setSpecialOfferVisibilityLoading] = useState(false);
+  const [specialOfferVisibilitySaving, setSpecialOfferVisibilitySaving] = useState(false);
+  const [specialOfferVisibilityError, setSpecialOfferVisibilityError] = useState("");
 
   useLayoutEffect(() => {
     const el = headerRef.current;
@@ -261,6 +265,27 @@ export default function DashboardClient() {
       }
     };
     loadPageVisibility();
+  }, [session?.user?.isAdmin]);
+
+  useEffect(() => {
+    const loadSpecialOfferVisibility = async () => {
+      if (!session?.user?.isAdmin) return;
+      try {
+        setSpecialOfferVisibilityError("");
+        setSpecialOfferVisibilityLoading(true);
+        const res = await fetch("/api/company-special-offer-visibility", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = await res.json();
+        setSpecialOfferVisibility({
+          hiddenCompanyDocumentIds: Array.isArray(json?.hiddenCompanyDocumentIds) ? json.hiddenCompanyDocumentIds : [],
+          updatedAt: typeof json?.updatedAt === "string" ? json.updatedAt : "",
+        });
+      } catch {
+      } finally {
+        setSpecialOfferVisibilityLoading(false);
+      }
+    };
+    loadSpecialOfferVisibility();
   }, [session?.user?.isAdmin]);
 
   const isPageHidden = (key) => {
@@ -385,6 +410,12 @@ export default function DashboardClient() {
   const [displayedManufacturers, setDisplayedManufacturers] = useState([]);
   const [filteredManufacturers, setFilteredManufacturers] = useState([]);
   const [displayCount, setDisplayCount] = useState(9); // Number of manufacturers to display initially
+  const specialOfferCompanies = useMemo(() => {
+    const list = Array.isArray(data?.companies) ? data.companies : [];
+    return [...list]
+      .filter((c) => c && c.documentId && c.name)
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  }, [data]);
 
   // Handle logout
   const handleLogout = async () => {
@@ -532,6 +563,62 @@ export default function DashboardClient() {
     }
   };
 
+  const isCompanySpecialOfferHidden = (companyDocumentId) => {
+    const hidden = Array.isArray(specialOfferVisibility?.hiddenCompanyDocumentIds)
+      ? specialOfferVisibility.hiddenCompanyDocumentIds
+      : [];
+    return hidden.includes(companyDocumentId);
+  };
+
+  const toggleCompanySpecialOfferHidden = (companyDocumentId) => {
+    if (!companyDocumentId) return;
+    const currentHidden = Array.isArray(specialOfferVisibility?.hiddenCompanyDocumentIds)
+      ? specialOfferVisibility.hiddenCompanyDocumentIds
+      : [];
+    const set = new Set(currentHidden);
+    if (set.has(companyDocumentId)) set.delete(companyDocumentId);
+    else set.add(companyDocumentId);
+    const nextHidden = Array.from(set.values());
+    setSpecialOfferVisibility((prev) => ({
+      ...(prev || { hiddenCompanyDocumentIds: [], updatedAt: "" }),
+      hiddenCompanyDocumentIds: nextHidden,
+    }));
+  };
+
+  const saveSpecialOfferVisibility = async () => {
+    if (!session?.user?.isAdmin) return;
+    try {
+      setSpecialOfferVisibilityError("");
+      setSpecialOfferVisibilitySaving(true);
+      const res = await fetch("/api/company-special-offer-visibility", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hiddenCompanyDocumentIds: specialOfferVisibility.hiddenCompanyDocumentIds,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        const msg = json?.error || "Failed to save.";
+        setSpecialOfferVisibilityError(msg);
+        toast({ title: "Save failed", description: msg, variant: "destructive" });
+        return;
+      }
+      setSpecialOfferVisibility({
+        hiddenCompanyDocumentIds: Array.isArray(json?.hiddenCompanyDocumentIds)
+          ? json.hiddenCompanyDocumentIds
+          : [],
+        updatedAt: typeof json?.updatedAt === "string" ? json.updatedAt : "",
+      });
+      toast({ title: "Saved", description: "Special offer visibility updated." });
+    } catch {
+      setSpecialOfferVisibilityError("Failed to save.");
+      toast({ title: "Save failed", description: "Failed to save.", variant: "destructive" });
+    } finally {
+      setSpecialOfferVisibilitySaving(false);
+    }
+  };
+
   return (
     <div className={isDark ? "dark" : ""}>
       <div className="min-h-screen bg-background">
@@ -643,6 +730,18 @@ export default function DashboardClient() {
                       Hide Pages
                     </button>
                   ) : null}
+                  {session?.user?.isAdmin ? (
+                    <button
+                      className={`w-full text-left px-3 py-2 rounded-md font-medium ${
+                        currentView === "specialOffer"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+                      }`}
+                      onClick={() => setCurrentView("specialOffer")}
+                    >
+                      Hide Special Offer
+                    </button>
+                  ) : null}
                 </div>
               );
 
@@ -741,6 +840,50 @@ export default function DashboardClient() {
                 ) : currentView === "categories" ? (
                   <div className="container mx-auto px-4 py-8">
                     <ListingCategoryManager />
+                  </div>
+                ) : currentView === "specialOffer" ? (
+                  <div className="container mx-auto px-4 py-8 max-w-3xl">
+                    <Card>
+                      <CardHeader>
+                        <h2 className="text-xl font-bold">Hide Special Offer</h2>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {specialOfferVisibilityLoading ? (
+                          <div className="text-sm text-muted-foreground">Loading settings…</div>
+                        ) : (
+                          <div className="space-y-3">
+                            {specialOfferCompanies.map((company) => (
+                              <div key={company.documentId} className="rounded-md border p-3">
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="text-sm font-medium">{company.name}</div>
+                                  <div className="flex items-center gap-3">
+                                    <div className="text-xs text-muted-foreground">Hide offer</div>
+                                    <Switch
+                                      checked={isCompanySpecialOfferHidden(company.documentId)}
+                                      onCheckedChange={() => toggleCompanySpecialOfferHidden(company.documentId)}
+                                      disabled={specialOfferVisibilitySaving}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {specialOfferVisibilityError ? (
+                          <div className="text-sm text-destructive">{specialOfferVisibilityError}</div>
+                        ) : null}
+                      </CardContent>
+                      <CardFooter className="flex items-center justify-between">
+                        <div className="text-xs text-muted-foreground">
+                          {specialOfferVisibility.updatedAt
+                            ? `Updated: ${new Date(specialOfferVisibility.updatedAt).toLocaleString()}`
+                            : ""}
+                        </div>
+                        <Button onClick={saveSpecialOfferVisibility} disabled={specialOfferVisibilitySaving}>
+                          {specialOfferVisibilitySaving ? "Saving…" : "Save"}
+                        </Button>
+                      </CardFooter>
+                    </Card>
                   </div>
                 ) : currentView === "pages" ? (
                   <div className="container mx-auto px-4 py-8 max-w-3xl">
