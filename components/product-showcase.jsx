@@ -44,6 +44,7 @@ export default function ProductShowcase({ listing, id, allListings = [], current
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [isLaybuyOpen, setIsLaybuyOpen] = useState(false);
   const [isSpecialOfferOpen, setIsSpecialOfferOpen] = useState(false);
+  const [specialOfferHiddenCompanyIds, setSpecialOfferHiddenCompanyIds] = useState([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileDropdown, setMobileDropdown] = useState(null);
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -55,6 +56,26 @@ export default function ProductShowcase({ listing, id, allListings = [], current
   const pathname = usePathname();
   const basePath = pathname && pathname.includes('/tombstones-for-sale') ? '/tombstones-for-sale' : '/product';
   const listingDocumentId = id || listing?.documentId;
+  const companyDocumentId = listing?.company?.documentId || listing?.companyId || null;
+  const hideSpecialOffer =
+    companyDocumentId &&
+    Array.isArray(specialOfferHiddenCompanyIds) &&
+    specialOfferHiddenCompanyIds.includes(companyDocumentId);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch("/api/company-special-offer-visibility", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = await res.json();
+        setSpecialOfferHiddenCompanyIds(
+          Array.isArray(json?.hiddenCompanyDocumentIds) ? json.hiddenCompanyDocumentIds : []
+        );
+      } catch {
+      }
+    };
+    load();
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setShouldFetchExtras(true), 0);
@@ -601,26 +622,28 @@ export default function ProductShowcase({ listing, id, allListings = [], current
               getFirstValue={getFirstValue}
               getAllValues={getAllValues}
             />
-            <button
-              type="button"
-              onClick={() => setIsSpecialOfferOpen(true)}
-              className="mt-1 mb-4 w-full rounded border border-gray-200 bg-[#F7F2D5] p-3 sm:p-4 text-left shadow-sm hover:shadow transition-shadow"
-            >
-              <div className="flex items-start gap-3">
-                <div className="text-2xl leading-none">🔥</div>
-                <div className="min-w-0">
-                  <div className="text-lg font-extrabold text-[#0D7C99]">
-                    Special Offer - Spend R5,000 or more and receive:
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-[#0D7C99]">
-                    FREE T-shirt on every R5000 spent + 5% Cashback
-                  </div>
-                  <div className="mt-2 text-sm font-semibold text-[#0D7C99] underline">
-                    View Full Offer &gt;&gt;
+            {!hideSpecialOffer ? (
+              <button
+                type="button"
+                onClick={() => setIsSpecialOfferOpen(true)}
+                className="mt-1 mb-4 w-full rounded border border-gray-200 bg-[#F7F2D5] p-3 sm:p-4 text-left shadow-sm hover:shadow transition-shadow"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl leading-none">🔥</div>
+                  <div className="min-w-0">
+                    <div className="text-lg font-extrabold text-[#0D7C99]">
+                      Special Offer - Spend R5,000 or more and receive:
+                    </div>
+                    <div className="mt-1 text-sm font-semibold text-[#0D7C99]">
+                      FREE T-shirt on every R5000 spent + 5% Cashback
+                    </div>
+                    <div className="mt-2 text-sm font-semibold text-[#0D7C99] underline">
+                      View Full Offer &gt;&gt;
+                    </div>
                   </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            ) : null}
             {/* Product Description and Additional Details */}
             <ProductDescription
               description={listing.description}
@@ -1008,11 +1031,13 @@ export default function ProductShowcase({ listing, id, allListings = [], current
             logoSrc={info?.logo ? cloudinaryOptimized(info.logo, 300) : null}
           />
         ) : null}
-        <SpecialOfferModal
-          isOpen={isSpecialOfferOpen}
-          onClose={() => setIsSpecialOfferOpen(false)}
-          logoSrc={info?.logo ? cloudinaryOptimized(info.logo, 300) : null}
-        />
+        {!hideSpecialOffer ? (
+          <SpecialOfferModal
+            isOpen={isSpecialOfferOpen}
+            onClose={() => setIsSpecialOfferOpen(false)}
+            logoSrc={info?.logo ? cloudinaryOptimized(info.logo, 300) : null}
+          />
+        ) : null}
         {showBranchesModal && (
           <PremiumListingCardModal
             listing={{
