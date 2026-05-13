@@ -1389,11 +1389,8 @@ const SearchContainer = ({
       if (!obj || typeof obj !== "object") return false;
       if (obj.provinces || obj.cities || obj.towns) return true;
       if (obj.province || obj.city || obj.town) return true;
-      if (Array.isArray(obj.or)) {
-        return obj.or.some(
-          (o) => o && typeof o === "object" && (o.provinces || o.cities || o.towns || o.province || o.city || o.town)
-        );
-      }
+      if (Array.isArray(obj.and)) return obj.and.some((o) => isLocObj(o));
+      if (Array.isArray(obj.or)) return obj.or.some((o) => isLocObj(o));
       return false;
     };
     return { and: debouncedSearchIndexCountFilters.and.filter((c) => !isLocObj(c)) };
