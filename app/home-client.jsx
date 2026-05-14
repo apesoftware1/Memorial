@@ -12,13 +12,9 @@ import SearchContainer from "@/components/SearchContainer.jsx"
 import BannerAd from "@/components/BannerAd"
 import { PageLoader } from "@/components/ui/loader"
 import { useGuestLocation } from "@/hooks/useGuestLocation"
-import { useListingCategories } from "@/hooks/use-ListingCategories"
 import IndexRender from "./indexRender"
-import {
-  HOMEPAGE_LISTINGS_CONNECTION_QUERY,
-} from "@/graphql/queries"
 import { useQuery } from "@apollo/client"
-import { GET_BANNER } from "@/graphql/queries/getBanner"
+import { HOMEPAGE_2026_QUERY } from "@/graphql/queries/2026Queries/homepage2026"
 
 const PREMIUM_PER_PAGE = 10
 const STANDARD_PER_PAGE = 5
@@ -192,11 +188,6 @@ export default function HomeClient({ initialListings = [], initialCategories = [
     setEnableQueries(true)
   }, [])
 
-  const { categories: fetchedCategories, loading: categoriesLoading } =
-    useListingCategories({ skip: !enableQueries })
-
-  const categories = fetchedCategories?.length ? fetchedCategories : initialCategories
-
   const [activeTab, setActiveTab] = useState(0)
 
   const { location, loading: locationLoading } = useGuestLocation()
@@ -220,18 +211,6 @@ export default function HomeClient({ initialListings = [], initialCategories = [
   const handleMobileMenuToggle = () => setMobileMenuOpen((open) => !open)
   const handleMobileDropdownToggle = (section) =>
     setMobileDropdown((prev) => (prev === section ? null : section))
-
-  const sortedCategories = useMemo(() => {
-    if (!Array.isArray(categories)) return []
-    const desiredOrder = ["SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"]
-    return desiredOrder
-      .map((name) =>
-        categories.find((cat) => cat?.name && cat.name.toUpperCase() === name)
-      )
-      .filter(Boolean)
-  }, [categories])
-
-  const activeCategory = sortedCategories[activeTab] || categories?.[activeTab]
 
   const [filters, setFilters] = useState({
     minPrice: "Min Price",
@@ -264,48 +243,62 @@ export default function HomeClient({ initialListings = [], initialCategories = [
     [router]
   )
 
-  const homepageListingsVars = useMemo(
-    () => ({
-      featuredPage: 1,
-      featuredPageSize: 3,
-      premiumPage: currentPage,
-      premiumPageSize: PREMIUM_PER_PAGE * OVERFETCH_MULTIPLIER,
-      standardPage: currentPage,
-      standardPageSize: STANDARD_PER_PAGE * OVERFETCH_MULTIPLIER,
-      featuredSort: ["updatedAt:desc"],
-      premiumSort: ["documentId:asc"],
-      standardSort: ["documentId:asc"],
-    }),
-    [currentPage]
-  )
-
   const {
-    data: homepageListingsData,
-    loading: listingsLoading,
-    error: listingsError,
-  } = useQuery(HOMEPAGE_LISTINGS_CONNECTION_QUERY, {
-    variables: homepageListingsVars,
+    data: homepage2026Data,
+    loading: homepage2026Loading,
+    error: homepage2026Error,
+  } = useQuery(HOMEPAGE_2026_QUERY, {
+    variables: {
+      page: currentPage,
+      pageSize: 20,
+      categoriesPageSize: 50,
+      bannerPageSize: 20,
+    },
     skip: !enableQueries,
-    fetchPolicy: "cache-first",
+    fetchPolicy: "no-cache",
+    nextFetchPolicy: "no-cache",
+    errorPolicy: "all",
   })
 
+  const categories = useMemo(() => {
+    const items = homepage2026Data?.listingCategories
+    if (Array.isArray(items) && items.length > 0) return items
+    return Array.isArray(initialCategories) ? initialCategories : []
+  }, [homepage2026Data, initialCategories])
+
+  const sortedCategories = useMemo(() => {
+    if (!Array.isArray(categories)) return []
+    const desiredOrder = ["SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"]
+    return desiredOrder
+      .map((name) =>
+        categories.find((cat) => cat?.name && cat.name.toUpperCase() === name)
+      )
+      .filter(Boolean)
+  }, [categories])
+
+  const activeCategory = sortedCategories[activeTab] || categories?.[activeTab]
+
   const featuredListings = useMemo(() => {
-    const items = homepageListingsData?.featured?.nodes
-    if (Array.isArray(items)) return items
-    return Array.isArray(initialListings) ? initialListings.filter((l) => l?.isFeatured).slice(0, 3) : []
-  }, [homepageListingsData, initialListings])
+    const nodes = homepage2026Data?.homepageListings?.nodes
+    const list = Array.isArray(nodes) ? nodes : Array.isArray(initialListings) ? initialListings : []
+    const featured = list.filter((l) => l?.isFeatured)
+    if (featured.length >= 3) return featured.slice(0, 3)
+    const used = new Set(featured.map((l) => String(l?.documentId || "")))
+    const fill = list.filter((l) => !used.has(String(l?.documentId || ""))).slice(0, 3 - featured.length)
+    return [...featured, ...fill].slice(0, 3)
+  }, [homepage2026Data, initialListings])
 
   const rawPremium = useMemo(() => {
-    const items = homepageListingsData?.premium?.nodes
-    if (Array.isArray(items)) return items
-    return Array.isArray(initialListings) ? initialListings.filter((l) => l?.isPremium) : []
-  }, [homepageListingsData, initialListings])
+    const nodes = homepage2026Data?.homepageListings?.nodes
+    const list = Array.isArray(nodes) ? nodes : Array.isArray(initialListings) ? initialListings : []
+    return list.filter((l) => l?.isPremium)
+  }, [homepage2026Data, initialListings])
 
   const rawStandard = useMemo(() => {
-    const items = homepageListingsData?.standard?.nodes
-    if (Array.isArray(items)) return items
-    return Array.isArray(initialListings) ? initialListings.filter((l) => l?.isStandard) : []
-  }, [homepageListingsData, initialListings])
+    const nodes = homepage2026Data?.homepageListings?.nodes
+    const list = Array.isArray(nodes) ? nodes : Array.isArray(initialListings) ? initialListings : []
+    return list.filter((l) => l?.isStandard)
+  }, [homepage2026Data, initialListings])
 
   const premListings = useMemo(() => {
     const dayKey = new Date().toISOString().slice(0, 10)
@@ -330,23 +323,13 @@ export default function HomeClient({ initialListings = [], initialCategories = [
   }, [featuredManufacturer, rawPremium])
 
   const totalPages = useMemo(() => {
-    const premiumTotal = homepageListingsData?.premium?.pageInfo?.total
-    const standardTotal = homepageListingsData?.standard?.pageInfo?.total
-    const premiumPages =
-      typeof premiumTotal === "number" && premiumTotal > 0 ? Math.ceil(premiumTotal / PREMIUM_PER_PAGE) : 1
-    const standardPages =
-      typeof standardTotal === "number" && standardTotal > 0 ? Math.ceil(standardTotal / STANDARD_PER_PAGE) : 1
-    return Math.max(1, premiumPages, standardPages)
-  }, [homepageListingsData])
-
-  const { data: manufacturersData } = useQuery(GET_BANNER, {
-    variables: { page: 1, pageSize: 20 },
-    skip: !enableQueries,
-    fetchPolicy: "cache-first",
-  })
+    const total = homepage2026Data?.homepageListings?.pageInfo?.total
+    if (typeof total === "number" && total > 0) return Math.max(1, Math.ceil(total / 20))
+    return 1
+  }, [homepage2026Data])
 
   const bannerPool = useMemo(() => {
-    return (manufacturersData?.companies || [])
+    return (homepage2026Data?.companies || [])
       .map((c) => {
         const url =
           c?.bannerAdUrl ||
@@ -362,7 +345,7 @@ export default function HomeClient({ initialListings = [], initialCategories = [
         return null
       })
       .filter(Boolean)
-  }, [manufacturersData])
+  }, [homepage2026Data])
 
   const [faqBanner, setFaqBanner] = useState(null)
   useEffect(() => {
@@ -374,8 +357,13 @@ export default function HomeClient({ initialListings = [], initialCategories = [
     }
   }, [bannerPool])
 
-  const showPageLoader = categoriesLoading && (!Array.isArray(categories) || categories.length === 0)
+  const showPageLoader = homepage2026Loading && (!Array.isArray(categories) || categories.length === 0)
   if (showPageLoader) return <PageLoader text="Loading" />
+
+  const hasRenderableListings =
+    (Array.isArray(featuredListings) && featuredListings.length > 0) ||
+    (Array.isArray(premListings) && premListings.length > 0) ||
+    (Array.isArray(stdListings) && stdListings.length > 0)
 
   return (
     <div>
@@ -438,8 +426,8 @@ export default function HomeClient({ initialListings = [], initialCategories = [
       </div>
 
       <IndexRender
-        loading={enableQueries ? listingsLoading && (premListings.length === 0 && stdListings.length === 0 && featuredListings.length === 0) : false}
-        error={listingsError}
+        loading={enableQueries ? homepage2026Loading && (premListings.length === 0 && stdListings.length === 0 && featuredListings.length === 0) : false}
+        error={hasRenderableListings ? null : homepage2026Error}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         premListings={premListings}
@@ -448,6 +436,7 @@ export default function HomeClient({ initialListings = [], initialCategories = [
         featuredManufacturer={featuredManufacturer}
         manufacturerListings={manufacturerListings}
         totalPages={totalPages}
+        bannerPool={bannerPool}
       />
 
       <Footer />

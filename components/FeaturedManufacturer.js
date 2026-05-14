@@ -5,34 +5,13 @@ import { cloudinaryOptimized } from '@/lib/cloudinary'
 // Removed the old import for ProductCard
 // import { ProductCard } from '@/components/product-card'
 import { useState, useRef, useEffect } from 'react'
-import { useQuery } from '@apollo/client';
-import { GET_LISTINGS_BY_COMPANY_NAME } from '@/graphql/queries/getListingsByManufacturer';
 import FeaturedListings from './FeaturedListings';
-import { PageLoader } from '@/components/ui/loader';
 
-const FeaturedManufacturer = ({ manufacturer }) => {
+const FeaturedManufacturer = ({ manufacturer, listings = [] }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollContainerRef = useRef(null);
 
-  const { data, loading, error } = useQuery(GET_LISTINGS_BY_COMPANY_NAME, {
-    variables: { name: manufacturer?.name },
-    skip: !manufacturer?.name,
-  });
-
-  if (loading) return <PageLoader text="Loading manufacturer listings..." />;
-  if (error) return (
-    <div className="text-center py-8">
-      <p className="text-red-600 font-medium mb-4">Error loading listings</p>
-      <button 
-        onClick={() => window.location.reload()} 
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-      >
-        Refresh Page
-      </button>
-    </div>
-  );
-
-  const products = data?.listings || [];
+  const products = Array.isArray(listings) ? listings : [];
 
   // Create an array of featured listings (where isFeatured is true)
   const featuredProducts = products.filter(product => product.isFeatured);

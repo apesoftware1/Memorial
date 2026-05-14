@@ -20,6 +20,7 @@ const IndexRender = ({
     featuredManufacturer: featuredManufacturerProp = null,
     manufacturerListings: manufacturerListingsProp = [],
     totalPages = 1,
+    bannerPool: bannerPoolProp = null,
   loading = false,
   error = null,
   currentPage = 1,
@@ -106,27 +107,24 @@ const IndexRender = ({
       ? manufacturerListingsProp.slice(0, 3)
       : premiumToShow.filter((l) => l.company?.name === featuredManufacturer?.name).slice(0, 3);
 
-  // Fetch companies to build a banner pool
-  const { data: manufacturersData } = useQuery(GET_BANNER);
-  // Build a pool of usable banner objects linking to manufacturer profiles via documentId
-  const bannerPool = useMemo(
-    () =>
-      (manufacturersData?.companies || [])
-        .map((c) => {
-          const url = c?.bannerAdUrl || (typeof c?.bannerAdUrl === "string" ? c.bannerAdUrl.trim() : null);
-          const documentId = c?.documentId;
-          if (url && documentId) {
-            return {
-              url,
-              documentId,
-              alt: c?.name ? `${c.name} Banner` : "Banner Ad",
-            };
-          }
-          return null;
-        })
-        .filter(Boolean),
-    [manufacturersData]
-  );
+  const { data: manufacturersData } = useQuery(GET_BANNER, { skip: Array.isArray(bannerPoolProp) });
+  const bannerPool = useMemo(() => {
+    if (Array.isArray(bannerPoolProp)) return bannerPoolProp;
+    return (manufacturersData?.companies || [])
+      .map((c) => {
+        const url = c?.bannerAdUrl || (typeof c?.bannerAdUrl === "string" ? c.bannerAdUrl.trim() : null);
+        const documentId = c?.documentId;
+        if (url && documentId) {
+          return {
+            url,
+            documentId,
+            alt: c?.name ? `${c.name} Banner` : "Banner Ad",
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+  }, [bannerPoolProp, manufacturersData]);
 
   // Randomly select a banner when the pool changes
   const [selectedBanner, setSelectedBanner] = useState(null);
@@ -145,9 +143,12 @@ const IndexRender = ({
   );
 
   if (loading) return <PageLoader text="Loading listings..." />;
-  if (error) {
-  }
-  if (error) return (
+  const hasAnyListings =
+    (Array.isArray(featuredListings) && featuredListings.length > 0) ||
+    (Array.isArray(premListings) && premListings.length > 0) ||
+    (Array.isArray(stdListings) && stdListings.length > 0);
+
+  if (error && !hasAnyListings) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center">
         <p className="text-red-600 font-medium mb-4">Error loading listings</p>

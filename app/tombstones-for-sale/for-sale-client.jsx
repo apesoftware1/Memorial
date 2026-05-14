@@ -23,14 +23,14 @@ import {
   LISTINGS_FEATURED_CARDS_QUERY,
   LISTING_SEARCH_INDEX_CONNECTION_QUERY,
   LISTING_SEARCH_LOCATION_OPTIONS_QUERY,
-  LISTINGS_BY_DOCUMENT_IDS_QUERY,
+  LISTINGS_CARDS_BY_DOCUMENT_IDS_QUERY,
 } from '@/graphql/queries';
 import { useApolloClient, useQuery } from "@apollo/client";
 import { useListingCategories } from "@/hooks/use-ListingCategories"
 import { useLocationHierarchy } from '@/hooks/useLocationHierarchy';
-import { useHomepageAggregations } from '@/hooks/useHomepageAggregations';
 import { checkListingLocation, toTitleCase, DEFAULT_PROVINCES, normalizeCityName } from '@/lib/locationHelpers';
 import { useGuestLocation } from "@/hooks/useGuestLocation";
+import { GET_LISTING_BRANCHES_FOR_MODAL } from "@/graphql/queries/getListingExtrasById";
 
 const stableHash = (input) => {
   const s = String(input ?? "")
@@ -76,6 +76,34 @@ const getCompanyKey = (listing) => {
   if (name) return name
   const fallback = listing?.documentId ?? listing?.id ?? ""
   return fallback ? `unknown:${String(fallback)}` : "unknown"
+}
+
+const enforceNoAdjacentCompanies = (listings) => {
+  const out = Array.isArray(listings) ? [...listings] : []
+  if (out.length <= 1) return out
+
+  const keyAt = (idx) => getCompanyKey(out[idx])
+  for (let i = 1; i < out.length; i += 1) {
+    const prevKey = keyAt(i - 1)
+    const curKey = keyAt(i)
+    if (prevKey !== curKey) continue
+
+    let swapIdx = -1
+    for (let j = i + 1; j < out.length; j += 1) {
+      const nextKey = keyAt(j)
+      if (nextKey !== prevKey) {
+        swapIdx = j
+        break
+      }
+    }
+
+    if (swapIdx === -1) break
+    const tmp = out[i]
+    out[i] = out[swapIdx]
+    out[swapIdx] = tmp
+  }
+
+  return out
 }
 
 const getDiverseInterleavedListingsSeeded = (listings, seedKey) => {
@@ -220,6 +248,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   const { location: guestLocation } = useGuestLocation();
   const apolloClient = useApolloClient()
   const poolFetchRef = useRef({ key: "", inFlight: false });
+  const [isPoolFetching, setIsPoolFetching] = useState(false);
   const [companyOrderPoolIds, setCompanyOrderPoolIds] = useState([]);
   const [companyOrderPoolMap, setCompanyOrderPoolMap] = useState({});
   const [companyOrderPoolNextPage, setCompanyOrderPoolNextPage] = useState(1);
@@ -550,6 +579,9 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
   const [showBranchesModal, setShowBranchesModal] = useState(false);
   const [selectedListing, setSelectedListing] = useState(null);
+  const [branchesModalLoading, setBranchesModalLoading] = useState(false);
+  const branchesModalCacheRef = useRef(new Map());
+  const branchesModalActiveListingIdRef = useRef(null);
 
   const desiredOrder = ["SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"];
   const sortedCategories = useMemo(() => {
@@ -610,26 +642,6 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
   const activeCategory = sortedCategories[activeTab] || null;
 
-  const getBranchesForListing = useCallback((listing) => {
-    const map = new Map();
-
-    const direct = Array.isArray(listing?.branches) ? listing.branches : [];
-    for (const b of direct) {
-      const id = b?.documentId || b?.id || b?.name;
-      if (id) map.set(String(id), b);
-    }
-
-    const fromListings = Array.isArray(listing?.branch_listings) ? listing.branch_listings : [];
-    for (const bl of fromListings) {
-      const b = bl?.branch;
-      if (!b) continue;
-      const id = b?.documentId || b?.id || b?.name;
-      if (id) map.set(String(id), b);
-    }
-
-    return Array.from(map.values());
-  }, []);
-
   const normalizeLocationToken = useCallback((v) => {
     const s = typeof v === "string" ? v.trim() : "";
     if (!s) return "";
@@ -641,203 +653,179 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   const selectedLocationTokens = useMemo(() => {
     const loc = activeFilters?.location;
     if (!Array.isArray(loc) || loc.length === 0) return [];
-    return loc.map(normalizeLocationToken).filter(Boolean);
+    const isEncodedLocation = (v) => typeof v === "string" && /^[pct]\|/.test(v);
+    const isIgnorable = (v) => {
+      const s = typeof v === "string" ? v.trim().toLowerCase() : "";
+      return !s || s === "any" || s === "all";
+    };
+
+    let rawTokens = [];
+    if (loc.length > 0 && loc.every(isEncodedLocation)) {
+      for (const v of loc) {
+        const parts = String(v).split("|").map((p) => p.trim());
+        const level = parts[0];
+        if (level === "p") {
+          if (parts[1] && !isIgnorable(parts[1])) rawTokens.push(parts[1]);
+        } else if (level === "c") {
+          if (parts[1] && !isIgnorable(parts[1])) rawTokens.push(parts[1]);
+          if (parts[2] && !isIgnorable(parts[2])) rawTokens.push(parts[2]);
+        } else if (level === "t") {
+          if (parts[1] && !isIgnorable(parts[1])) rawTokens.push(parts[1]);
+          if (parts[2] && !isIgnorable(parts[2])) rawTokens.push(parts[2]);
+          if (parts[3] && !isIgnorable(parts[3])) rawTokens.push(parts[3]);
+        }
+      }
+    } else {
+      rawTokens = loc.filter((v) => !isIgnorable(v));
+    }
+
+    const normalized = rawTokens.map(normalizeLocationToken).filter(Boolean);
+    return Array.from(new Set(normalized));
   }, [activeFilters?.location, normalizeLocationToken]);
-
-  const getBranchCoords = useCallback((branch) => {
-    const lat = Number(
-      branch?.location?.latitude ??
-        branch?.location?.lat ??
-        branch?.latitude ??
-        branch?.lat
-    );
-    const lng = Number(
-      branch?.location?.longitude ??
-        branch?.location?.lng ??
-        branch?.longitude ??
-        branch?.lng
-    );
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    return { lat, lng };
-  }, []);
-
-  const haversineKm = useCallback((a, b) => {
-    if (!a || !b) return null;
-    const R = 6371;
-    const toRad = (v) => (v * Math.PI) / 180;
-    const dLat = toRad(b.lat - a.lat);
-    const dLng = toRad(b.lng - a.lng);
-    const aa =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(a.lat)) *
-        Math.cos(toRad(b.lat)) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa));
-    const km = R * c;
-    return Number.isFinite(km) ? km : null;
-  }, []);
-
-  const branchMatchesSelectedLocations = useCallback(
-    (branch) => {
-      if (!branch) return false;
-      if (selectedLocationTokens.length === 0) return true;
-      const province = normalizeLocationToken(branch?.location?.province);
-      const city = normalizeLocationToken(branch?.location?.city);
-      const town = normalizeLocationToken(branch?.location?.town);
-      return selectedLocationTokens.some(
-        (t) => t && (t === town || t === city || t === province)
-      );
-    },
-    [normalizeLocationToken, selectedLocationTokens]
-  );
 
   const buildListingItem = useCallback(
     (listing) => {
       const listingId = listing?.documentId || listing?.id;
-      const allBranches = getBranchesForListing(listing);
-      const relevantBranches =
-        selectedLocationTokens.length > 0
-          ? allBranches.filter(branchMatchesSelectedLocations)
-          : allBranches;
-
-      const userCoords =
-        guestLocation && Number.isFinite(guestLocation.lat) && Number.isFinite(guestLocation.lng)
-          ? { lat: guestLocation.lat, lng: guestLocation.lng }
-          : null;
-
-      let primaryBranch = relevantBranches.length > 0 ? relevantBranches[0] : null;
-      let primaryDistanceKm = null;
-      let sortedBranches = relevantBranches;
-
-      if (relevantBranches.length > 0 && userCoords) {
-        let best = null;
-        let bestKm = null;
-        for (const b of relevantBranches) {
-          const coords = getBranchCoords(b);
-          const km = haversineKm(userCoords, coords);
-          if (km === null) continue;
-          if (bestKm === null || km < bestKm) {
-            bestKm = km;
-            best = b;
-          }
-        }
-        if (best) {
-          primaryBranch = best;
-          primaryDistanceKm = bestKm;
-        }
-
-        sortedBranches = [...relevantBranches]
-          .map((b) => {
-            const coords = getBranchCoords(b);
-            const km = haversineKm(userCoords, coords);
-            return { b, km };
-          })
-          .sort((x, y) => {
-            const ax = x.km;
-            const by = y.km;
-            if (ax === null && by === null) return 0;
-            if (ax === null) return 1;
-            if (by === null) return -1;
-            return ax - by;
-          })
-          .map((x) => x.b);
-      }
-
-      const modalBranches = sortedBranches;
-      let modalBranchesAll = allBranches;
-      if (allBranches.length > 0 && userCoords) {
-        modalBranchesAll = [...allBranches]
-          .map((b) => {
-            const coords = getBranchCoords(b);
-            const km = haversineKm(userCoords, coords);
-            return { b, km };
-          })
-          .sort((x, y) => {
-            const ax = x.km;
-            const by = y.km;
-            if (ax === null && by === null) return 0;
-            if (ax === null) return 1;
-            if (by === null) return -1;
-            return ax - by;
-          })
-          .map((x) => x.b);
-      }
-
-      const href = listingId
-        ? primaryBranch?.name
-          ? `/tombstones-for-sale/${listingId}?branch=${encodeURIComponent(primaryBranch.name)}`
-          : `/tombstones-for-sale/${listingId}`
-        : "#";
+      const href = listingId ? `/tombstones-for-sale/${listingId}` : "#";
 
       const hideBranchesTag = selectedLocationTokens.length === 1;
-
-      const listingForCard =
-        relevantBranches.length > 0
-          ? {
-              ...listing,
-              branches: relevantBranches,
-              branch_listings: [],
-              currentBranch: primaryBranch,
-              __hideBranchesTag: hideBranchesTag,
-            }
-          : listing;
+      const listingForCard = { ...listing, __hideBranchesTag: hideBranchesTag };
 
       return {
         id: listingId,
         href,
         listingForCard,
-        primaryBranch,
-        primaryDistanceKm,
-        modalBranches,
-        listingForModal:
-          modalBranches.length > 1 ? { ...listing, __branchesOverride: modalBranches } : listing,
-        modalBranchesAll,
-        listingForModalAll:
-          modalBranchesAll.length > 1
-            ? { ...listing, __branchesOverride: modalBranchesAll }
-            : listing,
+        listingForModal: listingForCard,
+        listingForModalAll: listingForCard,
       };
     },
     [
-      branchMatchesSelectedLocations,
-      getBranchCoords,
-      getBranchesForListing,
-      guestLocation,
-      haversineKm,
       selectedLocationTokens.length,
     ]
   );
 
-  const handleListingPrimaryClick = (listingItem) => {
-    try {
-      const modalBranches = Array.isArray(listingItem?.modalBranches) ? listingItem.modalBranches : [];
-      if (modalBranches.length > 0) {
-        setSelectedListing(listingItem.listingForModal);
-        setShowBranchesModal(true);
-        return true;
-      }
-    } catch (e) {
-      console.error('Failed handling primary click for listing', e);
-    }
-    return false;
-  };
+  const openBranchesModalForListing = useCallback(
+    async (listing) => {
+      const listingId = listing?.documentId || listing?.id;
+      if (!listingId) return false;
+      const listingIdStr = String(listingId);
+      branchesModalActiveListingIdRef.current = listingIdStr;
 
-  const handleListingViewMoreBranchesClick = (listingItem) => {
-    try {
-      const modalBranchesAll = Array.isArray(listingItem?.modalBranchesAll)
-        ? listingItem.modalBranchesAll
-        : [];
-      if (modalBranchesAll.length > 1) {
-        setSelectedListing(listingItem.listingForModalAll);
+      const cached = branchesModalCacheRef.current.get(listingIdStr);
+      if (cached && Array.isArray(cached.branches) && cached.branches.length > 1) {
+        setSelectedListing({
+          ...listing,
+          __branchesOverride: cached.branches,
+          branch_listings: Array.isArray(cached.branch_listings) ? cached.branch_listings : [],
+        });
         setShowBranchesModal(true);
         return true;
       }
-    } catch (e) {
-      console.error("Failed handling view more branches for listing", e);
-    }
-    return false;
-  };
+
+      setBranchesModalLoading(true);
+      try {
+        const PAGE_SIZE = 15;
+        const fetchPage = async (page) => {
+          const res = await apolloClient.query({
+            query: GET_LISTING_BRANCHES_FOR_MODAL,
+            variables: { documentID: listingIdStr, page, pageSize: PAGE_SIZE },
+            fetchPolicy: "network-only",
+          });
+          const extraListing = res?.data?.listing;
+          const branches = Array.isArray(extraListing?.branches) ? extraListing.branches : [];
+          const branchListings = Array.isArray(extraListing?.branch_listings)
+            ? extraListing.branch_listings
+            : [];
+          return { branches, branchListings };
+        };
+
+        const first = await fetchPage(1);
+        if (first.branches.length <= 1) return false;
+
+        setSelectedListing({
+          ...listing,
+          __branchesOverride: first.branches,
+          branch_listings: first.branchListings,
+        });
+        setShowBranchesModal(true);
+        setBranchesModalLoading(false);
+
+        let page = 2;
+        let allBranches = first.branches;
+        let allBranchListings = first.branchListings;
+
+        while (true) {
+          if (branchesModalActiveListingIdRef.current !== listingIdStr) break;
+          const next = await fetchPage(page);
+          if (next.branches.length === 0 && next.branchListings.length === 0) break;
+
+          const seenBranches = new Set(allBranches.map((b) => String(b?.documentId || b?.id || "")));
+          const mergedBranches = [...allBranches];
+          for (const b of next.branches) {
+            const key = String(b?.documentId || b?.id || "");
+            if (key && !seenBranches.has(key)) {
+              seenBranches.add(key);
+              mergedBranches.push(b);
+            }
+          }
+
+          const seenBL = new Set(allBranchListings.map((bl) => String(bl?.documentId || bl?.id || "")));
+          const mergedBL = [...allBranchListings];
+          for (const bl of next.branchListings) {
+            const key = String(bl?.documentId || bl?.id || "");
+            if (key && !seenBL.has(key)) {
+              seenBL.add(key);
+              mergedBL.push(bl);
+            }
+          }
+
+          allBranches = mergedBranches;
+          allBranchListings = mergedBL;
+
+          setSelectedListing((prev) => {
+            const prevId = prev?.documentId || prev?.id;
+            if (!prevId || String(prevId) !== listingIdStr) return prev;
+            return { ...prev, __branchesOverride: mergedBranches, branch_listings: mergedBL };
+          });
+
+          if (next.branches.length < PAGE_SIZE && next.branchListings.length < PAGE_SIZE) break;
+          page += 1;
+        }
+
+        branchesModalCacheRef.current.set(listingIdStr, {
+          branches: allBranches,
+          branch_listings: allBranchListings,
+        });
+
+        return true;
+      } catch {
+        return false;
+      } finally {
+        setBranchesModalLoading(false);
+      }
+    },
+    [apolloClient]
+  );
+
+  const handleListingPrimaryClick = useCallback(
+    (listingItem) => {
+      const listing = listingItem?.listingForCard || listingItem?.listingForModal || null;
+      if (!listing) return false;
+      openBranchesModalForListing(listing);
+      return true;
+    },
+    [openBranchesModalForListing]
+  );
+
+  const handleListingViewMoreBranchesClick = useCallback(
+    (listingItem) => {
+      const listing = listingItem?.listingForCard || listingItem?.listingForModalAll || null;
+      if (!listing) return false;
+      openBranchesModalForListing(listing);
+      return true;
+    },
+    [openBranchesModalForListing]
+  );
 
   const handleBranchSelect = (branch) => {
     try {
@@ -1116,7 +1104,8 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   } = useQuery(LISTING_SEARCH_INDEX_CONNECTION_QUERY, {
     variables: searchIndexQueryVars,
     skip: !enableQueries,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "network-only",
+    notifyOnNetworkStatusChange: true,
   });
 
   const searchIndexPageInfo = searchIndexConnData?.listingSearchIndices_connection?.pageInfo;
@@ -1151,7 +1140,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     const IDS_BATCH_SIZE = 40;
     const MAX_INDEX_PAGES_PER_RUN = 5;
 
-    const desiredVisible = Math.max(1, currentPage) * listingsPerPage;
+    const desiredVisible = Math.max(1, currentPage + 1) * listingsPerPage;
     const poolCompanies = new Set(
       Object.values(companyOrderPoolMap || {})
         .map((l) => getCompanyKey(l))
@@ -1167,6 +1156,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     if (poolFetchRef.current.inFlight) return;
 
     poolFetchRef.current.inFlight = true;
+    setIsPoolFetching(true);
     let cancelled = false;
 
     const run = async () => {
@@ -1175,6 +1165,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       let pagesFetched = 0;
 
       const appendIds = [];
+      const approxById = {};
       const hasEnoughCompanies = !needCompanies;
       while (!cancelled && pagesFetched < MAX_INDEX_PAGES_PER_RUN) {
         const res = await apolloClient.query({
@@ -1195,6 +1186,22 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         const ids = nodes
           .map((n) => (n?.listing_document_id ? String(n.listing_document_id) : ""))
           .filter(Boolean);
+        for (const n of nodes) {
+          const id = n?.listing_document_id ? String(n.listing_document_id) : "";
+          if (!id) continue;
+          const towns = typeof n?.towns === "string" ? n.towns : "";
+          const townTokens = towns
+            .split("|")
+            .map((t) => t.trim())
+            .filter(Boolean);
+          const cities = typeof n?.cities === "string" ? n.cities : "";
+          const cityTokens = cities
+            .split("|")
+            .map((t) => t.trim())
+            .filter(Boolean);
+          const approx = Math.max(townTokens.length, cityTokens.length);
+          if (approx > 0) approxById[id] = approx;
+        }
 
         if (ids.length === 0) {
           nextPage += 1;
@@ -1226,12 +1233,10 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
           const results = await Promise.all(
             batches.map(async (ids) => {
               const resp = await apolloClient.query({
-                query: LISTINGS_BY_DOCUMENT_IDS_QUERY,
+                query: LISTINGS_CARDS_BY_DOCUMENT_IDS_QUERY,
                 variables: {
                   ids,
                   pageSize: Math.max(1, ids.length),
-                  branchesPageSize: 25,
-                  branchListingsPageSize: 25,
                 },
                 fetchPolicy: "network-only",
               });
@@ -1245,7 +1250,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
           for (const arr of results) {
             for (const l of arr) {
               const id = l?.documentId ? String(l.documentId) : "";
-              if (id) nextMap[id] = l;
+              if (id) nextMap[id] = { ...l, __approxBranchCount: approxById[id] ?? null };
             }
           }
 
@@ -1276,12 +1281,16 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       .catch(() => {
       })
       .finally(() => {
-        if (!cancelled) poolFetchRef.current.inFlight = false;
+        if (!cancelled) {
+          poolFetchRef.current.inFlight = false;
+          setIsPoolFetching(false);
+        }
       });
 
     return () => {
       cancelled = true;
       poolFetchRef.current.inFlight = false;
+      setIsPoolFetching(false);
     };
   }, [
     apolloClient,
@@ -1306,8 +1315,6 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     () => ({
       ids: listingDocumentIds,
       pageSize: Math.max(1, listingDocumentIds.length),
-      branchesPageSize: 25,
-      branchListingsPageSize: 25,
     }),
     [listingDocumentIds]
   );
@@ -1316,10 +1323,11 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     data: listingsByIdsData,
     loading: listingsByIdsLoading,
     error: listingsByIdsError,
-  } = useQuery(LISTINGS_BY_DOCUMENT_IDS_QUERY, {
+  } = useQuery(LISTINGS_CARDS_BY_DOCUMENT_IDS_QUERY, {
     variables: listingsByIdsVars,
     skip: !enableQueries || listingDocumentIds.length === 0,
-    fetchPolicy: "cache-first",
+    fetchPolicy: "network-only",
+    notifyOnNetworkStatusChange: true,
   });
 
   const filteredListings = useMemo(() => {
@@ -1330,34 +1338,58 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       if (ordered.length > 0) {
         const dayKey = new Date().toISOString().slice(0, 10);
         const seedKey = `for-sale|company-rotation|${dayKey}`;
-        const rotated = interleaveCompanyListingsNoAdjacent(ordered, seedKey);
+        const rotated = enforceNoAdjacentCompanies(
+          interleaveCompanyListingsNoAdjacent(ordered, seedKey)
+        );
         const start = Math.max(0, (currentPage - 1) * listingsPerPage);
         return rotated.slice(start, start + listingsPerPage);
       }
     }
-    if (enableQueries && listingDocumentIds.length > 0) {
+    if (enableQueries && listingDocumentIds.length > 0 && !searchIndexLoading && !listingsByIdsLoading) {
+      const approxById = new Map();
+      if (Array.isArray(searchIndexNodes)) {
+        for (const n of searchIndexNodes) {
+          const id = n?.listing_document_id ? String(n.listing_document_id) : "";
+          if (!id) continue;
+          const towns = typeof n?.towns === "string" ? n.towns : "";
+          const townTokens = towns
+            .split("|")
+            .map((t) => t.trim())
+            .filter(Boolean);
+          const cities = typeof n?.cities === "string" ? n.cities : "";
+          const cityTokens = cities
+            .split("|")
+            .map((t) => t.trim())
+            .filter(Boolean);
+          const approx = Math.max(townTokens.length, cityTokens.length);
+          if (approx > 0) approxById.set(id, approx);
+        }
+      }
+
       const items = listingsByIdsData?.listings;
       const map = new Map();
       if (Array.isArray(items)) {
         for (const l of items) {
           const id = l?.documentId ? String(l.documentId) : "";
-          if (id) map.set(id, l);
+          if (id) map.set(id, { ...l, __approxBranchCount: approxById.get(id) ?? null });
         }
       }
       const ordered = listingDocumentIds.map((id) => map.get(id)).filter(Boolean);
       if (ordered.length > 0) return ordered;
     }
-    return Array.isArray(initialListings) ? initialListings : [];
+    return [];
   }, [
     companyOrderFiltersKey,
     companyOrderPoolIds,
     companyOrderPoolMap,
     currentPage,
     enableQueries,
-    initialListings,
     listingDocumentIds,
     listingsByIdsData,
+    listingsByIdsLoading,
     listingsPerPage,
+    searchIndexLoading,
+    searchIndexNodes,
     sortOrder,
   ]);
 
@@ -1368,6 +1400,26 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
   const listingsLoading = searchIndexLoading || listingsByIdsLoading;
   const listingsError = searchIndexError || listingsByIdsError;
+  const listingsUiLoading = useMemo(() => {
+    if (!enableQueries) return true;
+    if (sortOrder === "Default") {
+      if (filteredListings.length > 0) return false;
+      if (isPoolFetching) return true;
+      const loadedCount = companyOrderPoolIds
+        .map((id) => companyOrderPoolMap?.[id])
+        .filter(Boolean).length;
+      return loadedCount === 0;
+    }
+    return listingsLoading;
+  }, [
+    companyOrderPoolIds,
+    companyOrderPoolMap,
+    enableQueries,
+    filteredListings.length,
+    isPoolFetching,
+    listingsLoading,
+    sortOrder,
+  ]);
 
   const { data: featuredListingsData } = useQuery(LISTINGS_FEATURED_CARDS_QUERY, {
     variables: { page: 1, pageSize: 3 },
@@ -1378,7 +1430,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   const featuredListings = useMemo(() => {
     const items = featuredListingsData?.listings;
     if (Array.isArray(items)) return items;
-    return Array.isArray(initialListings) ? initialListings.filter((l) => l?.isFeatured).slice(0, 3) : [];
+    return [];
   }, [featuredListingsData, initialListings]);
 
   const listingsForLocationCounts = useMemo(() => [], []);
@@ -1472,94 +1524,10 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     return { province: null, city: null, town: null };
   };
 
-  const effectiveAggFilters = useMemo(() => {
-    const loc = parseLocationSelection(activeFilters?.location);
-    const minPrice =
-      activeFilters?.minPrice && activeFilters.minPrice !== "Min Price"
-        ? parsePrice(activeFilters.minPrice)
-        : null;
-    const maxPrice =
-      activeFilters?.maxPrice && activeFilters.maxPrice !== "Max Price"
-        ? parsePrice(activeFilters.maxPrice)
-        : null;
-
-    return {
-      province: loc.province,
-      city: loc.city,
-      town: loc.town,
-      minPrice: Number.isFinite(minPrice) && minPrice > 0 ? minPrice : null,
-      maxPrice: Number.isFinite(maxPrice) && maxPrice > 0 ? maxPrice : null,
-      color: pickScalar(activeFilters?.colour || activeFilters?.color),
-      style: pickScalar(activeFilters?.style),
-      stoneType: canonicalizeFromOptions(pickScalar(activeFilters?.stoneType), stoneTypeOptions),
-      customization: pickScalar(activeFilters?.custom),
-      slabStyle: canonicalizeFromOptions(pickScalar(activeFilters?.slabStyle), slabStyleOptions),
-    };
-  }, [activeFilters]);
-
-  const {
-    data: homepageAggData,
-    error: homepageAggError,
-  } = useHomepageAggregations({ filters: effectiveAggFilters });
-
-  const homepageAggByCategory = useMemo(() => {
-    const cats = homepageAggData?.homepageAggregations?.categories;
-    if (!Array.isArray(cats)) return {};
-    return cats.reduce((acc, c) => {
-      const name = typeof c?.name === "string" ? c.name.toUpperCase() : "";
-      if (name) acc[name] = c;
-      return acc;
-    }, {});
-  }, [homepageAggData]);
-
   const activeCategoryName = useMemo(() => {
     const name = sortedCategories?.[activeTab]?.name;
     return typeof name === "string" ? name.toUpperCase() : "";
   }, [sortedCategories, activeTab]);
-
-  const activeCategoryAgg = useMemo(() => {
-    if (activeCategoryName && homepageAggByCategory[activeCategoryName]) return homepageAggByCategory[activeCategoryName];
-    if (homepageAggByCategory["SINGLE"]) return homepageAggByCategory["SINGLE"];
-    return null;
-  }, [activeCategoryName, homepageAggByCategory]);
-
-  const activeCategoryAggCount = useMemo(() => {
-    const v = activeCategoryAgg?.count;
-    return typeof v === "number" ? v : null;
-  }, [activeCategoryAgg]);
-
-  const homepageAggLocationHierarchy = useMemo(() => {
-    const locations = activeCategoryAgg?.locations;
-    if (!Array.isArray(locations)) return [];
-    return locations
-      .map((prov) => {
-        const provinceName = typeof prov?.province === "string" ? prov.province : "";
-        const provinceCount = typeof prov?.count === "number" ? prov.count : 0;
-        const cities = Array.isArray(prov?.cities) ? prov.cities : [];
-        return {
-          name: provinceName,
-          count: provinceCount,
-          cities: cities
-            .map((city) => {
-              const cityName = typeof city?.city === "string" ? city.city : "";
-              const cityCount = typeof city?.count === "number" ? city.count : 0;
-              const towns = Array.isArray(city?.towns) ? city.towns : [];
-              return {
-                name: cityName,
-                count: cityCount,
-                towns: towns
-                  .map((town) => ({
-                    name: typeof town?.town === "string" ? town.town : "",
-                    count: typeof town?.count === "number" ? town.count : 0,
-                  }))
-                  .filter((t) => t.name),
-              };
-            })
-            .filter((c) => c.name),
-        };
-      })
-      .filter((p) => p.name);
-  }, [activeCategoryAgg]);
 
   const computedLocationHierarchy = useLocationHierarchy(listingsForLocationCounts, categories, activeTab);
 
@@ -1628,20 +1596,10 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
   const locationHierarchy = useMemo(() => {
     if (Array.isArray(locationOptionsHierarchy) && locationOptionsHierarchy.length > 0) {
-      if (!homepageAggError && homepageAggLocationHierarchy.length > 0) {
-        return mergeLocationCounts(locationOptionsHierarchy, homepageAggLocationHierarchy);
-      }
       return locationOptionsHierarchy;
     }
-    if (!homepageAggError && homepageAggLocationHierarchy.length > 0) return homepageAggLocationHierarchy;
     return computedLocationHierarchy;
-  }, [
-    computedLocationHierarchy,
-    homepageAggError,
-    homepageAggLocationHierarchy,
-    locationOptionsHierarchy,
-    mergeLocationCounts,
-  ]);
+  }, [computedLocationHierarchy, locationOptionsHierarchy]);
 
   const categoryCountBaseFilters = useMemo(() => {
     if (!searchIndexFilters || !Array.isArray(searchIndexFilters.and)) return searchIndexFilters
@@ -1720,17 +1678,6 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     }
   }, [apolloClient, categoryCountBaseKey, enableQueries, sortedCategories])
 
-  const homepageAggCategoryCounts = useMemo(() => {
-    const cats = homepageAggData?.homepageAggregations?.categories;
-    if (!Array.isArray(cats)) return null;
-    return cats.reduce((acc, c) => {
-      if (typeof c?.name !== "string") return acc;
-      const count = typeof c?.count === "number" ? c.count : 0;
-      acc[c.name] = count;
-      return acc;
-    }, {});
-  }, [homepageAggData]);
-
   const hasSearchTerm = useMemo(() => {
     const s = activeFilters?.search;
     return typeof s === "string" && s.trim() !== "";
@@ -1738,8 +1685,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
   const categoryCounts = useMemo(() => {
     const base = categoryBadgeCounts || {};
-    const agg = !homepageAggError && homepageAggCategoryCounts ? homepageAggCategoryCounts : null;
-    const merged = agg ? { ...agg, ...base } : base;
+    const merged = base;
 
     const activeCategoryLabel =
       typeof activeCategory?.name === "string" && activeCategory.name.trim()
@@ -1754,8 +1700,6 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   }, [
     activeCategory?.name,
     categoryBadgeCounts,
-    homepageAggCategoryCounts,
-    homepageAggError,
     totalListingsCount,
   ]);
 
@@ -2061,7 +2005,6 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     }
   }
 
-  if (enableQueries && listingsLoading && filteredListings.length === 0) return <PageLoader text="Loading listings..." />;
   if (listingsError && filteredListings.length === 0) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center">
@@ -2133,12 +2076,21 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         </div>
       )}
 
+      {branchesModalLoading ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded shadow p-6">
+            <PageLoader text="Loading branches..." />
+          </div>
+        </div>
+      ) : null}
+
       {showBranchesModal && selectedListing && (
         <PremiumListingCardModal
           listing={selectedListing}
           onClose={() => {
             setShowBranchesModal(false);
             setSelectedListing(null);
+            branchesModalActiveListingIdRef.current = null;
           }}
           onBranchSelect={handleBranchSelect}
         />
@@ -2321,19 +2273,25 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                     <p className="text-center text-xs text-gray-500 -mt-2 mb-2">*Sponsored</p>
 
                     <div className="space-y-6">
-                      {listingItems.length === 0 ? (
+                      {listingsUiLoading && listingItems.length === 0 ? (
+                        <div className="py-10">
+                          <PageLoader text="Loading listings..." />
+                        </div>
+                      ) : listingItems.length === 0 ? (
                         <div className="text-center text-gray-500 py-8">No tombstones found for your selected filters.</div>
                       ) : (
-                        listingItems.map((item) => (
-                          <PremiumListingCard
-                            compact={true}
-                            key={item.id}
-                            listing={item.listingForCard}
-                            href={item.href}
-                            onPrimaryClick={() => handleListingPrimaryClick(item)}
-                            onViewMoreBranchesClick={() => handleListingViewMoreBranchesClick(item)}
-                          />
-                        ))
+                        <>
+                          {listingItems.map((item) => (
+                            <PremiumListingCard
+                              compact={true}
+                              key={item.id}
+                              listing={item.listingForCard}
+                              href={item.href}
+                              onPrimaryClick={() => handleListingPrimaryClick(item)}
+                              onViewMoreBranchesClick={() => handleListingViewMoreBranchesClick(item)}
+                            />
+                          ))}
+                        </>
                       )}
                     </div>
                   </div>

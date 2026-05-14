@@ -9,11 +9,11 @@ import LocationModal from "@/components/LocationModal";
 import CategoryTabs from "@/components/CategoryTabs.jsx";
 import MobileFilterTags from "@/components/MobileFilterTags.jsx";
 import { SearchLoader } from "@/components/ui/loader";
-import { useHomepageAggregations } from "@/hooks/useHomepageAggregations";
 import { AnimatePresence, motion } from "framer-motion";
 import { toTitleCase } from "@/lib/locationHelpers";
 import { useQuery } from "@apollo/client";
-import { LISTING_SEARCH_INDEX_CONNECTION_QUERY, LISTING_SEARCH_LOCATION_OPTIONS_QUERY } from "@/graphql/queries";
+import apolloClient from "@/lib/apolloClient";
+import { LISTING_SEARCH_INDEX_CONNECTION_QUERY } from "@/graphql/queries";
 import {
   STYLE_OPTIONS as MANUFACTURER_HEAD_STYLE_OPTIONS,
   SLAB_STYLE_OPTIONS as MANUFACTURER_SLAB_STYLE_OPTIONS,
@@ -273,56 +273,13 @@ const SearchContainer = ({
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const hasMountedRef = useRef(false);
   const prevActiveTabRef = useRef(activeTab);
-  const [stickyLocationHierarchy, setStickyLocationHierarchy] = useState([]);
 
   // Check if screen is desktop/laptop
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
-  const { data: listingSearchLocationOptionsData } = useQuery(LISTING_SEARCH_LOCATION_OPTIONS_QUERY, {
-    fetchPolicy: "cache-first",
-  });
-
-  const locationOptionsHierarchy = useMemo(() => {
-    const raw = listingSearchLocationOptionsData?.listingSearchLocationOptions;
-    if (!Array.isArray(raw)) return [];
-    return raw
-      .map((prov) => {
-        const provinceName = typeof prov?.province === "string" ? prov.province : "";
-        const cities = Array.isArray(prov?.cities) ? prov.cities : [];
-        return {
-          name: provinceName,
-          count: 0,
-          cities: cities
-            .map((city) => {
-              const cityName = typeof city?.city === "string" ? city.city : "";
-              const towns = Array.isArray(city?.towns) ? city.towns : [];
-              return {
-                name: cityName,
-                count: 0,
-                towns: towns
-                  .map((town) => ({
-                    name: typeof town?.town === "string" ? town.town : "",
-                    count: 0,
-                  }))
-                  .filter((t) => t.name),
-              };
-            })
-            .filter((c) => c.name),
-        };
-      })
-      .filter((p) => p.name);
-  }, [listingSearchLocationOptionsData]);
-
   const provinceOptionSet = useMemo(() => {
-    const hierarchy = Array.isArray(locationOptionsHierarchy) && locationOptionsHierarchy.length > 0
-      ? locationOptionsHierarchy
-      : null;
-    const raw = hierarchy
-      ? hierarchy.map((p) => p?.name).filter(Boolean)
-      : Array.isArray(filterOptions?.location)
-        ? filterOptions.location
-        : [];
+    const raw = Array.isArray(filterOptions?.location) ? filterOptions.location : [];
     const set = new Set();
     raw.forEach((v) => {
       if (typeof v !== "string") return;
@@ -333,7 +290,7 @@ const SearchContainer = ({
       set.add(lowered);
     });
     return set;
-  }, [filterOptions?.location, locationOptionsHierarchy]);
+  }, [filterOptions?.location]);
 
   const normalizeScalar = useCallback((v) => {
     if (typeof v !== "string") return null;
@@ -448,47 +405,6 @@ const SearchContainer = ({
     },
     [normalizeScalar, provinceOptionSet]
   );
-
-  const effectiveAggFilters = useMemo(() => {
-    const loc = parseLocationSelection(filters?.location);
-    const minPrice =
-      filters?.minPrice && filters.minPrice !== "Min Price" ? parsePrice(filters.minPrice) : null;
-    const maxPrice =
-      filters?.maxPrice && filters.maxPrice !== "Max Price" ? parsePrice(filters.maxPrice) : null;
-
-    const rawColor = pickMulti(filters?.colour || filters?.color);
-    const rawStyle = pickMulti(filters?.style);
-    const rawStoneType = pickMulti(filters?.stoneType);
-    const rawCustomization = pickMulti(filters?.custom);
-    const rawSlabStyle = pickMulti(filters?.slabStyle);
-
-    return {
-      province: loc.province,
-      city: loc.city,
-      town: loc.town,
-      minPrice: Number.isFinite(minPrice) && minPrice > 0 ? minPrice : null,
-      maxPrice: Number.isFinite(maxPrice) && maxPrice > 0 ? maxPrice : null,
-      color: canonicalizeFromOptions(rawColor, filterOptions?.colour),
-      style: canonicalizeFromOptions(rawStyle, filterOptions?.style),
-      stoneType: canonicalizeFromOptions(rawStoneType, filterOptions?.stoneType),
-      customization: canonicalizeFromOptions(rawCustomization, filterOptions?.custom),
-      slabStyle: canonicalizeFromOptions(rawSlabStyle, filterOptions?.slabStyle),
-    };
-  }, [filters, parseLocationSelection, pickMulti, canonicalizeFromOptions, filterOptions]);
-
-  const { data: homepageAggData, loading: aggLoading } = useHomepageAggregations({
-    filters: effectiveAggFilters,
-  });
-
-  const homepageAggByCategory = useMemo(() => {
-    const categories = homepageAggData?.homepageAggregations?.categories;
-    if (!Array.isArray(categories)) return {};
-    return categories.reduce((acc, c) => {
-      const name = typeof c?.name === "string" ? c.name.toUpperCase() : "";
-      if (name) acc[name] = c;
-      return acc;
-    }, {});
-  }, [homepageAggData]);
 
   // Internal state for search functionality if not providedd
   const [internalIsSearching, setInternalIsSearching] = useState(false);
@@ -1056,170 +972,6 @@ const SearchContainer = ({
     return sortedCategories[activeTab]?.name;
   }, [categories, activeTab]);
 
-  const currentCategoryAgg = useMemo(() => {
-    const name = typeof currentCategoryName === "string" ? currentCategoryName.toUpperCase() : "";
-    if (name) return homepageAggByCategory[name] || null;
-    return homepageAggByCategory["SINGLE"] || null;
-  }, [currentCategoryName, homepageAggByCategory]);
-
-  const currentCategoryAggCount = useMemo(() => {
-    const v = currentCategoryAgg?.count;
-    return typeof v === "number" ? v : null;
-  }, [currentCategoryAgg]);
-
-  const homepageAggLocationHierarchy = useMemo(() => {
-    const locations = currentCategoryAgg?.locations;
-    if (!Array.isArray(locations)) return [];
-
-    return locations
-      .map((prov) => {
-        const provinceName = typeof prov?.province === "string" ? prov.province : "";
-        const provinceCount = typeof prov?.count === "number" ? prov.count : 0;
-        const cities = Array.isArray(prov?.cities) ? prov.cities : [];
-
-        return {
-          name: provinceName,
-          count: provinceCount,
-          cities: cities
-            .map((city) => {
-              const cityName = typeof city?.city === "string" ? city.city : "";
-              const cityCount = typeof city?.count === "number" ? city.count : 0;
-              const towns = Array.isArray(city?.towns) ? city.towns : [];
-
-              return {
-                name: cityName,
-                count: cityCount,
-                towns: towns
-                  .map((town) => ({
-                    name: typeof town?.town === "string" ? town.town : "",
-                    count: typeof town?.count === "number" ? town.count : 0,
-                  }))
-                  .filter((t) => t.name),
-              };
-            })
-            .filter((c) => c.name),
-        };
-      })
-      .filter((p) => p.name);
-  }, [currentCategoryAgg]);
-
-  const selectedLocationValues = useMemo(() => {
-    const value = filters?.location;
-    if (!value) return [];
-    if (Array.isArray(value)) {
-      return value
-        .map((v) => (typeof v === "string" ? v.trim() : ""))
-        .filter((v) => v && v.toLowerCase() !== "any" && v.toLowerCase() !== "all");
-    }
-    if (typeof value === "string") {
-      const trimmed = value.trim();
-      if (!trimmed) return [];
-      const lowered = trimmed.toLowerCase();
-      if (lowered === "any" || lowered === "all") return [];
-      return [trimmed];
-    }
-    return [];
-  }, [filters?.location]);
-
-  const aggHasCategories = Array.isArray(homepageAggData?.homepageAggregations?.categories);
-  const aggResolved = !aggLoading && aggHasCategories;
-  const hasAggCount = typeof currentCategoryAggCount === "number";
-  const hasLocationSelection = selectedLocationValues.length > 0;
-
-  useEffect(() => {
-    if (hasLocationSelection) return;
-    if (
-      Array.isArray(homepageAggLocationHierarchy) &&
-      homepageAggLocationHierarchy.length > 0
-    ) {
-      setStickyLocationHierarchy(homepageAggLocationHierarchy);
-    }
-  }, [hasLocationSelection, homepageAggLocationHierarchy]);
-
-  const normalizeLocKey = useCallback((v) => {
-    if (typeof v !== "string") return "";
-    return v
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "");
-  }, []);
-
-  const mergeLocationCounts = useCallback(
-    (structure, countsSource) => {
-      if (!Array.isArray(structure) || structure.length === 0) return structure;
-      if (!Array.isArray(countsSource) || countsSource.length === 0) return structure;
-
-      const countsByProv = new Map();
-      countsSource.forEach((p) => {
-        const key = normalizeLocKey(p?.name);
-        if (key) countsByProv.set(key, p);
-      });
-
-      return structure.map((prov) => {
-        const provKey = normalizeLocKey(prov?.name);
-        const provCounts = provKey ? countsByProv.get(provKey) : null;
-        const provCount = typeof provCounts?.count === "number" ? provCounts.count : prov?.count || 0;
-
-        const provCities = Array.isArray(prov?.cities) ? prov.cities : [];
-        const countCities = Array.isArray(provCounts?.cities) ? provCounts.cities : [];
-        const countsByCity = new Map();
-        countCities.forEach((c) => {
-          const key = normalizeLocKey(c?.name);
-          if (key) countsByCity.set(key, c);
-        });
-
-        const mergedCities = provCities.map((city) => {
-          const cityKey = normalizeLocKey(city?.name);
-          const cityCounts = cityKey ? countsByCity.get(cityKey) : null;
-          const cityCount = typeof cityCounts?.count === "number" ? cityCounts.count : city?.count || 0;
-
-          const cityTowns = Array.isArray(city?.towns) ? city.towns : [];
-          const countTowns = Array.isArray(cityCounts?.towns) ? cityCounts.towns : [];
-          const countsByTown = new Map();
-          countTowns.forEach((t) => {
-            const key = normalizeLocKey(t?.name);
-            if (key) countsByTown.set(key, t);
-          });
-
-          const mergedTowns = cityTowns.map((town) => {
-            const townKey = normalizeLocKey(town?.name);
-            const townCounts = townKey ? countsByTown.get(townKey) : null;
-            const townCount = typeof townCounts?.count === "number" ? townCounts.count : town?.count || 0;
-            return { ...town, count: townCount };
-          });
-
-          return { ...city, count: cityCount, towns: mergedTowns };
-        });
-
-        return { ...prov, count: provCount, cities: mergedCities };
-      });
-    },
-    [normalizeLocKey]
-  );
-
-  const locationHierarchy = useMemo(() => {
-    if (Array.isArray(locationOptionsHierarchy) && locationOptionsHierarchy.length > 0) {
-      if (Array.isArray(homepageAggLocationHierarchy) && homepageAggLocationHierarchy.length > 0) {
-        return mergeLocationCounts(locationOptionsHierarchy, homepageAggLocationHierarchy);
-      }
-      return locationOptionsHierarchy;
-    }
-    return hasLocationSelection &&
-      Array.isArray(stickyLocationHierarchy) &&
-      stickyLocationHierarchy.length > 0
-      ? stickyLocationHierarchy
-      : homepageAggLocationHierarchy;
-  }, [
-    hasLocationSelection,
-    homepageAggLocationHierarchy,
-    locationOptionsHierarchy,
-    mergeLocationCounts,
-    stickyLocationHierarchy,
-  ]);
-  const filtersLoading = aggLoading || !aggResolved;
-
   const categoryForIndexCount = useMemo(() => {
     if (typeof selectedCategory === "string" && selectedCategory.trim()) return selectedCategory;
     if (typeof currentCategoryName === "string" && currentCategoryName.trim()) return currentCategoryName;
@@ -1396,20 +1148,177 @@ const SearchContainer = ({
     return { and: debouncedSearchIndexCountFilters.and.filter((c) => !isLocObj(c)) };
   }, [debouncedSearchIndexCountFilters]);
 
-  const { data: searchIndexCountData } = useQuery(LISTING_SEARCH_INDEX_CONNECTION_QUERY, {
-    variables: { filters: debouncedSearchIndexCountFilters, page: 1, pageSize: 1 },
-    fetchPolicy: "cache-first",
-  });
+  const [searchIndexTotal, setSearchIndexTotal] = useState(null);
+  const [searchIndexTotalLoading, setSearchIndexTotalLoading] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      setSearchIndexTotalLoading(true);
+      try {
+        const res = await apolloClient.query({
+          query: LISTING_SEARCH_INDEX_CONNECTION_QUERY,
+          variables: { filters: debouncedSearchIndexCountFilters, page: 1, pageSize: 1 },
+          fetchPolicy: "network-only",
+        });
+        const total = res?.data?.listingSearchIndices_connection?.pageInfo?.total;
+        if (!cancelled) setSearchIndexTotal(typeof total === "number" ? total : null);
+      } catch {
+        if (!cancelled) setSearchIndexTotal(null);
+      } finally {
+        if (!cancelled) setSearchIndexTotalLoading(false);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedSearchIndexCountFilters]);
 
-  const searchIndexTotal = searchIndexCountData?.listingSearchIndices_connection?.pageInfo?.total;
-  const searchButtonCount =
-    typeof searchIndexTotal === "number"
-      ? searchIndexTotal
-      : aggResolved
-      ? hasAggCount
-        ? currentCategoryAggCount
-        : 0
-      : 0;
+  const shouldFetchLocationOptions =
+    uiState.openDropdown === "location" || showLocationModal;
+  const locationOptionsPageSize = shouldFetchLocationOptions ? 5000 : 1;
+  const { data: searchIndexOptionsData, loading: searchIndexOptionsLoading } = useQuery(
+    LISTING_SEARCH_INDEX_CONNECTION_QUERY,
+    {
+      variables: { filters: locationCountBaseFilters, page: 1, pageSize: locationOptionsPageSize },
+      fetchPolicy: "no-cache",
+      nextFetchPolicy: "no-cache",
+      errorPolicy: "all",
+    }
+  );
+
+  const locationHierarchy = useMemo(() => {
+    const fallbackProvinces = Array.isArray(filterOptions?.location)
+      ? filterOptions.location
+          .filter((v) => typeof v === "string")
+          .map((v) => v.trim())
+          .filter((v) => v && v.toLowerCase() !== "any" && v.toLowerCase() !== "all" && v.toLowerCase() !== "near me")
+      : [];
+
+    const nodes = searchIndexOptionsData?.listingSearchIndices_connection?.nodes;
+    if (!shouldFetchLocationOptions || !Array.isArray(nodes) || nodes.length === 0) {
+      return fallbackProvinces.map((p) => ({ name: p, count: 0, cities: [] }));
+    }
+
+    const unpackPacked = (packed) => {
+      if (typeof packed !== "string") return [];
+      return packed
+        .split("|")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    };
+    const tokenLabel = (token) => {
+      const raw = String(token ?? "").trim();
+      if (!raw) return "";
+      const withSpaces = raw.replace(/-/g, " ").replace(/\s+/g, " ").trim();
+      return toTitleCase(withSpaces);
+    };
+
+    const provinceCityCounts = new Map();
+    const cityTownCounts = new Map();
+    const provinceSet = new Set();
+    const citySet = new Set();
+    const townSet = new Set();
+
+    for (const n of nodes) {
+      const provinces = unpackPacked(n?.provinces);
+      const cities = unpackPacked(n?.cities);
+      const towns = unpackPacked(n?.towns);
+
+      provinces.forEach((p) => provinceSet.add(p));
+      cities.forEach((c) => citySet.add(c));
+      towns.forEach((t) => townSet.add(t));
+
+      for (const p of provinces) {
+        if (!provinceCityCounts.has(p)) provinceCityCounts.set(p, new Map());
+        const map = provinceCityCounts.get(p);
+        for (const c of cities) {
+          map.set(c, (map.get(c) || 0) + 1);
+        }
+      }
+
+      for (const c of cities) {
+        if (!cityTownCounts.has(c)) cityTownCounts.set(c, new Map());
+        const map = cityTownCounts.get(c);
+        for (const t of towns) {
+          map.set(t, (map.get(t) || 0) + 1);
+        }
+      }
+    }
+
+    const allProvinces = Array.from(provinceSet).sort((a, b) => a.localeCompare(b));
+    const allCities = Array.from(citySet).sort((a, b) => a.localeCompare(b));
+    const allTowns = Array.from(townSet).sort((a, b) => a.localeCompare(b));
+
+    const cityToProvince = new Map();
+    for (const c of allCities) {
+      let bestProv = null;
+      let bestCount = -1;
+      for (const p of allProvinces) {
+        const cnt = provinceCityCounts.get(p)?.get(c) || 0;
+        if (cnt > bestCount || (cnt === bestCount && bestProv && p.localeCompare(bestProv) < 0)) {
+          bestCount = cnt;
+          bestProv = p;
+        }
+      }
+      if (bestProv && bestCount > 0) cityToProvince.set(c, bestProv);
+    }
+
+    const townToCity = new Map();
+    for (const t of allTowns) {
+      if (citySet.has(t)) {
+        townToCity.set(t, t);
+        continue;
+      }
+
+      let bestCity = null;
+      let bestCount = -1;
+      for (const c of allCities) {
+        const cnt = cityTownCounts.get(c)?.get(t) || 0;
+        if (cnt > bestCount || (cnt === bestCount && bestCity && c.localeCompare(bestCity) < 0)) {
+          bestCount = cnt;
+          bestCity = c;
+        }
+      }
+      if (bestCity && bestCount > 0) townToCity.set(t, bestCity);
+    }
+
+    const citiesByProvince = new Map();
+    for (const c of allCities) {
+      const p = cityToProvince.get(c) || null;
+      if (!p) continue;
+      if (!citiesByProvince.has(p)) citiesByProvince.set(p, []);
+      citiesByProvince.get(p).push(c);
+    }
+    for (const [p, list] of citiesByProvince.entries()) list.sort((a, b) => a.localeCompare(b));
+
+    const townsByCity = new Map();
+    for (const t of allTowns) {
+      const c = townToCity.get(t) || null;
+      if (!c) continue;
+      if (!townsByCity.has(c)) townsByCity.set(c, []);
+      townsByCity.get(c).push(t);
+    }
+    for (const [c, list] of townsByCity.entries()) list.sort((a, b) => a.localeCompare(b));
+
+    const hierarchy = allProvinces
+      .map((p) => {
+        const cities = (citiesByProvince.get(p) || []).map((c) => {
+          const towns = (townsByCity.get(c) || [])
+            .map((t) => ({ name: tokenLabel(t), count: 0 }))
+            .filter((x) => x.name);
+          return { name: tokenLabel(c), count: 0, towns };
+        });
+        return { name: tokenLabel(p), count: 0, cities };
+      })
+      .filter((p) => p.name);
+
+    if (hierarchy.length > 0) return hierarchy;
+    return fallbackProvinces.map((p) => ({ name: p, count: 0, cities: [] }));
+  }, [filterOptions?.location, searchIndexOptionsData, shouldFetchLocationOptions]);
+
+  const searchButtonCount = typeof searchIndexTotal === "number" ? searchIndexTotal : 0;
+  const filtersLoading = searchIndexTotalLoading || searchIndexOptionsLoading;
 
   const visibleLocationHierarchy = useMemo(
     () => filterLocationHierarchy(locationHierarchy),
@@ -1564,7 +1473,7 @@ const SearchContainer = ({
         return loadingIndicator;
       }
       const initialCount =
-        typeof currentCategoryAggCount === "number" ? currentCategoryAggCount : "100+";
+        typeof searchIndexTotal === "number" ? searchIndexTotal : "100+";
       return `View ${initialCount} ${categoryName || "SINGLE"} tombstones`;
     }
 
