@@ -45,3 +45,40 @@ export const GET_LISTING_EXTRAS_BY_ID = gql`
   }
 `;
 
+export const GET_LISTING_BRANCHES_FOR_MODAL = gql`
+  query ListingBranchesForModal($documentID: ID!, $page: Int = 1, $pageSize: Int = 15) {
+    listing(documentId: $documentID) {
+      documentId
+      branches(pagination: { page: $page, pageSize: $pageSize }) {
+        documentId
+        name
+        location {
+          address
+          latitude
+          longitude
+          mapUrl
+          province
+          city
+          town
+        }
+      }
+      branch_listings(pagination: { page: $page, pageSize: $pageSize }) {
+        documentId
+        price
+        branch {
+          documentId
+          name
+          location {
+            address
+            latitude
+            longitude
+            mapUrl
+            province
+            city
+            town
+          }
+        }
+      }
+    }
+  }
+`;

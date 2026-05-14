@@ -206,6 +206,13 @@ export function PremiumListingCard({
   const branches = Array.from(uniqueBranches.values());
   const hasBranches = branches.length > 0;
   const hideBranchesTag = Boolean((listing as any)?.__hideBranchesTag);
+  const approxBranchCountRaw = Number((listing as any)?.__approxBranchCount);
+  const approxBranchCount =
+    Number.isFinite(approxBranchCountRaw) && approxBranchCountRaw > 0 ? approxBranchCountRaw : null;
+  const hasMultipleBranches =
+    branches.length > 1 || (typeof approxBranchCount === "number" && approxBranchCount > 1);
+  const branchesCountForLabel =
+    branches.length > 1 ? branches.length : typeof approxBranchCount === "number" ? approxBranchCount : branches.length;
   const branchForDisplay =
     (listing as any)?.currentBranch ||
     (branches.length === 1 ? branches[0] : null);
@@ -267,7 +274,7 @@ export function PremiumListingCard({
   
   return (
     <div className="relative mt-7" ref={cardRef} onContextMenu={(e) => e.preventDefault()} onDragStart={(e) => e.preventDefault()}>
-      {hasBranches && branches.length > 1 && isTombstonesForSalePage && !hideBranchesTag && (
+      {isTombstonesForSalePage && hasMultipleBranches && !hideBranchesTag && (
         <button
           type="button"
           onClick={(e) => {
@@ -277,7 +284,7 @@ export function PremiumListingCard({
           className="absolute -top-7 right-0 z-10 bg-gray-800 text-white px-3 py-1 text-sm font-medium rounded-t-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-white/60"
           aria-label={`Show branches for ${listing?.title || 'listing'}`}
         >
-          Available at {branches.length} {branches.length === 1 ? 'Branch' : 'Branches'}
+          Available at {branchesCountForLabel} {branchesCountForLabel === 1 ? 'Branch' : 'Branches'}
         </button>
       )}
       <div
@@ -391,7 +398,7 @@ export function PremiumListingCard({
               >
                 {listing.adFlasher || "Unique Design"}
               </Badge>
-              {hasBranches && branches.length > 1 && isTombstonesForSalePage && (
+              {isTombstonesForSalePage && hasMultipleBranches && (
                 <button
                   type="button"
                   onClick={(e) => {
