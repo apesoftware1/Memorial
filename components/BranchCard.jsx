@@ -25,15 +25,57 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
   const [hasFetchedDistance, setHasFetchedDistance] = useState(false);
   const { location, error, loading, calculateDistanceFrom } = useGuestLocation();
 
-  // Robust branch lat/lng extraction (supports multiple shapes)
-  const branchLocation = {
-    lat: Number(
-        branch?.location?.latitude || listing?.company?.latitude
-    ),
-    lng: Number(
-        branch?.location?.longitude || listing?.company?.longitude
-    ),
+  const parseCoord = (v) => {
+    if (v === null || v === undefined) return null;
+    if (typeof v === "number") return Number.isFinite(v) ? v : null;
+    if (typeof v === "string") {
+      let s = v.trim();
+      if (!s) return null;
+      if (s.includes(",") && !s.includes(".")) {
+        s = s.replace(/,/g, ".");
+      } else {
+        s = s.replace(/,/g, "");
+      }
+      s = s.replace(/[^\d.+-]/g, "");
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    }
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
   };
+
+  const extractLatLng = (obj) => {
+    const lat = parseCoord(
+      obj?.latitude ??
+        obj?.lat ??
+        obj?.location?.latitude ??
+        obj?.location?.lat
+    );
+    const lng = parseCoord(
+      obj?.longitude ??
+        obj?.lng ??
+        obj?.location?.longitude ??
+        obj?.location?.lng
+    );
+    if (lat === null || lng === null) return null;
+    return { lat, lng };
+  };
+
+  const branchLocation = React.useMemo(() => {
+    const direct = extractLatLng(branch);
+    if (direct) return direct;
+
+    const branchId = branch?.documentId || branch?.id || null;
+    if (!branchId || !Array.isArray(listing?.branch_listings)) return null;
+
+    const match = listing.branch_listings.find((bl) => {
+      const blBranchId = bl?.branch?.documentId || bl?.branch?.id || null;
+      return blBranchId && String(blBranchId) === String(branchId);
+    });
+
+    const viaListing = extractLatLng(match?.branch);
+    return viaListing || null;
+  }, [branch, listing?.branch_listings]);
 
   // Defer distance calculation until visible and main thread is idle
   useEffect(() => {
@@ -46,8 +88,8 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
         if (
           entry &&
           entry.isIntersecting &&
-          branchLocation.lat &&
-          branchLocation.lng
+          Number.isFinite(branchLocation?.lat) &&
+          Number.isFinite(branchLocation?.lng)
         ) {
           const schedule = (cb) => {
             if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
@@ -77,13 +119,13 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, [branchLocation.lat, branchLocation.lng, calculateDistanceFrom, hasFetchedDistance]);
+  }, [branchLocation, calculateDistanceFrom, hasFetchedDistance]);
 
   // Re-attempt distance calculation once user location becomes available.
   // This fixes the first card missing distance when geolocation is not ready on initial render.
   useEffect(() => {
     if (hasFetchedDistance) return;
-    if (!branchLocation.lat || !branchLocation.lng) return;
+    if (!Number.isFinite(branchLocation?.lat) || !Number.isFinite(branchLocation?.lng)) return;
     if (!location) return; // wait until location is detected or loaded from storage
 
     (async () => {
@@ -97,7 +139,7 @@ export default function BranchCard({ branch, listing, onSelect, hideAvailableBra
         // Silent failure
       }
     })();
-  }, [location, branchLocation.lat, branchLocation.lng, calculateDistanceFrom, hasFetchedDistance]);
+  }, [location, branchLocation, calculateDistanceFrom, hasFetchedDistance]);
 
   // Create product object for FavoriteButton
   const favoriteProduct = {

@@ -17,6 +17,9 @@ interface TombstonesForSaleFiltersProps {
   setShowFilters: (show: any) => void;
   filterOptions: any;
   filteredListings?: any[];
+  applyMode?: boolean;
+  onApplyFilter?: () => void;
+  onClearAll?: () => void;
   handleSearch?: () => void;
   getActiveCategory?: () => string;
   showCategoryDropdown?: boolean;
@@ -187,7 +190,7 @@ const getIconForOption = (filterName: string, option: string) => {
   }
 };
 
-export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions, filteredListings, handleSearch, getActiveCategory, showCategoryDropdown = true, locationsData, initialCount = null, isBackgroundLoading = false, locationCountBaseFilters }: TombstonesForSaleFiltersProps) {
+export default function TombstonesForSaleFilters({ activeFilters, setActiveFilters, showFilters, setShowFilters, filterOptions, filteredListings, applyMode = false, onApplyFilter, onClearAll, handleSearch, getActiveCategory, showCategoryDropdown = true, locationsData, initialCount = null, isBackgroundLoading = false, locationCountBaseFilters }: TombstonesForSaleFiltersProps) {
   const [showMore, setShowMore] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
@@ -380,19 +383,25 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
         locationCountBaseFilters={locationCountBaseFilters}
       />
 
-      <FilterDropdown name="overallStyle" label="Style" options={mergedOptions.overallStyle || defaultFilterOptions.overallStyle} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
-      <FilterDropdown name="style" label="Head Style" options={mergedOptions.style} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
-      <FilterDropdown name="slabStyle" label="Slab Style" options={mergedOptions.slabStyle} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
-      <FilterDropdown name="stoneType" label="Stone Type" options={mergedOptions.stoneType} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
-      <FilterDropdown name="colour" label="Colour" options={mergedOptions.colour} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
-      <FilterDropdown name="custom" label="Customisation" options={mergedOptions.custom} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} />
+      <FilterDropdown name="overallStyle" label="Style" options={mergedOptions.overallStyle || defaultFilterOptions.overallStyle} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} selectedLocationTotal={null} locationCountBaseFilters={locationCountBaseFilters} />
+      <FilterDropdown name="style" label="Head Style" options={mergedOptions.style} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} selectedLocationTotal={null} locationCountBaseFilters={locationCountBaseFilters} />
+      <FilterDropdown name="slabStyle" label="Slab Style" options={mergedOptions.slabStyle} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} selectedLocationTotal={null} locationCountBaseFilters={locationCountBaseFilters} />
+      <FilterDropdown name="stoneType" label="Stone Type" options={mergedOptions.stoneType} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} selectedLocationTotal={null} locationCountBaseFilters={locationCountBaseFilters} />
+      <FilterDropdown name="colour" label="Colour" options={mergedOptions.colour} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} selectedLocationTotal={null} locationCountBaseFilters={locationCountBaseFilters} />
+      <FilterDropdown name="custom" label="Customisation" options={mergedOptions.custom} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} selectedLocationTotal={null} locationCountBaseFilters={locationCountBaseFilters} />
       
       {/* Search Button */}
-      {handleSearch && filteredListings && getActiveCategory && (
+      {(handleSearch || onApplyFilter) && filteredListings && getActiveCategory && (
         <div className="mt-4 px-2 sm:px-0">
           <button 
             className="w-full bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white p-3 px-4 rounded transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm font-medium min-h-[44px] touch-manipulation"
-            onClick={handleSearch}
+            onClick={() => {
+              if (applyMode && typeof onApplyFilter === "function") {
+                onApplyFilter();
+                return;
+              }
+              if (typeof handleSearch === "function") handleSearch();
+            }}
           >
             {isCalculating ? (
               <div className="flex items-center justify-center gap-2">
@@ -407,9 +416,11 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
               <>
                 <Search className="h-4 w-4 flex-shrink-0" />
                 <span className="truncate">
-                  {`Search (${
-                    typeof initialCount === "number" ? initialCount : filteredListings.length
-                  }) ${getActiveCategory()} Tombstones`}
+                  {applyMode
+                    ? "Apply Filter"
+                    : `Search (${
+                        typeof initialCount === "number" ? initialCount : filteredListings.length
+                      }) ${getActiveCategory()} Tombstones`}
                 </span>
               </>
             )}
@@ -422,6 +433,10 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
               setIsCalculating(true);
               if (calcTimerRef.current) clearTimeout(calcTimerRef.current);
               calcTimerRef.current = setTimeout(() => setIsCalculating(false), 500);
+              if (typeof onClearAll === "function") {
+                onClearAll();
+                return;
+              }
               setActiveFilters({
                 minPrice: "Min Price",
                 maxPrice: "Max Price",
@@ -432,7 +447,7 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
                 slabStyle: null,
                 custom: null,
                 colour: null,
-                category: activeFilters.category || null,
+                category: null,
                 search: null,
               });
             }}

@@ -503,3 +503,24 @@ export const LISTINGS_CARDS_BY_DOCUMENT_IDS_QUERY = gql`
     }
   }
 `;
+
+export const LISTINGS_BRANCH_COUNTS_BY_DOCUMENT_IDS_QUERY = gql`
+  query ListingsBranchCountsByDocumentIds($ids: [ID], $pageSize: Int = 20) {
+    listings(
+      filters: { documentId: { in: $ids } }
+      pagination: { page: 1, pageSize: $pageSize }
+      sort: "documentId:asc"
+    ) {
+      documentId
+      branches(pagination: { limit: -1 }) {
+        documentId
+      }
+      branch_listings(pagination: { limit: -1 }) {
+        documentId
+        branch {
+          documentId
+        }
+      }
+    }
+  }
+`;
