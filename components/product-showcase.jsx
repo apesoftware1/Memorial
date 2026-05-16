@@ -33,7 +33,7 @@ import WhatsAppContactDrawer from "./WhatsAppContactDrawer";
 import { useSearchParams, usePathname } from "next/navigation";
 import { useQuery } from "@apollo/client";
 import { GET_BRANCHES_BY_NAME } from "@/graphql/queries/getBranchesByName";
-import { GET_LISTING_EXTRAS_BY_ID } from "@/graphql/queries/getListingExtrasById";
+import { GET_LISTING_BRANCHES_FOR_MODAL, GET_LISTING_EXTRAS_BY_ID } from "@/graphql/queries/getListingExtrasById";
 import { PageLoader } from "./ui/loader";
 
 export default function ProductShowcase({ listing, id, allListings = [], currentIndex = 0, onNavigate }) {
@@ -97,21 +97,30 @@ export default function ProductShowcase({ listing, id, allListings = [], current
     fetchPolicy: "cache-first",
   });
 
+  const { data: modalBranchesData } = useQuery(GET_LISTING_BRANCHES_FOR_MODAL, {
+    variables: { documentID: listingDocumentId, page: 1, pageSize: 200 },
+    skip: !showBranchesModal || !listingDocumentId,
+    fetchPolicy: "cache-first",
+  });
+
   const extrasListing = extrasData?.listing;
   const branchesFromExtras = Array.isArray(extrasListing?.branches) ? extrasListing.branches : null;
   const companyListingsFromExtras = extrasListing?.company?.listings;
+  const modalListing = modalBranchesData?.listing;
+  const branchesFromModal = Array.isArray(modalListing?.branches) ? modalListing.branches : null;
+  const branchListingsFromModal = Array.isArray(modalListing?.branch_listings) ? modalListing.branch_listings : null;
 
   const branchesForModal = useMemo(() => {
-    const branches = Array.isArray(branchesFromExtras)
+    const branches = Array.isArray(branchesFromModal)
+      ? branchesFromModal
+      : Array.isArray(branchesFromExtras)
       ? branchesFromExtras
       : Array.isArray(listing?.branches)
       ? listing.branches
       : [];
     if (!Array.isArray(branches) || branches.length === 0) return [];
-    if (!selectedBranch?.name) return branches;
-    const others = branches.filter((b) => b?.name && b.name !== selectedBranch.name);
-    return others.length > 0 ? others : branches;
-  }, [branchesFromExtras, listing?.branches, selectedBranch?.name]);
+    return branches;
+  }, [branchesFromModal, branchesFromExtras, listing?.branches]);
 
   const hasMultipleBranches = useMemo(() => {
     const branches = Array.isArray(branchesFromExtras)
@@ -205,7 +214,14 @@ export default function ProductShowcase({ listing, id, allListings = [], current
       const found = branchesFromExtras.find((b) => b?.name === prevName);
       return found || prev;
     });
-  }, [branchesFromExtras, branch]);
+  }, [
+    branchesFromExtras,
+    branch,
+    selectedBranch?.name,
+    selectedBranch?.location?.latitude,
+    selectedBranch?.location?.longitude,
+    selectedBranch?.sales_reps,
+  ]);
 
   const handleMobileMenuToggle = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -266,48 +282,85 @@ export default function ProductShowcase({ listing, id, allListings = [], current
     }
   }, []);
 
-  const coerceNum = (v) => {
+  const parseCoord = (v) => {
+    if (v === null || v === undefined) return null;
+    if (typeof v === "number") return Number.isFinite(v) ? v : null;
+    if (typeof v === "string") {
+      let s = v.trim();
+      if (!s) return null;
+      if (s.includes(",") && !s.includes(".")) {
+        s = s.replace(/,/g, ".");
+      } else {
+        s = s.replace(/,/g, "");
+      }
+      s = s.replace(/[^\d.+-]/g, "");
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    }
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
   };
 
+  const extractLatLng = (obj) => {
+    const lat = parseCoord(
+      obj?.latitude ??
+        obj?.lat ??
+        obj?.Latitude ??
+        obj?.Lat ??
+        obj?.location?.latitude ??
+        obj?.location?.lat
+    );
+    const lng = parseCoord(
+      obj?.longitude ??
+        obj?.lng ??
+        obj?.Longitude ??
+        obj?.Lng ??
+        obj?.location?.longitude ??
+        obj?.location?.lng
+    );
+    if (lat === null || lng === null) return null;
+    return { lat, lng };
+  };
+
   const destinationCoords = React.useMemo(() => {
-    // Try branch coordinates from several possible shapes
-    const branchLatCandidates = [
-      fetchedBranch?.location?.latitude,
-      selectedBranch?.location?.latitude,
-      listing?.company?.branch?.location?.latitude,
-      (Array.isArray(listing?.branches)
-        ? listing.branches.find((b) => b?.name === branch)?.location?.latitude
-        : undefined),
-    ];
-    const branchLngCandidates = [
-      fetchedBranch?.location?.longitude,
-      selectedBranch?.location?.longitude,
-      listing?.company?.branch?.location?.longitude,
-      (Array.isArray(listing?.branches)
-        ? listing.branches.find((b) => b?.name === branch)?.location?.longitude
-        : undefined),
-    ];
+    const selectedCoords = extractLatLng(selectedBranch);
+    if (selectedCoords) return { ...selectedCoords, source: "branch:selected" };
 
-    const branchLatRaw = branchLatCandidates.find((v) => v !== undefined && v !== null);
-    const branchLngRaw = branchLngCandidates.find((v) => v !== undefined && v !== null);
-    const branchLat = coerceNum(branchLatRaw);
-    const branchLng = coerceNum(branchLngRaw);
-
-    if (branch && branchLat !== null && branchLng !== null) {
-      return { lat: branchLat, lng: branchLng, source: "branch" };
+    if (selectedBranch?.name && Array.isArray(branchesFromExtras)) {
+      const match = branchesFromExtras.find((b) => b?.name === selectedBranch.name) || null;
+      const matchCoords = extractLatLng(match);
+      if (matchCoords) return { ...matchCoords, source: "branch:extras" };
     }
 
-    // Fallback to company coordinates
-    const companyLat = coerceNum(listing?.company?.latitude);
-    const companyLng = coerceNum(listing?.company?.longitude);
-    if (companyLat !== null && companyLng !== null) {
-      return { lat: companyLat, lng: companyLng, source: "company" };
+    const fetchedCoords = extractLatLng(fetchedBranch);
+    if (fetchedCoords) return { ...fetchedCoords, source: "branch:fetched" };
+
+    if (branch && Array.isArray(listing?.branches)) {
+      const match = listing.branches.find((b) => b?.name === branch) || null;
+      const matchCoords = extractLatLng(match);
+      if (matchCoords) return { ...matchCoords, source: "branch:param" };
     }
 
-    return null; // No valid coordinates
-  }, [branch, listing?.branches, listing?.company?.branch, listing?.company?.latitude, listing?.company?.longitude, selectedBranch, fetchedBranch]);
+    if (branch && Array.isArray(branchesFromExtras)) {
+      const match = branchesFromExtras.find((b) => b?.name === branch) || null;
+      const matchCoords = extractLatLng(match);
+      if (matchCoords) return { ...matchCoords, source: "branch:param:extras" };
+    }
+
+    const companyLat = parseCoord(listing?.company?.latitude);
+    const companyLng = parseCoord(listing?.company?.longitude);
+    if (companyLat !== null && companyLng !== null) return { lat: companyLat, lng: companyLng, source: "company" };
+
+    return null;
+  }, [
+    branch,
+    branchesFromExtras,
+    fetchedBranch,
+    listing?.branches,
+    listing?.company?.latitude,
+    listing?.company?.longitude,
+    selectedBranch,
+  ]);
 
   // Calculate distance using chosen destination coordinates
   useEffect(() => {
@@ -1043,6 +1096,9 @@ export default function ProductShowcase({ listing, id, allListings = [], current
             listing={{
               ...listing,
               __branchesOverride: branchesForModal.length > 0 ? branchesForModal : undefined,
+              branch_listings: Array.isArray(branchListingsFromModal) && branchListingsFromModal.length > 0
+                ? branchListingsFromModal
+                : listing?.branch_listings,
             }}
             onClose={() => setShowBranchesModal(false)}
             onBranchSelect={(branch) => {

@@ -24,6 +24,7 @@ import {
   LISTING_SEARCH_INDEX_CONNECTION_QUERY,
   LISTING_SEARCH_LOCATION_OPTIONS_QUERY,
   LISTINGS_CARDS_BY_DOCUMENT_IDS_QUERY,
+  LISTINGS_BRANCH_COUNTS_BY_DOCUMENT_IDS_QUERY,
 } from '@/graphql/queries';
 import { useApolloClient, useQuery } from "@apollo/client";
 import { useListingCategories } from "@/hooks/use-ListingCategories"
@@ -236,6 +237,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   const topFeaturedManufacturers = useMemo(() => [], []);
 
   const [activeTab, setActiveTab] = useState(0);
+  const [draftTab, setDraftTab] = useState(0);
   const searchParams = useSearchParams();
   const searchParamsKey = searchParams ? searchParams.toString() : '';
   const [currentPage, setCurrentPage] = useState(1);
@@ -342,6 +344,43 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     category: null,
     search: null,
   })
+  const [draftFilters, setDraftFilters] = useState(activeFilters);
+
+  const serializeFiltersForCompare = useCallback((filters) => {
+    const normalizeVal = (v) => {
+      if (v == null) return null;
+      if (Array.isArray(v)) {
+        const arr = v
+          .map((x) => (typeof x === "string" ? x.trim() : x))
+          .filter((x) => x != null && x !== "");
+        return arr.slice().sort();
+      }
+      if (typeof v === "string") return v.trim();
+      return v;
+    };
+
+    const out = {
+      minPrice: normalizeVal(filters?.minPrice),
+      maxPrice: normalizeVal(filters?.maxPrice),
+      location: normalizeVal(filters?.location),
+      stoneType: normalizeVal(filters?.stoneType),
+      colour: normalizeVal(filters?.colour ?? filters?.color),
+      style: normalizeVal(filters?.style),
+      overallStyle: normalizeVal(filters?.overallStyle),
+      slabStyle: normalizeVal(filters?.slabStyle),
+      custom: normalizeVal(filters?.custom),
+      search: normalizeVal(filters?.search),
+    };
+
+    return JSON.stringify(out);
+  }, []);
+
+  const hasPendingFilterChanges = useMemo(() => {
+    return (
+      serializeFiltersForCompare(draftFilters) !== serializeFiltersForCompare(activeFilters) ||
+      draftTab !== activeTab
+    );
+  }, [activeFilters, activeTab, draftFilters, draftTab, serializeFiltersForCompare]);
 
   const [debouncedActiveFilters, setDebouncedActiveFilters] = useState(activeFilters);
   const debounceTimerRef = useRef(null);
@@ -455,6 +494,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       }
 
       if (hasChanges) {
+        setDraftFilters(newFilters);
         return newFilters;
       }
       return prev;
@@ -582,6 +622,8 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   const [branchesModalLoading, setBranchesModalLoading] = useState(false);
   const branchesModalCacheRef = useRef(new Map());
   const branchesModalActiveListingIdRef = useRef(null);
+  const branchCountsCacheRef = useRef(new Map());
+  const [branchCountsVersion, setBranchCountsVersion] = useState(0);
 
   const desiredOrder = ["SINGLE", "DOUBLE", "CHILD", "HEAD", "PLAQUES", "CREMATION"];
   const sortedCategories = useMemo(() => {
@@ -608,9 +650,12 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       
       if (idx >= 0) {
         setActiveTab(idx);
+        setDraftTab(idx);
         setActiveFilters(prev => {
            if (prev.category !== sortedCategories[idx].name) {
-               return { ...prev, category: sortedCategories[idx].name };
+               const next = { ...prev, category: sortedCategories[idx].name };
+               setDraftFilters(next);
+               return next;
            }
            return prev;
         });
@@ -623,20 +668,26 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       const idx = sortedCategories.findIndex(c => c.name === currentName);
       if (idx >= 0) {
           setActiveTab(idx);
+          if (draftFilters.category == null) setDraftTab(idx);
           return;
       }
     } 
     
     if (activeTab === 0 && !activeFilters.category) {
-        setActiveFilters(prev => ({ ...prev, category: sortedCategories[0].name }));
+        setActiveFilters(prev => {
+          const next = { ...prev, category: sortedCategories[0].name };
+          setDraftFilters(next);
+          setDraftTab(0);
+          return next;
+        });
     }
   }, [sortedCategories, searchParams]);
 
   const handleTabChange = (index) => {
-    setActiveTab(index);
     const selected = sortedCategories[index];
     if (selected?.name) {
-      setActiveFilters(prev => ({ ...prev, category: selected.name }));
+      setDraftTab(index);
+      setDraftFilters(prev => ({ ...prev, category: selected.name }));
     }
   };
 
@@ -732,11 +783,27 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
             fetchPolicy: "network-only",
           });
           const extraListing = res?.data?.listing;
-          const branches = Array.isArray(extraListing?.branches) ? extraListing.branches : [];
-          const branchListings = Array.isArray(extraListing?.branch_listings)
-            ? extraListing.branch_listings
-            : [];
-          return { branches, branchListings };
+          const rawBranches = Array.isArray(extraListing?.branches) ? extraListing.branches : [];
+          const branchListings = Array.isArray(extraListing?.branch_listings) ? extraListing.branch_listings : [];
+          const branchesFromBranchListings = branchListings.map((bl) => bl?.branch).filter(Boolean);
+
+          const uniqueBranches = new Map();
+          rawBranches.forEach((b) => {
+            const id = b?.documentId || b?.id;
+            if (id) uniqueBranches.set(String(id), b);
+          });
+          branchesFromBranchListings.forEach((b) => {
+            const id = b?.documentId || b?.id;
+            if (id) uniqueBranches.set(String(id), b);
+          });
+
+          const branches = Array.from(uniqueBranches.values());
+          return {
+            branches,
+            branchListings,
+            rawBranchesCount: rawBranches.length,
+            rawBranchListingsCount: branchListings.length,
+          };
         };
 
         const first = await fetchPage(1);
@@ -748,6 +815,17 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
           branch_listings: first.branchListings,
         });
         setShowBranchesModal(true);
+        try {
+          branchCountsCacheRef.current.set(listingIdStr, first.branches.length);
+          setCompanyOrderPoolMap((prev) => {
+            const base = prev || {};
+            if (!base[listingIdStr]) return prev;
+            if (base[listingIdStr]?.__approxBranchCount === first.branches.length) return prev;
+            return { ...base, [listingIdStr]: { ...base[listingIdStr], __approxBranchCount: first.branches.length } };
+          });
+          setBranchCountsVersion((v) => v + 1);
+        } catch {
+        }
         setBranchesModalLoading(false);
 
         let page = 2;
@@ -757,7 +835,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         while (true) {
           if (branchesModalActiveListingIdRef.current !== listingIdStr) break;
           const next = await fetchPage(page);
-          if (next.branches.length === 0 && next.branchListings.length === 0) break;
+          if (next.rawBranchesCount === 0 && next.rawBranchListingsCount === 0) break;
 
           const seenBranches = new Set(allBranches.map((b) => String(b?.documentId || b?.id || "")));
           const mergedBranches = [...allBranches];
@@ -788,7 +866,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
             return { ...prev, __branchesOverride: mergedBranches, branch_listings: mergedBL };
           });
 
-          if (next.branches.length < PAGE_SIZE && next.branchListings.length < PAGE_SIZE) break;
+          if (next.rawBranchesCount < PAGE_SIZE && next.rawBranchListingsCount < PAGE_SIZE) break;
           page += 1;
         }
 
@@ -796,6 +874,17 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
           branches: allBranches,
           branch_listings: allBranchListings,
         });
+        try {
+          branchCountsCacheRef.current.set(listingIdStr, allBranches.length);
+          setCompanyOrderPoolMap((prev) => {
+            const base = prev || {};
+            if (!base[listingIdStr]) return prev;
+            if (base[listingIdStr]?.__approxBranchCount === allBranches.length) return prev;
+            return { ...base, [listingIdStr]: { ...base[listingIdStr], __approxBranchCount: allBranches.length } };
+          });
+          setBranchCountsVersion((v) => v + 1);
+        } catch {
+        }
 
         return true;
       } catch {
@@ -843,8 +932,13 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   
   const getActiveCategory = () => {
     if (!categories || !categories.length) return '';
-    if (activeFilters.category && activeFilters.category !== 'All Categories') return activeFilters.category;
-    return '';
+    const byTab = sortedCategories?.[activeTab]?.name;
+    const raw =
+      typeof activeFilters.category === "string" && activeFilters.category !== "All Categories"
+        ? activeFilters.category
+        : byTab;
+    if (!raw) return "";
+    return String(raw).toUpperCase();
   };
   const didInitQueryPageRef = useRef(false);
   useEffect(() => {
@@ -1250,7 +1344,15 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
           for (const arr of results) {
             for (const l of arr) {
               const id = l?.documentId ? String(l.documentId) : "";
-              if (id) nextMap[id] = { ...l, __approxBranchCount: approxById[id] ?? null };
+              if (!id) continue;
+              const cachedCount = branchCountsCacheRef.current.get(id);
+              const count =
+                typeof cachedCount === "number"
+                  ? cachedCount
+                  : typeof approxById[id] === "number"
+                    ? approxById[id]
+                    : null;
+              nextMap[id] = { ...l, __approxBranchCount: count };
             }
           }
 
@@ -1371,7 +1473,15 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       if (Array.isArray(items)) {
         for (const l of items) {
           const id = l?.documentId ? String(l.documentId) : "";
-          if (id) map.set(id, { ...l, __approxBranchCount: approxById.get(id) ?? null });
+          if (!id) continue;
+          const cachedCount = branchCountsCacheRef.current.get(id);
+          const count =
+            typeof cachedCount === "number"
+              ? cachedCount
+              : typeof approxById.get(id) === "number"
+                ? approxById.get(id)
+                : null;
+          map.set(id, { ...l, __approxBranchCount: count });
         }
       }
       const ordered = listingDocumentIds.map((id) => map.get(id)).filter(Boolean);
@@ -1379,6 +1489,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     }
     return [];
   }, [
+    branchCountsVersion,
     companyOrderFiltersKey,
     companyOrderPoolIds,
     companyOrderPoolMap,
@@ -1392,6 +1503,84 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     searchIndexNodes,
     sortOrder,
   ]);
+
+  const visibleListingIds = useMemo(() => {
+    const ids = filteredListings
+      .map((l) => l?.documentId || l?.id)
+      .filter(Boolean)
+      .map((v) => String(v));
+    return Array.from(new Set(ids));
+  }, [filteredListings]);
+
+  const visibleListingIdsKey = useMemo(() => visibleListingIds.join("|"), [visibleListingIds]);
+
+  useEffect(() => {
+    if (!enableQueries) return;
+    if (!visibleListingIdsKey) return;
+
+    const missing = visibleListingIds.filter((id) => !branchCountsCacheRef.current.has(id));
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const resp = await apolloClient.query({
+          query: LISTINGS_BRANCH_COUNTS_BY_DOCUMENT_IDS_QUERY,
+          variables: { ids: missing, pageSize: Math.max(1, missing.length) },
+          fetchPolicy: "network-only",
+        });
+
+        const items = Array.isArray(resp?.data?.listings) ? resp.data.listings : [];
+        const nextCounts = new Map();
+        for (const l of items) {
+          const id = l?.documentId ? String(l.documentId) : "";
+          if (!id) continue;
+          const branchIds = new Set();
+          if (Array.isArray(l?.branches)) {
+            for (const b of l.branches) {
+              const bid = b?.documentId || b?.id;
+              if (bid) branchIds.add(String(bid));
+            }
+          }
+          if (Array.isArray(l?.branch_listings)) {
+            for (const bl of l.branch_listings) {
+              const bid = bl?.branch?.documentId || bl?.branch?.id;
+              if (bid) branchIds.add(String(bid));
+            }
+          }
+          if (branchIds.size > 0) nextCounts.set(id, branchIds.size);
+        }
+
+        if (cancelled) return;
+        if (nextCounts.size === 0) return;
+
+        for (const [id, count] of nextCounts.entries()) {
+          branchCountsCacheRef.current.set(id, count);
+        }
+
+        setCompanyOrderPoolMap((prev) => {
+          const base = prev || {};
+          let changed = false;
+          const next = { ...base };
+          for (const [id, count] of nextCounts.entries()) {
+            if (!next[id]) continue;
+            if (next[id]?.__approxBranchCount === count) continue;
+            next[id] = { ...next[id], __approxBranchCount: count };
+            changed = true;
+          }
+          return changed ? next : prev;
+        });
+
+        setBranchCountsVersion((v) => v + 1);
+      } catch {
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [apolloClient, enableQueries, visibleListingIds, visibleListingIdsKey]);
 
   const totalListingsCount = useMemo(() => {
     const t = searchIndexPageInfo?.total;
@@ -1703,9 +1892,43 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     totalListingsCount,
   ]);
 
-  const handleSearch = () => {
+  const handleApplyFilters = useCallback(() => {
+    const selected = sortedCategories[draftTab] || null;
+    const nextCategoryName = selected?.name || draftFilters?.category || activeFilters?.category || null;
+    const nextApplied = { ...draftFilters, category: nextCategoryName };
+    setActiveTab(draftTab);
+    setDraftTab(draftTab);
+    setActiveFilters(nextApplied);
+    setDraftFilters(nextApplied);
     setCurrentPage(1);
-  };
+  }, [activeFilters?.category, draftFilters, draftTab, sortedCategories]);
+
+  const handleClearAll = useCallback(() => {
+    const defaultCategoryName = sortedCategories?.[0]?.name || null;
+    const next = {
+      minPrice: "Min Price",
+      maxPrice: "Max Price",
+      location: null,
+      stoneType: null,
+      color: null,
+      style: null,
+      overallStyle: null,
+      slabStyle: null,
+      custom: null,
+      colour: null,
+      category: defaultCategoryName,
+      search: null,
+    };
+    setActiveTab(0);
+    setDraftTab(0);
+    setActiveFilters(next);
+    setDraftFilters(next);
+    setCurrentPage(1);
+  }, [sortedCategories]);
+
+  const handleSearch = useCallback(() => {
+    setCurrentPage(1);
+  }, []);
 
   const baseSortedListings = useMemo(() => {
     const next = [...filteredListings];
@@ -2130,22 +2353,25 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
             </div>
             <div className="flex-1 overflow-y-auto w-full p-0">
               <TombstonesForSaleFilters
-                activeFilters={activeFilters}
-                setActiveFilters={setActiveFilters}
+                activeFilters={draftFilters}
+                setActiveFilters={setDraftFilters}
                 showFilters={showFilters}
                 setShowFilters={setShowFilters}
                 filterOptions={filterOptions}
                 filteredListings={filteredListings}
-                handleSearch={() => {
-                  handleSearch();
+                applyMode={hasPendingFilterChanges}
+                onApplyFilter={() => {
+                  handleApplyFilters();
                   closeMobileFilter();
                 }}
+                onClearAll={handleClearAll}
+                handleSearch={handleSearch}
                 getActiveCategory={getActiveCategory}
                 showCategoryDropdown={true}
                 locationsData={locationHierarchy}
                 initialCount={totalListingsCount}
                 isBackgroundLoading={!enableQueries || listingsLoading}
-                locationCountBaseFilters={locationCountBaseFilters}
+                locationCountBaseFilters={hasPendingFilterChanges ? null : locationCountBaseFilters}
               />
             </div>
           </div>
@@ -2169,7 +2395,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
           <div className="absolute inset-x-0 bottom-0 px-4 z-10">
             <div className="max-w-6xl mx-auto">
               <div className="hidden md:block w-full md:w-[60%]">
-                <CategoryTabs categories={sortedCategories} activeTab={activeTab} setActiveTab={handleTabChange} counts={categoryCounts} />
+                <CategoryTabs categories={sortedCategories} activeTab={draftTab} setActiveTab={handleTabChange} counts={categoryCounts} />
               </div>
             </div>
           </div>
@@ -2183,19 +2409,22 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
             {isDesktopViewport && (
               <div className="w-full md:w-1/4 md:sticky md:top-0 md:self-start">
                 <TombstonesForSaleFilters
-                  activeFilters={activeFilters}
-                  setActiveFilters={setActiveFilters}
+                  activeFilters={draftFilters}
+                  setActiveFilters={setDraftFilters}
                   showFilters={showFilters}
                   setShowFilters={setShowFilters}
                   filterOptions={filterOptions}
                   filteredListings={filteredListings}
+                  applyMode={hasPendingFilterChanges}
+                  onApplyFilter={handleApplyFilters}
+                  onClearAll={handleClearAll}
                   handleSearch={handleSearch}
                   getActiveCategory={getActiveCategory}
                   showCategoryDropdown={true}
                   locationsData={locationHierarchy}
                   initialCount={totalListingsCount}
                   isBackgroundLoading={!enableQueries || listingsLoading}
-                  locationCountBaseFilters={locationCountBaseFilters}
+                  locationCountBaseFilters={hasPendingFilterChanges ? null : locationCountBaseFilters}
                 />
               </div>
             )}
