@@ -1,14 +1,10 @@
 // components/PdfExporterButton.jsx
 import { jsPDF } from "jspdf";
+import { EVENT_DEFS } from "./useCompanyPerformance";
 
-const EVENT_LABELS = {
-  listing_view: "Listing Views",
-  map_view: "Map Views",
-  contact_view: "Contact Views",
-  inquiry_click: "Inquiries",
-  whatsapp_tracker: "WhatsApp",
-  rep_call_tracker: "Rep Calls",
-};
+const EVENT_LABELS = Object.fromEntries(
+  (Array.isArray(EVENT_DEFS) ? EVENT_DEFS : []).map((d) => [d.key, d.label])
+);
 
 export default function PdfExporterButton(props) {
   const { mode } = props; // "company" | "listing"
@@ -41,8 +37,9 @@ function exportCompany({ company, listings, totals, periodLabel }) {
 
   doc.setFontSize(12);
   doc.text("Totals", 14, y); y += 7;
-  for (const [k, v] of Object.entries(totals || {})) {
-    doc.text(`- ${EVENT_LABELS[k] || k}: ${v}`, 18, y);
+  for (const def of Array.isArray(EVENT_DEFS) ? EVENT_DEFS : []) {
+    const v = totals?.[def.key] || 0;
+    doc.text(`- ${EVENT_LABELS[def.key] || def.key}: ${v}`, 18, y);
     y += 6;
   }
   y += 4;
@@ -51,13 +48,24 @@ function exportCompany({ company, listings, totals, periodLabel }) {
   doc.text("Listings", 14, y); y += 7;
 
   listings.forEach((l, idx) => {
-    const total =
-      (l._counts?.listing_view || 0) +
-      (l._counts?.map_view || 0) +
-      (l._counts?.contact_view || 0) +
-      (l._counts?.inquiry_click || 0);
+    const total = (Array.isArray(EVENT_DEFS) ? EVENT_DEFS : []).reduce(
+      (n, def) => n + (l?._counts?.[def.key] || 0),
+      0
+    );
 
-    const line = `${idx + 1}. ${l.title} — Total: ${total}  (Views: ${l._counts?.listing_view || 0}, Map: ${l._counts?.map_view || 0}, Contact: ${l._counts?.contact_view || 0}, Inquiries: ${l._counts?.inquiry_click || 0})`;
+    const compact = [
+      `Total: ${total}`,
+      `Listing: ${l?._counts?.listing_view || 0}`,
+      `Phone: ${l?._counts?.phone_click || 0}`,
+      `Website: ${l?._counts?.website_click || 0}`,
+      `Map: ${l?._counts?.map_view || 0}`,
+      `Contact: ${l?._counts?.contact_view || 0}`,
+      `Inquiries: ${l?._counts?.inquiry_click || 0}`,
+      `WhatsApp: ${l?._counts?.whatsapp_tracker || 0}`,
+      `Rep Calls: ${l?._counts?.rep_call_tracker || 0}`,
+    ].join(", ");
+
+    const line = `${idx + 1}. ${l.title} — ${compact}`;
 
     // paginate
     if (y > 280) {
@@ -83,19 +91,10 @@ function exportListing({ listing, counts, periodLabel }) {
   doc.setFontSize(12);
   doc.text("Metrics", 14, y); y += 7;
 
-  const ordered = [
-    ["Listing Views", counts?.listing_view || 0],
-    ["Map Views", counts?.map_view || 0],
-    ["Contact Views", counts?.contact_view || 0],
-    ["Inquiries", counts?.inquiry_click || 0],
-    ["WhatsApp", counts?.whatsapp_tracker || 0],
-    ["Rep Calls", counts?.rep_call_tracker || 0],
-  ];
-
-  ordered.forEach(([label, val]) => {
-    doc.text(`- ${label}: ${val}`, 18, y);
+  for (const def of Array.isArray(EVENT_DEFS) ? EVENT_DEFS : []) {
+    doc.text(`- ${EVENT_LABELS[def.key] || def.key}: ${counts?.[def.key] || 0}`, 18, y);
     y += 6;
-  });
+  }
 
   doc.save(`${(listing?.title || "listing").replace(/\s+/g, "-")}-performance.pdf`);
 }

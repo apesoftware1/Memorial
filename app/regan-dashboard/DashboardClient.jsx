@@ -667,6 +667,12 @@ export default function DashboardClient() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Link
+                    href="/regan-dashboard/analytics"
+                    className="inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm bg-background text-foreground hover:bg-accent"
+                  >
+                    Analytics
+                  </Link>
                   <button
                     onClick={toggleTheme}
                     aria-label="Toggle theme"

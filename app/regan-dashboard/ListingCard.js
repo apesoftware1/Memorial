@@ -1,5 +1,6 @@
 // components/ListingCard.jsx
-export default function ListingCard({ listing, counts, performance, children }) {
+export default function ListingCard({ listing, counts, performance, eventDefs, children }) {
+  const defs = Array.isArray(eventDefs) && eventDefs.length > 0 ? eventDefs : [];
   return (
     <div className="bg-card text-card-foreground border border-border rounded-xl overflow-hidden shadow-sm flex flex-col">
       <div className="relative">
@@ -22,12 +23,9 @@ export default function ListingCard({ listing, counts, performance, children }) 
         </div>
 
         <div className="grid grid-cols-2 gap-2 text-sm">
-          <Metric label="Listing Views" value={counts.listing_view || 0} />
-          <Metric label="Map Views" value={counts.map_view || 0} />
-          <Metric label="Contact Views" value={counts.contact_view || 0} />
-          <Metric label="Inquiries" value={counts.inquiry_click || 0} />
-          <Metric label="WhatsApp" value={counts.whatsapp_tracker || 0} />
-          <Metric label="Rep Calls" value={counts.rep_call_tracker || 0} />
+          {defs.map((d) => (
+            <Metric key={d.key} label={d.label} value={counts?.[d.key] || 0} />
+          ))}
         </div>
 
         <div className="mt-auto pt-2 flex items-center gap-2">

@@ -14,6 +14,7 @@ import { toTitleCase } from "@/lib/locationHelpers";
 import { useQuery } from "@apollo/client";
 import apolloClient from "@/lib/apolloClient";
 import { LISTING_SEARCH_INDEX_CONNECTION_QUERY } from "@/graphql/queries";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import {
   STYLE_OPTIONS as MANUFACTURER_HEAD_STYLE_OPTIONS,
   SLAB_STYLE_OPTIONS as MANUFACTURER_SLAB_STYLE_OPTIONS,
@@ -1406,12 +1407,78 @@ const SearchContainer = ({
     setTimeout(() => setInternalIsSearching(false), 300);
     
     const qs = buildResultsQueryString();
+    try {
+      const baseFilters = filters && typeof filters === "object" ? filters : {};
+      const searchQuery =
+        typeof baseFilters.search === "string" && baseFilters.search.trim()
+          ? baseFilters.search.trim()
+          : null;
+
+      const parseLocationSelection = (value) => {
+        if (!value) return { province: null, city: null, town: null };
+        if (Array.isArray(value)) {
+          if (value.some((v) => typeof v === "string" && /^[pct]\|/.test(v))) {
+            return { province: null, city: null, town: null };
+          }
+          return { province: value[0] || null, city: value[1] || null, town: value[2] || null };
+        }
+        if (typeof value === "string") {
+          if (/^[pct]\|/.test(value)) return { province: null, city: null, town: null };
+          if (value === "Any") return { province: null, city: null, town: null };
+          return { province: value, city: null, town: null };
+        }
+        return { province: null, city: null, town: null };
+      };
+
+      const loc = parseLocationSelection(baseFilters.location);
+      const normalizedFilters = {
+        province: loc.province,
+        city: loc.city,
+        town: loc.town,
+        price: {
+          min: baseFilters.minPrice && baseFilters.minPrice !== "Min Price" ? baseFilters.minPrice : null,
+          max: baseFilters.maxPrice && baseFilters.maxPrice !== "Max Price" ? baseFilters.maxPrice : null,
+        },
+        category: selectedCategory || null,
+        stoneType: baseFilters.stoneType || null,
+        colour: baseFilters.colour || baseFilters.color || null,
+        style: baseFilters.style || null,
+        overallStyle: baseFilters.overallStyle || null,
+        slabStyle: baseFilters.slabStyle || null,
+        custom: baseFilters.custom || null,
+        search: searchQuery,
+      };
+
+      const paired = [];
+      if (normalizedFilters.province && normalizedFilters.city) paired.push(`${normalizedFilters.province} > ${normalizedFilters.city}`);
+      if (normalizedFilters.city && normalizedFilters.town) paired.push(`${normalizedFilters.city} > ${normalizedFilters.town}`);
+      if (normalizedFilters.price.min || normalizedFilters.price.max) {
+        paired.push(`price:${normalizedFilters.price.min || "any"}-${normalizedFilters.price.max || "any"}`);
+      }
+
+      trackAnalyticsEvent("filter_apply", null, {
+        pagePath: "/search",
+        metadata: {
+          filters: normalizedFilters,
+          paired,
+        },
+      });
+
+      if (searchQuery) {
+        trackAnalyticsEvent("search", null, {
+          pagePath: "/search",
+          searchQuery,
+          metadata: { filters: normalizedFilters },
+        });
+      }
+    } catch {
+    }
     if (onNavigateToResults) {
       onNavigateToResults(qs);
     } else if (router) {
       router.push(qs ? `/tombstones-for-sale?${qs}` : "/tombstones-for-sale");
     }
-  }, [buildResultsQueryString, onNavigateToResults, router]);
+  }, [buildResultsQueryString, filters, onNavigateToResults, router, selectedCategory]);
 
 
   const defaultGetSearchButtonText = useCallback(() => {

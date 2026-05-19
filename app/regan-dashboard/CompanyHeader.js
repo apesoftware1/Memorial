@@ -7,7 +7,9 @@ export default function CompanyHeader({
   onChangePeriod,
   onChangeMonthYear,
   totals,
+  eventDefs,
 }) {
+  const defs = Array.isArray(eventDefs) && eventDefs.length > 0 ? eventDefs : [];
   return (
     <div className="bg-card text-card-foreground border border-border rounded-xl p-4 shadow-sm">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -53,12 +55,9 @@ export default function CompanyHeader({
       {/* totals - horizontally scrollable */}
       <div className="mt-4 overflow-x-auto">
         <div className="flex gap-3 min-w-max pr-2">
-          <Stat label="Listing Views" value={totals.listing_view || 0} />
-          <Stat label="Map Views" value={totals.map_view || 0} />
-          <Stat label="Contact Views" value={totals.contact_view || 0} />
-          <Stat label="Inquiries" value={totals.inquiry_click || 0} />
-          <Stat label="WhatsApp" value={totals.whatsapp_tracker || 0} />
-          <Stat label="Rep Calls" value={totals.rep_call_tracker || 0} />
+          {defs.map((d) => (
+            <Stat key={d.key} label={d.label} value={totals?.[d.key] || 0} />
+          ))}
         </div>
       </div>
     </div>

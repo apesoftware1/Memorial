@@ -273,7 +273,10 @@ export default function WhatsAppContactDrawer({listing_id ,reps = [], className 
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    try { trackAnalyticsEvent("rep_call_tracker", listing_id); } catch {}
+                                    try {
+                                      trackAnalyticsEvent("phone_click", listing_id);
+                                      trackAnalyticsEvent("rep_call_tracker", listing_id);
+                                    } catch {}
                                     setShowPhoneIndex(idx);
                                   }}
                                   className="text-blue-600 hover:text-blue-700"
