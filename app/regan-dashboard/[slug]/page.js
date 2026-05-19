@@ -10,6 +10,7 @@ import { useParams } from "next/navigation";
 import {
   useCompanyPerformance,
   EVENT_KEYS,
+  EVENT_DEFS,
   countEvents,
   sumCounts,
   classifyPerformance,
@@ -104,33 +105,78 @@ export default function CompanyPerformancePage() {
   const companyTotals = useMemo(() => {
     return listingWithCounts.reduce(
       (acc, l) => sumCounts(acc, l._counts),
-      {
-        listing_view: 0,
-        map_view: 0,
-        contact_view: 0,
-        inquiry_click: 0,
-        whatsapp_tracker: 0,
-        rep_call_tracker: 0,
-      }
+      Object.fromEntries(EVENT_KEYS.map((k) => [k, 0]))
     );
   }, [listingWithCounts]);
 
   const companyAvg = useMemo(() => {
     const n = listingWithCounts.length || 1;
-    const avg = {
-      listing_view: 0,
-      map_view: 0,
-      contact_view: 0,
-      inquiry_click: 0,
-      whatsapp_tracker: 0,
-      rep_call_tracker: 0,
-    };
+    const avg = Object.fromEntries(EVENT_KEYS.map((k) => [k, 0]));
     for (const l of listingWithCounts) {
       for (const k of EVENT_KEYS) avg[k] += l._counts[k] || 0;
     }
     for (const k of EVENT_KEYS) avg[k] = avg[k] / n;
     return avg;
   }, [listingWithCounts]);
+
+  const allEvents = useMemo(() => {
+    const out = [];
+    for (const l of filteredListings || []) {
+      const evs = Array.isArray(l?.analyticsEvents) ? l.analyticsEvents : [];
+      for (const e of evs) out.push(e);
+    }
+    return out;
+  }, [filteredListings]);
+
+  const breakdown = useMemo(() => {
+    const inc = (map, key) => {
+      const k = typeof key === "string" ? key.trim() : "";
+      if (!k) return;
+      map.set(k, (map.get(k) || 0) + 1);
+    };
+    const hostFromUrl = (url) => {
+      try {
+        const u = new URL(String(url));
+        return u.hostname || "";
+      } catch {
+        return "";
+      }
+    };
+
+    const byDevice = new Map();
+    const byPagePath = new Map();
+    const byReferrer = new Map();
+    const byUtmSource = new Map();
+    const byUtmCampaign = new Map();
+    const bySearchQuery = new Map();
+
+    for (const e of allEvents) {
+      inc(byDevice, e?.deviceType);
+      inc(byPagePath, e?.pagePath);
+      inc(byUtmSource, e?.utmSource);
+      inc(byUtmCampaign, e?.utmCampaign);
+
+      const refHost = hostFromUrl(e?.referrer);
+      if (refHost) inc(byReferrer, refHost);
+
+      if (e?.eventType === "search") inc(bySearchQuery, e?.searchQuery);
+    }
+
+    const topN = (map, n = 8) =>
+      Array.from(map.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, n)
+        .map(([key, count]) => ({ key, count }));
+
+    return {
+      device: topN(byDevice, 6),
+      pages: topN(byPagePath, 10),
+      referrers: topN(byReferrer, 10),
+      utmSources: topN(byUtmSource, 10),
+      utmCampaigns: topN(byUtmCampaign, 10),
+      searchQueries: topN(bySearchQuery, 10),
+    };
+  }, [allEvents]);
 
   const visibleItems = listingWithCounts.slice(0, visible);
 
@@ -175,7 +221,17 @@ export default function CompanyPerformancePage() {
                 onChangePeriod={setPeriod}
                 onChangeMonthYear={setMonthYear}
                 totals={companyTotals}
+                eventDefs={EVENT_DEFS}
               />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mt-6">
+                <BreakdownCard title="Most Viewed Pages" items={breakdown.pages} />
+                <BreakdownCard title="Top Traffic Sources" items={breakdown.referrers} />
+                <BreakdownCard title="Top Campaign Sources" items={breakdown.utmSources} />
+                <BreakdownCard title="Top Campaign Names" items={breakdown.utmCampaigns} />
+                <BreakdownCard title="Top Searches" items={breakdown.searchQueries} />
+                <BreakdownCard title="Device Types" items={breakdown.device} />
+              </div>
 
               {/* Controls + Export */}
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mt-4">
@@ -188,7 +244,7 @@ export default function CompanyPerformancePage() {
                     onChange={(e) => setSearch(e.target.value)}
                   />
                   <span className="text-sm text-gray-500">
-                    Showing {visibleItems.length} of {listingWithCounts.length}
+                    Showing {visibleItems.length} of {listings.length}
                   </span>
                 </div>
 
@@ -212,6 +268,7 @@ export default function CompanyPerformancePage() {
                       listing={l}
                       counts={l._counts}
                       performance={perf}
+                      eventDefs={EVENT_DEFS}
                     >
                       <PdfExporterButton
                         mode="listing"
@@ -243,6 +300,27 @@ export default function CompanyPerformancePage() {
             </>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function BreakdownCard({ title, items }) {
+  const safeItems = Array.isArray(items) ? items : [];
+  return (
+    <div className="bg-card text-card-foreground border border-border rounded-xl p-4 shadow-sm">
+      <div className="text-sm font-semibold">{title}</div>
+      <div className="mt-3 space-y-2">
+        {safeItems.length > 0 ? (
+          safeItems.map((it) => (
+            <div key={`${it.key}`} className="flex items-center justify-between gap-3 text-sm">
+              <div className="min-w-0 text-muted-foreground truncate">{it.key}</div>
+              <div className="font-semibold">{it.count}</div>
+            </div>
+          ))
+        ) : (
+          <div className="text-sm text-muted-foreground">No data yet</div>
+        )}
       </div>
     </div>
   );

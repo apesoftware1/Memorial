@@ -2,19 +2,40 @@
 "use client";
 
 import { useQuery } from "@apollo/client";
-import { GET_COMPANY_WITH_ANALYTICS } from "@/graphql/queries/GetCompanyPerformance";
+import {
+  GET_COMPANY_WITH_ANALYTICS,
+  GET_COMPANY_WITH_ANALYTICS_EXTENDED,
+} from "@/graphql/queries/GetCompanyPerformance";
 
 export const EVENT_KEYS = [
   "listing_view",
   "map_view",
   "contact_view",
   "inquiry_click",
+  "phone_click",
+  "website_click",
   "whatsapp_tracker",
   "rep_call_tracker",
 ];
 
+export const EVENT_DEFS = [
+  { key: "listing_view", label: "Listing Opens" },
+  { key: "map_view", label: "Address Opens" },
+  { key: "contact_view", label: "Show Contact Clicks" },
+  { key: "inquiry_click", label: "Inquiries Sent" },
+  { key: "phone_click", label: "Phone Calls Clicked" },
+  { key: "website_click", label: "Website Visits Clicked" },
+  { key: "whatsapp_tracker", label: "WhatsApp Chats Started" },
+  { key: "rep_call_tracker", label: "Rep Phone Calls Clicked" },
+];
+
 export const useCompanyPerformance = (documentId, eventsStart, eventsEnd) => {
-  return useQuery(GET_COMPANY_WITH_ANALYTICS, {
+  const useExtended =
+    typeof process !== "undefined" &&
+    typeof process.env?.NEXT_PUBLIC_ANALYTICS_EXTENDED === "string" &&
+    ["1", "true", "yes"].includes(process.env.NEXT_PUBLIC_ANALYTICS_EXTENDED.toLowerCase());
+  const query = useExtended ? GET_COMPANY_WITH_ANALYTICS_EXTENDED : GET_COMPANY_WITH_ANALYTICS;
+  return useQuery(query, {
     variables: {
       documentId: documentId || "",
       eventsStart: eventsStart ?? null,
@@ -27,16 +48,10 @@ export const useCompanyPerformance = (documentId, eventsStart, eventsEnd) => {
 
 // Helper functions
 export const countEvents = (events) => {
-  const counts = {
-    listing_view: 0,
-    map_view: 0,
-    contact_view: 0,
-    inquiry_click: 0,
-    whatsapp_tracker: 0,
-    rep_call_tracker: 0,
-  };
+  const counts = Object.fromEntries(EVENT_KEYS.map((k) => [k, 0]));
   for (const ev of events || []) {
-    if (counts[ev.eventType] !== undefined) counts[ev.eventType] += 1;
+    const key = ev?.eventType;
+    if (typeof key === "string" && counts[key] !== undefined) counts[key] += 1;
   }
   return counts;
 };

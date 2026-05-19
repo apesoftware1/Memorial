@@ -32,6 +32,7 @@ import { useLocationHierarchy } from '@/hooks/useLocationHierarchy';
 import { checkListingLocation, toTitleCase, DEFAULT_PROVINCES, normalizeCityName } from '@/lib/locationHelpers';
 import { useGuestLocation } from "@/hooks/useGuestLocation";
 import { GET_LISTING_BRANCHES_FOR_MODAL } from "@/graphql/queries/getListingExtrasById";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 
 const stableHash = (input) => {
   const s = String(input ?? "")
@@ -1690,7 +1691,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
   const norm = (v) => (typeof v === "string" ? v.trim() : null);
   const normLower = (v) => (typeof v === "string" ? v.trim().toLowerCase() : null);
 
-  const parseLocationSelection = (value) => {
+  const parseLocationSelection = useCallback((value) => {
     if (!value) return { province: null, city: null, town: null };
     if (Array.isArray(value)) {
       if (value.some((v) => typeof v === "string" && /^[pct]\|/.test(v))) {
@@ -1711,7 +1712,44 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       return { province: null, city: norm(value), town: null };
     }
     return { province: null, city: null, town: null };
-  };
+  }, []);
+
+  const buildAnalyticsFilterPayload = useCallback((filters) => {
+    const loc = parseLocationSelection(filters?.location);
+    const minPrice = typeof filters?.minPrice === "string" ? filters.minPrice : null;
+    const maxPrice = typeof filters?.maxPrice === "string" ? filters.maxPrice : null;
+    const search = typeof filters?.search === "string" ? filters.search.trim() : "";
+
+    const normalized = {
+      province: loc?.province || null,
+      city: loc?.city || null,
+      town: loc?.town || null,
+      price: {
+        min: minPrice && minPrice !== "Min Price" ? minPrice : null,
+        max: maxPrice && maxPrice !== "Max Price" ? maxPrice : null,
+      },
+      category: filters?.category || null,
+      stoneType: filters?.stoneType || null,
+      colour: filters?.colour || filters?.color || null,
+      style: filters?.style || null,
+      overallStyle: filters?.overallStyle || null,
+      slabStyle: filters?.slabStyle || null,
+      custom: filters?.custom || null,
+      search: search || null,
+    };
+
+    const paired = [];
+    if (normalized.province && normalized.city) paired.push(`${normalized.province} > ${normalized.city}`);
+    if (normalized.city && normalized.town) paired.push(`${normalized.city} > ${normalized.town}`);
+    if (normalized.price.min || normalized.price.max) {
+      paired.push(`price:${normalized.price.min || "any"}-${normalized.price.max || "any"}`);
+    }
+    if (normalized.category) paired.push(`category:${normalized.category}`);
+    if (normalized.stoneType) paired.push(`stoneType:${normalized.stoneType}`);
+    if (normalized.style) paired.push(`style:${normalized.style}`);
+
+    return { filters: normalized, paired };
+  }, [parseLocationSelection]);
 
   const activeCategoryName = useMemo(() => {
     const name = sortedCategories?.[activeTab]?.name;
@@ -1901,7 +1939,22 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     setActiveFilters(nextApplied);
     setDraftFilters(nextApplied);
     setCurrentPage(1);
-  }, [activeFilters?.category, draftFilters, draftTab, sortedCategories]);
+    try {
+      const filterPayload = buildAnalyticsFilterPayload(nextApplied);
+      trackAnalyticsEvent("filter_apply", null, {
+        pagePath: "/search",
+        metadata: { filters: filterPayload.filters, paired: filterPayload.paired },
+      });
+      if (typeof nextApplied?.search === "string" && nextApplied.search.trim()) {
+        trackAnalyticsEvent("search", null, {
+          pagePath: "/search",
+          searchQuery: nextApplied.search.trim(),
+          metadata: { filters: filterPayload.filters },
+        });
+      }
+    } catch {
+    }
+  }, [activeFilters?.category, buildAnalyticsFilterPayload, draftFilters, draftTab, sortedCategories]);
 
   const handleClearAll = useCallback(() => {
     const defaultCategoryName = sortedCategories?.[0]?.name || null;

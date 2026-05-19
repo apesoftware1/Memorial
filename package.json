@@ -6,7 +6,8 @@
     "dev": "node ./scripts/next-cli.cjs dev -p 3001",
     "build": "node ./scripts/next-cli.cjs build",
     "start": "node ./scripts/next-cli.cjs start -p 3001",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:analytics": "node ./scripts/analytics.test.mjs"
   },
   "dependencies": {
     "@apollo/client": "^3.13.8",
