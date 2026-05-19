@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { FavoritesClientContent } from "./favorites-client.jsx"
 import HeaderClient from "./header-client.jsx"
+import { Suspense } from "react"
 
 export const metadata = {
   title: "Your Favorites | TombstonesFinder",
@@ -11,7 +12,9 @@ export default function FavoritesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header Component */}
-      <HeaderClient />
+      <Suspense fallback={<div className="h-16" />}>
+        <HeaderClient />
+      </Suspense>
       
       {/* Background Image Section */}
       <div 
@@ -33,7 +36,9 @@ export default function FavoritesPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <FavoritesClientContent />
+        <Suspense fallback={<div className="text-gray-600">Loading favorites…</div>}>
+          <FavoritesClientContent />
+        </Suspense>
       </div>
     </div>
   )

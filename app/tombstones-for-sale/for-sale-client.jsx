@@ -686,10 +686,14 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
   const handleTabChange = (index) => {
     const selected = sortedCategories[index];
-    if (selected?.name) {
-      setDraftTab(index);
-      setDraftFilters(prev => ({ ...prev, category: selected.name }));
-    }
+    if (!selected?.name) return;
+
+    const nextCategory = selected.name;
+    setActiveTab(index);
+    setDraftTab(index);
+    setActiveFilters((prev) => ({ ...prev, category: nextCategory }));
+    setDraftFilters((prev) => ({ ...prev, category: nextCategory }));
+    setCurrentPage(1);
   };
 
   const activeCategory = sortedCategories[activeTab] || null;
@@ -735,6 +739,105 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     return Array.from(new Set(normalized));
   }, [activeFilters?.location, normalizeLocationToken]);
 
+  const selectedLocationSelection = useMemo(() => {
+    const loc = activeFilters?.location;
+    const provinces = [];
+    const cities = [];
+    const towns = [];
+
+    const add = (arr, v) => {
+      const n = normalizeLocationToken(v);
+      if (n) arr.push(n);
+    };
+
+    const isEncodedLocation = (v) => typeof v === "string" && /^[pct]\|/.test(v);
+    const isIgnorable = (v) => {
+      const s = typeof v === "string" ? v.trim().toLowerCase() : "";
+      return !s || s === "any" || s === "all" || s === "near me";
+    };
+
+    if (Array.isArray(loc) && loc.length > 0) {
+      const encoded = loc.every(isEncodedLocation);
+      if (encoded) {
+        for (const token of loc) {
+          const parts = String(token).split("|").map((p) => p.trim());
+          const level = parts[0];
+          if (level === "p") {
+            if (!isIgnorable(parts[1])) add(provinces, parts[1]);
+          } else if (level === "c") {
+            if (!isIgnorable(parts[1])) add(provinces, parts[1]);
+            if (!isIgnorable(parts[2])) add(cities, parts[2]);
+          } else if (level === "t") {
+            if (!isIgnorable(parts[1])) add(provinces, parts[1]);
+            if (!isIgnorable(parts[2])) add(cities, parts[2]);
+            if (!isIgnorable(parts[3])) add(towns, parts[3]);
+          }
+        }
+      } else if (loc.length === 3) {
+        if (!isIgnorable(loc[0])) add(provinces, loc[0]);
+        if (!isIgnorable(loc[1])) add(cities, loc[1]);
+        if (!isIgnorable(loc[2])) add(towns, loc[2]);
+      } else {
+        for (const v of loc) {
+          if (!isIgnorable(v)) add(cities, v);
+        }
+      }
+    } else if (typeof loc === "string" && !isIgnorable(loc)) {
+      const lowered = loc.trim().toLowerCase();
+      const isProv = DEFAULT_PROVINCES.some((p) => p.toLowerCase() === lowered);
+      if (isProv) add(provinces, loc);
+      else add(cities, loc);
+    }
+
+    const uniq = (arr) => Array.from(new Set(arr.filter(Boolean)));
+    return { provinces: uniq(provinces), cities: uniq(cities), towns: uniq(towns) };
+  }, [activeFilters?.location, normalizeLocationToken]);
+
+  const hasScopedLocation = useMemo(() => {
+    return (
+      (selectedLocationSelection?.towns?.length || 0) > 0 ||
+      (selectedLocationSelection?.cities?.length || 0) > 0 ||
+      (selectedLocationSelection?.provinces?.length || 0) > 0
+    );
+  }, [selectedLocationSelection]);
+
+  const countPackedMatches = useCallback(
+    (packed, selectedSet) => {
+      if (!selectedSet || selectedSet.size === 0) return 0;
+      if (typeof packed !== "string" || !packed) return 0;
+      return packed
+        .split("|")
+        .map((t) => normalizeLocationToken(t))
+        .filter(Boolean)
+        .reduce((acc, tok) => acc + (selectedSet.has(tok) ? 1 : 0), 0);
+    },
+    [normalizeLocationToken]
+  );
+
+  const getScopedBranchCountFromIndex = useCallback(
+    (indexFields) => {
+      if (!hasScopedLocation || !indexFields) return null;
+      const selectedTowns = new Set(selectedLocationSelection.towns || []);
+      const selectedCities = new Set(selectedLocationSelection.cities || []);
+      const selectedProvinces = new Set(selectedLocationSelection.provinces || []);
+
+      if (selectedTowns.size > 0) {
+        const n = countPackedMatches(indexFields.towns, selectedTowns);
+        return n > 0 ? n : null;
+      }
+      if (selectedCities.size > 0) {
+        const n = countPackedMatches(indexFields.cities, selectedCities);
+        return n > 0 ? n : null;
+      }
+      if (selectedProvinces.size > 0) {
+        const n = countPackedMatches(indexFields.provinces, selectedProvinces);
+        return n > 0 ? n : null;
+      }
+      return null;
+    },
+    [countPackedMatches, hasScopedLocation, selectedLocationSelection]
+  );
+
   const buildListingItem = useCallback(
     (listing) => {
       const listingId = listing?.documentId || listing?.id;
@@ -763,11 +866,58 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
       const listingIdStr = String(listingId);
       branchesModalActiveListingIdRef.current = listingIdStr;
 
+      const locationSelectionSnapshot = selectedLocationSelection;
+      const hasLocationSelection =
+        (locationSelectionSnapshot?.towns?.length || 0) > 0 ||
+        (locationSelectionSnapshot?.cities?.length || 0) > 0 ||
+        (locationSelectionSnapshot?.provinces?.length || 0) > 0;
+      const filterBranchesForLocation = (branches, branchListings) => {
+        if (!Array.isArray(branches) || branches.length === 0) return [];
+        if (!hasLocationSelection) return branches;
+
+        const selectedTowns = new Set(locationSelectionSnapshot.towns || []);
+        const selectedCities = new Set(locationSelectionSnapshot.cities || []);
+        const selectedProvinces = new Set(locationSelectionSnapshot.provinces || []);
+
+        const getLocForBranch = (branch) => {
+          const direct = branch?.location || null;
+          if (direct) return direct;
+          const branchId = branch?.documentId || branch?.id || null;
+          if (!branchId || !Array.isArray(branchListings)) return null;
+          const match = branchListings.find((bl) => {
+            const blId = bl?.branch?.documentId || bl?.branch?.id || null;
+            return blId && String(blId) === String(branchId);
+          });
+          return match?.branch?.location || null;
+        };
+
+        const match = (branch) => {
+          const loc = getLocForBranch(branch);
+          if (!loc) return false;
+          const bProv = normalizeLocationToken(loc?.province);
+          const bCity = normalizeLocationToken(loc?.city);
+          const bTown = normalizeLocationToken(loc?.town);
+
+          if (selectedTowns.size > 0) return bTown && selectedTowns.has(bTown);
+          if (selectedCities.size > 0) return bCity && selectedCities.has(bCity);
+          if (selectedProvinces.size > 0) return bProv && selectedProvinces.has(bProv);
+          return true;
+        };
+
+        const filtered = branches.filter(match);
+        if (filtered.length > 0) return filtered;
+        return branches;
+      };
+
       const cached = branchesModalCacheRef.current.get(listingIdStr);
       if (cached && Array.isArray(cached.branches) && cached.branches.length > 1) {
+        const displayBranches = filterBranchesForLocation(
+          cached.branches,
+          Array.isArray(cached.branch_listings) ? cached.branch_listings : []
+        );
         setSelectedListing({
           ...listing,
-          __branchesOverride: cached.branches,
+          __branchesOverride: displayBranches,
           branch_listings: Array.isArray(cached.branch_listings) ? cached.branch_listings : [],
         });
         setShowBranchesModal(true);
@@ -808,11 +958,12 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         };
 
         const first = await fetchPage(1);
-        if (first.branches.length <= 1) return false;
+        if (first.branches.length <= 0) return false;
+        const displayFirstBranches = filterBranchesForLocation(first.branches, first.branchListings);
 
         setSelectedListing({
           ...listing,
-          __branchesOverride: first.branches,
+          __branchesOverride: displayFirstBranches,
           branch_listings: first.branchListings,
         });
         setShowBranchesModal(true);
@@ -821,8 +972,24 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
           setCompanyOrderPoolMap((prev) => {
             const base = prev || {};
             if (!base[listingIdStr]) return prev;
-            if (base[listingIdStr]?.__approxBranchCount === first.branches.length) return prev;
-            return { ...base, [listingIdStr]: { ...base[listingIdStr], __approxBranchCount: first.branches.length } };
+            const displayCount =
+              Array.isArray(displayFirstBranches) && displayFirstBranches.length > 0
+                ? displayFirstBranches.length
+                : first.branches.length;
+            const nextApprox = hasLocationSelection ? displayCount : first.branches.length;
+            if (
+              base[listingIdStr]?.__approxBranchCount === nextApprox &&
+              base[listingIdStr]?.__totalBranchCount === first.branches.length
+            )
+              return prev;
+            return {
+              ...base,
+              [listingIdStr]: {
+                ...base[listingIdStr],
+                __approxBranchCount: nextApprox,
+                __totalBranchCount: first.branches.length,
+              },
+            };
           });
           setBranchCountsVersion((v) => v + 1);
         } catch {
@@ -861,10 +1028,11 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
           allBranches = mergedBranches;
           allBranchListings = mergedBL;
 
+          const displayBranches = filterBranchesForLocation(mergedBranches, mergedBL);
           setSelectedListing((prev) => {
             const prevId = prev?.documentId || prev?.id;
             if (!prevId || String(prevId) !== listingIdStr) return prev;
-            return { ...prev, __branchesOverride: mergedBranches, branch_listings: mergedBL };
+            return { ...prev, __branchesOverride: displayBranches, branch_listings: mergedBL };
           });
 
           if (next.rawBranchesCount < PAGE_SIZE && next.rawBranchListingsCount < PAGE_SIZE) break;
@@ -877,11 +1045,28 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         });
         try {
           branchCountsCacheRef.current.set(listingIdStr, allBranches.length);
+          const displayAllBranches = filterBranchesForLocation(allBranches, allBranchListings);
+          const displayCount =
+            Array.isArray(displayAllBranches) && displayAllBranches.length > 0
+              ? displayAllBranches.length
+              : allBranches.length;
+          const nextApprox = hasLocationSelection ? displayCount : allBranches.length;
           setCompanyOrderPoolMap((prev) => {
             const base = prev || {};
             if (!base[listingIdStr]) return prev;
-            if (base[listingIdStr]?.__approxBranchCount === allBranches.length) return prev;
-            return { ...base, [listingIdStr]: { ...base[listingIdStr], __approxBranchCount: allBranches.length } };
+            if (
+              base[listingIdStr]?.__approxBranchCount === nextApprox &&
+              base[listingIdStr]?.__totalBranchCount === allBranches.length
+            )
+              return prev;
+            return {
+              ...base,
+              [listingIdStr]: {
+                ...base[listingIdStr],
+                __approxBranchCount: nextApprox,
+                __totalBranchCount: allBranches.length,
+              },
+            };
           });
           setBranchCountsVersion((v) => v + 1);
         } catch {
@@ -894,7 +1079,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         setBranchesModalLoading(false);
       }
     },
-    [apolloClient]
+    [apolloClient, normalizeLocationToken, selectedLocationSelection]
   );
 
   const handleListingPrimaryClick = useCallback(
@@ -1261,6 +1446,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
       const appendIds = [];
       const approxById = {};
+      const indexFieldsById = {};
       const hasEnoughCompanies = !needCompanies;
       while (!cancelled && pagesFetched < MAX_INDEX_PAGES_PER_RUN) {
         const res = await apolloClient.query({
@@ -1284,6 +1470,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         for (const n of nodes) {
           const id = n?.listing_document_id ? String(n.listing_document_id) : "";
           if (!id) continue;
+          const provinces = typeof n?.provinces === "string" ? n.provinces : "";
           const towns = typeof n?.towns === "string" ? n.towns : "";
           const townTokens = towns
             .split("|")
@@ -1294,8 +1481,15 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
             .split("|")
             .map((t) => t.trim())
             .filter(Boolean);
-          const approx = Math.max(townTokens.length, cityTokens.length);
-          if (approx > 0) approxById[id] = approx;
+          indexFieldsById[id] = { provinces, cities, towns };
+
+          const scoped = getScopedBranchCountFromIndex(indexFieldsById[id]);
+          if (typeof scoped === "number" && scoped > 0) {
+            approxById[id] = scoped;
+          } else {
+            const approx = Math.max(townTokens.length, cityTokens.length);
+            if (approx > 0) approxById[id] = approx;
+          }
         }
 
         if (ids.length === 0) {
@@ -1347,13 +1541,24 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
               const id = l?.documentId ? String(l.documentId) : "";
               if (!id) continue;
               const cachedCount = branchCountsCacheRef.current.get(id);
-              const count =
+              const indexFields = indexFieldsById[id] || null;
+              const scopedCount = getScopedBranchCountFromIndex(indexFields);
+              const baseCount =
                 typeof cachedCount === "number"
                   ? cachedCount
                   : typeof approxById[id] === "number"
                     ? approxById[id]
                     : null;
-              nextMap[id] = { ...l, __approxBranchCount: count };
+              const count = hasScopedLocation ? (scopedCount ?? baseCount) : baseCount;
+
+              nextMap[id] = {
+                ...l,
+                __approxBranchCount: count,
+                __totalBranchCount: typeof cachedCount === "number" ? cachedCount : undefined,
+                __indexProvinces: indexFields?.provinces || "",
+                __indexCities: indexFields?.cities || "",
+                __indexTowns: indexFields?.towns || "",
+              };
             }
           }
 
@@ -1435,9 +1640,22 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
   const filteredListings = useMemo(() => {
     if (sortOrder === "Default" && enableQueries) {
-      const ordered = companyOrderPoolIds
+      const orderedRaw = companyOrderPoolIds
         .map((id) => companyOrderPoolMap?.[id])
         .filter(Boolean);
+      const ordered = !hasScopedLocation
+        ? orderedRaw
+        : orderedRaw.map((l) => {
+            const scoped = getScopedBranchCountFromIndex({
+              provinces: l?.__indexProvinces,
+              cities: l?.__indexCities,
+              towns: l?.__indexTowns,
+            });
+            if (typeof scoped === "number" && scoped > 0) {
+              return { ...l, __approxBranchCount: scoped };
+            }
+            return l;
+          });
       if (ordered.length > 0) {
         const dayKey = new Date().toISOString().slice(0, 10);
         const seedKey = `for-sale|company-rotation|${dayKey}`;
@@ -1450,10 +1668,23 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     }
     if (enableQueries && listingDocumentIds.length > 0 && !searchIndexLoading && !listingsByIdsLoading) {
       const approxById = new Map();
+      const indexById = new Map();
       if (Array.isArray(searchIndexNodes)) {
         for (const n of searchIndexNodes) {
           const id = n?.listing_document_id ? String(n.listing_document_id) : "";
           if (!id) continue;
+          const indexFields = {
+            provinces: typeof n?.provinces === "string" ? n.provinces : "",
+            cities: typeof n?.cities === "string" ? n.cities : "",
+            towns: typeof n?.towns === "string" ? n.towns : "",
+          };
+          indexById.set(id, indexFields);
+
+          const scoped = getScopedBranchCountFromIndex(indexFields);
+          if (typeof scoped === "number" && scoped > 0) {
+            approxById.set(id, scoped);
+            continue;
+          }
           const towns = typeof n?.towns === "string" ? n.towns : "";
           const townTokens = towns
             .split("|")
@@ -1476,13 +1707,18 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
           const id = l?.documentId ? String(l.documentId) : "";
           if (!id) continue;
           const cachedCount = branchCountsCacheRef.current.get(id);
-          const count =
-            typeof cachedCount === "number"
-              ? cachedCount
-              : typeof approxById.get(id) === "number"
-                ? approxById.get(id)
-                : null;
-          map.set(id, { ...l, __approxBranchCount: count });
+          const approx = typeof approxById.get(id) === "number" ? approxById.get(id) : null;
+          const baseCount = typeof cachedCount === "number" ? cachedCount : approx;
+          const count = hasScopedLocation ? (approx ?? baseCount) : baseCount;
+          const indexFields = indexById.get(id) || null;
+          map.set(id, {
+            ...l,
+            __approxBranchCount: count,
+            __totalBranchCount: typeof cachedCount === "number" ? cachedCount : undefined,
+            __indexProvinces: indexFields?.provinces || "",
+            __indexCities: indexFields?.cities || "",
+            __indexTowns: indexFields?.towns || "",
+          });
         }
       }
       const ordered = listingDocumentIds.map((id) => map.get(id)).filter(Boolean);
@@ -1502,6 +1738,8 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     listingsPerPage,
     searchIndexLoading,
     searchIndexNodes,
+    hasScopedLocation,
+    getScopedBranchCountFromIndex,
     sortOrder,
   ]);
 
@@ -1565,8 +1803,16 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
           const next = { ...base };
           for (const [id, count] of nextCounts.entries()) {
             if (!next[id]) continue;
-            if (next[id]?.__approxBranchCount === count) continue;
-            next[id] = { ...next[id], __approxBranchCount: count };
+            const shouldUpdateApprox = !hasScopedLocation;
+            const prevApprox = next[id]?.__approxBranchCount;
+            const prevTotal = next[id]?.__totalBranchCount;
+            if (prevTotal === count && (!shouldUpdateApprox || prevApprox === count)) continue;
+
+            next[id] = {
+              ...next[id],
+              __totalBranchCount: count,
+              ...(shouldUpdateApprox ? { __approxBranchCount: count } : {}),
+            };
             changed = true;
           }
           return changed ? next : prev;
@@ -1581,7 +1827,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
     return () => {
       cancelled = true;
     };
-  }, [apolloClient, enableQueries, visibleListingIds, visibleListingIdsKey]);
+  }, [apolloClient, enableQueries, hasScopedLocation, visibleListingIds, visibleListingIdsKey]);
 
   const totalListingsCount = useMemo(() => {
     const t = searchIndexPageInfo?.total;
