@@ -7,6 +7,7 @@ import ApolloWrapper from "./ApolloWrapper";
 import SessionWrapper from "./components/SessionWrapper";
 import { FavoritesProvider } from "@/context/favorites-context.jsx";
 import MaintenanceBanner from "@/components/MaintenanceBanner";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001"),
@@ -156,13 +157,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `}
         </Script>
         <MaintenanceBanner />
-        <SessionWrapper>
-          <ApolloWrapper>
-            <FavoritesProvider>
-              {children}
-            </FavoritesProvider>
-          </ApolloWrapper>
-        </SessionWrapper>
+        <Suspense fallback={<div />}>
+          <SessionWrapper>
+            <ApolloWrapper>
+              <FavoritesProvider>
+                {children}
+              </FavoritesProvider>
+            </ApolloWrapper>
+          </SessionWrapper>
+        </Suspense>
         <Toaster />
       </body>
     </html>
