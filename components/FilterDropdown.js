@@ -116,7 +116,7 @@ const getLocationLabel = (value) => {
   return decoded.province;
 };
 
-const HierarchyItem = ({ item, level = 0, locationState, onSelect, selectedLocationTotal, shouldFetchCounts, getCount, ensureCount }) => {
+const HierarchyItem = ({ item, level = 0, locationState, onSelect, selectedLocationTotal, shouldFetchCounts, getCount, ensureCount, showCountPlaceholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const hasChildren = item.cities && item.cities.length > 0;
   const isSelected = locationState?.isProvinceSelected?.(item.name);
@@ -135,7 +135,9 @@ const HierarchyItem = ({ item, level = 0, locationState, onSelect, selectedLocat
         ? selectedLocationTotal
         : shouldFetchCounts
           ? "..."
-          : item.count || 0;
+          : showCountPlaceholder
+            ? "..."
+            : item.count || 0;
 
   const toggleOpen = (e) => {
     e.stopPropagation();
@@ -183,6 +185,7 @@ const HierarchyItem = ({ item, level = 0, locationState, onSelect, selectedLocat
                 shouldFetchCounts={shouldFetchCounts}
                 getCount={getCount}
                 ensureCount={ensureCount}
+                showCountPlaceholder={showCountPlaceholder}
              />
           ))}
         </div>
@@ -191,7 +194,7 @@ const HierarchyItem = ({ item, level = 0, locationState, onSelect, selectedLocat
   );
 };
 
-const CityItem = ({ city, provinceName, level, locationState, onSelect, selectedLocationTotal, shouldFetchCounts, getCount, ensureCount }) => {
+const CityItem = ({ city, provinceName, level, locationState, onSelect, selectedLocationTotal, shouldFetchCounts, getCount, ensureCount, showCountPlaceholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const hasChildren = city.towns && city.towns.length > 0;
   // Hide dropdown if only 1 town and its name matches the city name
@@ -212,7 +215,9 @@ const CityItem = ({ city, provinceName, level, locationState, onSelect, selected
         ? selectedLocationTotal
         : shouldFetchCounts
           ? "..."
-          : city.count || 0;
+          : showCountPlaceholder
+            ? "..."
+            : city.count || 0;
 
   const toggleOpen = (e) => {
     e.stopPropagation();
@@ -261,6 +266,7 @@ const CityItem = ({ city, provinceName, level, locationState, onSelect, selected
                shouldFetchCounts={shouldFetchCounts}
                getCount={getCount}
                ensureCount={ensureCount}
+               showCountPlaceholder={showCountPlaceholder}
              />
           ))}
         </div>
@@ -269,7 +275,7 @@ const CityItem = ({ city, provinceName, level, locationState, onSelect, selected
   );
 }
 
-const TownItem = ({ town, provinceName, cityName, level, locationState, onSelect, selectedLocationTotal, shouldFetchCounts, getCount, ensureCount }) => {
+const TownItem = ({ town, provinceName, cityName, level, locationState, onSelect, selectedLocationTotal, shouldFetchCounts, getCount, ensureCount, showCountPlaceholder }) => {
   const isSelected = locationState?.isTownSelected?.(provinceName, cityName, town.name);
   const isDisabled = locationState?.isTownDisabled?.(provinceName, cityName);
   const paddingLeft = `${level * 16 + 12}px`; // No extra indentation needed as arrow is gone
@@ -286,7 +292,9 @@ const TownItem = ({ town, provinceName, cityName, level, locationState, onSelect
         ? selectedLocationTotal
         : shouldFetchCounts
           ? "..."
-          : town.count || 0;
+          : showCountPlaceholder
+            ? "..."
+            : town.count || 0;
 
   return (
     <div 
@@ -322,7 +330,8 @@ export default function FilterDropdown({
   filters,
   dropdownRefs,
   selectedLocationTotal,
-  locationCountBaseFilters
+  locationCountBaseFilters,
+  disableCountsFetch = false
 }) {
   const SORTED_MENUS = new Set(["style", "overallStyle", "slabStyle", "stoneType", "colour", "custom"]);
   const MULTI_SELECT_MENUS = new Set(["style", "overallStyle", "slabStyle", "stoneType", "colour", "custom", "location"]);
@@ -391,8 +400,11 @@ export default function FilterDropdown({
     name === "location" &&
     isHierarchical &&
     openDropdown === "location" &&
+    !disableCountsFetch &&
     locationCountBaseFilters &&
     Array.isArray(locationCountBaseFilters.and);
+  const showCountPlaceholder =
+    name === "location" && isHierarchical && locationCountBaseFilters && Array.isArray(locationCountBaseFilters.and);
 
   const getCount = (encoded) => {
     const v = locationCountMap?.[encoded];
@@ -716,6 +728,7 @@ export default function FilterDropdown({
                    shouldFetchCounts={shouldFetchCounts}
                    getCount={getCount}
                    ensureCount={ensureCount}
+                   showCountPlaceholder={showCountPlaceholder}
                  />
                ))
             ) : (

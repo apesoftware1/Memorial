@@ -2670,7 +2670,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                 locationsData={locationHierarchy}
                 initialCount={totalListingsCount}
                 isBackgroundLoading={!enableQueries || listingsLoading}
-                locationCountBaseFilters={hasPendingFilterChanges ? null : locationCountBaseFilters}
+                locationCountBaseFilters={locationCountBaseFilters}
               />
             </div>
           </div>
@@ -2723,7 +2723,7 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
                   locationsData={locationHierarchy}
                   initialCount={totalListingsCount}
                   isBackgroundLoading={!enableQueries || listingsLoading}
-                  locationCountBaseFilters={hasPendingFilterChanges ? null : locationCountBaseFilters}
+                  locationCountBaseFilters={locationCountBaseFilters}
                 />
               </div>
             )}
