@@ -365,6 +365,8 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
             selectOption={selectOption}
             filters={activeFilters}
             dropdownRefs={dropdownRefs}
+            selectedLocationTotal={null}
+            locationCountBaseFilters={locationCountBaseFilters}
           />
         </div>
       )}
@@ -379,8 +381,9 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
         selectOption={selectOption}
         filters={activeFilters}
         dropdownRefs={dropdownRefs}
-        selectedLocationTotal={initialCount}
+        selectedLocationTotal={null}
         locationCountBaseFilters={locationCountBaseFilters}
+        disableCountsFetch={applyMode}
       />
 
       <FilterDropdown name="overallStyle" label="Style" options={mergedOptions.overallStyle || defaultFilterOptions.overallStyle} openDropdown={showFilters} toggleDropdown={toggleFilter} selectOption={selectOption} filters={activeFilters} dropdownRefs={dropdownRefs} selectedLocationTotal={null} locationCountBaseFilters={locationCountBaseFilters} />
@@ -464,6 +467,8 @@ export default function TombstonesForSaleFilters({ activeFilters, setActiveFilte
           isOpen={showLocationModal}
           onClose={() => setShowLocationModal(false)}
           locationsData={locationsData}
+          locationCountBaseFilters={locationCountBaseFilters}
+          disableCountsFetch={applyMode}
           selectedLocations={activeFilters?.location}
           onSelectLocation={(loc: any) => {
             if (Array.isArray(loc)) {

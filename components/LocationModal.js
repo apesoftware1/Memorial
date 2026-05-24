@@ -13,6 +13,7 @@ export default function LocationModal({
   onSelectLocation,
   selectedLocations,
   locationCountBaseFilters,
+  disableCountsFetch = false,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDesktop, setIsDesktop] = useState(true);
@@ -44,8 +45,8 @@ export default function LocationModal({
     locationCountPendingRef.current = new Set();
   }, [locationCountBaseFilters]);
 
-  const shouldFetchCounts =
-    !isDesktop && isOpen && locationCountBaseFilters && Array.isArray(locationCountBaseFilters.and);
+  const showCountPlaceholder = locationCountBaseFilters && Array.isArray(locationCountBaseFilters.and);
+  const shouldFetchCounts = !disableCountsFetch && !isDesktop && isOpen && showCountPlaceholder;
 
   const normalizeLower = (v) => (typeof v === "string" ? v.trim().toLowerCase() : "");
   const packedTokenVariants = (raw) => {
@@ -372,7 +373,13 @@ export default function LocationModal({
                         const encoded = encodeLocationValue({ level: "province", province: location.name });
                         const fetched = getCount(encoded);
                         const display =
-                          typeof fetched === "number" ? fetched : shouldFetchCounts ? "..." : location.count;
+                          typeof fetched === "number"
+                            ? fetched
+                            : shouldFetchCounts
+                              ? "..."
+                              : showCountPlaceholder
+                                ? "..."
+                                : location.count;
                         return display !== null && display !== undefined ? (
                           <span className="text-gray-500 text-sm font-normal ml-1">({display})</span>
                         ) : null;
@@ -426,7 +433,13 @@ export default function LocationModal({
                       const encoded = encodeLocationValue({ level: "city", province: location.name, city: city.name });
                       const fetched = getCount(encoded);
                       const display =
-                        typeof fetched === "number" ? fetched : shouldFetchCounts ? "..." : city.count;
+                        typeof fetched === "number"
+                          ? fetched
+                          : shouldFetchCounts
+                            ? "..."
+                            : showCountPlaceholder
+                              ? "..."
+                              : city.count;
                       return <span className="text-gray-400 text-xs">({display ?? 0})</span>;
                     })()}
                   </button>
