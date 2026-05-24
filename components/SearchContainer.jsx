@@ -1857,6 +1857,7 @@ const SearchContainer = ({
                 isOpen={showLocationModal}
                 onClose={() => setShowLocationModal(false)}
                 locationsData={visibleLocationHierarchy}
+                locationCountBaseFilters={locationCountBaseFilters}
                 selectedLocations={filters?.location}
                 onSelectLocation={(loc) => {
                   if (setFilters) {

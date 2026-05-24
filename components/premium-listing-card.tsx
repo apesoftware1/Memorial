@@ -13,6 +13,7 @@ import LocationTrigger from "./LocationTrigger";
 import { useGuestLocation } from "@/hooks/useGuestLocation";
 // Remove this line: import { calculateDistanceFrom } from "@/lib/locationUtil";
 import { formatPrice } from "@/lib/priceUtils";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 
 type DistanceInfo = {
   distance: { text: string; value: number };
@@ -122,6 +123,15 @@ export function PremiumListingCard({
 
     // Only navigate if not handled by any of the above
     e.preventDefault(); // Prevent any default behavior
+    try {
+      if (listing?.documentId) {
+        trackAnalyticsEvent("listing_view", listing.documentId, {
+          pagePath: pathname || "/tombstones-for-sale",
+          dedupeKey: "listing-open",
+        });
+      }
+    } catch {
+    }
     router.push(productUrl);
   };
 
