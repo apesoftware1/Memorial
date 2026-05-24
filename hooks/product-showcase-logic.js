@@ -28,7 +28,7 @@ export function useProductShowcaseLogic(listing) {
   // Analytics: once per listing id
   useEffect(() => {
     if (listing?.documentId) {
-      trackAnalyticsEvent("listing_view", listing.documentId);
+      trackAnalyticsEvent("listing_view", listing.documentId, { dedupeKey: "listing-open" });
     }
   }, [listing?.documentId]);
 

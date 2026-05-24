@@ -1,10 +1,19 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef, useCallback } from "react"
+import { useApolloClient } from "@apollo/client"
 import { X, MapPin, Loader, ChevronDown, ChevronUp } from "lucide-react"
 import { useGuestLocation } from "@/hooks/useGuestLocation"
+import { LISTING_SEARCH_INDEX_CONNECTION_QUERY } from "@/graphql/queries/listingsProgressive"
 
-export default function LocationModal({ isOpen, onClose, locationsData, onSelectLocation, selectedLocations }) {
+export default function LocationModal({
+  isOpen,
+  onClose,
+  locationsData,
+  onSelectLocation,
+  selectedLocations,
+  locationCountBaseFilters,
+}) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDesktop, setIsDesktop] = useState(true);
   const [geolocationStatus, setGeolocationStatus] = useState('idle');
@@ -22,6 +31,98 @@ export default function LocationModal({ isOpen, onClose, locationsData, onSelect
   
   // Use real location data from the hook
   const { location: userLocation } = useGuestLocation();
+
+  const apolloClient = useApolloClient();
+  const [locationCountMap, setLocationCountMap] = useState({});
+  const locationCountPendingRef = useRef(new Set());
+  const locationCountMapRef = useRef(locationCountMap);
+  useEffect(() => {
+    locationCountMapRef.current = locationCountMap;
+  }, [locationCountMap]);
+  useEffect(() => {
+    setLocationCountMap({});
+    locationCountPendingRef.current = new Set();
+  }, [locationCountBaseFilters]);
+
+  const shouldFetchCounts =
+    !isDesktop && isOpen && locationCountBaseFilters && Array.isArray(locationCountBaseFilters.and);
+
+  const normalizeLower = (v) => (typeof v === "string" ? v.trim().toLowerCase() : "");
+  const packedTokenVariants = (raw) => {
+    const base = normalizeLower(raw);
+    if (!base) return [];
+    const kebab = base.replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+    const variants = new Set([base, kebab]);
+    return Array.from(variants).filter(Boolean).map((v) => `|${v}|`);
+  };
+
+  const isEncodedLocationValue = (value) => typeof value === "string" && /^[pct]\|/.test(value);
+  const decodeLocationValue = (value) => {
+    if (!isEncodedLocationValue(value)) return null;
+    const parts = value.split("|").map((p) => p.trim());
+    const level = parts[0];
+    if (level === "p") return { level: "province", province: parts[1] || "" };
+    if (level === "c") return { level: "city", province: parts[1] || "", city: parts[2] || "" };
+    if (level === "t") return { level: "town", province: parts[1] || "", city: parts[2] || "", town: parts[3] || "" };
+    return null;
+  };
+  const encodeLocationValue = ({ level, province, city, town }) => {
+    if (level === "province") return `p|${province}`;
+    if (level === "city") return `c|${province}|${city}`;
+    return `t|${province}|${city}|${town}`;
+  };
+
+  const getCount = (encoded) => {
+    const v = locationCountMap?.[encoded];
+    return typeof v === "number" ? v : null;
+  };
+
+  const ensureCount = useCallback(
+    async (encoded) => {
+      if (!shouldFetchCounts) return;
+      if (!encoded || typeof encoded !== "string") return;
+      if (typeof locationCountMapRef.current?.[encoded] === "number") return;
+      if (locationCountPendingRef.current.has(encoded)) return;
+      locationCountPendingRef.current.add(encoded);
+
+      try {
+        const decoded = decodeLocationValue(encoded);
+        if (!decoded) return;
+
+        const and = Array.isArray(locationCountBaseFilters?.and) ? [...locationCountBaseFilters.and] : [];
+        if (decoded.level === "province") {
+          const toks = packedTokenVariants(decoded.province);
+          if (toks.length) and.push({ or: toks.map((tok) => ({ provinces: { contains: tok } })) });
+        } else if (decoded.level === "city") {
+          const provToks = packedTokenVariants(decoded.province);
+          if (provToks.length) and.push({ or: provToks.map((tok) => ({ provinces: { contains: tok } })) });
+          const cityToks = packedTokenVariants(decoded.city);
+          if (cityToks.length) and.push({ or: cityToks.map((tok) => ({ cities: { contains: tok } })) });
+        } else if (decoded.level === "town") {
+          const provToks = packedTokenVariants(decoded.province);
+          if (provToks.length) and.push({ or: provToks.map((tok) => ({ provinces: { contains: tok } })) });
+          const cityToks = packedTokenVariants(decoded.city);
+          if (cityToks.length) and.push({ or: cityToks.map((tok) => ({ cities: { contains: tok } })) });
+          const townToks = packedTokenVariants(decoded.town);
+          if (townToks.length) and.push({ or: townToks.map((tok) => ({ towns: { contains: tok } })) });
+        }
+        const filters = and.length ? { and } : undefined;
+
+        const res = await apolloClient.query({
+          query: LISTING_SEARCH_INDEX_CONNECTION_QUERY,
+          variables: { filters, page: 1, pageSize: 1 },
+          fetchPolicy: "network-only",
+        });
+        const total = res?.data?.listingSearchIndices_connection?.pageInfo?.total;
+        if (typeof total === "number") {
+          setLocationCountMap((prev) => ({ ...(prev || {}), [encoded]: total }));
+        }
+      } finally {
+        locationCountPendingRef.current.delete(encoded);
+      }
+    },
+    [apolloClient, locationCountBaseFilters, shouldFetchCounts]
+  );
 
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371; // Radius of the earth in km
@@ -95,6 +196,18 @@ export default function LocationModal({ isOpen, onClose, locationsData, onSelect
     
     return filtered;
   }, [enhancedLocationsData, searchTerm, userLocation]);
+
+  useEffect(() => {
+    if (!shouldFetchCounts) return;
+    for (const location of filteredLocations) {
+      ensureCount(encodeLocationValue({ level: "province", province: location.name }));
+      if (expandedProvinces?.[location.name] && Array.isArray(location.cities)) {
+        for (const city of location.cities) {
+          ensureCount(encodeLocationValue({ level: "city", province: location.name, city: city.name }));
+        }
+      }
+    }
+  }, [ensureCount, expandedProvinces, filteredLocations, shouldFetchCounts]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -255,9 +368,15 @@ export default function LocationModal({ isOpen, onClose, locationsData, onSelect
                         </span>
                         <span>{location.name}</span>
                       </span>
-                      {location.count !== undefined && (
-                        <span className="text-gray-500 text-sm font-normal ml-1">({location.count})</span>
-                      )}
+                      {(() => {
+                        const encoded = encodeLocationValue({ level: "province", province: location.name });
+                        const fetched = getCount(encoded);
+                        const display =
+                          typeof fetched === "number" ? fetched : shouldFetchCounts ? "..." : location.count;
+                        return display !== null && display !== undefined ? (
+                          <span className="text-gray-500 text-sm font-normal ml-1">({display})</span>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
                   <div className="text-gray-500 text-sm mr-2">
@@ -303,7 +422,13 @@ export default function LocationModal({ isOpen, onClose, locationsData, onSelect
                       </span>
                       <span>{city.name}</span>
                     </span>
-                    <span className="text-gray-400 text-xs">({city.count})</span>
+                    {(() => {
+                      const encoded = encodeLocationValue({ level: "city", province: location.name, city: city.name });
+                      const fetched = getCount(encoded);
+                      const display =
+                        typeof fetched === "number" ? fetched : shouldFetchCounts ? "..." : city.count;
+                      return <span className="text-gray-400 text-xs">({display ?? 0})</span>;
+                    })()}
                   </button>
                 ))}
               </div>
