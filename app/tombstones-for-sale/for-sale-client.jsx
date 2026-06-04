@@ -80,6 +80,34 @@ const getCompanyKey = (listing) => {
   return fallback ? `unknown:${String(fallback)}` : "unknown"
 }
 
+const DEFAULT_FOR_SALE_FILTERS = {
+  minPrice: "Min Price",
+  maxPrice: "Max Price",
+  location: null,
+  stoneType: null,
+  color: null,
+  style: null,
+  overallStyle: null,
+  slabStyle: null,
+  custom: null,
+  colour: null,
+  category: null,
+  search: null,
+}
+
+const coerceInitialForSaleFilters = (initial) => {
+  if (!initial || typeof initial !== "object") return { ...DEFAULT_FOR_SALE_FILTERS }
+  const out = { ...DEFAULT_FOR_SALE_FILTERS }
+  for (const k of Object.keys(DEFAULT_FOR_SALE_FILTERS)) {
+    if (Object.prototype.hasOwnProperty.call(initial, k)) {
+      out[k] = initial[k]
+    }
+  }
+  if (out.colour == null && out.color != null) out.colour = out.color
+  if (out.color == null && out.colour != null) out.color = out.colour
+  return out
+}
+
 const enforceNoAdjacentCompanies = (listings) => {
   const out = Array.isArray(listings) ? [...listings] : []
   if (out.length <= 1) return out
@@ -227,7 +255,12 @@ const interleaveCompanyListingsNoAdjacent = (listings, seedKey) => {
   return result
 }
 
-export default function TombstonesForSaleClient({ initialListings = [], initialCategories = [] }) {
+export default function TombstonesForSaleClient({
+  initialListings = [],
+  initialCategories = [],
+  initialFilters = null,
+  disableLocationUrlSync = false,
+}) {
   const [enableQueries, setEnableQueries] = useState(false);
   useEffect(() => {
     setEnableQueries(true);
@@ -331,21 +364,8 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
 
   const [showFilters, setShowFilters] = useState(null)
 
-  const [activeFilters, setActiveFilters] = useState({
-    minPrice: "Min Price",
-    maxPrice: "Max Price",
-    location: null,
-    stoneType: null,
-    color: null,
-    style: null,
-    overallStyle: null,
-    slabStyle: null,
-    custom: null,
-    colour: null,
-    category: null,
-    search: null,
-  })
-  const [draftFilters, setDraftFilters] = useState(activeFilters);
+  const [activeFilters, setActiveFilters] = useState(() => coerceInitialForSaleFilters(initialFilters))
+  const [draftFilters, setDraftFilters] = useState(() => coerceInitialForSaleFilters(initialFilters))
 
   const serializeFiltersForCompare = useCallback((filters) => {
     const normalizeVal = (v) => {
@@ -436,7 +456,8 @@ export default function TombstonesForSaleClient({ initialListings = [], initialC
         if (Array.isArray(locationNormalized) && locationNormalized.length === 0) locationNormalized = null;
       }
 
-      if (JSON.stringify(locationNormalized) !== JSON.stringify(prev.location)) {
+      const shouldSyncLocation = !disableLocationUrlSync || Boolean(locationVal);
+      if (shouldSyncLocation && JSON.stringify(locationNormalized) !== JSON.stringify(prev.location)) {
         newFilters.location = locationNormalized;
         hasChanges = true;
       }
