@@ -93,6 +93,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="en" suppressHydrationWarning>
+      
       <head>
         {/* Preconnect to media origins to speed up image loading */}
         <link rel="preconnect" href="https://typical-car-e0b66549b3.media.strapiapp.com" crossOrigin="anonymous" />
@@ -112,6 +113,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 });
               `}
             </Script>
+            
           </>
         ) : null}
       </head>
@@ -156,6 +158,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             })();
           `}
         </Script>
+        
         <MaintenanceBanner />
         <Suspense fallback={<div />}>
           <SessionWrapper>

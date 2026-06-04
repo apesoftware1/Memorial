@@ -1,40 +1,57 @@
 import ProductShowcase from "@/components/product-showcase";
 import ProductStructuredData from "@/components/ProductStructuredData";
-import LoadingIndicator from "@/components/LoadingIndicator";
+import { notFound } from "next/navigation";
 
 // This is a Server Component
-export default async function ProductPage({ params }) {
-  const { id } = await params;
-  let listing = null;
-  let error = null;
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tombstonesfinder.co.za";
 
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
-    const response = await fetch(`${baseUrl}/listings/${id}`, {
-      cache: "force-cache",
-      next: { revalidate: 3600 } // Revalidate every hour
-    });
-    
-    if (!response.ok) {
-      // If 404 or other error, we might want to handle it gracefully
-      // For now, we'll just set error state like before
-      throw new Error("Failed to fetch listing");
-    }
-    
-    const data = await response.json();
-    listing = data.data || data;
-  } catch (err) {
-    console.error("Error fetching listing:", err);
-    error = err.message;
-  }
+function toAbsoluteUrl(pathname) {
+  return `${SITE_URL}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
+}
 
-  if (error) {
-    return <div className="text-center p-8">Error: {error}</div>;
-  }
+async function fetchListing(id) {
+  const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
+  const response = await fetch(`${baseUrl}/listings/${id}`, {
+    cache: "force-cache",
+    next: { revalidate: 3600 },
+  });
+  if (!response.ok) return null;
+  const data = await response.json();
+  return data?.data || data || null;
+}
 
+export async function generateMetadata({ params }) {
+  const id = params?.id;
+  if (!id) return {};
+  const listing = await fetchListing(id);
+  const canonical = toAbsoluteUrl(`/tombstones-for-sale/${id}`);
   if (!listing) {
-    return <div className="text-center p-8">Listing not found</div>;
+    return { title: "Listing Not Found | TombstoneFinder", alternates: { canonical } };
   }
+  const titleRaw = String(listing?.title ?? "").trim();
+  const title = titleRaw ? `${titleRaw} | TombstoneFinder` : "Tombstone Listing | TombstoneFinder";
+  const description = String(listing?.description ?? "").trim() || "View pricing and details for this tombstone.";
+  const image = typeof listing?.mainImageUrl === "string" && listing.mainImageUrl.trim() ? listing.mainImageUrl.trim() : null;
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      type: "product",
+      url: canonical,
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
+}
+
+export default async function ProductPage({ params }) {
+  const id = params?.id;
+  if (!id) notFound();
+
+  const listing = await fetchListing(id);
+  if (!listing) notFound();
 
   return (
     <>
