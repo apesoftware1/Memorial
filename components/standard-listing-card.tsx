@@ -91,6 +91,29 @@ export function StandardListingCard({
 
   const productUrl = href || `/tombstones-for-sale/${listing.documentId}`;
 
+  const pickSeoValue = (v: any) => {
+    if (!v) return "";
+    if (typeof v === "string") return v.trim();
+    if (Array.isArray(v)) {
+      const first = v.find(Boolean);
+      if (!first) return "";
+      if (typeof first === "string") return first.trim();
+      if (typeof first === "object") return String((first as any)?.value ?? (first as any)?.name ?? "").trim();
+      return String(first).trim();
+    }
+    if (typeof v === "object") return String((v as any)?.value ?? (v as any)?.name ?? "").trim();
+    return String(v).trim();
+  };
+
+  const seoColour = pickSeoValue((listing as any)?.productDetails?.color);
+  const seoStoneType = pickSeoValue((listing as any)?.productDetails?.stoneType);
+  const seoHeadStyle = pickSeoValue((listing as any)?.productDetails?.style) || pickSeoValue((listing as any)?.productDetails?.overallStyle);
+  const seoPlaceRaw = typeof (listing as any)?.company?.location === "string" ? String((listing as any).company.location) : "";
+  const seoPlace = seoPlaceRaw ? seoPlaceRaw.split(",")[0].trim() : "";
+  const seoSpec = [seoColour, seoStoneType, seoHeadStyle].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+  const seoLinkText = `View ${seoSpec ? `${seoSpec} ` : ""}tombstone${seoPlace ? ` available in ${seoPlace}` : ""}`;
+  const seoImageAlt = `${seoSpec ? `${seoSpec} tombstone` : "Tombstone"}${seoPlace ? ` in ${seoPlace}` : ""}`;
+
   const handleClick = () => {
     router.push(productUrl);
   };
@@ -252,6 +275,7 @@ export function StandardListingCard({
           </div>
           {/* Title, Details, Features (Mobile) */}
           <h2 className="text-lg font-bold text-gray-800 mb-2 uppercase">
+            <span className="sr-only">{seoLinkText}</span>
             {listing?.title || "Listing Title"}
           </h2>
           {/* --- Product Details Section (same as desktop) --- */}
@@ -454,7 +478,7 @@ export function StandardListingCard({
           <div className="relative h-full">
             <Image
               src={cloudinaryOptimized(listing.mainImageUrl, 1600) || "/placeholder.svg"}
-              alt={listing.title}
+              alt={seoImageAlt || listing.title}
               fill
               className="object-cover"
               sizes="(min-width: 768px) 50vw"
@@ -492,6 +516,7 @@ export function StandardListingCard({
           {/* Middle section: title and details */}
           <div className="flex-1">
             <h2 className="text-lg font-bold text-gray-800 mb-2 uppercase">
+              <span className="sr-only">{seoLinkText}</span>
               {listing.title}
             </h2>
             {/* Product Details */}

@@ -16,35 +16,10 @@ function normalizeLower(v: unknown) {
   return typeof v === "string" ? v.trim().toLowerCase() : "";
 }
 
-function toSlug(value: unknown) {
-  const base = normalizeLower(value);
-  if (!base) return "";
-  return base.replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-}
-
-function packedTokenVariants(raw: string) {
-  const base = normalizeLower(raw);
-  if (!base) return [] as string[];
-  const kebab = base.replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-  const variants = new Set([base, kebab]);
-  return Array.from(variants)
-    .filter(Boolean)
-    .map((v) => `|${v}|`);
-}
-
 function uniqStrings(list: unknown[]) {
   return Array.from(
     new Set(list.map((v) => String(v ?? "").trim()).filter(Boolean))
   );
-}
-
-function titleCaseFromSlug(slug: string) {
-  const words = slug
-    .split("-")
-    .map((w) => w.trim())
-    .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1));
-  return words.join(" ");
 }
 
 async function fetchGraphQL<TData>(query: string, variables: Record<string, unknown>) {
@@ -58,43 +33,6 @@ async function fetchGraphQL<TData>(query: string, variables: Record<string, unkn
   const json = await res.json();
   if (json?.errors?.length) return null;
   return (json?.data as TData) ?? null;
-}
-
-async function fetchLocationListingIds(slug: string) {
-  const fromSlug = packedTokenVariants(slug);
-  const fromSpaced = packedTokenVariants(slug.replace(/-/g, " "));
-  const tokens = uniqStrings([...fromSlug, ...fromSpaced]);
-
-  const or = tokens.flatMap((tok) => [
-    { provinces: { contains: tok } },
-    { cities: { contains: tok } },
-    { towns: { contains: tok } },
-  ]);
-  const filters = {
-    and: [{ published: { eq: true } }, { is_on_special: { eq: false } }, { or }],
-  };
-
-  const data = await fetchGraphQL<{
-    listingSearchIndices_connection?: {
-      nodes?: { listing_document_id?: string }[];
-      pageInfo?: { total?: number };
-    };
-  }>(
-    `
-      query LocationIndex($filters: ListingSearchIndexFiltersInput, $page: Int = 1, $pageSize: Int = 24) {
-        listingSearchIndices_connection(filters: $filters, pagination: { page: $page, pageSize: $pageSize }) {
-          nodes { listing_document_id }
-          pageInfo { total page pageSize pageCount }
-        }
-      }
-    `,
-    { filters, page: 1, pageSize: 48 }
-  );
-
-  const nodes = data?.listingSearchIndices_connection?.nodes || [];
-  const total = data?.listingSearchIndices_connection?.pageInfo?.total ?? null;
-  const ids = uniqStrings(nodes.map((n) => n?.listing_document_id).filter(Boolean));
-  return { ids, total };
 }
 
 async function fetchListingsByIds(ids: string[]) {
@@ -171,96 +109,141 @@ async function fetchListingCategories() {
   return Array.isArray(data?.listingCategories) ? data.listingCategories : [];
 }
 
-async function fetchEncodedLocationSelection(slug: string) {
+type LocationSeoPage = {
+  name?: string;
+  slug?: string;
+  locationType?: string;
+  locationValue?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  heroImage?: { url?: string } | null;
+} | null;
+
+async function fetchLocationSeoPage(slug: string): Promise<LocationSeoPage> {
   const data = await fetchGraphQL<{
-    listingSearchLocationOptions?: Array<{
-      province?: string;
-      cities?: Array<{ city?: string; towns?: Array<{ town?: string }> }>;
-    }>;
+    locationSeoPageBySlug?: LocationSeoPage;
   }>(
     `
-      query LocationOptions {
-        listingSearchLocationOptions {
-          province
-          cities {
-            city
-            towns {
-              town
-            }
-          }
+      query LocationSeoPageBySlug($slug: String!) {
+        locationSeoPageBySlug(slug: $slug) {
+          name
+          slug
+          locationType
+          locationValue
+          seoTitle
+          seoDescription
+          metaTitle
+          metaDescription
+          heroImage { url }
         }
       }
     `,
-    {}
+    { slug }
   );
-
-  const options = Array.isArray(data?.listingSearchLocationOptions) ? data.listingSearchLocationOptions : [];
-  for (const prov of options) {
-    const provinceName = typeof prov?.province === "string" ? prov.province : "";
-    if (provinceName && toSlug(provinceName) === slug) {
-      return { encoded: `p|${provinceName}`, label: provinceName };
-    }
-    const cities = Array.isArray(prov?.cities) ? prov.cities : [];
-    for (const c of cities) {
-      const cityName = typeof c?.city === "string" ? c.city : "";
-      if (cityName && toSlug(cityName) === slug) {
-        return { encoded: `c|${provinceName}|${cityName}`, label: cityName };
-      }
-      const towns = Array.isArray(c?.towns) ? c.towns : [];
-      for (const t of towns) {
-        const townName = typeof t?.town === "string" ? t.town : "";
-        if (townName && toSlug(townName) === slug) {
-          return { encoded: `t|${provinceName}|${cityName}|${townName}`, label: townName };
-        }
-      }
-    }
-  }
-
-  return { encoded: null as string | null, label: titleCaseFromSlug(slug) };
+  return (data?.locationSeoPageBySlug as LocationSeoPage) ?? null;
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const slug = params?.slug;
+async function fetchLocationListingIdsBySeo(locationType: string, locationValue: string) {
+  const type = normalizeLower(locationType);
+  const value = typeof locationValue === "string" ? locationValue.trim() : "";
+  const token = `|${value.toLowerCase()}|`;
+  const field =
+    type === "province" ? "provinces" : type === "city" ? "cities" : type === "town" ? "towns" : null;
+
+  if (!field || !value) return { ids: [] as string[], total: 0 };
+
+  const filters = {
+    and: [
+      { published: { eq: true } },
+      { is_on_special: { eq: false } },
+      { [field]: { contains: token } },
+    ],
+  };
+
+  const data = await fetchGraphQL<{
+    listingSearchIndices_connection?: {
+      nodes?: { listing_document_id?: string }[];
+      pageInfo?: { total?: number };
+    };
+  }>(
+    `
+      query LocationIndex($filters: ListingSearchIndexFiltersInput, $page: Int = 1, $pageSize: Int = 20) {
+        listingSearchIndices_connection(filters: $filters, pagination: { page: $page, pageSize: $pageSize }) {
+          nodes { listing_document_id }
+          pageInfo { total page pageSize pageCount }
+        }
+      }
+    `,
+    { filters, page: 1, pageSize: 20 }
+  );
+
+  const nodes = data?.listingSearchIndices_connection?.nodes || [];
+  const total = data?.listingSearchIndices_connection?.pageInfo?.total ?? 0;
+  const ids = uniqStrings(nodes.map((n) => n?.listing_document_id).filter(Boolean));
+  return { ids, total };
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const slug = (await params)?.slug;
   if (!slug) return {};
 
-  const locationName = titleCaseFromSlug(slug);
   const canonical = toAbsoluteUrl(`/tombstones/${slug}`);
+  const seoPage = await fetchLocationSeoPage(slug);
+  if (!seoPage) return {};
+
+  const titleRaw =
+    (typeof seoPage?.metaTitle === "string" && seoPage.metaTitle.trim()) ||
+    (typeof seoPage?.seoTitle === "string" && seoPage.seoTitle.trim()) ||
+    "";
+  const descriptionRaw =
+    (typeof seoPage?.metaDescription === "string" && seoPage.metaDescription.trim()) ||
+    (typeof seoPage?.seoDescription === "string" && seoPage.seoDescription.trim()) ||
+    "";
+  const heroUrl = typeof seoPage?.heroImage?.url === "string" ? seoPage.heroImage.url.trim() : "";
 
   return {
-    title: `Premium Tombstones for Sale in ${locationName} | Compare Local Prices`,
-    description: `Browse tombstones for sale in ${locationName}. Compare styles, stone types, and pricing from local manufacturers across South Africa.`,
+    title: titleRaw || undefined,
+    description: descriptionRaw || undefined,
     alternates: { canonical },
     openGraph: {
       type: "website",
       url: canonical,
-      title: `Tombstones in ${locationName} | TombstoneFinder`,
-      description: `Browse tombstones for sale in ${locationName}. Compare prices and local manufacturers.`,
+      title: titleRaw || undefined,
+      description: descriptionRaw || undefined,
+      images: heroUrl ? [heroUrl] : undefined,
     },
   };
 }
 
-export default async function LocationTombstonesPage({ params }: { params: { slug: string } }) {
-  const slug = params?.slug;
+export default async function LocationTombstonesPage({ params }: { params: Promise<{ slug: string }> }) {
+  const slug = (await params)?.slug;
   if (!slug) notFound();
 
-  const locationName = titleCaseFromSlug(slug);
   const canonical = toAbsoluteUrl(`/tombstones/${slug}`);
 
-  const [selection, categories, locationIndex] = await Promise.all([
-    fetchEncodedLocationSelection(slug),
+  const seoPage = await fetchLocationSeoPage(slug);
+  if (!seoPage) notFound();
+
+  const locationType = typeof seoPage?.locationType === "string" ? seoPage.locationType : "";
+  const locationValue = typeof seoPage?.locationValue === "string" ? seoPage.locationValue : "";
+
+  const [categories, locationIndex] = await Promise.all([
     fetchListingCategories(),
-    fetchLocationListingIds(slug),
+    fetchLocationListingIdsBySeo(locationType, locationValue),
   ]);
 
   const { ids, total } = locationIndex;
-  if (!ids.length) notFound();
-
   const listings = await fetchListingsByIds(ids);
 
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: `Tombstones for Sale in ${locationName}`,
+    name:
+      (typeof seoPage?.seoTitle === "string" && seoPage.seoTitle.trim()) ||
+      (typeof seoPage?.name === "string" && seoPage.name.trim()) ||
+      `Tombstones in ${slug}`,
     url: canonical,
     numberOfItems: typeof total === "number" ? total : listings.length,
     itemListElement: listings.slice(0, 10).map((l: any, idx: number) => ({
@@ -271,16 +254,19 @@ export default async function LocationTombstonesPage({ params }: { params: { slu
     })),
   };
 
-  const initialFilters = selection?.encoded ? { location: [selection.encoded] } : { location: null };
-
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <TombstonesForSaleClientAny
         initialListings={listings}
         initialCategories={categories}
-        initialFilters={initialFilters}
+        initialFilters={{ location: locationValue || null }}
+        initialTotalCount={typeof total === "number" ? total : null}
         disableLocationUrlSync={true}
+        forcedLocationSeo={{ locationType, locationValue }}
+        seoTitle={seoPage?.seoTitle || null}
+        seoDescription={seoPage?.seoDescription || null}
+        seoHeroImageUrl={seoPage?.heroImage?.url || null}
       />
     </>
   );
