@@ -259,7 +259,12 @@ export default function TombstonesForSaleClient({
   initialListings = [],
   initialCategories = [],
   initialFilters = null,
+  initialTotalCount = null,
   disableLocationUrlSync = false,
+  forcedLocationSeo = null,
+  seoTitle = null,
+  seoDescription = null,
+  seoHeroImageUrl = null,
 }) {
   const [enableQueries, setEnableQueries] = useState(false);
   useEffect(() => {
@@ -363,6 +368,15 @@ export default function TombstonesForSaleClient({
   }, [sortOrder]);
 
   const [showFilters, setShowFilters] = useState(null)
+
+  const initialListingsSafe = useMemo(
+    () => (Array.isArray(initialListings) ? initialListings : []),
+    [initialListings]
+  );
+  const initialTotalCountSafe =
+    typeof initialTotalCount === "number" && Number.isFinite(initialTotalCount)
+      ? initialTotalCount
+      : null;
 
   const [activeFilters, setActiveFilters] = useState(() => coerceInitialForSaleFilters(initialFilters))
   const [draftFilters, setDraftFilters] = useState(() => coerceInitialForSaleFilters(initialFilters))
@@ -1238,6 +1252,30 @@ export default function TombstonesForSaleClient({
     }
 
     const locationRaw = debouncedActiveFilters?.location;
+    const forcedType = normalizeLower(forcedLocationSeo?.locationType);
+    const forcedValue = typeof forcedLocationSeo?.locationValue === "string" ? forcedLocationSeo.locationValue.trim() : "";
+    const isSameAsForced =
+      forcedValue &&
+      (typeof locationRaw === "string"
+        ? normalizeLower(locationRaw) === normalizeLower(forcedValue)
+        : Array.isArray(locationRaw) && locationRaw.length === 1
+          ? normalizeLower(locationRaw[0]) === normalizeLower(forcedValue)
+          : false);
+
+    if (forcedValue && isSameAsForced) {
+      const token = `|${forcedValue.toLowerCase()}|`;
+      const field =
+        forcedType === "province"
+          ? "provinces"
+          : forcedType === "city"
+            ? "cities"
+            : forcedType === "town"
+              ? "towns"
+              : null;
+      if (field) {
+        and.push({ [field]: { contains: token } });
+      }
+    } else {
     const isEncodedLocation = (v) => typeof v === "string" && /^[pct]\|/.test(v);
     const decodeEncodedLocation = (v) => {
       if (!isEncodedLocation(v)) return null;
@@ -1327,6 +1365,7 @@ export default function TombstonesForSaleClient({
         });
       }
     }
+    }
 
     const addPackedOr = (field, values) => {
       const all = values.flatMap((v) => packedTokenVariants(v));
@@ -1373,7 +1412,7 @@ export default function TombstonesForSaleClient({
     if (Number.isFinite(maxPrice) && maxPrice > 0) and.push({ price: { lte: maxPrice } });
 
     return and.length ? { and } : undefined;
-  }, [activeCategory?.name, debouncedActiveFilters]);
+  }, [activeCategory?.name, debouncedActiveFilters, forcedLocationSeo]);
 
   const locationCountBaseFilters = useMemo(() => {
     if (!searchIndexFilters || !Array.isArray(searchIndexFilters.and)) return searchIndexFilters;
@@ -1660,6 +1699,7 @@ export default function TombstonesForSaleClient({
   });
 
   const filteredListings = useMemo(() => {
+    if (!enableQueries) return initialListingsSafe;
     if (sortOrder === "Default" && enableQueries) {
       const orderedRaw = companyOrderPoolIds
         .map((id) => companyOrderPoolMap?.[id])
@@ -1753,6 +1793,7 @@ export default function TombstonesForSaleClient({
     companyOrderPoolMap,
     currentPage,
     enableQueries,
+    initialListingsSafe,
     listingDocumentIds,
     listingsByIdsData,
     listingsByIdsLoading,
@@ -1851,14 +1892,16 @@ export default function TombstonesForSaleClient({
   }, [apolloClient, enableQueries, hasScopedLocation, visibleListingIds, visibleListingIdsKey]);
 
   const totalListingsCount = useMemo(() => {
+    if (!enableQueries && typeof initialTotalCountSafe === "number") return initialTotalCountSafe;
+    if (!enableQueries) return initialListingsSafe.length;
     const t = searchIndexPageInfo?.total;
     return typeof t === "number" ? t : filteredListings.length;
-  }, [filteredListings.length, searchIndexPageInfo?.total]);
+  }, [enableQueries, filteredListings.length, initialListingsSafe.length, initialTotalCountSafe, searchIndexPageInfo?.total]);
 
   const listingsLoading = searchIndexLoading || listingsByIdsLoading;
   const listingsError = searchIndexError || listingsByIdsError;
   const listingsUiLoading = useMemo(() => {
-    if (!enableQueries) return true;
+    if (!enableQueries) return initialListingsSafe.length === 0;
     if (sortOrder === "Default") {
       if (filteredListings.length > 0) return false;
       if (isPoolFetching) return true;
@@ -1872,6 +1915,7 @@ export default function TombstonesForSaleClient({
     companyOrderPoolIds,
     companyOrderPoolMap,
     enableQueries,
+    initialListingsSafe.length,
     filteredListings.length,
     isPoolFetching,
     listingsLoading,
@@ -2772,6 +2816,29 @@ export default function TombstonesForSaleClient({
                   </div>
                 </div>
               </div>
+
+              {(seoTitle || seoDescription) && (
+                <div className="mb-6 bg-white rounded px-4 py-4 shadow-sm border border-gray-100">
+                  {seoHeroImageUrl ? (
+                    <div className="relative w-full h-44 sm:h-52 rounded overflow-hidden mb-4">
+                      <Image
+                        src={seoHeroImageUrl}
+                        alt={typeof seoTitle === "string" && seoTitle.trim() ? seoTitle : "Location hero"}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 768px"
+                        priority
+                      />
+                    </div>
+                  ) : null}
+                  {seoTitle ? (
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{seoTitle}</h1>
+                  ) : null}
+                  {seoDescription ? (
+                    <p className="mt-2 text-sm sm:text-base text-gray-700 whitespace-pre-line">{seoDescription}</p>
+                  ) : null}
+                </div>
+              )}
 
               <div id="featured-listings" className="mb-8">
                 <h2 className="text-center text-gray-600 border-b border-gray-300 pb-2 mb-4 mt-6">FEATURED LISTINGS</h2>

@@ -100,6 +100,29 @@ export function PremiumListingCard({
 
   const productUrl = href || `/tombstones-for-sale/${listing.documentId}`;
 
+  const pickSeoValue = (v: any) => {
+    if (!v) return "";
+    if (typeof v === "string") return v.trim();
+    if (Array.isArray(v)) {
+      const first = v.find(Boolean);
+      if (!first) return "";
+      if (typeof first === "string") return first.trim();
+      if (typeof first === "object") return String((first as any)?.value ?? (first as any)?.name ?? "").trim();
+      return String(first).trim();
+    }
+    if (typeof v === "object") return String((v as any)?.value ?? (v as any)?.name ?? "").trim();
+    return String(v).trim();
+  };
+
+  const seoColour = pickSeoValue((listing as any)?.productDetails?.color);
+  const seoStoneType = pickSeoValue((listing as any)?.productDetails?.stoneType);
+  const seoHeadStyle = pickSeoValue((listing as any)?.productDetails?.style) || pickSeoValue((listing as any)?.productDetails?.overallStyle);
+  const seoPlaceRaw = typeof (listing as any)?.company?.location === "string" ? String((listing as any).company.location) : "";
+  const seoPlace = seoPlaceRaw ? seoPlaceRaw.split(",")[0].trim() : "";
+  const seoSpec = [seoColour, seoStoneType, seoHeadStyle].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+  const seoLinkText = `View ${seoSpec ? `${seoSpec} ` : ""}tombstone${seoPlace ? ` available in ${seoPlace}` : ""}`;
+  const seoImageAlt = `${seoSpec ? `${seoSpec} tombstone` : "Tombstone"}${seoPlace ? ` in ${seoPlace}` : ""}`;
+
   // Create product object for FavoriteButton
   const favoriteProduct = {
     id: listing.id || listing.documentId,
@@ -336,7 +359,7 @@ export function PremiumListingCard({
           )}>
             <Image
               src={cloudinaryOptimized(listing.mainImageUrl, 800) || "/placeholder.svg"}
-              alt={listing.title || "Tombstone listing image"}
+              alt={seoImageAlt || "Tombstone listing image"}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 50vw"
@@ -429,7 +452,10 @@ export function PremiumListingCard({
           </div>
           {/* Title, Details, Features (Mobile) */}
           <h2 className={cn("text-lg font-bold text-gray-800 mb-2 uppercase", fixedHeight && "line-clamp-2 h-[48px]")}>
-            {listing.title}
+            <Link href={productUrl} prefetch={false} aria-label={seoLinkText}>
+              <span className="sr-only">{seoLinkText}</span>
+              {listing.title}
+            </Link>
           </h2>
           {/* --- Product Details Section (same as desktop) --- */}
           <div className={cn("space-y-0.5 mb-2", fixedHeight && "line-clamp-3")}>
@@ -634,7 +660,7 @@ export function PremiumListingCard({
           <div className={cn("relative flex-1", fixedHeight ? "h-full" : (compact ? "min-h-[240px]" : "min-h-[300px]"))}> 
             <Image
               src={cloudinaryOptimized(listing.mainImageUrl, 1600) || "/placeholder.svg"}
-              alt={listing.title}
+              alt={seoImageAlt || listing.title}
               fill
               className="object-cover"
               priority
@@ -694,7 +720,10 @@ export function PremiumListingCard({
             )}
             {/* Title, Details, Features */}
             <h2 className="text-lg font-bold text-gray-800 mb-2 uppercase">
-              {listing.title}
+              <Link href={productUrl} prefetch={false} aria-label={seoLinkText}>
+                <span className="sr-only">{seoLinkText}</span>
+                {listing.title}
+              </Link>
             </h2>
             {/* --- Product Details Section (compact, styled like screenshot) --- */}
             <div className="space-y-0.5 mb-2">
