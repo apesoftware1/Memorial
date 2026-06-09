@@ -1,6 +1,9 @@
 export default async function sitemap() {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://tombstonesfinder.co.za";
   const now = new Date();
+  const strapiApiBase =
+    process.env.NEXT_PUBLIC_STRAPI_API_URL ||
+    `${process.env.STRAPI_API_URL || "https://api.tombstonesfinder.co.za"}/api`;
 
   const coreRoutes = ["", "/tombstones-for-sale", "/manufacturers", "/contact"].map((path) => ({
     url: `${baseUrl}${path}`,
@@ -15,40 +18,46 @@ export default async function sitemap() {
     const graphQlUrl =
       process.env.NEXT_PUBLIC_STRAPI_GRAPHQL_URL ||
       `${process.env.STRAPI_API_URL || "https://api.tombstonesfinder.co.za"}/graphql`;
-    const res = await fetch(graphQlUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: `
-          query SitemapData {
-            listings(pagination: { limit: -1 }) {
-              documentId
-              updatedAt
-              isOnSpecial
-              specials { active }
-            }
-            companies(pagination: { limit: -1 }) {
-              documentId
-              updatedAt
-            }
-            listingSearchLocationOptions {
-              province
-              cities {
-                city
+    const manufacturerSeoUrl = new URL(`${strapiApiBase}/manufacturer-seo-pages`);
+    manufacturerSeoUrl.searchParams.set("pagination[page]", "1");
+    manufacturerSeoUrl.searchParams.set("pagination[pageSize]", "500");
+    ["slug", "updatedAt"].forEach((field, index) => {
+      manufacturerSeoUrl.searchParams.set(`fields[${index}]`, field);
+    });
+
+    const [res, manufacturerSeoRes] = await Promise.all([
+      fetch(graphQlUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: `
+            query SitemapData {
+              listings(pagination: { limit: -1 }) {
+                documentId
+                updatedAt
+                isOnSpecial
+                specials { active }
+              }
+              listingSearchLocationOptions {
+                province
+                cities {
+                  city
+                }
               }
             }
-          }
-        `,
+          `,
+        }),
+        next: { revalidate: 3600 },
       }),
-      // Use ISR with 1 hour revalidation instead of no-store to fix build error
-      next: { revalidate: 3600 },
-    });
+      fetch(manufacturerSeoUrl.toString(), { next: { revalidate: 3600 } }),
+    ]);
 
     if (res.ok) {
       const json = await res.json();
       const listings = json?.data?.listings || [];
-      const companies = json?.data?.companies || [];
       const locationOptions = json?.data?.listingSearchLocationOptions || [];
+      const manufacturerSeoJson = manufacturerSeoRes.ok ? await manufacturerSeoRes.json() : null;
+      const manufacturerSeoPages = Array.isArray(manufacturerSeoJson?.data) ? manufacturerSeoJson.data : [];
 
       // Listing detail pages (canonical)
       for (const l of listings) {
@@ -73,12 +82,24 @@ export default async function sitemap() {
       }
 
       // Manufacturer profile pages
-      for (const c of companies) {
-        const documentId = c?.documentId;
-        if (!documentId) continue;
+      for (const row of manufacturerSeoPages) {
+        const attrs = row?.attributes || row || {};
+        const slug =
+          typeof attrs?.slug === "string"
+            ? attrs.slug.trim()
+            : typeof row?.slug === "string"
+              ? row.slug.trim()
+              : "";
+        if (!slug) continue;
+        const updatedAt =
+          typeof attrs?.updatedAt === "string"
+            ? attrs.updatedAt
+            : typeof row?.updatedAt === "string"
+              ? row.updatedAt
+              : null;
         dynamicRoutes.push({
-          url: `${baseUrl}/manufacturers/manufacturers-Profile-Page/${documentId}`,
-          lastModified: c?.updatedAt ? new Date(c.updatedAt) : now,
+          url: `${baseUrl}/manufacturers/${slug}`,
+          lastModified: updatedAt ? new Date(updatedAt) : now,
           changeFrequency: "weekly",
           priority: 0.75,
         });

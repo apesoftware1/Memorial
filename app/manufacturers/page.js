@@ -27,6 +27,7 @@ export default function ManufacturersPage() {
     refreshInterval: 60000,
     staleTime: 1000 * 60 * 5,
   });
+  const [manufacturerSeoSlugMap, setManufacturerSeoSlugMap] = useState({});
   const sortModalRef = useRef(null);
   const locationDropdownRef = useRef(null);
 
@@ -70,6 +71,57 @@ export default function ManufacturersPage() {
   const [selectedProvince, setSelectedProvince] = useState(null);
   const [selectedCity, setSelectedCity] = useState(null);
   const [selectedTown, setSelectedTown] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchManufacturerSeoSlugs = async () => {
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
+        const url = new URL(`${baseUrl}/manufacturer-seo-pages`);
+        url.searchParams.set("pagination[page]", "1");
+        url.searchParams.set("pagination[pageSize]", "500");
+        ["documentId", "companyName", "slug"].forEach((field, index) => {
+          url.searchParams.set(`fields[${index}]`, field);
+        });
+
+        const res = await fetch(url.toString(), { cache: "no-store" });
+        if (!res.ok) return;
+        const json = await res.json();
+        const rows = Array.isArray(json?.data) ? json.data : [];
+        const nextMap = {};
+
+        for (const row of rows) {
+          const attrs = row?.attributes || row || {};
+          const documentId =
+            typeof attrs?.documentId === "string"
+              ? attrs.documentId.trim()
+              : typeof row?.documentId === "string"
+                ? row.documentId.trim()
+                : "";
+          const slug =
+            typeof attrs?.slug === "string"
+              ? attrs.slug.trim()
+              : typeof row?.slug === "string"
+                ? row.slug.trim()
+                : "";
+          if (documentId && slug) {
+            nextMap[documentId] = slug;
+          }
+        }
+
+        if (!cancelled) {
+          setManufacturerSeoSlugMap(nextMap);
+        }
+      } catch {
+      }
+    };
+
+    fetchManufacturerSeoSlugs();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   
   // Handle click outside of sort modal
   useEffect(() => {
@@ -601,7 +653,7 @@ export default function ManufacturersPage() {
               )} */}
             </ol>
           </nav>
-          <h1 className="text-2xl font-bold text-gray-800 mb-6">Manufacturers in South Africa</h1>
+          <h1 className="text-2xl font-bold text-gray-800 mb-6">Tombstone Manufacturers in South Africa</h1>
         </div>
       </div>
 
@@ -665,6 +717,7 @@ export default function ManufacturersPage() {
                     ...company,
                     logo: company.logoUrl || '',
                     rating: company.googleRating,
+                    seoSlug: manufacturerSeoSlugMap?.[company.documentId] || "",
                   }}
                 />
               ))}
@@ -753,4 +806,3 @@ export default function ManufacturersPage() {
 }
 
 // Metadata moved to app/manufacturers/layout.tsx (server component)
-
