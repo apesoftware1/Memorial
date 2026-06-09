@@ -6,7 +6,9 @@ import { cloudinaryOptimized } from "@/lib/cloudinary";
 
 const ManufacturerCard = ({ manufacturer }) => {
 
-  const profileUrl = `/manufacturers/manufacturers-Profile-Page/${manufacturer.documentId}`;
+  const profileUrl = manufacturer.seoSlug
+    ? `/manufacturers/${manufacturer.seoSlug}`
+    : `/manufacturers/manufacturers-Profile-Page/${manufacturer.documentId}`;
   return (
     <div className="bg-[#fafbfc] border border-gray-200 shadow-sm hover:shadow-md transition-shadow mb-6 w-full max-w-2xl ml-0 mr-auto p-6 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 min-h-[200px]">
       {/* Logo */}

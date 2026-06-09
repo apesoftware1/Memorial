@@ -334,6 +334,24 @@ export default function ManufacturerProfileEditor({
 
   // Company state management
   const [company, setCompany] = useState(initialCompany);
+  const mediaCacheKey = useMemo(() => {
+    if (typeof company?.updatedAt === "string" && company.updatedAt.trim()) {
+      return encodeURIComponent(company.updatedAt.trim());
+    }
+    if (company?.documentId) {
+      return encodeURIComponent(String(company.documentId));
+    }
+    return "static";
+  }, [company?.documentId, company?.updatedAt]);
+
+  const withMediaCacheKey = useCallback(
+    (src) => {
+      const base = typeof src === "string" && src.trim() ? src.trim() : "/placeholder-logo.svg";
+      const joiner = base.includes("?") ? "&" : "?";
+      return `${base}${joiner}v=${mediaCacheKey}`;
+    },
+    [mediaCacheKey]
+  );
   // Ensure branches appear immediately after login without requiring a prior reload
   useEffect(() => {
     setCompany(initialCompany);
@@ -2575,9 +2593,7 @@ export default function ManufacturerProfileEditor({
                     }}
                   >
                     <Image
-                      src={`${
-                        company.logoUrl || "/placeholder-logo.svg"
-                      }?t=${Date.now()}`}
+                      src={withMediaCacheKey(company.logoUrl)}
                       alt="Company Logo"
                       fill
                       key={company.logoUrl}
@@ -2957,9 +2973,7 @@ export default function ManufacturerProfileEditor({
                     }}
                   >
                     <Image
-                      src={`${
-                        company.profilePicUrl || "/placeholder-logo.svg"
-                      }?t=${Date.now()}`}
+                      src={withMediaCacheKey(company.profilePicUrl)}
                       alt="Profile Picture"
                       width={220}
                       height={110}
@@ -3144,9 +3158,7 @@ export default function ManufacturerProfileEditor({
                 style={{ position: "relative", width: "100%", height: "100%" }}
               >
                 <Image
-                  src={`${
-                    company.logoUrl || "/placeholder-logo.svg"
-                  }?t=${Date.now()}`}
+                  src={withMediaCacheKey(company.logoUrl)}
                   alt="Company Logo"
                   width={220}
                   height={110}
@@ -3258,7 +3270,7 @@ export default function ManufacturerProfileEditor({
                   >
                     {company.bannerAdUrl ? (
                       <Image
-                        src={`${company.bannerAdUrl}?t=${Date.now()}`}
+                        src={withMediaCacheKey(company.bannerAdUrl)}
                         alt="Banner Ad"
                         fill
                         style={{ objectFit: "cover" }}
