@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { useApolloClient } from "@apollo/client"
-import { X, MapPin, Loader, ChevronDown, ChevronUp } from "lucide-react"
+import { X, MapPin, Loader, ChevronDown, ChevronRight } from "lucide-react"
 import { useGuestLocation } from "@/hooks/useGuestLocation"
 import { LISTING_SEARCH_INDEX_CONNECTION_QUERY } from "@/graphql/queries/listingsProgressive"
 
@@ -20,6 +20,7 @@ export default function LocationModal({
   const [geolocationStatus, setGeolocationStatus] = useState('idle');
   const [geolocationError, setGeolocationError] = useState(null);
   const [expandedProvinces, setExpandedProvinces] = useState({});
+  const [expandedCities, setExpandedCities] = useState({});
   const [selectedValues, setSelectedValues] = useState([]);
 
   const toggleProvince = (e, provinceName) => {
@@ -27,6 +28,15 @@ export default function LocationModal({
     setExpandedProvinces(prev => ({
       ...prev,
       [provinceName]: !prev[provinceName]
+    }));
+  };
+
+  const toggleCity = (e, provinceName, cityName) => {
+    e.stopPropagation();
+    const key = `${provinceName}::${cityName}`;
+    setExpandedCities(prev => ({
+      ...prev,
+      [key]: !prev[key]
     }));
   };
   
@@ -205,10 +215,23 @@ export default function LocationModal({
       if (expandedProvinces?.[location.name] && Array.isArray(location.cities)) {
         for (const city of location.cities) {
           ensureCount(encodeLocationValue({ level: "city", province: location.name, city: city.name }));
+          const cityKey = `${location.name}::${city.name}`;
+          if (expandedCities?.[cityKey] && Array.isArray(city.towns)) {
+            for (const town of city.towns) {
+              ensureCount(
+                encodeLocationValue({
+                  level: "town",
+                  province: location.name,
+                  city: city.name,
+                  town: town.name,
+                })
+              );
+            }
+          }
         }
       }
     }
-  }, [ensureCount, expandedProvinces, filteredLocations, shouldFetchCounts]);
+  }, [ensureCount, expandedCities, expandedProvinces, filteredLocations, shouldFetchCounts]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -402,9 +425,9 @@ export default function LocationModal({
                   className="p-3 mr-1 text-gray-500 hover:text-gray-700 focus:outline-none"
                 >
                   {expandedProvinces[location.name] ? (
-                    <ChevronUp className="h-5 w-5" />
-                  ) : (
                     <ChevronDown className="h-5 w-5" />
+                  ) : (
+                    <ChevronRight className="h-5 w-5" />
                   )}
                 </button>
               )}
@@ -413,37 +436,104 @@ export default function LocationModal({
             {/* Cities List */}
             {expandedProvinces[location.name] && location.cities && (
               <div className="bg-gray-50 border-t border-gray-100">
-                {location.cities.map((city) => (
-                  <button
-                    key={city.name}
-                    onClick={() => toggleSelected(city.name)}
-                    className="w-full text-left py-2.5 pl-8 pr-4 border-b border-gray-100 hover:bg-gray-100 focus:outline-none transition-colors flex justify-between items-center"
-                  >
-                    <span className="text-gray-700 text-sm font-medium inline-flex items-center gap-2">
-                      <span className={`h-4 w-4 flex items-center justify-center border border-gray-400 ${isSelected(city.name) ? 'bg-[#D4AF37] border-[#D4AF37]' : ''}`}>
-                        {isSelected(city.name) ? (
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        ) : null}
-                      </span>
-                      <span>{city.name}</span>
-                    </span>
-                    {(() => {
-                      const encoded = encodeLocationValue({ level: "city", province: location.name, city: city.name });
-                      const fetched = getCount(encoded);
-                      const display =
-                        typeof fetched === "number"
-                          ? fetched
-                          : shouldFetchCounts
-                            ? "..."
-                            : showCountPlaceholder
-                              ? "..."
-                              : city.count;
-                      return <span className="text-gray-400 text-xs">({display ?? 0})</span>;
-                    })()}
-                  </button>
-                ))}
+                {location.cities.map((city) => {
+                  const cityKey = `${location.name}::${city.name}`;
+                  const hasTowns = Array.isArray(city.towns) && city.towns.length > 0;
+                  const showTownsDropdown =
+                    hasTowns && !(city.towns.length === 1 && city.towns[0]?.name === city.name);
+
+                  return (
+                    <div key={city.name} className="border-b border-gray-100 last:border-b-0">
+                      <div className="w-full text-left py-2.5 pl-8 pr-2 hover:bg-gray-100 focus:outline-none transition-colors flex justify-between items-center">
+                        <button
+                          type="button"
+                          onClick={() => toggleSelected(city.name)}
+                          className="flex-1 text-left pr-3"
+                        >
+                          <span className="text-gray-700 text-sm font-medium inline-flex items-center gap-2">
+                            <span className={`h-4 w-4 flex items-center justify-center border border-gray-400 ${isSelected(city.name) ? 'bg-[#D4AF37] border-[#D4AF37]' : ''}`}>
+                              {isSelected(city.name) ? (
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              ) : null}
+                            </span>
+                            <span>{city.name}</span>
+                          </span>
+                        </button>
+                        <div className="flex items-center gap-1">
+                          {(() => {
+                            const encoded = encodeLocationValue({ level: "city", province: location.name, city: city.name });
+                            const fetched = getCount(encoded);
+                            const display =
+                              typeof fetched === "number"
+                                ? fetched
+                                : shouldFetchCounts
+                                  ? "..."
+                                  : showCountPlaceholder
+                                    ? "..."
+                                    : city.count;
+                            return <span className="text-gray-400 text-xs">({display ?? 0})</span>;
+                          })()}
+                          {showTownsDropdown ? (
+                            <button
+                              type="button"
+                              onClick={(e) => toggleCity(e, location.name, city.name)}
+                              className="p-2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                            >
+                              {expandedCities[cityKey] ? (
+                                <ChevronDown className="h-5 w-5" />
+                              ) : (
+                                <ChevronRight className="h-5 w-5" />
+                              )}
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {showTownsDropdown && expandedCities[cityKey] ? (
+                        <div className="bg-white border-t border-gray-100">
+                          {city.towns.map((town) => (
+                            <button
+                              key={`${city.name}-${town.name}`}
+                              onClick={() => toggleSelected(town.name)}
+                              className="w-full text-left py-2.5 pl-12 pr-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 focus:outline-none transition-colors flex justify-between items-center"
+                            >
+                              <span className="text-gray-700 text-sm font-medium inline-flex items-center gap-2">
+                                <span className={`h-4 w-4 flex items-center justify-center border border-gray-400 ${isSelected(town.name) ? 'bg-[#D4AF37] border-[#D4AF37]' : ''}`}>
+                                  {isSelected(town.name) ? (
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                  ) : null}
+                                </span>
+                                <span>{town.name}</span>
+                              </span>
+                              {(() => {
+                                const encoded = encodeLocationValue({
+                                  level: "town",
+                                  province: location.name,
+                                  city: city.name,
+                                  town: town.name,
+                                });
+                                const fetched = getCount(encoded);
+                                const display =
+                                  typeof fetched === "number"
+                                    ? fetched
+                                    : shouldFetchCounts
+                                      ? "..."
+                                      : showCountPlaceholder
+                                        ? "..."
+                                        : town.count;
+                                return <span className="text-gray-400 text-xs">({display ?? 0})</span>;
+                              })()}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
