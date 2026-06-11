@@ -47,7 +47,7 @@ export const LISTINGS_INITIAL_QUERY = gql`
  */
 export const LISTINGS_FULL_QUERY = gql`
   query ListingsFull {
-    listings(pagination: { limit: -1 }) {
+    listings(pagination: { limit: 20 }) {
       documentId
       updatedAt
       branch_listings(pagination: { limit: -1 }) {
@@ -121,7 +121,7 @@ export const LISTINGS_DELTA_QUERY = gql`
   query ListingsDelta($since: DateTime!) {
     listings(
       filters: { updatedAt: { gt: $since } },
-      pagination: { limit: -1 }
+      pagination: { limit: 20 }
     ) {
       documentId
       updatedAt
