@@ -30,6 +30,7 @@ import { useApolloClient, useQuery } from "@apollo/client";
 import { useListingCategories } from "@/hooks/use-ListingCategories"
 import { useLocationHierarchy } from '@/hooks/useLocationHierarchy';
 import { checkListingLocation, toTitleCase, DEFAULT_PROVINCES, normalizeCityName } from '@/lib/locationHelpers';
+import { sanitizeLocationHierarchy } from "@/lib/locationHierarchySanitizer";
 import { useGuestLocation } from "@/hooks/useGuestLocation";
 import { GET_LISTING_BRANCHES_FOR_MODAL } from "@/graphql/queries/getListingExtrasById";
 import { trackAnalyticsEvent } from "@/lib/analytics";
@@ -303,7 +304,7 @@ export default function TombstonesForSaleClient({
   const locationOptionsHierarchy = useMemo(() => {
     const raw = listingSearchLocationOptionsData?.listingSearchLocationOptions;
     if (!Array.isArray(raw)) return [];
-    return raw
+    const mapped = raw
       .map((prov) => {
         const provinceName = typeof prov?.province === "string" ? prov.province : "";
         const cities = Array.isArray(prov?.cities) ? prov.cities : [];
@@ -329,6 +330,7 @@ export default function TombstonesForSaleClient({
         };
       })
       .filter((p) => p.name);
+    return sanitizeLocationHierarchy(mapped);
   }, [listingSearchLocationOptionsData]);
   
   const handleFeaturedScroll = () => {
@@ -2136,7 +2138,7 @@ export default function TombstonesForSaleClient({
     if (Array.isArray(locationOptionsHierarchy) && locationOptionsHierarchy.length > 0) {
       return locationOptionsHierarchy;
     }
-    return computedLocationHierarchy;
+    return sanitizeLocationHierarchy(computedLocationHierarchy);
   }, [computedLocationHierarchy, locationOptionsHierarchy]);
 
   const categoryCountBaseFilters = useMemo(() => {
