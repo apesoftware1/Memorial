@@ -11,6 +11,7 @@ import MobileFilterTags from "@/components/MobileFilterTags.jsx";
 import { SearchLoader } from "@/components/ui/loader";
 import { AnimatePresence, motion } from "framer-motion";
 import { toTitleCase } from "@/lib/locationHelpers";
+import { sanitizeLocationHierarchy } from "@/lib/locationHierarchySanitizer";
 import { useQuery } from "@apollo/client";
 import apolloClient from "@/lib/apolloClient";
 import { LISTING_SEARCH_INDEX_CONNECTION_QUERY } from "@/graphql/queries";
@@ -1314,7 +1315,7 @@ const SearchContainer = ({
       })
       .filter((p) => p.name);
 
-    if (hierarchy.length > 0) return hierarchy;
+    if (hierarchy.length > 0) return sanitizeLocationHierarchy(hierarchy);
     return fallbackProvinces.map((p) => ({ name: p, count: 0, cities: [] }));
   }, [filterOptions?.location, searchIndexOptionsData, shouldFetchLocationOptions]);
 
