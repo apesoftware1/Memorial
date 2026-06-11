@@ -189,24 +189,12 @@ export default function LocationModal({
     });
   }, [locationsData, userLocation]);
 
-  // Filter locations based on search term and sort by distance
+  // Filter locations but preserve the incoming hierarchy order so mobile matches desktop
   const filteredLocations = useMemo(() => {
-    let filtered = enhancedLocationsData.filter(location =>
+    return enhancedLocationsData.filter(location =>
       location.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    
-    // Sort by distance (closest first) if user has location
-    if (userLocation) {
-      filtered.sort((a, b) => {
-        if (a.distance === null && b.distance === null) return 0;
-        if (a.distance === null) return 1;
-        if (b.distance === null) return -1;
-        return a.distance - b.distance;
-      });
-    }
-    
-    return filtered;
-  }, [enhancedLocationsData, searchTerm, userLocation]);
+  }, [enhancedLocationsData, searchTerm]);
 
   useEffect(() => {
     if (!shouldFetchCounts) return;

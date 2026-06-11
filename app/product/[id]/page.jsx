@@ -25,7 +25,7 @@ export async function generateMetadata({ params }) {
   if (!id) return {};
 
   const listing = await fetchListing(id);
-  const canonical = toAbsoluteUrl(`/product/${id}`);
+  const canonical = toAbsoluteUrl(`/tombstones-for-sale/${id}`);
 
   if (!listing) {
     return { title: "Listing Not Found | TombstoneFinder", alternates: { canonical } };
