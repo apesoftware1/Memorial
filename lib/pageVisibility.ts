@@ -1,14 +1,25 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-export type PageKey = "services" | "tombstonesOnSpecial";
+export type PageKey =
+  | "blogs"
+  | "tombstoneFinance"
+  | "installationGuide"
+  | "lifeInsurance"
+  | "tombstonesOnSpecial";
 
 export type PageVisibilityConfig = {
   hidden: PageKey[];
   updatedAt: string;
 };
 
-const PAGE_KEYS: PageKey[] = ["services", "tombstonesOnSpecial"];
+const PAGE_KEYS: PageKey[] = [
+  "blogs",
+  "tombstoneFinance",
+  "installationGuide",
+  "lifeInsurance",
+  "tombstonesOnSpecial",
+];
 
 const dataFilePath = () =>
   path.join(process.cwd(), ".data", "page-visibility.json");
@@ -23,6 +34,12 @@ const normalizeHidden = (hidden: unknown): PageKey[] => {
   const unique = new Set<PageKey>();
   for (const item of arr) {
     if (typeof item !== "string") continue;
+    if (item === "services") {
+      unique.add("tombstoneFinance");
+      unique.add("installationGuide");
+      unique.add("lifeInsurance");
+      continue;
+    }
     if ((PAGE_KEYS as string[]).includes(item)) unique.add(item as PageKey);
   }
   return Array.from(unique.values());
@@ -61,3 +78,7 @@ export async function writePageVisibilityConfig(
 
 export const PAGE_VISIBILITY_KEYS = PAGE_KEYS;
 
+export function isPageHidden(config: Partial<PageVisibilityConfig> | null | undefined, key: PageKey) {
+  const hidden = Array.isArray(config?.hidden) ? normalizeHidden(config.hidden) : [];
+  return hidden.includes(key);
+}

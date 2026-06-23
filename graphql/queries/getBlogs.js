@@ -5,11 +5,25 @@ export const GET_BLOGS = gql`
   query {
     blogPosts(sort: "publishedAt:desc") {
       documentId
+      slug
       title
       excerpt
-      coverImage {
-        url
-      }
+      coverImageUrl
+      coverImagePublicId
+      publishedAt
+    }
+  }
+`;
+
+export const GET_BLOGS_ADMIN = gql`
+  query GetBlogsAdmin {
+    blogPosts(sort: "publishedAt:desc", pagination: { limit: 100 }) {
+      documentId
+      slug
+      title
+      excerpt
+      coverImageUrl
+      coverImagePublicId
       publishedAt
     }
   }
@@ -20,11 +34,12 @@ export const GET_BLOG_BY_ID = gql`
   query Blog($documentId: ID!) {
     blogPost(documentId: $documentId) {
       documentId
+      slug
       title
       content
-      coverImage {
-        url
-      }
+      excerpt
+      coverImageUrl
+      coverImagePublicId
       publishedAt
     }
   }

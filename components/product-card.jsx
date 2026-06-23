@@ -41,7 +41,7 @@ export function ProductCard(props) {
       <Link href={`/product/${id}`} className="block">
         <div className="relative h-48 w-full">
           <Image 
-            src={cloudinaryOptimized(image, 400) || "/placeholder.jpg"} 
+            src={cloudinaryOptimized(image, 400) || "/placeholder.svg"} 
             alt={name}
             fill
             className="object-cover"
@@ -68,4 +68,3 @@ export function ProductCard(props) {
     </div>
   )
 }
-

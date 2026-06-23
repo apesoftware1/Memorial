@@ -1,19 +1,21 @@
 import type { Metadata } from "next";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tombstonesfinder.co.za";
+
 export const metadata: Metadata = {
-  title: "Tombstone Manufacturers in South Africa | Compare Suppliers",
-  description: "Compare verified tombstone manufacturers across South Africa. View branches, products, ratings and contact details.",
-  alternates: { canonical: "/manufacturers" },
+  title: "Tombstone Manufacturers in South Africa", // Optimized to prevent snippet clipping
+  description: "Compare verified tombstone manufacturers across South Africa. Find direct wholesale pricing, active branches, and reviews.",
+  alternates: { canonical: `${SITE_URL}/manufacturers` },
   openGraph: {
-    title: "Tombstone Manufacturers in South Africa | Compare Suppliers",
-    description: "Compare verified tombstone manufacturers across South Africa. View branches, products, ratings and contact details.",
-    url: (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001") + "/manufacturers",
+    title: "Tombstone Manufacturers in South Africa",
+    description: "Compare verified tombstone manufacturers across South Africa. Find direct wholesale pricing, active branches, and reviews.",
+    url: `${SITE_URL}/manufacturers`,
     type: "website",
   },
   twitter: {
     card: "summary",
-    title: "Tombstone Manufacturers in South Africa | Compare Suppliers",
-    description: "Compare verified tombstone manufacturers across South Africa. View branches, products, ratings and contact details.",
+    title: "Tombstone Manufacturers in South Africa",
+    description: "Compare verified tombstone manufacturers across South Africa.",
   },
 };
 

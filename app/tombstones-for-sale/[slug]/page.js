@@ -1,41 +1,123 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import { useQuery } from "@apollo/client";
-import { GET_LISTING_BY_ID_FAST } from "@/graphql/queries/getListingByIdFast";
+import { notFound } from "next/navigation";
 import ProductShowcase from "@/components/product-showcase";
-import { PageLoader } from "@/components/ui/loader";
+import { fetchGraphQL, toAbsoluteUrl } from "@/lib/serverGraphql";
 
-export default function TombstoneDetail() {
-  const { slug: documentId } = useParams();
- 
-  const { data, loading, error } = useQuery(GET_LISTING_BY_ID_FAST, {
-    variables: { documentID: documentId},
-    skip: !documentId,
-  });
- 
-  if (loading) return <PageLoader text="Loading Product Details" />;
-  if (error) return <div>Error loading listing.</div>;
-  const listing = data?.listing;
+async function fetchListing(documentID) {
+  const data = await fetchGraphQL(
+    `
+      query ListingFast($documentID: ID!) {
+        listing(documentId: $documentID) {
+          documentId
+          title
+          mainImageUrl
+          mainImagePublicId
+          thumbnailUrls
+          thumbnailPublicIds
+          description
+          price
+          slug
+          manufacturingTimeframe
+          isOnSpecial
+          specials {
+            active
+            sale_price
+            start_date
+            end_date
+          }
+          listing_category {
+            documentId
+            name
+          }
+          productDetails {
+            id
+            color { id value icon }
+            style { id value icon }
+            overallStyle { id value icon }
+            stoneType { id value icon }
+            slabStyle { id value icon }
+            customization { id value icon }
+          }
+          additionalProductDetails {
+            id
+            transportAndInstallation { id value info }
+            foundationOptions { id value info }
+            warrantyOrGuarantee { id value info }
+            installationGuarantee { id value info }
+          }
+          inquiries_c { documentId }
+          branches(pagination: { limit: 25 }) {
+            documentId
+            name
+          }
+          company {
+            enableWhatsAppButton
+            documentId
+            phone
+            name
+            mapUrl
+            location
+            latitude
+            longitude
+            googleRating
+            logoUrl
+            logoUrlPublicId
+            operatingHours {
+              id
+              monToFri
+              saturday
+              sunday
+              publicHoliday
+            }
+            sales_reps {
+              call
+              whatsapp
+              name
+              avatar { url }
+            }
+            socialLinks {
+              id
+              facebook
+              website
+              instagram
+              tiktok
+              youtube
+              x
+              whatsapp
+              messenger
+            }
+          }
+        }
+      }
+    `,
+    { documentID },
+    300
+  );
 
-  if (!listing) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900">Listing Not Found</h1>
-            <p className="mt-4 text-gray-600">The tombstone listing you're looking for doesn't exist.</p>
-            <a 
-              href="/tombstones-for-sale"
-              className="mt-6 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-            >
-              Back to Listings
-            </a>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  return data?.listing || null;
+}
+
+export async function generateMetadata({ params }) {
+  const documentId = (await params)?.slug;
+  if (!documentId) return {};
+  const listing = await fetchListing(documentId);
+  if (!listing) return {};
+
+  return {
+    title: listing?.title ? `${listing.title} | Tombstones For Sale` : "Tombstone Listing",
+    description:
+      listing?.description || "View this tombstone listing, pricing and branch availability.",
+    alternates: {
+      canonical: toAbsoluteUrl(`/tombstones-for-sale/${documentId}`),
+    },
+  };
+}
+
+export default async function TombstoneDetailPage({ params }) {
+  const documentId = (await params)?.slug;
+  if (!documentId) notFound();
+
+  const listing = await fetchListing(documentId);
+  if (!listing) notFound();
 
   return <ProductShowcase listing={listing} id={documentId} />;
 }

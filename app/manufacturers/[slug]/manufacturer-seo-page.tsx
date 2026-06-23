@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import ManufacturerProfileClient from "../manufacturers-Profile-Page/[slug]/manufacturer-profile-client";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tombstonesfinder.co.za";
@@ -125,7 +125,7 @@ async function fetchCompanyAndListings(documentId: string) {
         }
         listings(
           filters: { company: { documentId: { eq: $documentId } } }
-          pagination: { limit: -1 }
+          pagination: { limit: 100 }
         ) {
           documentId
           updatedAt
@@ -170,7 +170,12 @@ async function fetchCompanyAndListings(documentId: string) {
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-  const slug = (await params)?.slug;
+  const rawSlug = (await params)?.slug;
+  if (rawSlug && (rawSlug.includes(" ") || rawSlug.includes("%20"))) {
+    const cleanSlug = decodeURIComponent(rawSlug).toLowerCase().trim().replace(/\s+/g, "-");
+    redirect(`/manufacturers/${cleanSlug}`);
+  }
+  const slug = rawSlug;
   if (!slug) return {};
 
   const seoPage = await fetchManufacturerSeoPage(slug);
@@ -207,7 +212,12 @@ export default async function ManufacturerSeoProfilePage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const slug = (await params)?.slug;
+  const rawSlug = (await params)?.slug;
+  if (rawSlug && (rawSlug.includes(" ") || rawSlug.includes("%20"))) {
+    const cleanSlug = decodeURIComponent(rawSlug).toLowerCase().trim().replace(/\s+/g, "-");
+    redirect(`/manufacturers/${cleanSlug}`);
+  }
+  const slug = rawSlug;
   if (!slug) notFound();
 
   const seoPage = await fetchManufacturerSeoPage(slug);

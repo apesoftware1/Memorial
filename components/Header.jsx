@@ -75,9 +75,23 @@ export default function Header({
   const hideSpecialsPage = Array.isArray(pageVisibility?.hidden)
     ? pageVisibility.hidden.includes("tombstonesOnSpecial")
     : false;
-  const hideServicesPages = Array.isArray(pageVisibility?.hidden)
-    ? pageVisibility.hidden.includes("services")
+  const hideBlogsPage = Array.isArray(pageVisibility?.hidden)
+    ? pageVisibility.hidden.includes("blogs")
     : false;
+  const hideTombstoneFinancePage = Array.isArray(pageVisibility?.hidden)
+    ? pageVisibility.hidden.includes("tombstoneFinance")
+    : false;
+  const hideInstallationGuidePage = Array.isArray(pageVisibility?.hidden)
+    ? pageVisibility.hidden.includes("installationGuide")
+    : false;
+  const hideLifeInsurancePage = Array.isArray(pageVisibility?.hidden)
+    ? pageVisibility.hidden.includes("lifeInsurance")
+    : false;
+  const hideServicesPages =
+    hideBlogsPage &&
+    hideTombstoneFinancePage &&
+    hideInstallationGuidePage &&
+    hideLifeInsurancePage;
 
   // Custom logout function to ensure proper cleanup
   const handleLogout = async () => {
@@ -191,30 +205,38 @@ export default function Header({
                       </button>
                       <div className="absolute left-0 top-full min-w-max bg-white rounded-none overflow-hidden shadow-xl hidden group-hover:block animate-slide-in z-50 px-0 origin-top-left">
                         <div className="p-0">
-                          <Link
-                            href="/blog"
-                            className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
-                          >
-                            INSIGHTS , GUIDES & BLOGS
-                          </Link>
-                          <Link
-                            href="/services/tombstone-finance"
-                            className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
-                          >
-                            TOMBSTONE FINANCE
-                          </Link>
-                          <Link
-                            href="/services/installation-guide"
-                            className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
-                          >
-                            TOMBSTONE INSTALLATION GUIDE
-                          </Link>
-                          <Link
-                            href="/services/life-insurance"
-                            className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors"
-                          >
-                            LIFE INSURANCE
-                          </Link>
+                          {!hideBlogsPage ? (
+                            <Link
+                              href="/blogs"
+                              className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
+                            >
+                              INSIGHTS GUIDES AND BLOGS
+                            </Link>
+                          ) : null}
+                          {!hideTombstoneFinancePage ? (
+                            <Link
+                              href="/services/tombstone-finance"
+                              className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
+                            >
+                              TOMBSTONE FINANCE
+                            </Link>
+                          ) : null}
+                          {!hideInstallationGuidePage ? (
+                            <Link
+                              href="/services/installation-guide"
+                              className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors whitespace-nowrap"
+                            >
+                              TOMBSTONE INSTALLATION GUIDE
+                            </Link>
+                          ) : null}
+                          {!hideLifeInsurancePage ? (
+                            <Link
+                              href="/services/life-insurance"
+                              className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-amber-500 hover:text-white transition-colors"
+                            >
+                              LIFE INSURANCE
+                            </Link>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -402,34 +424,42 @@ export default function Header({
             </button>
             {mobileDropdown === "services" && (
               <div className="pl-4 mt-2 space-y-2">
-                <Link
-                  href="/blog"
-                  className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
-                  onClick={handleMobileMenuToggle}
-                >
-                  Insights, Guides & blogs
-                </Link>
-                <Link
-                  href="/services/tombstone-finance"
-                  className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
-                  onClick={handleMobileMenuToggle}
-                >
-                  TOMBSTONE FINANCE
-                </Link>
-                <Link
-                  href="/services/installation-guide"
-                  className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
-                  onClick={handleMobileMenuToggle}
-                >
-                  TOMBSTONE INSTALLATION GUIDE
-                </Link>
-                <Link
-                  href="/services/life-insurance"
-                  className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
-                  onClick={handleMobileMenuToggle}
-                >
-                  LIFE INSURANCE
-                </Link>
+                {!hideBlogsPage ? (
+                  <Link
+                    href="/blogs"
+                    className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
+                    onClick={handleMobileMenuToggle}
+                  >
+                    Insights Guides and Blogs
+                  </Link>
+                ) : null}
+                {!hideTombstoneFinancePage ? (
+                  <Link
+                    href="/services/tombstone-finance"
+                    className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
+                    onClick={handleMobileMenuToggle}
+                  >
+                    TOMBSTONE FINANCE
+                  </Link>
+                ) : null}
+                {!hideInstallationGuidePage ? (
+                  <Link
+                    href="/services/installation-guide"
+                    className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
+                    onClick={handleMobileMenuToggle}
+                  >
+                    TOMBSTONE INSTALLATION GUIDE
+                  </Link>
+                ) : null}
+                {!hideLifeInsurancePage ? (
+                  <Link
+                    href="/services/life-insurance"
+                    className="block py-1 text-gray-600 hover:text-gray-900 transition-colors"
+                    onClick={handleMobileMenuToggle}
+                  >
+                    LIFE INSURANCE
+                  </Link>
+                ) : null}
               </div>
             )}
           </div>

@@ -50,7 +50,7 @@ export default function ProductGallery({
                 title: favoriteProduct.title || "",
                 price: favoriteProduct.price || "",
                 description: favoriteProduct.description || "",
-                image: images[0] || "/placeholder.jpg",
+                image: images[0] || "/placeholder.svg",
                 company: {
                   name: favoriteProduct.company?.name || "",
                   location: favoriteProduct.company?.location || ""

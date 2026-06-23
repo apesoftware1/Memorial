@@ -155,31 +155,12 @@ const FILTER_OPTION_VALUES = {
 };
 
 const PAGE_OPTIONS = [
-  { key: "services", label: "Services pages" },
+  { key: "blogs", label: "Insights Guides and Blogs page" },
+  { key: "tombstoneFinance", label: "Tombstone Finance page" },
+  { key: "installationGuide", label: "Installation Guide page" },
+  { key: "lifeInsurance", label: "Life Insurance page" },
   { key: "tombstonesOnSpecial", label: "Tombstones on Special page" },
 ];
-
-// Floating Action Button to navigate to blogs page
-function FloatingBlogsButton() {
-  return (
-    <Link
-      href="/regan-dashboard/blogs"
-      aria-label="Open Blogs Admin"
-      className="fixed bottom-6 right-6 z-50"
-    >
-      <Button
-        className="rounded-full w-14 h-14 p-0 shadow-lg bg-primary text-primary-foreground hover:bg-primary/90"
-        title="Blogs"
-      >
-        {/* Book or document icon to represent articles */}
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-          <path d="M6 2a2 2 0 00-2 2v16a2 2 0 002 2h11a1 1 0 001-1v-1h-9a3 3 0 01-3-3V2z" />
-          <path d="M9 4h8a1 1 0 011 1v12h-9a1 1 0 01-1-1V4z" />
-        </svg>
-      </Button>
-    </Link>
-  );
-}
 
 export default function DashboardClient() {
   const { data: session, status } = useSession();
@@ -748,6 +729,14 @@ export default function DashboardClient() {
                       Hide Special Offer
                     </button>
                   ) : null}
+                  {session?.user?.isAdmin ? (
+                    <Link
+                      href="/regan-dashboard/blogs"
+                      className="block w-full text-left px-3 py-2 rounded-md font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+                    >
+                      Manage Blogs
+                    </Link>
+                  ) : null}
                 </div>
               );
 
@@ -1003,8 +992,6 @@ export default function DashboardClient() {
                 </>
               );
             })()}
-            {/* FAB */}
-            <FloatingBlogsButton />
           </>
         )}
       </div>
