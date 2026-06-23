@@ -2,7 +2,9 @@ import { ApolloClient, InMemoryCache, createHttpLink, NormalizedCacheObject, fro
 import { persistCache, LocalStorageWrapper } from 'apollo3-cache-persist';
 import { onError } from '@apollo/client/link/error';
 
-const APOLLO_CACHE_VERSION = '2026-05-12-1';
+// Bump persisted cache version after GraphQL schema field migrations so clients
+// don't keep serving stale blog shapes across reloads.
+const APOLLO_CACHE_VERSION = '2026-06-23-1';
 const APOLLO_CACHE_META_KEY = 'apollo-cache-meta';
 
 // Shared cache instance so persistence can hydrate it before client creation
