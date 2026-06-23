@@ -23,7 +23,7 @@ yarn-error.log*
 .vercel
 
 # runtime data
-.data/filter-visibility.json
+.data/*.json
 
 # typescript
 *.tsbuildinfo
@@ -32,4 +32,3 @@ next-env.d.ts
 ecosystem.config.js.sh
 ecosystem.config.js
 *.sh
-
