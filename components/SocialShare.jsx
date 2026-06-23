@@ -146,7 +146,7 @@ export default function SocialShare({ socialLinks, product }) {
                 title: product.title || product.name || "",
                 price: product.price || "",
                 description: product.description || "",
-                image: product.mainImageUrl || product.image || "/placeholder.jpg",
+                image: product.mainImageUrl || product.image || "/placeholder.svg",
                 company: {
                   name: product.company?.name || "",
                   location: product.company?.location || ""

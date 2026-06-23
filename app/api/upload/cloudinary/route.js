@@ -4,6 +4,7 @@ export async function POST(request) {
   try {
     const formData = await request.formData();
     const file = formData.get('file');
+    const folder = formData.get("folder");
     
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -12,15 +13,17 @@ export async function POST(request) {
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'listings';
 
+    if (!cloudName) {
+      return NextResponse.json({ error: "Missing Cloudinary cloud name" }, { status: 500 });
+    }
+
     // Create FormData for Cloudinary upload
     const uploadFormData = new FormData();
     uploadFormData.append('file', file);
     uploadFormData.append('upload_preset', uploadPreset);
-    // Fixed: company is not defined here, and folder should be added to uploadFormData
-    // const companyName = formData.get('company');
-    // if (companyName) {
-    //   uploadFormData.append("folder", companyName.replace(/\s+/g, "_"));
-    // }
+    if (typeof folder === "string" && folder.trim()) {
+      uploadFormData.append("folder", folder.trim().replace(/\s+/g, "_"));
+    }
     uploadFormData.append('transformation', 'w_800,h_600,c_limit,q_auto,f_auto');
 
     // Upload to Cloudinary using upload_preset
@@ -31,8 +34,10 @@ export async function POST(request) {
 
     if (!response.ok) {
       const errorText = await response.text();
-
-      throw new Error(`Cloudinary upload failed: ${response.statusText}`);
+      return NextResponse.json(
+        { error: "Cloudinary upload failed", details: errorText },
+        { status: response.status }
+      );
     }
 
     const result = await response.json();
@@ -47,7 +52,6 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    
     return NextResponse.json(
       { error: 'Upload failed' }, 
       { status: 500 }
