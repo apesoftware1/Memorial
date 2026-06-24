@@ -5,6 +5,8 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import BlogHeader from "../blog-header";
 
+export const revalidate = 0;
+
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tombstonesfinder.co.za";
 const GRAPHQL_URL =
   process.env.NEXT_PUBLIC_STRAPI_GRAPHQL_URL ||
