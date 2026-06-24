@@ -82,6 +82,8 @@ async function fetchCompanyAndListings(documentId: string) {
         companies(filters: { documentId: { eq: $documentId } }) {
           documentId
           updatedAt
+          profilePicUrl
+          profilePicPublicId
           name
           phone
           googleRating
