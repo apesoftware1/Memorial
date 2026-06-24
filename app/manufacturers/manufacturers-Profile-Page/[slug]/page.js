@@ -26,6 +26,8 @@ async function fetchCompanyAndListings(documentId) {
         companies(filters: { documentId: { eq: $documentId } }) {
           documentId
           updatedAt
+          profilePicUrl
+          profilePicPublicId
           name
           phone
           googleRating
@@ -118,7 +120,7 @@ function toAbsoluteUrl(pathname) {
 }
 
 export async function generateMetadata({ params }) {
-  const documentId = params?.slug;
+  const documentId = (await params)?.slug;
   if (!documentId) return {};
 
   const { company } = await fetchCompanyAndListings(documentId);
@@ -153,7 +155,7 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function ManufacturerProfilePage({ params }) {
-  const documentId = params?.slug;
+  const documentId = (await params)?.slug;
   if (!documentId) notFound();
 
   const { company, listings } = await fetchCompanyAndListings(documentId);
