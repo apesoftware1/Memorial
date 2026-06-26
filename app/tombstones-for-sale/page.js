@@ -1,5 +1,13 @@
 import TombstonesForSaleClient from "./for-sale-client";
 
+export const metadata = {
+  title: "Tombstones for Sale | Compare Prices Across South Africa",
+  description: "Browse tombstones for sale, compare prices, and contact local manufacturers near you.",
+  alternates: {
+    canonical: "https://tombstonesfinder.co.za/tombstones-for-sale",
+  },
+};
+
 const FOR_SALE_INITIAL_QUERY = `
   query ForSaleInitial(
     $page: Int = 1
