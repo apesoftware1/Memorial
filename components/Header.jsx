@@ -8,6 +8,12 @@ import { useFavorites } from "@/context/favorites-context.jsx"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { HeaderLocationPicker } from "@/app/locations/location-picker";
+
+function decodeLocationSegment(segment) {
+  if (typeof segment !== "string") return "";
+  return decodeURIComponent(segment).replace(/-/g, " ").trim();
+}
 
 export default function Header({
   mobileMenuOpen,
@@ -92,6 +98,28 @@ export default function Header({
     hideTombstoneFinancePage &&
     hideInstallationGuidePage &&
     hideLifeInsurancePage;
+
+  const locationSegments = pathname.startsWith("/locations/")
+    ? pathname.split("/").filter(Boolean).slice(1)
+    : [];
+  const currentLocation =
+    locationSegments.length === 2
+      ? {
+          currentProvince: decodeLocationSegment(locationSegments[0]),
+          currentCity: null,
+          currentTown: decodeLocationSegment(locationSegments[1]),
+        }
+      : locationSegments.length === 3
+      ? {
+          currentProvince: decodeLocationSegment(locationSegments[0]),
+          currentCity: decodeLocationSegment(locationSegments[1]),
+          currentTown: decodeLocationSegment(locationSegments[2]),
+        }
+      : {
+          currentProvince: null,
+          currentCity: null,
+          currentTown: null,
+        };
 
   // Custom logout function to ensure proper cleanup
   const handleLogout = async () => {
@@ -196,6 +224,12 @@ export default function Header({
                       </div>
                     </div>
                   </div>
+
+                  <HeaderLocationPicker
+                    currentProvince={currentLocation.currentProvince}
+                    currentCity={currentLocation.currentCity}
+                    currentTown={currentLocation.currentTown}
+                  />
 
                   {!hideServicesPages ? (
                     <div className="relative group">
@@ -407,6 +441,27 @@ export default function Header({
               <Link href="/manufacturers" className="block py-1 text-gray-600 hover:text-gray-900 transition-colors">
                 MANUFACTURERS
               </Link>
+            </div>
+          )}
+        </div>
+
+        <div className="py-2">
+          <button
+            className="flex justify-between items-center w-full text-gray-700 hover:text-gray-900 transition-colors"
+            onClick={() => handleMobileDropdownToggle("locations")}
+          >
+            <span>Locations</span>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform duration-200 ${mobileDropdown === "locations" ? "transform rotate-180" : ""}`}
+            />
+          </button>
+          {mobileDropdown === "locations" && (
+            <div className="pl-4 mt-2 text-sm text-[#005D77]">
+              <HeaderLocationPicker
+                currentProvince={currentLocation.currentProvince}
+                currentCity={currentLocation.currentCity}
+                currentTown={currentLocation.currentTown}
+              />
             </div>
           )}
         </div>
