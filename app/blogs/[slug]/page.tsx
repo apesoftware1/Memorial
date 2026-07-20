@@ -35,7 +35,7 @@ async function fetchGraphQL<TData>(query: string, variables?: Record<string, unk
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, variables }),
-    next: { revalidate: 3600 },
+    cache: "no-store",
   });
   if (!res.ok) return null;
   const json = await res.json();

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import BlogIndexClient from "./blog-index-client";
 
+export const revalidate = 60;
+
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tombstonesfinder.co.za";
 const GRAPHQL_URL =
   process.env.NEXT_PUBLIC_STRAPI_GRAPHQL_URL ||
@@ -31,7 +33,7 @@ async function fetchGraphQL<TData>(query: string, variables?: Record<string, unk
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, variables }),
-    next: { revalidate: 3600 },
+    next: { revalidate: 60 },
   });
   if (!res.ok) return null;
   const json = await res.json();
@@ -89,4 +91,3 @@ export default async function BlogsPage() {
   const posts = await fetchBlogPosts();
   return <BlogIndexClient posts={posts} />;
 }
-
