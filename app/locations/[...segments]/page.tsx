@@ -4,13 +4,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import Footer from "@/components/Footer";
+import LocationHeader from "@/app/locations/location-header";
 import LocationSearchStrip from "@/app/locations/location-search-strip";
 import { LOCATION_LANDING_PAGE_QUERY } from "@/graphql/queries/locationLandingPage";
 import { fetchGraphQL, toAbsoluteUrl } from "@/lib/serverGraphql";
 
 export const revalidate = 300;
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 8;
 const LOCATION_LANDING_SEO_OPTIONS_QUERY = `
   query LocationLandingSeoOptions {
     locationLandingSeos {
@@ -531,6 +533,7 @@ export default async function LocationLandingPage({
 
   return (
     <div className="bg-white text-[#1f2933]">
+      <LocationHeader />
       <LocationSearchStrip locationLabel={locationLabel || "Location"} manufacturers={manufacturerOptions} />
 
       <div className="mx-auto max-w-[1040px] px-4 py-5 sm:px-6 lg:px-8">
@@ -865,6 +868,7 @@ export default async function LocationLandingPage({
           </div>
         </section>
       </div>
+      <Footer />
     </div>
   );
 }
