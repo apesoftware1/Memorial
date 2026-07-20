@@ -36,52 +36,54 @@ export default function LocationSearchStrip({
 
   return (
     <section className="border border-[#0e6d80] bg-[#0e6d80] px-4 py-3 text-white">
-      <div className="grid gap-3 lg:grid-cols-[1.3fr_1fr_auto]">
-        <label className="block">
-          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">
-            Manufacturer Name
-          </span>
-          <select
-            value={selectedManufacturer}
-            onChange={(event) => setSelectedManufacturer(event.target.value)}
-            className="h-10 w-full border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none"
+      <div className="container mx-auto max-w-6xl px-0">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">
+              Manufacturer Name
+            </span>
+            <select
+              value={selectedManufacturer}
+              onChange={(event) => setSelectedManufacturer(event.target.value)}
+              className="h-10 w-full border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none"
+            >
+              {manufacturerOptions.length ? (
+                manufacturerOptions.map((item) => (
+                  <option key={`${item.slug || item.name}`} value={item.slug || ""}>
+                    {item.name}
+                  </option>
+                ))
+              ) : (
+                <option value="">Available manufacturers</option>
+              )}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">
+              Location
+            </span>
+            <input
+              value={locationLabel}
+              readOnly
+              className="h-10 w-full border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none"
+            />
+          </label>
+
+          <button
+            type="button"
+            onClick={() =>
+              router.push(
+                selectedManufacturer
+                  ? `/manufacturers/${selectedManufacturer}`
+                  : "/manufacturers"
+              )
+            }
+            className="mt-[22px] h-10 min-w-[210px] justify-self-start whitespace-nowrap border border-[#f4a62a] bg-[#f4a62a] px-5 text-sm font-semibold text-white transition hover:bg-[#dc9019] lg:justify-self-end"
           >
-            {manufacturerOptions.length ? (
-              manufacturerOptions.map((item) => (
-                <option key={`${item.slug || item.name}`} value={item.slug || ""}>
-                  {item.name}
-                </option>
-              ))
-            ) : (
-              <option value="">Available manufacturers</option>
-            )}
-          </select>
-        </label>
-
-        <label className="block">
-          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">
-            Location
-          </span>
-          <input
-            value={locationLabel}
-            readOnly
-            className="h-10 w-full border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none"
-          />
-        </label>
-
-        <button
-          type="button"
-          onClick={() =>
-            router.push(
-              selectedManufacturer
-                ? `/manufacturers/${selectedManufacturer}`
-                : "/manufacturers"
-            )
-          }
-          className="mt-[22px] h-10 min-w-[180px] border border-[#f4a62a] bg-[#f4a62a] px-4 text-sm font-semibold text-white transition hover:bg-[#dc9019]"
-        >
-          Search for Manufacturers
-        </button>
+            Search for Manufacturers
+          </button>
+        </div>
       </div>
     </section>
   );
