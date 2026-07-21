@@ -34,9 +34,8 @@ export const LOCATION_LANDING_PAGE_QUERY = `
         metaTitle
         metaDescription
         intro
-        heroImage {
-          url
-        }
+        heroImageUrl
+        heroImagePublicId
       }
       branches {
         branch {
