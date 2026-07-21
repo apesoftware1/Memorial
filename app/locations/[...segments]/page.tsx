@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { Fragment, cache } from "react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -7,6 +7,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import Footer from "@/components/Footer";
 import LocationHeader from "@/app/locations/location-header";
 import LocationSearchStrip from "@/app/locations/location-search-strip";
+import NearbyLocationsSection from "@/app/locations/nearby-locations-section";
 import { LOCATION_LANDING_PAGE_QUERY } from "@/graphql/queries/locationLandingPage";
 import { fetchGraphQL, toAbsoluteUrl } from "@/lib/serverGraphql";
 
@@ -20,9 +21,58 @@ const LOCATION_LANDING_SEO_OPTIONS_QUERY = `
       locationType
       locationValue
       cityContext
+      title
+      intro
+      metaTitle
+      metaDescription
+      heroImageUrl
+      heroImagePublicId
     }
   }
 `;
+const LOCATION_FAQS_QUERY = `
+  query LocationFaqs($town: String!) {
+    locationFaqs(filters: { town: { eq: $town } }) {
+      question
+      answer
+    }
+  }
+`;
+const LOCAL_BUSINESSES_QUERY = `
+  query LocalBusinesses($province: String!, $town: String!) {
+    localBusinesses(
+      filters: {
+        province: { eq: $province }
+        town: { eq: $town }
+        active: { eq: true }
+      }
+      sort: ["displayOrder:asc", "name:asc"]
+    ) {
+      documentId
+      name
+      slug
+      businessType
+      description
+      phone
+      mobile
+      email
+      website
+      whatsapp
+      province
+      city
+      town
+      streetAddress
+      postalCode
+      latitude
+      longitude
+      featured
+      verified
+      active
+      displayOrder
+    }
+  }
+`;
+
 
 type RouteParams = {
   segments: string[];
@@ -37,6 +87,24 @@ type LocationLandingSeoRow = {
   locationType?: string | null;
   locationValue?: string | null;
   cityContext?: string | null;
+  title?: string | null;
+  intro?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  heroImageUrl?: string | null;
+  heroImagePublicId?: string | null;
+};
+
+type ResolvedLocationOption = {
+  province: string;
+  city?: string;
+  town: string;
+  title?: string | null;
+  intro?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  heroImageUrl?: string | null;
+  heroImagePublicId?: string | null;
 };
 
 type LocalBusinessGalleryImage = {
@@ -92,6 +160,35 @@ type LocalBusinessSection = {
   items?: LocalBusinessItem[] | null;
 };
 
+type LocationFaqItem = {
+  question?: string | null;
+  answer?: string | null;
+};
+
+type NearbyLocalBusinessItem = {
+  documentId?: string | null;
+  name?: string | null;
+  slug?: string | null;
+  businessType?: string | null;
+  description?: string | null;
+  phone?: string | null;
+  mobile?: string | null;
+  email?: string | null;
+  website?: string | null;
+  whatsapp?: string | null;
+  province?: string | null;
+  city?: string | null;
+  town?: string | null;
+  streetAddress?: string | null;
+  postalCode?: string | null;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+  featured?: boolean | null;
+  verified?: boolean | null;
+  active?: boolean | null;
+  displayOrder?: number | null;
+};
+
 type LocationLandingPageModel = {
   location?: {
     province?: string | null;
@@ -114,9 +211,8 @@ type LocationLandingPageModel = {
     metaTitle?: string | null;
     metaDescription?: string | null;
     intro?: string | null;
-    heroImage?: {
-      url?: string | null;
-    } | null;
+    heroImageUrl?: string | null;
+    heroImagePublicId?: string | null;
   } | null;
   branches?: Array<{
     branch?: {
@@ -250,13 +346,33 @@ function resolveLocationInput(segments: string[]) {
   if (segments.length === 2) {
     const [province, town] = segments.map(decodeSegment);
     if (!province || !town) return null;
-    return { province, city: undefined, town };
+    return {
+      province,
+      city: undefined,
+      town,
+      title: null,
+      intro: null,
+      metaTitle: null,
+      metaDescription: null,
+      heroImageUrl: null,
+      heroImagePublicId: null,
+    };
   }
 
   if (segments.length === 3) {
     const [province, city, town] = segments.map(decodeSegment);
     if (!province || !city || !town) return null;
-    return { province, city, town };
+    return {
+      province,
+      city,
+      town,
+      title: null,
+      intro: null,
+      metaTitle: null,
+      metaDescription: null,
+      heroImageUrl: null,
+      heroImagePublicId: null,
+    };
   }
 
   return null;
@@ -267,7 +383,7 @@ const fetchLocationLandingSeoRows = cache(async () => {
   return Array.isArray(data?.locationLandingSeos) ? (data.locationLandingSeos as LocationLandingSeoRow[]) : [];
 });
 
-const resolveLocationOption = cache(async (segments: string[]) => {
+const resolveLocationOption = cache(async (segments: string[]): Promise<ResolvedLocationOption | null> => {
   const pathname = normalizePath(`/locations/${segments.join("/")}`);
   if (!pathname) return null;
 
@@ -285,6 +401,12 @@ const resolveLocationOption = cache(async (segments: string[]) => {
         province,
         city: city || undefined,
         town,
+        title: row?.title ?? null,
+        intro: row?.intro ?? null,
+        metaTitle: row?.metaTitle ?? null,
+        metaDescription: row?.metaDescription ?? null,
+        heroImageUrl: row?.heroImageUrl ?? null,
+        heroImagePublicId: row?.heroImagePublicId ?? null,
       };
     }
   }
@@ -306,12 +428,6 @@ function formatPrice(value?: number | null) {
   return typeof value === "number" && Number.isFinite(value)
     ? new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", maximumFractionDigits: 0 }).format(value)
     : "Contact for price";
-}
-
-function formatCoordinate(value?: string | number | null) {
-  if (typeof value === "number" && Number.isFinite(value)) return value.toFixed(5);
-  if (typeof value === "string" && value.trim()) return value.trim();
-  return "";
 }
 
 function toInternalSlugPath(value?: string | null) {
@@ -364,9 +480,26 @@ const fetchLocationLandingPage = cache(
   }
 );
 
+const fetchLocationFaqs = cache(async (town: string) => {
+  const data = await fetchGraphQL(LOCATION_FAQS_QUERY, { town }, revalidate);
+  return Array.isArray(data?.locationFaqs) ? (data.locationFaqs as LocationFaqItem[]) : [];
+});
+
+const fetchNearbyLocalBusinesses = cache(async (province: string, town: string) => {
+  const data = await fetchGraphQL(LOCAL_BUSINESSES_QUERY, { province, town }, revalidate);
+  return Array.isArray(data?.localBusinesses) ? (data.localBusinesses as NearbyLocalBusinessItem[]) : [];
+});
+
 function stripHtml(value?: string | null) {
   if (typeof value !== "string" || !value.trim()) return "";
   return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function firstNonEmpty(...values: Array<string | null | undefined>) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
 }
 
 function buildStatLine(statistics?: NonNullable<LocationLandingPageModel>["statistics"]) {
@@ -413,14 +546,6 @@ function collectManufacturerOptions(
   return options;
 }
 
-function collectCemeteryItems(sections: LocalBusinessSection[]) {
-  return sections.flatMap((section) => {
-    const type = typeof section?.businessType === "string" ? section.businessType.trim() : "";
-    if (type !== "cemetery") return [];
-    return Array.isArray(section?.items) ? section.items : [];
-  });
-}
-
 function paginationRange(currentPage: number, pageCount: number) {
   if (pageCount <= 1) return [];
   const start = Math.max(1, currentPage - 2);
@@ -442,17 +567,10 @@ export async function generateMetadata({
   const page = await fetchLocationLandingPage(locationInput.province, locationInput.city, locationInput.town, 1);
   if (!page) return {};
 
-  const title =
-    (typeof page.seo?.metaTitle === "string" && page.seo.metaTitle.trim()) ||
-    (typeof page.seo?.title === "string" && page.seo.title.trim()) ||
-    undefined;
-  const description =
-    (typeof page.seo?.metaDescription === "string" && page.seo.metaDescription.trim()) || "";
+  const title = firstNonEmpty(page.seo?.metaTitle, locationInput.metaTitle, page.seo?.title, locationInput.title) || undefined;
+  const description = firstNonEmpty(page.seo?.metaDescription, locationInput.metaDescription);
   const canonicalPath = normalizePath(page.location?.slug);
-  const heroImage =
-    typeof page.seo?.heroImage?.url === "string" && page.seo.heroImage.url.trim()
-      ? page.seo.heroImage.url.trim()
-      : undefined;
+  const heroImage = firstNonEmpty(page.seo?.heroImageUrl, locationInput.heroImageUrl) || undefined;
 
   return {
     title,
@@ -499,21 +617,19 @@ export default async function LocationLandingPage({
     redirect(target);
   }
 
-  const seoTitle =
-    (typeof page.seo?.title === "string" && page.seo.title.trim()) ||
-    (typeof page.location?.town === "string" && page.location.town.trim()
-      ? `Tombstones in ${page.location.town.trim()}`
-      : "Location");
-  const intro = typeof page.seo?.intro === "string" ? page.seo.intro.trim() : "";
-  const heroImage =
-    typeof page.seo?.heroImage?.url === "string" && page.seo.heroImage.url.trim()
-      ? page.seo.heroImage.url.trim()
-      : "";
+  const seoTitle = firstNonEmpty(page.seo?.title, locationInput.title, page.location?.town);
+  const intro = firstNonEmpty(locationInput.intro, page.seo?.intro);
+  const heroImage = firstNonEmpty(page.seo?.heroImageUrl, locationInput.heroImageUrl);
   const branches = Array.isArray(page.branches) ? page.branches : [];
   const listingItems = Array.isArray(page.listings?.items) ? page.listings.items : [];
   const pagination = page.listings?.pagination;
-  const localBusinessSections = Array.isArray(page.localBusinessSections) ? page.localBusinessSections : [];
-  const faq = Array.isArray(page.faq) ? page.faq.filter((item) => item?.question && item?.answer) : [];
+  const locationFaqs = await fetchLocationFaqs(locationInput.town);
+  const faq =
+    locationFaqs.length > 0
+      ? locationFaqs.filter((item) => item?.question && item?.answer)
+      : Array.isArray(page.faq)
+        ? page.faq.filter((item) => item?.question && item?.answer)
+        : [];
   const nearbyLocations = Array.isArray(page.nearbyLocations) ? page.nearbyLocations : [];
   const breadcrumbItems = Array.isArray(page.location?.breadcrumb) ? page.location.breadcrumb : [];
   const pageCount =
@@ -523,11 +639,28 @@ export default async function LocationLandingPage({
   const pageNumbers = paginationRange(currentPage, pageCount);
   const pathname = canonicalPath || currentPath || "/locations";
   const statLine = buildStatLine(page.statistics);
-  const cemeteryItems = collectCemeteryItems(localBusinessSections);
   const manufacturerOptions = collectManufacturerOptions(branches, listingItems);
   const locationLabel = [page.location?.town, page.location?.city, page.location?.province]
     .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
     .join(", ");
+  const nearbyLocalBusinesses = (
+    await fetchNearbyLocalBusinesses(
+      page.location?.province || locationInput.province,
+      page.location?.town || locationInput.town
+    )
+  ).map((item) => ({
+    documentId: item?.documentId ?? null,
+    name: firstNonEmpty(item?.name, "Local business"),
+    businessType: item?.businessType ?? null,
+    description: stripHtml(item?.description),
+    phone: typeof item?.phone === "string" ? item.phone.trim() : "",
+    mobile: typeof item?.mobile === "string" ? item.mobile.trim() : "",
+    email: typeof item?.email === "string" ? item.email.trim() : "",
+    website: typeof item?.website === "string" ? item.website.trim() : "",
+    whatsapp: typeof item?.whatsapp === "string" ? item.whatsapp.trim() : "",
+    streetAddress: typeof item?.streetAddress === "string" ? item.streetAddress.trim() : "",
+    postalCode: typeof item?.postalCode === "string" ? item.postalCode.trim() : "",
+  }));
 
   const pageHref = (pageNumber: number) => (pageNumber <= 1 ? pathname : `${pathname}?page=${pageNumber}`);
 
@@ -546,16 +679,18 @@ export default async function LocationLandingPage({
               const isLast = index === breadcrumbItems.length - 1;
 
               return (
-                <BreadcrumbItem key={`${label}-${index}`}>
-                  {isLast || !href ? (
-                    <BreadcrumbPage>{label}</BreadcrumbPage>
-                  ) : (
-                    <BreadcrumbLink asChild>
-                      <Link href={href}>{label}</Link>
-                    </BreadcrumbLink>
-                  )}
+                <Fragment key={`${label}-${index}`}>
+                  <BreadcrumbItem>
+                    {isLast || !href ? (
+                      <BreadcrumbPage>{label}</BreadcrumbPage>
+                    ) : (
+                      <BreadcrumbLink asChild>
+                        <Link href={href}>{label}</Link>
+                      </BreadcrumbLink>
+                    )}
+                  </BreadcrumbItem>
                   {!isLast ? <BreadcrumbSeparator /> : null}
-                </BreadcrumbItem>
+                </Fragment>
               );
             })}
           </BreadcrumbList>
@@ -687,17 +822,36 @@ export default async function LocationLandingPage({
               const logoUrl =
                 typeof company?.logo?.url === "string" && company.logo.url.trim() ? company.logo.url.trim() : "";
 
-              const cardInner = (
-                <>
-                  <div className="relative aspect-[4/3] w-full bg-slate-100">
-                    {imageUrl ? (
-                      <Image src={imageUrl} alt={title} fill className="object-cover" unoptimized />
-                    ) : <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.2em] text-slate-400">No image</div>}
-                  </div>
+              return (
+                <article
+                  key={`${listing?.documentId || title}-${index}`}
+                  className="overflow-hidden border border-slate-200 bg-white transition-shadow hover:shadow-sm"
+                >
+                  {listingHref ? (
+                    <Link href={listingHref} className="block">
+                      <div className="relative aspect-[4/3] w-full bg-slate-100">
+                        {imageUrl ? (
+                          <Image src={imageUrl} alt={title} fill className="object-cover" unoptimized />
+                        ) : <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.2em] text-slate-400">No image</div>}
+                      </div>
+                    </Link>
+                  ) : (
+                    <div className="relative aspect-[4/3] w-full bg-slate-100">
+                      {imageUrl ? (
+                        <Image src={imageUrl} alt={title} fill className="object-cover" unoptimized />
+                      ) : <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.2em] text-slate-400">No image</div>}
+                    </div>
+                  )}
                   <div className="space-y-3 p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="text-sm font-semibold leading-5 text-[#111827]">{title}</h3>
+                        {listingHref ? (
+                          <Link href={listingHref} className="text-sm font-semibold leading-5 text-[#111827] hover:text-[#0e6d80]">
+                            {title}
+                          </Link>
+                        ) : (
+                          <h3 className="text-sm font-semibold leading-5 text-[#111827]">{title}</h3>
+                        )}
                         {companyName ? (
                           companyHref ? (
                             <Link href={companyHref} className="mt-1 inline-block text-[11px] font-medium text-[#0e6d80] hover:underline">
@@ -726,23 +880,6 @@ export default async function LocationLandingPage({
                       </div>
                     </div>
                   </div>
-                </>
-              );
-
-              return listingHref ? (
-                <Link
-                  href={listingHref}
-                  key={`${listing?.documentId || title}-${index}`}
-                  className="overflow-hidden border border-slate-200 bg-white transition-shadow hover:shadow-sm"
-                >
-                  {cardInner}
-                </Link>
-              ) : (
-                <article
-                  key={`${listing?.documentId || title}-${index}`}
-                  className="overflow-hidden border border-slate-200 bg-white"
-                >
-                  {cardInner}
                 </article>
               );
             })}
@@ -794,34 +931,10 @@ export default async function LocationLandingPage({
           ) : null}
         </section>
 
-        <section className="mt-6 border-t border-slate-200 pt-4">
-          <h2 className="text-lg font-semibold text-[#111827]">
-            Cemeteries Near {page.location?.town || "This Town"}
-          </h2>
-          <div className="mt-3 grid gap-3 lg:grid-cols-2">
-            {cemeteryItems.map((item, index) => {
-              const name = typeof item?.name === "string" ? item.name.trim() : "Cemetery";
-              const address = typeof item?.streetAddress === "string" ? item.streetAddress.trim() : "";
-              const description = stripHtml(item?.description);
-              const lat = formatCoordinate(item?.latitude);
-              const lng = formatCoordinate(item?.longitude);
-
-              return (
-                <article key={`${item?.documentId || name}-${index}`} className="border border-slate-200 bg-white p-4">
-                  <h3 className="text-sm font-semibold text-[#111827]">{name}</h3>
-                  {address ? <p className="mt-1 text-[13px] leading-5 text-[#374151]">{address}</p> : null}
-                  {description ? <p className="mt-2 text-[12px] leading-5 text-[#4b5563]">{description}</p> : null}
-                  {lat && lng ? <p className="mt-2 text-[11px] text-[#6b7280]">GPS: {lat}, {lng}</p> : null}
-                </article>
-              );
-            })}
-            {!cemeteryItems.length ? (
-              <div className="border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
-                No cemetery information was returned for this location.
-              </div>
-            ) : null}
-          </div>
-        </section>
+        <NearbyLocationsSection
+          townLabel={page.location?.town || "This Town"}
+          items={nearbyLocalBusinesses}
+        />
 
         <section className="mt-6 border-t border-slate-200 pt-4">
           <h2 className="text-lg font-semibold text-[#111827]">FAQ about Tombstones and Tombstone Manufacturers in {page.location?.town || "This Town"}</h2>
@@ -831,7 +944,7 @@ export default async function LocationLandingPage({
                 <summary className="cursor-pointer list-none text-sm font-semibold text-[#111827]">
                   {item?.question}
                 </summary>
-                <p className="mt-3 text-[13px] leading-6 text-[#4b5563]">{item?.answer}</p>
+                <p className="mt-3 text-[13px] leading-6 text-[#4b5563]">{stripHtml(item?.answer)}</p>
               </details>
             ))}
             {!faq.length ? (
