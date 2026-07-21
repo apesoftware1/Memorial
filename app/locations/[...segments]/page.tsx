@@ -7,6 +7,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import Footer from "@/components/Footer";
 import LocationHeader from "@/app/locations/location-header";
 import LocationSearchStrip from "@/app/locations/location-search-strip";
+import LocationFaqSection from "@/app/locations/location-faq-section";
 import NearbyLocationsSection from "@/app/locations/nearby-locations-section";
 import { LOCATION_LANDING_PAGE_QUERY } from "@/graphql/queries/locationLandingPage";
 import { fetchGraphQL, toAbsoluteUrl } from "@/lib/serverGraphql";
@@ -630,6 +631,10 @@ export default async function LocationLandingPage({
       : Array.isArray(page.faq)
         ? page.faq.filter((item) => item?.question && item?.answer)
         : [];
+  const faqItems = faq.map((item) => ({
+    question: typeof item?.question === "string" ? item.question.trim() : "",
+    answer: stripHtml(item?.answer),
+  }));
   const nearbyLocations = Array.isArray(page.nearbyLocations) ? page.nearbyLocations : [];
   const breadcrumbItems = Array.isArray(page.location?.breadcrumb) ? page.location.breadcrumb : [];
   const pageCount =
@@ -936,24 +941,10 @@ export default async function LocationLandingPage({
           items={nearbyLocalBusinesses}
         />
 
-        <section className="mt-6 border-t border-slate-200 pt-4">
-          <h2 className="text-lg font-semibold text-[#111827]">FAQ about Tombstones and Tombstone Manufacturers in {page.location?.town || "This Town"}</h2>
-          <div className="mt-3 space-y-2">
-            {faq.map((item, index) => (
-              <details key={`${item?.question || "faq"}-${index}`} className="border border-slate-200 bg-white p-4">
-                <summary className="cursor-pointer list-none text-sm font-semibold text-[#111827]">
-                  {item?.question}
-                </summary>
-                <p className="mt-3 text-[13px] leading-6 text-[#4b5563]">{stripHtml(item?.answer)}</p>
-              </details>
-            ))}
-            {!faq.length ? (
-              <div className="border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
-                No FAQ content was returned for this location.
-              </div>
-            ) : null}
-          </div>
-        </section>
+        <LocationFaqSection
+          title={`FAQ about Tombstones and Tombstone Manufacturers in ${page.location?.town || "This Town"}`}
+          items={faqItems}
+        />
 
         <section className="mt-6 border-t border-slate-200 pt-4">
           <h2 className="text-lg font-semibold text-[#111827]">Looking in a Nearby Area?</h2>
