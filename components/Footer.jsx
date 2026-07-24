@@ -44,7 +44,7 @@ export default function Footer() {
         <div className="border-t border-gray-700 mt-8 pt-4 text-center text-gray-400 text-sm">
           <p>&copy; {new Date().getFullYear()} TombstonesFinder.co.za. All rights reserved.</p>
           <div className="mt-4 flex flex-col items-center justify-center gap-3">
-            <ApeSoftwareBadge size="lg" />
+            <ApeSoftwareBadge />
             <a
               href="https://apesoftwares.co.za"
               target="_blank"

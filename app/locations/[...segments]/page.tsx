@@ -435,7 +435,10 @@ function toInternalSlugPath(value?: string | null) {
   return normalizePath(value) || null;
 }
 
-function toListingHref(slug?: string | null) {
+function toListingHref(documentId?: string | null, slug?: string | null) {
+  const idValue = typeof documentId === "string" ? documentId.trim() : "";
+  if (idValue) return `/tombstones-for-sale/${idValue}`;
+
   const raw = typeof slug === "string" ? slug.trim() : "";
   if (!raw) return null;
   if (raw.startsWith("/")) return raw;
@@ -809,7 +812,7 @@ export default async function LocationLandingPage({
               const listing = item?.listing;
               const company = item?.company;
               const branch = item?.branch;
-              const listingHref = toListingHref(listing?.slug);
+              const listingHref = toListingHref(listing?.documentId, listing?.slug);
               const companyHref = toCompanyHref(company?.slug);
               const imageUrl =
                 typeof listing?.thumbnail?.url === "string" && listing.thumbnail.url.trim()
