@@ -737,6 +737,14 @@ export default function DashboardClient() {
                       Manage Blogs
                     </Link>
                   ) : null}
+                  {session?.user?.isAdmin ? (
+                    <Link
+                      href="/regan-dashboard/locations"
+                      className="block w-full text-left px-3 py-2 rounded-md font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+                    >
+                      Manage Location Pages
+                    </Link>
+                  ) : null}
                 </div>
               );
 
