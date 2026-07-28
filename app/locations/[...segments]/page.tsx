@@ -466,6 +466,17 @@ function hoursRows(hours?: {
   ].filter((item) => typeof item.value === "string" && item.value.trim());
 }
 
+function shuffleItems<T>(items: T[]) {
+  const result = [...items];
+
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[randomIndex]] = [result[randomIndex], result[index]];
+  }
+
+  return result;
+}
+
 const fetchLocationLandingPage = cache(
   async (province: string, city: string | undefined, town: string, page: number) => {
     const data = await fetchGraphQL(
@@ -626,6 +637,7 @@ export default async function LocationLandingPage({
   const heroImage = firstNonEmpty(page.seo?.heroImageUrl, locationInput.heroImageUrl);
   const branches = Array.isArray(page.branches) ? page.branches : [];
   const listingItems = Array.isArray(page.listings?.items) ? page.listings.items : [];
+  const randomizedListingItems = shuffleItems(listingItems);
   const pagination = page.listings?.pagination;
   const locationFaqs = await fetchLocationFaqs(locationInput.town);
   const faq =
@@ -808,7 +820,7 @@ export default async function LocationLandingPage({
           </div>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {listingItems.map((item, index) => {
+            {randomizedListingItems.map((item, index) => {
               const listing = item?.listing;
               const company = item?.company;
               const branch = item?.branch;
