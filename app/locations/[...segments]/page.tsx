@@ -12,9 +12,11 @@ import NearbyLocationsSection from "@/app/locations/nearby-locations-section";
 import { LOCATION_LANDING_PAGE_QUERY } from "@/graphql/queries/locationLandingPage";
 import { fetchGraphQL, toAbsoluteUrl } from "@/lib/serverGraphql";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
-const PAGE_SIZE = 8;
+const LISTINGS_DISPLAY_COUNT = 8;
+const LISTINGS_OVERFETCH_COUNT = 48;
 const LOCATION_LANDING_SEO_OPTIONS_QUERY = `
   query LocationLandingSeoOptions {
     locationLandingSeos {
@@ -486,7 +488,7 @@ const fetchLocationLandingPage = cache(
         city: city ?? null,
         town,
         page,
-        pageSize: PAGE_SIZE,
+        pageSize: LISTINGS_OVERFETCH_COUNT,
       },
       revalidate
     );
@@ -636,8 +638,9 @@ export default async function LocationLandingPage({
   const intro = firstNonEmpty(locationInput.intro, page.seo?.intro);
   const heroImage = firstNonEmpty(page.seo?.heroImageUrl, locationInput.heroImageUrl);
   const branches = Array.isArray(page.branches) ? page.branches : [];
-  const listingItems = Array.isArray(page.listings?.items) ? page.listings.items : [];
-  const randomizedListingItems = shuffleItems(listingItems);
+  const listingItemsRaw = Array.isArray(page.listings?.items) ? page.listings.items : [];
+  const randomizedListingItems = shuffleItems(listingItemsRaw);
+  const listingItems = randomizedListingItems.slice(0, LISTINGS_DISPLAY_COUNT);
   const pagination = page.listings?.pagination;
   const locationFaqs = await fetchLocationFaqs(locationInput.town);
   const faq =
@@ -659,7 +662,7 @@ export default async function LocationLandingPage({
   const pageNumbers = paginationRange(currentPage, pageCount);
   const pathname = canonicalPath || currentPath || "/locations";
   const statLine = buildStatLine(page.statistics);
-  const manufacturerOptions = collectManufacturerOptions(branches, listingItems);
+  const manufacturerOptions = collectManufacturerOptions(branches, listingItemsRaw);
   const locationLabel = [page.location?.town, page.location?.city, page.location?.province]
     .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
     .join(", ");
@@ -820,7 +823,7 @@ export default async function LocationLandingPage({
           </div>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {randomizedListingItems.map((item, index) => {
+            {listingItems.map((item, index) => {
               const listing = item?.listing;
               const company = item?.company;
               const branch = item?.branch;
