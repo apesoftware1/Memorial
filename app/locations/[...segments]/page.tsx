@@ -45,8 +45,8 @@ const LOCAL_BUSINESSES_QUERY = `
   query LocalBusinesses($province: String!, $town: String!) {
     localBusinesses(
       filters: {
-        province: { eq: $province }
-        town: { eq: $town }
+        province: { containsi: $province }
+        town: { containsi: $town }
         active: { eq: true }
       }
       sort: ["displayOrder:asc", "name:asc"]
@@ -503,8 +503,20 @@ const fetchLocationFaqs = cache(async (town: string) => {
 });
 
 const fetchNearbyLocalBusinesses = cache(async (province: string, town: string) => {
-  const data = await fetchGraphQL(LOCAL_BUSINESSES_QUERY, { province, town }, revalidate);
-  return Array.isArray(data?.localBusinesses) ? (data.localBusinesses as NearbyLocalBusinessItem[]) : [];
+  const provinceValue = typeof province === "string" ? province.trim() : "";
+  const townValue = typeof town === "string" ? town.trim() : "";
+  const provinceKey = provinceValue.replace(/[\s-]+/g, "_").replace(/_{2,}/g, "_");
+
+  const primaryProvince = provinceKey || provinceValue;
+  let data = await fetchGraphQL(LOCAL_BUSINESSES_QUERY, { province: primaryProvince, town: townValue }, revalidate);
+  let items = Array.isArray(data?.localBusinesses) ? (data.localBusinesses as NearbyLocalBusinessItem[]) : [];
+
+  if (!items.length && primaryProvince !== provinceValue && provinceValue) {
+    data = await fetchGraphQL(LOCAL_BUSINESSES_QUERY, { province: provinceValue, town: townValue }, revalidate);
+    items = Array.isArray(data?.localBusinesses) ? (data.localBusinesses as NearbyLocalBusinessItem[]) : [];
+  }
+
+  return items;
 });
 
 function stripHtml(value?: string | null) {

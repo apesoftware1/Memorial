@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const fs = require('fs');
 const path = require('path');
+const { PHASE_DEVELOPMENT_SERVER } = require('next/constants');
 
 const nextConfig = {
   // eslint: {
@@ -98,4 +99,10 @@ const nextConfig = {
   },
 }
 
-module.exports = nextConfig
+module.exports = (phase) => {
+  const isDev = phase === PHASE_DEVELOPMENT_SERVER;
+  return {
+    ...nextConfig,
+    distDir: isDev ? '.next-dev' : '.next',
+  };
+}
