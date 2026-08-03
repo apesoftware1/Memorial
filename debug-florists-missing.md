@@ -17,3 +17,10 @@
 - Whether `localBusinesses` returns florist rows for that province/town.
 - Whether the page filters business types before rendering.
 
+## Evidence Collected
+- For town containsi "bhamshela" with `active: true`, Strapi returns a florist:
+  - `Cressidar Flowers` with `province: KwaZulu_Natal`, `town: Bhamshela`, `businessType: florist`.
+- The location landing page previously queried with strict `eq` on province/town, which fails when the URL-derived values are lowercase/space-separated while Strapi stores `province` with underscores and different casing.
+
+## Fix Applied
+- Updated local businesses query to use `containsi` for province/town and normalized the province input (spaces/hyphens → underscores) with a fallback retry using the raw province string.
