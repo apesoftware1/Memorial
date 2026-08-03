@@ -13,7 +13,7 @@ import { LOCATION_LANDING_PAGE_QUERY } from "@/graphql/queries/locationLandingPa
 import { fetchGraphQL, toAbsoluteUrl } from "@/lib/serverGraphql";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 300;
+export const revalidate = 0;
 
 const LISTINGS_DISPLAY_COUNT = 8;
 const LISTINGS_OVERFETCH_COUNT = 48;
@@ -519,7 +519,20 @@ function firstNonEmpty(...values: Array<string | null | undefined>) {
   return "";
 }
 
-function buildStatLine(statistics?: NonNullable<LocationLandingPageModel>["statistics"]) {
+function buildStatLine(
+  statistics?: NonNullable<LocationLandingPageModel>["statistics"],
+  fallbackMinimumListingPrice?: number | null
+) {
+  const minimumFromStats =
+    typeof statistics?.minimumListingPrice === "number" && Number.isFinite(statistics.minimumListingPrice)
+      ? statistics.minimumListingPrice
+      : null;
+  const minimumFromListings =
+    typeof fallbackMinimumListingPrice === "number" && Number.isFinite(fallbackMinimumListingPrice)
+      ? fallbackMinimumListingPrice
+      : null;
+  const minimum = (minimumFromStats && minimumFromStats > 0 ? minimumFromStats : null) ?? (minimumFromListings || null);
+
   const parts = [
     typeof statistics?.totalBranches === "number"
       ? `${formatCount(statistics.totalBranches)} Branch${statistics.totalBranches === 1 ? "" : "es"}`
@@ -527,9 +540,7 @@ function buildStatLine(statistics?: NonNullable<LocationLandingPageModel>["stati
     typeof statistics?.totalListings === "number"
       ? `${formatCount(statistics.totalListings)} tombstones available`
       : "",
-    typeof statistics?.minimumListingPrice === "number"
-      ? `From ${formatPrice(statistics.minimumListingPrice)}`
-      : "",
+    typeof minimum === "number" && minimum > 0 ? `From ${formatPrice(minimum)}` : "",
   ].filter(Boolean);
 
   return parts.join(" · ");
@@ -639,7 +650,17 @@ export default async function LocationLandingPage({
   const heroImage = firstNonEmpty(page.seo?.heroImageUrl, locationInput.heroImageUrl);
   const branches = Array.isArray(page.branches) ? page.branches : [];
   const listingItemsRaw = Array.isArray(page.listings?.items) ? page.listings.items : [];
-  const randomizedListingItems = shuffleItems(listingItemsRaw);
+  const listingItemsNonZeroPrice = listingItemsRaw.filter((item) => {
+    const price = item?.listing?.price;
+    return !(typeof price === "number" && Number.isFinite(price) && price <= 0);
+  });
+  const fallbackMinimumListingPrice = listingItemsNonZeroPrice.reduce<number | null>((min, item) => {
+    const price = item?.listing?.price;
+    if (!(typeof price === "number" && Number.isFinite(price) && price > 0)) return min;
+    if (typeof min === "number") return Math.min(min, price);
+    return price;
+  }, null);
+  const randomizedListingItems = shuffleItems(listingItemsNonZeroPrice);
   const listingItems = randomizedListingItems.slice(0, LISTINGS_DISPLAY_COUNT);
   const pagination = page.listings?.pagination;
   const locationFaqs = await fetchLocationFaqs(locationInput.town);
@@ -661,8 +682,8 @@ export default async function LocationLandingPage({
     typeof pagination?.page === "number" && Number.isFinite(pagination.page) ? pagination.page : requestedPage;
   const pageNumbers = paginationRange(currentPage, pageCount);
   const pathname = canonicalPath || currentPath || "/locations";
-  const statLine = buildStatLine(page.statistics);
-  const manufacturerOptions = collectManufacturerOptions(branches, listingItemsRaw);
+  const statLine = buildStatLine(page.statistics, fallbackMinimumListingPrice);
+  const manufacturerOptions = collectManufacturerOptions(branches, listingItemsNonZeroPrice);
   const locationLabel = [page.location?.town, page.location?.city, page.location?.province]
     .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
     .join(", ");
