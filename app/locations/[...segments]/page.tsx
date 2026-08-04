@@ -68,10 +68,37 @@ const LOCAL_BUSINESSES_QUERY = `
       postalCode
       latitude
       longitude
+      logoUrl
+      logoPublicId
+      imageUrls
+      imagePublicIds
       featured
       verified
       active
       displayOrder
+    }
+  }
+`;
+
+const CEMETERIES_QUERY = `
+  query Cemeteries($province: String!, $town: String!) {
+    cemeteries(
+      filters: {
+        province: { containsi: $province }
+        town: { containsi: $town }
+      }
+      sort: ["order:asc", "name:asc"]
+      pagination: { limit: 8 }
+    ) {
+      documentId
+      name
+      address
+      latitude
+      longitude
+      description
+      town
+      city
+      province
     }
   }
 `;
@@ -186,10 +213,26 @@ type NearbyLocalBusinessItem = {
   postalCode?: string | null;
   latitude?: string | number | null;
   longitude?: string | number | null;
+  logoUrl?: string | null;
+  logoPublicId?: string | null;
+  imageUrls?: Array<string | null> | null;
+  imagePublicIds?: Array<string | null> | null;
   featured?: boolean | null;
   verified?: boolean | null;
   active?: boolean | null;
   displayOrder?: number | null;
+};
+
+type NearbyCemeteryItem = {
+  documentId?: string | null;
+  name?: string | null;
+  address?: string | null;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+  description?: string | null;
+  town?: string | null;
+  city?: string | null;
+  province?: string | null;
 };
 
 type LocationLandingPageModel = {
@@ -519,6 +562,23 @@ const fetchNearbyLocalBusinesses = cache(async (province: string, town: string) 
   return items;
 });
 
+const fetchNearbyCemeteries = cache(async (province: string, town: string) => {
+  const provinceValue = typeof province === "string" ? province.trim() : "";
+  const townValue = typeof town === "string" ? town.trim() : "";
+  const provinceKey = provinceValue.replace(/[\s-]+/g, "_").replace(/_{2,}/g, "_");
+
+  const primaryProvince = provinceKey || provinceValue;
+  let data = await fetchGraphQL(CEMETERIES_QUERY, { province: primaryProvince, town: townValue }, revalidate);
+  let items = Array.isArray(data?.cemeteries) ? (data.cemeteries as NearbyCemeteryItem[]) : [];
+
+  if (!items.length && primaryProvince !== provinceValue && provinceValue) {
+    data = await fetchGraphQL(CEMETERIES_QUERY, { province: provinceValue, town: townValue }, revalidate);
+    items = Array.isArray(data?.cemeteries) ? (data.cemeteries as NearbyCemeteryItem[]) : [];
+  }
+
+  return items;
+});
+
 function stripHtml(value?: string | null) {
   if (typeof value !== "string" || !value.trim()) return "";
   return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
@@ -586,15 +646,6 @@ function collectManufacturerOptions(
   return options;
 }
 
-function paginationRange(currentPage: number, pageCount: number) {
-  if (pageCount <= 1) return [];
-  const start = Math.max(1, currentPage - 2);
-  const end = Math.min(pageCount, currentPage + 2);
-  const pages: number[] = [];
-  for (let page = start; page <= end; page += 1) pages.push(page);
-  return pages;
-}
-
 export async function generateMetadata({
   params,
 }: {
@@ -645,7 +696,7 @@ export default async function LocationLandingPage({
     locationInput.province,
     locationInput.city,
     locationInput.town,
-    requestedPage
+    1
   );
 
   if (!page) notFound();
@@ -653,8 +704,10 @@ export default async function LocationLandingPage({
   const currentPath = normalizePath(`/locations/${segments.join("/")}`);
   const canonicalPath = normalizePath(page.location?.slug);
   if (canonicalPath && canonicalPath !== currentPath) {
-    const target = requestedPage > 1 ? `${canonicalPath}?page=${requestedPage}` : canonicalPath;
-    redirect(target);
+    redirect(canonicalPath);
+  }
+  if (requestedPage > 1) {
+    redirect(canonicalPath || currentPath || "/locations");
   }
 
   const seoTitle = firstNonEmpty(page.seo?.title, locationInput.title, page.location?.town);
@@ -674,7 +727,6 @@ export default async function LocationLandingPage({
   }, null);
   const randomizedListingItems = shuffleItems(listingItemsNonZeroPrice);
   const listingItems = randomizedListingItems.slice(0, LISTINGS_DISPLAY_COUNT);
-  const pagination = page.listings?.pagination;
   const locationFaqs = await fetchLocationFaqs(locationInput.town);
   const faq =
     locationFaqs.length > 0
@@ -688,12 +740,6 @@ export default async function LocationLandingPage({
   }));
   const nearbyLocations = Array.isArray(page.nearbyLocations) ? page.nearbyLocations : [];
   const breadcrumbItems = Array.isArray(page.location?.breadcrumb) ? page.location.breadcrumb : [];
-  const pageCount =
-    typeof pagination?.pageCount === "number" && Number.isFinite(pagination.pageCount) ? pagination.pageCount : 1;
-  const currentPage =
-    typeof pagination?.page === "number" && Number.isFinite(pagination.page) ? pagination.page : requestedPage;
-  const pageNumbers = paginationRange(currentPage, pageCount);
-  const pathname = canonicalPath || currentPath || "/locations";
   const statLine = buildStatLine(page.statistics, fallbackMinimumListingPrice);
   const manufacturerOptions = collectManufacturerOptions(branches, listingItemsNonZeroPrice);
   const locationLabel = [page.location?.town, page.location?.city, page.location?.province]
@@ -716,9 +762,31 @@ export default async function LocationLandingPage({
     whatsapp: typeof item?.whatsapp === "string" ? item.whatsapp.trim() : "",
     streetAddress: typeof item?.streetAddress === "string" ? item.streetAddress.trim() : "",
     postalCode: typeof item?.postalCode === "string" ? item.postalCode.trim() : "",
+    logoUrl: typeof item?.logoUrl === "string" ? item.logoUrl.trim() : "",
+    logoPublicId: typeof item?.logoPublicId === "string" ? item.logoPublicId.trim() : "",
+    imageUrls: Array.isArray(item?.imageUrls)
+      ? item.imageUrls
+          .filter((url): url is string => typeof url === "string" && url.trim().length > 0)
+          .map((url) => url.trim())
+      : [],
+    imagePublicIds: Array.isArray(item?.imagePublicIds)
+      ? item.imagePublicIds
+          .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+          .map((value) => value.trim())
+      : [],
   }));
 
-  const pageHref = (pageNumber: number) => (pageNumber <= 1 ? pathname : `${pathname}?page=${pageNumber}`);
+  const nearbyCemeteries = (
+    await fetchNearbyCemeteries(
+      page.location?.province || locationInput.province,
+      page.location?.town || locationInput.town
+    )
+  ).map((item) => ({
+    documentId: item?.documentId ?? null,
+    name: firstNonEmpty(item?.name, "Cemetery"),
+    address: typeof item?.address === "string" ? item.address.trim() : "",
+    description: stripHtml(item?.description),
+  }));
 
   return (
     <div className="bg-white text-[#1f2933]">
@@ -850,9 +918,6 @@ export default async function LocationLandingPage({
                 Browse a selection of granite and marble memorials available through manufacturers serving this area.
               </p>
             </div>
-            {typeof pagination?.total === "number" ? (
-              <p className="text-[12px] text-[#6b7280]">{formatCount(pagination.total)} total listings</p>
-            ) : null}
           </div>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -900,21 +965,27 @@ export default async function LocationLandingPage({
                   )}
                   <div className="space-y-3 p-3">
                     <div className="flex items-start justify-between gap-3">
-                      <div>
+                      <div className="min-w-0">
                         {listingHref ? (
-                          <Link href={listingHref} className="text-sm font-semibold leading-5 text-[#111827] hover:text-[#0e6d80]">
+                          <Link
+                            href={listingHref}
+                            className="block truncate text-sm font-semibold leading-5 text-[#111827] hover:text-[#0e6d80]"
+                          >
                             {title}
                           </Link>
                         ) : (
-                          <h3 className="text-sm font-semibold leading-5 text-[#111827]">{title}</h3>
+                          <h3 className="block truncate text-sm font-semibold leading-5 text-[#111827]">{title}</h3>
                         )}
                         {companyName ? (
                           companyHref ? (
-                            <Link href={companyHref} className="mt-1 inline-block text-[11px] font-medium text-[#0e6d80] hover:underline">
+                            <Link
+                              href={companyHref}
+                              className="mt-1 block truncate text-[11px] font-medium text-[#0e6d80] hover:underline"
+                            >
                               {companyName}
                             </Link>
                           ) : (
-                            <p className="mt-1 text-[11px] font-medium text-[#0e6d80]">{companyName}</p>
+                            <p className="mt-1 block truncate text-[11px] font-medium text-[#0e6d80]">{companyName}</p>
                           )
                         ) : null}
                       </div>
@@ -945,46 +1016,6 @@ export default async function LocationLandingPage({
               </div>
             ) : null}
           </div>
-
-          {pageCount > 1 ? (
-            <nav className="mt-4 flex flex-wrap items-center gap-2" aria-label="Listings pagination">
-              <Link
-                href={pageHref(Math.max(1, currentPage - 1))}
-                aria-disabled={currentPage <= 1}
-                className={`border px-3 py-2 text-xs font-semibold ${
-                  currentPage <= 1
-                    ? "pointer-events-none border-slate-200 text-slate-300"
-                    : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
-                }`}
-              >
-                Previous
-              </Link>
-              {pageNumbers.map((pageNumber) => (
-                <Link
-                  key={pageNumber}
-                  href={pageHref(pageNumber)}
-                  className={`border px-3 py-2 text-xs font-semibold ${
-                    pageNumber === currentPage
-                      ? "border-[#0e6d80] bg-[#0e6d80] text-white"
-                      : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
-                  }`}
-                >
-                  {pageNumber}
-                </Link>
-              ))}
-              <Link
-                href={pageHref(Math.min(pageCount, currentPage + 1))}
-                aria-disabled={currentPage >= pageCount}
-                className={`border px-3 py-2 text-xs font-semibold ${
-                  currentPage >= pageCount
-                    ? "pointer-events-none border-slate-200 text-slate-300"
-                    : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
-                }`}
-              >
-                Next
-              </Link>
-            </nav>
-          ) : null}
         </section>
 
         <NearbyLocationsSection
@@ -998,10 +1029,28 @@ export default async function LocationLandingPage({
         />
 
         <section className="mt-6 border-t border-slate-200 pt-4">
-          <h2 className="text-lg font-semibold text-[#111827]">Looking in a Nearby Area?</h2>
+          <h2 className="text-lg font-semibold text-[#111827]">Nearby cemeteries</h2>
+          <div className="mt-3 grid gap-3 lg:grid-cols-2">
+            {nearbyCemeteries.slice(0, 4).map((cemetery, index) => (
+              <article key={`${cemetery.documentId || cemetery.name}-${index}`} className="border border-slate-200 bg-white p-4">
+                <h3 className="text-sm font-semibold text-[#111827]">{cemetery.name}</h3>
+                {cemetery.address ? <p className="mt-2 text-[13px] leading-5 text-[#374151]">{cemetery.address}</p> : null}
+                {cemetery.description ? <p className="mt-2 text-[12px] leading-5 text-[#4b5563]">{cemetery.description}</p> : null}
+              </article>
+            ))}
+            {!nearbyCemeteries.length ? (
+              <div className="border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500 lg:col-span-2">
+                No nearby cemeteries were returned for this location.
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="mt-6 border-t border-slate-200 pt-4">
+          <h2 className="text-lg font-semibold text-[#111827]">Looking for a Tombstone in these nearby areas?</h2>
           <div className="mt-3 flex flex-wrap gap-x-3 gap-y-2 text-[13px] text-[#0e6d80]">
             {nearbyLocations.map((item, index) => {
-              const href = toInternalSlugPath(item?.slug);
+              const href = buildLocationPath(item?.province, item?.city, item?.town) || toInternalSlugPath(item?.slug);
               const label = typeof item?.town === "string" ? item.town.trim() : "";
               if (!href || !label) return null;
 
@@ -1011,7 +1060,7 @@ export default async function LocationLandingPage({
                   href={href}
                   className="font-medium hover:underline"
                 >
-                  [{label}]
+                  {label}
                 </Link>
               );
             })}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 
 type NearbyLocationItem = {
   documentId?: string | null;
@@ -14,6 +15,10 @@ type NearbyLocationItem = {
   whatsapp?: string | null;
   streetAddress?: string | null;
   postalCode?: string | null;
+  logoUrl?: string | null;
+  logoPublicId?: string | null;
+  imageUrls?: string[];
+  imagePublicIds?: string[];
 };
 
 type NearbyLocationsSectionProps = {
@@ -46,7 +51,7 @@ export default function NearbyLocationsSection({
 
   return (
     <section className="mt-6 border-t border-slate-200 pt-4">
-      <h2 className="text-lg font-semibold text-[#111827]">Nearby locations</h2>
+      <h2 className="text-lg font-semibold text-[#111827]">Nearby businesses</h2>
       <div className="mt-3 grid gap-3 lg:grid-cols-2">
         {visibleItems.map((item, index) => {
           const addressLine = [item.streetAddress, item.postalCode]
@@ -54,6 +59,8 @@ export default function NearbyLocationsSection({
             .join(", ");
           const description =
             typeof item.description === "string" && item.description.trim() ? item.description.trim() : "";
+          const logoUrl = typeof item.logoUrl === "string" && item.logoUrl.trim() ? item.logoUrl.trim() : "";
+          const photoUrl = Array.isArray(item.imageUrls) && item.imageUrls[0] ? item.imageUrls[0] : "";
           const phoneLine = [item.phone, item.mobile]
             .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
             .join(" / ");
@@ -68,12 +75,22 @@ export default function NearbyLocationsSection({
               key={`${item.documentId || item.name}-${index}`}
               className="border border-slate-200 bg-white p-4"
             >
+              {photoUrl ? (
+                <div className="relative mb-3 aspect-[4/3] w-full overflow-hidden bg-slate-100">
+                  <Image src={photoUrl} alt={item.name} fill className="object-cover" unoptimized />
+                </div>
+              ) : null}
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-[#111827]">{item.name}</h3>
-                  <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[#0e6d80]">
-                    {toBusinessTypeLabel(item.businessType)}
-                  </p>
+                <div className="flex min-w-0 gap-3">
+                  <div className="relative mt-0.5 h-10 w-10 shrink-0 overflow-hidden border border-slate-200 bg-slate-100">
+                    {logoUrl ? <Image src={logoUrl} alt={item.name} fill className="object-cover" unoptimized /> : null}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="truncate text-sm font-semibold text-[#111827]">{item.name}</h3>
+                    <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[#0e6d80]">
+                      {toBusinessTypeLabel(item.businessType)}
+                    </p>
+                  </div>
                 </div>
                 <p className="text-[11px] text-slate-500">{townLabel}</p>
               </div>
@@ -90,7 +107,7 @@ export default function NearbyLocationsSection({
 
         {!items.length ? (
           <div className="border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500 lg:col-span-2">
-            No nearby locations were returned for this location.
+            No nearby businesses were returned for this location.
           </div>
         ) : null}
       </div>
