@@ -3646,10 +3646,6 @@ video {
 .text-secondary-foreground {
   color: hsl(var(--secondary-foreground));
 }
-.text-slate-300 {
-  --tw-text-opacity: 1;
-  color: rgb(203 213 225 / var(--tw-text-opacity, 1));
-}
 .text-slate-400 {
   --tw-text-opacity: 1;
   color: rgb(148 163 184 / var(--tw-text-opacity, 1));
@@ -4256,10 +4252,6 @@ img {
 }
 .hover\:border-primary:hover {
   border-color: hsl(var(--primary));
-}
-.hover\:border-slate-400:hover {
-  --tw-border-opacity: 1;
-  border-color: rgb(148 163 184 / var(--tw-border-opacity, 1));
 }
 .hover\:border-white\/40:hover {
   border-color: rgb(255 255 255 / 0.4);

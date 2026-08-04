@@ -31,6 +31,11 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/maintenance-mode/route.js"
     ],
+    "/api/auth/[...nextauth]/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/auth/[...nextauth]/route.js"
+    ],
     "/api/page-visibility/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -41,15 +46,45 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/filter-visibility/route.js"
     ],
-    "/api/auth/[...nextauth]/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/auth/[...nextauth]/route.js"
-    ],
     "/locations/[...segments]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/locations/[...segments]/page.js"
+    ],
+    "/regan-dashboard/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/regan-dashboard/page.js"
+    ],
+    "/api/company-special-offer-visibility/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/company-special-offer-visibility/route.js"
+    ],
+    "/regan-dashboard/locations/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/regan-dashboard/locations/page.js"
+    ],
+    "/api/location-landing-seos/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/location-landing-seos/route.js"
+    ],
+    "/regan-dashboard/businesses/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/regan-dashboard/businesses/page.js"
+    ],
+    "/api/local-businesses/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/local-businesses/route.js"
+    ],
+    "/api/local-businesses/[documentId]/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/local-businesses/[documentId]/route.js"
     ]
   }
 }
