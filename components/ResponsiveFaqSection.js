@@ -44,6 +44,19 @@ const faqData = [
 export default function ResponsiveFaqSection() {
   const [openIndex, setOpenIndex] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
+
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqData.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  };
   
   useEffect(() => {
     // Function to check if the screen width is mobile
@@ -64,6 +77,10 @@ export default function ResponsiveFaqSection() {
   // Render mobile or desktop version based on screen size
   return (
     <div className={`w-full bg-white ${isMobile ? 'overflow-x-hidden max-w-[100vw]' : '-mx-[100vw] px-[100vw]'}`}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
       {/* Empty div for spacing - reduced height */}
       <div className="h-2"></div>
       

@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import ManufacturerProfileClient from "../manufacturers-Profile-Page/[slug]/manufacturer-profile-client";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tombstonesfinder.co.za";
@@ -22,6 +22,15 @@ type ManufacturerSeoPage = {
     town?: string;
   }>;
 } | null;
+
+function normalizeManufacturerSlug(raw: string) {
+  const decoded = decodeURIComponent(raw);
+  return decoded
+    .toLowerCase()
+    .trim()
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-");
+}
 
 function toAbsoluteUrl(pathname: string) {
   return `${SITE_URL}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
@@ -173,11 +182,10 @@ async function fetchCompanyAndListings(documentId: string) {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const rawSlug = (await params)?.slug;
-  if (rawSlug && (rawSlug.includes(" ") || rawSlug.includes("%20"))) {
-    const cleanSlug = decodeURIComponent(rawSlug).toLowerCase().trim().replace(/\s+/g, "-");
-    redirect(`/manufacturers/${cleanSlug}`);
+  const slug = typeof rawSlug === "string" && rawSlug.trim() ? normalizeManufacturerSlug(rawSlug) : "";
+  if (rawSlug && slug && rawSlug !== slug) {
+    permanentRedirect(`/manufacturers/${slug}`);
   }
-  const slug = rawSlug;
   if (!slug) return {};
 
   const seoPage = await fetchManufacturerSeoPage(slug);
@@ -215,11 +223,10 @@ export default async function ManufacturerSeoProfilePage({
   params: Promise<{ slug: string }>;
 }) {
   const rawSlug = (await params)?.slug;
-  if (rawSlug && (rawSlug.includes(" ") || rawSlug.includes("%20"))) {
-    const cleanSlug = decodeURIComponent(rawSlug).toLowerCase().trim().replace(/\s+/g, "-");
-    redirect(`/manufacturers/${cleanSlug}`);
+  const slug = typeof rawSlug === "string" && rawSlug.trim() ? normalizeManufacturerSlug(rawSlug) : "";
+  if (rawSlug && slug && rawSlug !== slug) {
+    permanentRedirect(`/manufacturers/${slug}`);
   }
-  const slug = rawSlug;
   if (!slug) notFound();
 
   const seoPage = await fetchManufacturerSeoPage(slug);

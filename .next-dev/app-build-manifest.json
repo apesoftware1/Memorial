@@ -85,6 +85,36 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/local-businesses/[documentId]/route.js"
+    ],
+    "/regan-dashboard/blogs/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/regan-dashboard/blogs/page.js"
+    ],
+    "/_not-found/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/_not-found/page.js"
+    ],
+    "/manufacturers/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/manufacturers/layout.js"
+    ],
+    "/manufacturers/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/manufacturers/loading.js"
+    ],
+    "/manufacturers/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/manufacturers/page.js"
+    ],
+    "/manufacturers/manufacturers-Profile-Page/[slug]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/manufacturers/manufacturers-Profile-Page/[slug]/page.js"
     ]
   }
 }
