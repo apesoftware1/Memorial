@@ -1,14 +1,7 @@
 {
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
-  "/api/page-visibility/route": "app/api/page-visibility/route.js",
   "/api/maintenance-mode/route": "app/api/maintenance-mode/route.js",
-  "/api/filter-visibility/route": "app/api/filter-visibility/route.js",
-  "/regan-dashboard/page": "app/regan-dashboard/page.js",
-  "/regan-dashboard/businesses/page": "app/regan-dashboard/businesses/page.js",
-  "/regan-dashboard/blogs/page": "app/regan-dashboard/blogs/page.js",
-  "/regan-dashboard/locations/page": "app/regan-dashboard/locations/page.js",
-  "/page": "app/page.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/manufacturers/manufacturers-Profile-Page/[slug]/page": "app/manufacturers/manufacturers-Profile-Page/[slug]/page.js",
-  "/manufacturers/page": "app/manufacturers/page.js"
+  "/api/page-visibility/route": "app/api/page-visibility/route.js",
+  "/locations/[...segments]/page": "app/locations/[...segments]/page.js",
+  "/page": "app/page.js"
 }
