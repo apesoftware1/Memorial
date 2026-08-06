@@ -1033,10 +1033,7 @@ export default async function LocationLandingPage({
           <h2 className="text-lg font-semibold text-[#111827]">Nearby cemeteries</h2>
           {nearbyCemeteries.length ? (
             <div className="mt-3 border border-slate-200 bg-white p-4">
-              <h3 className="text-base font-semibold text-[#111827]">
-                Cemeteries in and around {page.location?.town || "this area"}
-              </h3>
-              <div className="prose prose-sm prose-slate mt-3 max-w-none">
+              <div className="prose prose-sm prose-slate max-w-none">
                 <ReactMarkdown>
                   {nearbyCemeteries
                     .map((cemetery) => {
