@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import ReactMarkdown from "react-markdown";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import Footer from "@/components/Footer";
 import LocationHeader from "@/app/locations/location-header";
@@ -785,7 +786,7 @@ export default async function LocationLandingPage({
     documentId: item?.documentId ?? null,
     name: firstNonEmpty(item?.name, "Cemetery"),
     address: typeof item?.address === "string" ? item.address.trim() : "",
-    description: stripHtml(item?.description),
+    description: typeof item?.description === "string" ? item.description : "",
   }));
 
   return (
@@ -1030,20 +1031,33 @@ export default async function LocationLandingPage({
 
         <section className="mt-6 border-t border-slate-200 pt-4">
           <h2 className="text-lg font-semibold text-[#111827]">Nearby cemeteries</h2>
-          <div className="mt-3 grid gap-3 lg:grid-cols-2">
-            {nearbyCemeteries.slice(0, 4).map((cemetery, index) => (
-              <article key={`${cemetery.documentId || cemetery.name}-${index}`} className="border border-slate-200 bg-white p-4">
-                <h3 className="text-sm font-semibold text-[#111827]">{cemetery.name}</h3>
-                {cemetery.address ? <p className="mt-2 text-[13px] leading-5 text-[#374151]">{cemetery.address}</p> : null}
-                {cemetery.description ? <p className="mt-2 text-[12px] leading-5 text-[#4b5563]">{cemetery.description}</p> : null}
-              </article>
-            ))}
-            {!nearbyCemeteries.length ? (
-              <div className="border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500 lg:col-span-2">
-                No nearby cemeteries were returned for this location.
+          {nearbyCemeteries.length ? (
+            <div className="mt-3 border border-slate-200 bg-white p-4">
+              <h3 className="text-base font-semibold text-[#111827]">
+                Cemeteries in and around {page.location?.town || "this area"}
+              </h3>
+              <div className="prose prose-sm prose-slate mt-3 max-w-none">
+                <ReactMarkdown>
+                  {nearbyCemeteries
+                    .map((cemetery) => {
+                      const name = typeof cemetery?.name === "string" ? cemetery.name.trim() : "";
+                      const description =
+                        typeof cemetery?.description === "string" ? cemetery.description.trim() : "";
+                      const address = typeof cemetery?.address === "string" ? cemetery.address.trim() : "";
+                      const body = description || address;
+                      if (!name || !body) return "";
+                      return `### ${name}\n\n${body}`;
+                    })
+                    .filter((value) => value.trim().length > 0)
+                    .join("\n\n")}
+                </ReactMarkdown>
               </div>
-            ) : null}
-          </div>
+            </div>
+          ) : (
+            <div className="mt-3 border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
+              No nearby cemeteries were returned for this location.
+            </div>
+          )}
         </section>
 
         <section className="mt-6 border-t border-slate-200 pt-4">
