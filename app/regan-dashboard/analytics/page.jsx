@@ -42,8 +42,7 @@ const EVENT_LABELS = {
   rep_call_tracker: "Rep Phone Calls Clicked",
 };
 
-const getBaseUrl = () =>
-  process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
+const ANALYTICS_INTERNAL_ENDPOINT = "/api/analytics-events";
 
 const fmtDate = (d) => {
   try {
@@ -128,13 +127,12 @@ export default function AnalyticsDashboardPage() {
       setLoading(true);
       setError("");
       try {
-        const baseUrl = getBaseUrl();
         const pageSize = 100;
         let page = 1;
         const out = [];
 
         while (true) {
-          const url = new URL(`${baseUrl}/analytics-events`);
+          const url = new URL(ANALYTICS_INTERNAL_ENDPOINT, window.location.origin);
           url.searchParams.set("sort", "timestamp:asc");
           url.searchParams.set("pagination[page]", String(page));
           url.searchParams.set("pagination[pageSize]", String(pageSize));
