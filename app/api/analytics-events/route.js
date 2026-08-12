@@ -82,8 +82,8 @@ export async function GET(request) {
     const eventTypesFilter = readEventTypesFilter(url.searchParams);
 
     const variables = {
-      eventsStart: eventsStart ?? null,
-      eventsEnd: eventsEnd ?? null,
+      eventsStart: eventsStart ?? "1970-01-01",
+      eventsEnd: eventsEnd ?? "2999-12-31",
     };
 
     const [companyRes, websiteRes] = await Promise.all([

@@ -12,7 +12,8 @@ import {
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 const DEFAULT_RANGE_DAYS = 30;
-const DEFAULT_REFRESH_MS = 30000;
+const ALL_TIME_RANGE = 0;
+const AUTO_REFRESH_MS = 24 * 60 * 60 * 1000;
 
 const IMPORTANT_EVENT_TYPES = [
   "listing_view",
@@ -104,6 +105,7 @@ export default function AnalyticsDashboardPage() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState("");
   const [selectedListing, setSelectedListing] = useState("all");
   const [selectedCampaign, setSelectedCampaign] = useState("all");
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     try {
@@ -114,6 +116,9 @@ export default function AnalyticsDashboardPage() {
   }, []);
 
   const dateRange = useMemo(() => {
+    if (Number(rangeDays) === ALL_TIME_RANGE) {
+      return { start: null, end: null, label: "All Time" };
+    }
     const end = new Date();
     const start = new Date(end);
     start.setDate(start.getDate() - Math.max(1, Number(rangeDays) || DEFAULT_RANGE_DAYS) + 1);
@@ -127,7 +132,7 @@ export default function AnalyticsDashboardPage() {
       setLoading(true);
       setError("");
       try {
-        const pageSize = 100;
+        const pageSize = 5000;
         let page = 1;
         const out = [];
 
@@ -212,12 +217,16 @@ export default function AnalyticsDashboardPage() {
     };
 
     fetchAll();
-    const interval = setInterval(fetchAll, DEFAULT_REFRESH_MS);
+    const interval = setInterval(fetchAll, AUTO_REFRESH_MS);
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [dateRange.end, dateRange.start]);
+  }, [dateRange.end, dateRange.start, refreshTick]);
+
+  const handleRefreshNow = useCallback(() => {
+    setRefreshTick((n) => n + 1);
+  }, []);
 
   const filteredEvents = useMemo(() => {
     const listingKey = selectedListing === "all" ? null : selectedListing;
@@ -505,10 +514,20 @@ export default function AnalyticsDashboardPage() {
                 value={rangeDays}
                 onChange={(e) => setRangeDays(Number(e.target.value))}
               >
+                <option value={ALL_TIME_RANGE}>All Time</option>
                 <option value={7}>Last 7 days</option>
                 <option value={30}>Last 30 days</option>
                 <option value={90}>Last 90 days</option>
               </select>
+              <button
+                type="button"
+                onClick={handleRefreshNow}
+                disabled={loading}
+                className="ml-2 inline-flex items-center justify-center rounded border px-3 py-2 text-sm bg-background text-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Refresh analytics data now"
+              >
+                {loading ? "Refreshing…" : "Refresh"}
+              </button>
               <label className="text-sm text-muted-foreground ml-2">Listing</label>
               <select
                 className="border border-border rounded px-3 py-2 bg-background text-foreground max-w-[260px]"
@@ -553,7 +572,9 @@ export default function AnalyticsDashboardPage() {
           </div>
 
           <div className="mt-1 text-sm text-muted-foreground">
-            {dateRange.start} → {dateRange.end}
+            {dateRange?.label
+              ? dateRange.label
+              : `${dateRange.start} → ${dateRange.end}`}
             {lastUpdatedAt ? ` • Updated ${lastUpdatedAt}` : ""}
           </div>
 
@@ -585,30 +606,30 @@ export default function AnalyticsDashboardPage() {
                 ) : (
                   <ChartContainer
                     config={{
-                      total: { label: "Total", color: "hsl(var(--chart-1))" },
-                      listing_view: { label: EVENT_LABELS.listing_view, color: "hsl(var(--chart-2))" },
+                      total: { label: "Total", color: "#60a5fa" },
+                      listing_view: { label: EVENT_LABELS.listing_view, color: "#34d399" },
                     }}
                     className="h-[260px]"
                   >
                     <AreaChart data={dailySeries} margin={{ left: 8, right: 12, top: 8, bottom: 8 }}>
-                      <CartesianGrid vertical={false} />
-                      <XAxis dataKey="date" tickMargin={8} minTickGap={24} />
-                      <YAxis width={36} />
+                      <CartesianGrid vertical={false} stroke="#1f2937" />
+                      <XAxis dataKey="date" tickMargin={8} minTickGap={24} tick="#9ca3af" />
+                      <YAxis width={36} tick="#9ca3af" />
                       <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
                       <Area
                         type="monotone"
                         dataKey="total"
-                        stroke="var(--color-total)"
-                        fill="var(--color-total)"
-                        fillOpacity={0.12}
+                        stroke="#60a5fa"
+                        fill="#60a5fa"
+                        fillOpacity={0.18}
                         strokeWidth={2}
                       />
                       <Area
                         type="monotone"
                         dataKey="listing_view"
-                        stroke="var(--color-listing_view)"
-                        fill="var(--color-listing_view)"
-                        fillOpacity={0.08}
+                        stroke="#34d399"
+                        fill="#34d399"
+                        fillOpacity={0.14}
                         strokeWidth={2}
                       />
                     </AreaChart>
