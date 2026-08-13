@@ -190,12 +190,23 @@ export function StandardListingCard({
        
         {listing?.company?.hideStandardCompanyLogo !== true &&  (
           <div className="absolute bottom-3 right-3 z-20 bg-white border border-white p-2 rounded-lg md:hidden">
-            <a
-              href={`/manufacturers/manufacturers-Profile-Page/${listing?.company?.documentId}`}
-              className="manufacturer-link"
-              onClick={(e) => e.stopPropagation()}
-              aria-label={`View ${listing?.company?.name || listing.manufacturer} profile`}
-            >
+            {listing?.company?.documentId ? (
+              <a
+                href={`/manufacturers/manufacturers-Profile-Page/${listing.company.documentId}`}
+                className="manufacturer-link"
+                onClick={(e) => e.stopPropagation()}
+                aria-label={`View ${listing?.company?.name || listing.manufacturer} profile`}
+              >
+                <Image
+                  src={cloudinaryOptimized(listing?.company?.logoUrl, 200) || "/placeholder.svg"}
+                  alt={`${listing?.company?.name || listing.manufacturer} Logo`}
+                  width={96}
+                  height={96}
+                  className="object-contain"
+                  unoptimized
+                />
+              </a>
+            ) : (
               <Image
                 src={cloudinaryOptimized(listing?.company?.logoUrl, 200) || "/placeholder.svg"}
                 alt={`${listing?.company?.name || listing.manufacturer} Logo`}
@@ -204,7 +215,7 @@ export function StandardListingCard({
                 className="object-contain"
                 unoptimized
               />
-            </a>
+            )}
           </div>
         )}
         {/* Main Image Container */}
@@ -429,14 +440,34 @@ export function StandardListingCard({
           </div>
           {/* Manufacturer Information (Mobile) */}
           <div className="flex flex-col mt-0">
-            <a
-              href={listing?.company?.name}
-              className="manufacturer-link font-small text-gray-900 text-base mb-1 leading-tight"
-              onClick={(e) => e.stopPropagation()}
-              aria-label={`View ${listing.manufacturer} profile`}
-            >
-              {listing.manufacturer || listing?.company?.name}
-            </a>
+            {(() => {
+              const seoSlug = typeof listing?.company?.seoSlug === "string" && listing.company.seoSlug.trim() !== ""
+                ? listing.company.seoSlug.trim()
+                : null;
+              const documentId = listing?.company?.documentId || null;
+              const href = seoSlug
+                ? `/manufacturers/${seoSlug}`
+                : documentId
+                  ? `/manufacturers/manufacturers-Profile-Page/${documentId}`
+                  : null;
+              const label = listing.manufacturer || listing?.company?.name || "Manufacturer";
+              return href ? (
+                <a
+                  href={href}
+                  className="manufacturer-link font-small text-gray-900 text-base mb-1 leading-tight"
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`View ${label} profile`}
+                >
+                  {label}
+                </a>
+              ) : (
+                <span
+                  className="font-small text-gray-900 text-base mb-1 leading-tight"
+                >
+                  {label}
+                </span>
+              );
+            })()}
             <div className="space-y-1">
               {(listing.enquiries !== undefined || listing.inquiries_c?.length !== undefined) && (
                 <div className="flex items-center text-green-600">

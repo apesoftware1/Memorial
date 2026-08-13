@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Area,
@@ -106,6 +106,8 @@ export default function AnalyticsDashboardPage() {
   const [selectedListing, setSelectedListing] = useState("all");
   const [selectedCampaign, setSelectedCampaign] = useState("all");
   const [refreshTick, setRefreshTick] = useState(0);
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const downloadMenuRef = useRef(null);
 
   useEffect(() => {
     try {
@@ -114,6 +116,25 @@ export default function AnalyticsDashboardPage() {
     } catch {
     }
   }, []);
+
+  useEffect(() => {
+    if (!downloadMenuOpen) return;
+    const onClickOutside = (e) => {
+      if (!downloadMenuRef.current) return;
+      if (!downloadMenuRef.current.contains(e.target)) {
+        setDownloadMenuOpen(false);
+      }
+    };
+    const onEsc = (e) => {
+      if (e.key === "Escape") setDownloadMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onClickOutside);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [downloadMenuOpen]);
 
   const dateRange = useMemo(() => {
     if (Number(rangeDays) === ALL_TIME_RANGE) {
@@ -460,8 +481,10 @@ export default function AnalyticsDashboardPage() {
       ]);
     }
     const csv = toCsv(rows);
-    downloadTextFile(`analytics-events-${dateRange.start}-to-${dateRange.end}.csv`, csv, "text/csv;charset=utf-8");
-  }, [dateRange.end, dateRange.start, filteredEvents]);
+    const label = dateRange?.label || `${dateRange.start}-to-${dateRange.end}`;
+    downloadTextFile(`analytics-events-${label}.csv`, csv, "text/csv;charset=utf-8");
+    setDownloadMenuOpen(false);
+  }, [dateRange.end, dateRange.label, dateRange.start, filteredEvents]);
 
   const handleDownloadListingReportCsv = useCallback(() => {
     const header = [
@@ -490,8 +513,10 @@ export default function AnalyticsDashboardPage() {
       ]);
     }
     const csv = toCsv(rows);
-    downloadTextFile(`listing-performance-${dateRange.start}-to-${dateRange.end}.csv`, csv, "text/csv;charset=utf-8");
-  }, [dateRange.end, dateRange.start, listingPerformance]);
+    const label = dateRange?.label || `${dateRange.start}-to-${dateRange.end}`;
+    downloadTextFile(`listing-performance-${label}.csv`, csv, "text/csv;charset=utf-8");
+    setDownloadMenuOpen(false);
+  }, [dateRange.end, dateRange.label, dateRange.start, listingPerformance]);
 
   return (
     <div className={isDark ? "dark" : ""}>
@@ -519,15 +544,6 @@ export default function AnalyticsDashboardPage() {
                 <option value={30}>Last 30 days</option>
                 <option value={90}>Last 90 days</option>
               </select>
-              <button
-                type="button"
-                onClick={handleRefreshNow}
-                disabled={loading}
-                className="ml-2 inline-flex items-center justify-center rounded border px-3 py-2 text-sm bg-background text-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Refresh analytics data now"
-              >
-                {loading ? "Refreshing…" : "Refresh"}
-              </button>
               <label className="text-sm text-muted-foreground ml-2">Listing</label>
               <select
                 className="border border-border rounded px-3 py-2 bg-background text-foreground max-w-[260px]"
@@ -554,20 +570,49 @@ export default function AnalyticsDashboardPage() {
                   </option>
                 ))}
               </select>
-              <button
-                type="button"
-                onClick={handleDownloadEventsCsv}
-                className="ml-2 inline-flex items-center justify-center rounded border px-3 py-2 text-sm bg-background text-foreground hover:bg-accent"
-              >
-                Download Events CSV
-              </button>
-              <button
-                type="button"
-                onClick={handleDownloadListingReportCsv}
-                className="inline-flex items-center justify-center rounded border px-3 py-2 text-sm bg-background text-foreground hover:bg-accent"
-              >
-                Download Listing Report
-              </button>
+              <div className="relative ml-2" ref={downloadMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setDownloadMenuOpen((v) => !v)}
+                  className="inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm bg-background text-foreground hover:bg-accent"
+                  title="Download"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  <span>Download</span>
+                </button>
+                {downloadMenuOpen ? (
+                  <div className="absolute right-0 mt-2 min-w-[220px] z-20 rounded-md border border-border bg-card text-card-foreground shadow-lg overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={handleDownloadEventsCsv}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent"
+                    >
+                      Download Events CSV
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDownloadListingReportCsv}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent border-t border-border"
+                    >
+                      Download Listing Report
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
 
@@ -597,7 +642,34 @@ export default function AnalyticsDashboardPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-6">
             <div className="bg-card text-card-foreground border border-border rounded-xl p-4 shadow-sm">
-              <div className="text-sm font-semibold">Daily Trend</div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-semibold">Daily Trend</div>
+                <button
+                  type="button"
+                  onClick={handleRefreshNow}
+                  disabled={loading}
+                  className="inline-flex items-center justify-center gap-2 rounded border px-3 py-1.5 text-sm bg-background text-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Refresh analytics data now"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+                    <path d="M21 3v5h-5" />
+                    <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                    <path d="M3 21v-5h5" />
+                  </svg>
+                  {loading ? "Refreshing…" : "Refresh"}
+                </button>
+              </div>
               <div className="mt-3">
                 {loading ? (
                   <div className="text-sm text-muted-foreground">Loading…</div>

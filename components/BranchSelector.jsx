@@ -50,6 +50,8 @@ export default function BranchSelector({
     if (!branch) return;
     
     setSelectedBranch(branch);
+
+    const resolvedCompanyId = typeof companyId === "string" && companyId.trim() !== "" ? companyId.trim() : null;
     
     // Check if this is the "Main Branch" option (has isMainBranch flag)
     if (branch.isMainBranch) {
@@ -72,8 +74,9 @@ export default function BranchSelector({
       } else if (isInEditorPage) {
         // If in editor page, stay on editor page
         basePart = pathname;
+      } else if (resolvedCompanyId) {
+        basePart = `${basePath}/${encodeURIComponent(resolvedCompanyId)}`;
       } else {
-        // Otherwise, go to the base path
         basePart = `${basePath}`;
       }
       
@@ -95,9 +98,12 @@ export default function BranchSelector({
       if (preservePathname || (isInEditorPage && !isInSlugPage)) {
         // If in editor page or preservePathname is true, stay on current page
         newPath = `${pathname}?${params.toString()}`;
+      } else if (!resolvedCompanyId) {
+        // No company id — keep the pathname but update the query only
+        newPath = `${pathname}?${params.toString()}`;
       } else {
         // Otherwise, use the standard path with companyId
-        newPath = `${basePath}/${companyId}?${params.toString()}`;
+        newPath = `${basePath}/${encodeURIComponent(resolvedCompanyId)}?${params.toString()}`;
       }
       
       router.push(newPath);

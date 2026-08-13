@@ -97,7 +97,7 @@ export async function generateMetadata({ params }) {
     description,
     alternates: { canonical },
     openGraph: {
-      type: "product",
+      type: "website",
       url: canonical,
       title,
       description,

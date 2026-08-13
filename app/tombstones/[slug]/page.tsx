@@ -187,11 +187,24 @@ async function fetchLocationListingIdsBySeo(locationType: string, locationValue:
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const slug = (await params)?.slug;
-  if (!slug) return {};
+  if (!slug) {
+    return {
+      title: "Tombstones | TombstoneFinder",
+      description: "Browse tombstones by province, city or town in South Africa.",
+      robots: { index: true, follow: true },
+    };
+  }
 
   const canonical = toAbsoluteUrl(`/tombstones/${slug}`);
   const seoPage = await fetchLocationSeoPage(slug);
-  if (!seoPage) return {};
+  if (!seoPage) {
+    return {
+      title: "Location Not Found | TombstoneFinder",
+      description: "This location page could not be found, or is no longer available.",
+      alternates: { canonical },
+      robots: { index: true, follow: true },
+    };
+  }
 
   const titleRaw =
     (typeof seoPage?.metaTitle === "string" && seoPage.metaTitle.trim()) ||
@@ -206,6 +219,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: titleRaw || undefined,
     description: descriptionRaw || undefined,
+    robots: { index: true, follow: true },
     alternates: { canonical },
     openGraph: {
       type: "website",

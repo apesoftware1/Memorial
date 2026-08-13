@@ -33,6 +33,19 @@ import WhatsAppContactDrawer from "./WhatsAppContactDrawer";
 import { useSearchParams, usePathname } from "next/navigation";
 import { useQuery } from "@apollo/client";
 import { GET_BRANCHES_BY_NAME } from "@/graphql/queries/getBranchesByName";
+
+function buildManufacturerProfileHref(listing, branch) {
+  const companyId = listing?.company?.documentId || listing?.companyId;
+  if (!companyId) return null;
+  const base = `/manufacturers/manufacturers-Profile-Page/${encodeURIComponent(companyId)}`;
+  if (typeof branch === "string" && branch.trim() !== "") {
+    return `${base}?branch=${encodeURIComponent(branch.trim())}`;
+  }
+  if (branch && typeof branch === "object" && typeof branch.name === "string" && branch.name.trim() !== "") {
+    return `${base}?branch=${encodeURIComponent(branch.name.trim())}`;
+  }
+  return base;
+}
 import { GET_LISTING_BRANCHES_FOR_MODAL, GET_LISTING_EXTRAS_BY_ID } from "@/graphql/queries/getListingExtrasById";
 import { PageLoader } from "./ui/loader";
 
@@ -464,12 +477,21 @@ export default function ProductShowcase({ listing, id, allListings = [], current
             Tombstones for sale
           </Link>
           <span className="mx-1">&gt;</span>
-          <Link 
-            href={`/manufacturers/manufacturers-Profile-Page/${listing.company?.documentId || listing.companyId}`}
-            className="text-blue-600 hover:text-blue-800 transition-colors"
-          >
-            {listing.company?.name || "Company"}
-          </Link>
+          {(() => {
+            const href = buildManufacturerProfileHref(listing);
+            const children = listing.company?.name || "Company";
+            if (!href) {
+              return <span className="text-blue-600">{children}</span>;
+            }
+            return (
+              <Link
+                href={href}
+                className="text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                {children}
+              </Link>
+            );
+          })()}
           {selectedBranch && (
             <>
               <span className="mx-1">&gt;</span>
@@ -972,30 +994,46 @@ export default function ProductShowcase({ listing, id, allListings = [], current
             <div className="border border-gray-200 rounded p-4 mb-6 bg-white shadow-sm">
               {/* Company Info */}
               <div className="text-center mb-4">
-                <Link 
-                  href={`/manufacturers/manufacturers-Profile-Page/${listing.company?.documentId || listing.companyId}${branch ? `?branch=${branch}` : ''}`}
-                  className="block hover:opacity-90 transition-opacity"
-                >
-                  <div className="flex justify-center mb-2">
-                    <div className="relative h-32 w-64">
-                      <Image
-                        src={cloudinaryOptimized(info.logo, 300)}
-                        alt={listing.company?.name || "Manufacturer Logo"}
-                        fill
-                        className="object-contain"
-                        unoptimized
-                      />
+                {(() => {
+                  const href = buildManufacturerProfileHref(listing, branch);
+                  const image = (
+                    <div className="flex justify-center mb-2">
+                      <div className="relative h-32 w-64">
+                        <Image
+                          src={cloudinaryOptimized(info.logo, 300)}
+                          alt={listing.company?.name || "Manufacturer Logo"}
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      </div>
                     </div>
-                  </div>
-                </Link>
+                  );
+                  if (!href) return image;
+                  return (
+                    <Link
+                      href={href}
+                      className="block hover:opacity-90 transition-opacity"
+                    >
+                      {image}
+                    </Link>
+                  );
+                })()}
                 {selectedBranch && (
                   <div className="text-bold-500 font-bold mb-1">
-                    <Link 
-                      href={`/manufacturers/manufacturers-Profile-Page/${listing.company?.documentId || listing.companyId}?branch=${selectedBranch.name}`}
-                      className="text-gray-600 hover:underline hover:blue"
-                    >
-                      {selectedBranch.name} Branch
-                    </Link>
+                    {(() => {
+                      const href = buildManufacturerProfileHref(listing, selectedBranch);
+                      const children = `${selectedBranch.name} Branch`;
+                      if (!href) return <span className="text-gray-600">{children}</span>;
+                      return (
+                        <Link
+                          href={href}
+                          className="text-gray-600 hover:underline"
+                        >
+                          {children}
+                        </Link>
+                    );
+                  })()}
                   </div>
                 )}
                 <div className="text-xs text-blue-500">
@@ -1063,12 +1101,21 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                   </div>
                 )}
                <div className="mt-2">
-                  <Link 
-                    href={`/manufacturers/manufacturers-Profile-Page/${listing.company?.documentId || listing.companyId}${branch ? `?branch=${branch}` : ''}`}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    View All Tombstones From This Manufacturer
-                  </Link>
+                  {(() => {
+                    const href = buildManufacturerProfileHref(listing, branch);
+                    const children = "View All Tombstones From This Manufacturer";
+                    if (!href) {
+                      return <span className="text-sm text-blue-600">{children}</span>;
+                    }
+                    return (
+                      <Link
+                        href={href}
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        {children}
+                      </Link>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
