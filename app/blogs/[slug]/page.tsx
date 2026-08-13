@@ -84,9 +84,22 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const slug = (await params)?.slug;
-  if (!slug) return {};
+  if (!slug) {
+    return {
+      title: "Blogs | TombstoneFinder",
+      description: "Read guides, pricing and advice about tombstones and memorials in South Africa.",
+      robots: { index: true, follow: true },
+    };
+  }
   const post = await fetchBlogPostBySlug(slug);
-  if (!post) return {};
+  if (!post) {
+    return {
+      title: "Blog Post Not Found | TombstoneFinder",
+      description: "This blog post could not be found, or is no longer available.",
+      alternates: { canonical: toAbsoluteUrl(`/blogs/${slug}`) },
+      robots: { index: true, follow: true },
+    };
+  }
 
   const title = post.metaTitle || post.seoTitle || post.title || "Blog";
   const description = post.metaDescription || post.seoDescription || post.excerpt || "";
@@ -95,6 +108,7 @@ export async function generateMetadata({
   return {
     title,
     description,
+    robots: { index: true, follow: true },
     alternates: { canonical },
   };
 }

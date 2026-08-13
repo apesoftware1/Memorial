@@ -873,9 +873,15 @@ export function PremiumListingCard({
             </div>
             {/* Manufacturer Information (Desktop) */}
             {(() => {
-              const profileUrl = `/manufacturers/${
-                listing.company?.slug || listing.company?.name || ""
-              }`;
+              const seoSlug = typeof listing.company?.seoSlug === "string" && listing.company.seoSlug.trim() !== ""
+                ? listing.company.seoSlug.trim()
+                : null;
+              const documentId = listing.company?.documentId || null;
+              const profileUrl = seoSlug
+                ? `/manufacturers/${seoSlug}`
+                : documentId
+                  ? `/manufacturers/manufacturers-Profile-Page/${documentId}`
+                  : null;
               const logoSrc =
                 listing.company?.logoUrl || "/placeholder-logo.svg";
               const manufacturerName =
@@ -931,11 +937,22 @@ export function PremiumListingCard({
                   </div>
                   {/* Right Column for Logo (Desktop only) */}
                   <div className="w-1/3 flex-shrink-0 flex flex-col items-end justify-end hidden md:flex">
-                    <Link
-                      href={profileUrl}
-                      prefetch={false}
-                      aria-label={`View ${manufacturerName} profile`}
-                    >
+                    {profileUrl ? (
+                      <Link
+                        href={profileUrl}
+                        prefetch={false}
+                        aria-label={`View ${manufacturerName} profile`}
+                      >
+                        <Image
+                          src={cloudinaryOptimized(logoSrc, 300)}
+                          alt={`${manufacturerName} Logo`}
+                          width={150}
+                          height={300}
+                          className="object-contain mt-auto mb-2"
+                          unoptimized
+                        />
+                      </Link>
+                    ) : (
                       <Image
                         src={cloudinaryOptimized(logoSrc, 300)}
                         alt={`${manufacturerName} Logo`}
@@ -944,7 +961,7 @@ export function PremiumListingCard({
                         className="object-contain mt-auto mb-2"
                         unoptimized
                       />
-                    </Link>
+                    )}
                   </div>
                 </div>
               );
