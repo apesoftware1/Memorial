@@ -81,6 +81,46 @@ async function fetchManufacturerSeoPage(slug: string): Promise<ManufacturerSeoPa
   return data?.manufacturerSeoPageBySlug ?? null;
 }
 
+const PHONE_SLUG_RE = /^\d{7,15}$/;
+
+async function resolveLegacyPhoneSlug(rawSlug: string): Promise<{ slug: string | null }> {
+  if (!PHONE_SLUG_RE.test(rawSlug)) return { slug: null };
+  const data = await fetchGraphQL<{ companies?: Array<{ documentId: string; phone?: string | null }> }>(
+    `
+      query CompanyByPhone($phone: String!) {
+        companies(filters: { phone: { eq: $phone } }, pagination: { limit: 1 }) {
+          documentId
+          phone
+        }
+      }
+    `,
+    { phone: rawSlug }
+  );
+  const company = Array.isArray(data?.companies) && data.companies.length > 0 ? data.companies[0] : null;
+  if (!company?.documentId) return { slug: null };
+  const seoData = await fetchGraphQL<{
+    manufacturerSeoPages?: Array<{ documentId: string; slug: string; companyName?: string | null }>;
+  }>(
+    `
+      query ManufacturerSeoPageByCompanyDoc($companyId: ID!) {
+        manufacturerSeoPages(filters: { documentId: { eq: $companyId } }, pagination: { limit: 1 }) {
+          documentId
+          slug
+          companyName
+        }
+      }
+    `,
+    { companyId: company.documentId }
+  );
+  const row = Array.isArray(seoData?.manufacturerSeoPages) && seoData.manufacturerSeoPages.length > 0
+    ? seoData.manufacturerSeoPages[0]
+    : null;
+  if (row?.slug && typeof row.slug === "string" && row.slug.trim() !== "") {
+    return { slug: normalizeManufacturerSlug(row.slug) };
+  }
+  return { slug: null };
+}
+
 async function fetchCompanyAndListings(documentId: string) {
   const data = await fetchGraphQL<{
     companies?: any[];
@@ -186,10 +226,34 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (rawSlug && slug && rawSlug !== slug) {
     permanentRedirect(`/manufacturers/${slug}`);
   }
-  if (!slug) return {};
+  if (!slug) {
+    return {
+      title: "Manufacturer Not Found | TombstoneFinder",
+      description: "This manufacturer page could not be found, or is no longer available.",
+      robots: { index: true, follow: true },
+    };
+  }
+
+  const legacy = await resolveLegacyPhoneSlug(rawSlug);
+  if (legacy?.slug) {
+    const cleanCanonical = toAbsoluteUrl(`/manufacturers/${legacy.slug}`);
+    permanentRedirect(`/manufacturers/${legacy.slug}`);
+    return {
+      title: "Manufacturer Redirect | TombstoneFinder",
+      alternates: { canonical: cleanCanonical },
+      robots: { index: true, follow: true },
+    };
+  }
 
   const seoPage = await fetchManufacturerSeoPage(slug);
-  if (!seoPage) return {};
+  if (!seoPage) {
+    return {
+      title: "Manufacturer Not Found | TombstoneFinder",
+      description: "This manufacturer page could not be found, or is no longer available.",
+      alternates: { canonical: toAbsoluteUrl(`/manufacturers/${slug}`) },
+      robots: { index: true, follow: true },
+    };
+  }
 
   const canonical = toAbsoluteUrl(`/manufacturers/${slug}`);
   const title =
@@ -206,6 +270,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title,
     description,
+    robots: { index: true, follow: true },
     alternates: { canonical },
     openGraph: {
       type: "website",
@@ -228,6 +293,11 @@ export default async function ManufacturerSeoProfilePage({
     permanentRedirect(`/manufacturers/${slug}`);
   }
   if (!slug) notFound();
+
+  const legacy = await resolveLegacyPhoneSlug(rawSlug);
+  if (legacy?.slug) {
+    permanentRedirect(`/manufacturers/${legacy.slug}`);
+  }
 
   const seoPage = await fetchManufacturerSeoPage(slug);
   if (!seoPage?.documentId) notFound();

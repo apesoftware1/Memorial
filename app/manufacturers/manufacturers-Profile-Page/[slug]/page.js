@@ -1,10 +1,23 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import ManufacturerProfileClient from "./manufacturer-profile-client";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tombstonesfinder.co.za";
 const GRAPHQL_URL =
   process.env.NEXT_PUBLIC_STRAPI_GRAPHQL_URL ||
   `${process.env.STRAPI_API_URL || "https://api.tombstonesfinder.co.za"}/graphql`;
+
+function toAbsoluteUrl(pathname) {
+  return `${SITE_URL}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
+}
+
+function normalizeManufacturerSlug(raw) {
+  const decoded = decodeURIComponent(raw);
+  return decoded
+    .toLowerCase()
+    .trim()
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-");
+}
 
 async function fetchGraphQL(query, variables) {
   const res = await fetch(GRAPHQL_URL, {
@@ -115,19 +128,77 @@ async function fetchCompanyAndListings(documentId) {
   return { company, listings };
 }
 
-function toAbsoluteUrl(pathname) {
-  return `${SITE_URL}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
+const PHONE_SLUG_RE = /^\d{7,15}$/;
+
+async function resolveCompanyDocIdToSeoSlug(companyDocumentId) {
+  const seoData = await fetchGraphQL(
+    `query SeoByCompany($companyId: ID!) {
+      manufacturerSeoPages(filters: { documentId: { eq: $companyId } }, pagination: { limit: 1 }) {
+        slug
+      }
+    }`,
+    { companyId: companyDocumentId }
+  );
+  const row = Array.isArray(seoData?.manufacturerSeoPages) && seoData.manufacturerSeoPages.length > 0
+    ? seoData.manufacturerSeoPages[0]
+    : null;
+  if (!row?.slug || typeof row.slug !== "string" || row.slug.trim() === "") return null;
+  const normalized = normalizeManufacturerSlug(row.slug);
+  return normalized || null;
+}
+
+async function resolvePhoneToSeoSlug(rawSlug) {
+  if (!PHONE_SLUG_RE.test(rawSlug)) return null;
+  const companyData = await fetchGraphQL(
+    `query CompanyByPhone($phone: String!) {
+      companies(filters: { phone: { eq: $phone } }, pagination: { limit: 1 }) {
+        documentId
+        phone
+      }
+    }`,
+    { phone: rawSlug }
+  );
+  const company = Array.isArray(companyData?.companies) && companyData.companies.length > 0
+    ? companyData.companies[0]
+    : null;
+  if (!company?.documentId) return null;
+  return resolveCompanyDocIdToSeoSlug(company.documentId);
+}
+
+async function resolveDocIdOrPhoneToSeoSlug(rawSlug) {
+  const phoneRedirect = await resolvePhoneToSeoSlug(rawSlug);
+  if (phoneRedirect) return phoneRedirect;
+  const directSeoSlug = await resolveCompanyDocIdToSeoSlug(rawSlug);
+  return directSeoSlug;
 }
 
 export async function generateMetadata({ params }) {
-  const documentId = (await params)?.slug;
-  if (!documentId) return {};
+  const rawSlug = (await params)?.slug;
+  if (!rawSlug) {
+    return {
+      title: "Manufacturer Not Found | TombstoneFinder",
+      robots: { index: true, follow: true },
+    };
+  }
 
-  const { company } = await fetchCompanyAndListings(documentId);
+  const seoRedirectSlug = await resolveDocIdOrPhoneToSeoSlug(rawSlug);
+  if (seoRedirectSlug) {
+    const cleanCanonical = toAbsoluteUrl(`/manufacturers/${seoRedirectSlug}`);
+    permanentRedirect(`/manufacturers/${seoRedirectSlug}`);
+    return {
+      title: "Manufacturer Redirect | TombstoneFinder",
+      alternates: { canonical: cleanCanonical },
+      robots: { index: true, follow: true },
+    };
+  }
+
+  const { company } = await fetchCompanyAndListings(rawSlug);
   if (!company) {
     return {
       title: "Manufacturer Not Found | TombstoneFinder",
-      alternates: { canonical: toAbsoluteUrl(`/manufacturers/manufacturers-Profile-Page/${documentId}`) },
+      description: "This manufacturer page could not be found, or is no longer available.",
+      alternates: { canonical: toAbsoluteUrl(`/manufacturers/manufacturers-Profile-Page/${rawSlug}`) },
+      robots: { index: true, follow: true },
     };
   }
 
@@ -137,12 +208,13 @@ export async function generateMetadata({ params }) {
   const description =
     String(company?.description ?? "").trim() ||
     (location ? `View tombstones and prices from ${name} in ${location}.` : `View tombstones and prices from ${name}.`);
-  const canonical = toAbsoluteUrl(`/manufacturers/manufacturers-Profile-Page/${documentId}`);
+  const canonical = toAbsoluteUrl(`/manufacturers/manufacturers-Profile-Page/${rawSlug}`);
   const image = typeof company?.logoUrl === "string" && company.logoUrl.trim() ? company.logoUrl.trim() : null;
 
   return {
     title,
     description,
+    robots: { index: true, follow: true },
     alternates: { canonical },
     openGraph: {
       type: "profile",
@@ -155,14 +227,19 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function ManufacturerProfilePage({ params }) {
-  const documentId = (await params)?.slug;
-  if (!documentId) notFound();
+  const rawSlug = (await params)?.slug;
+  if (!rawSlug) notFound();
 
-  const { company, listings } = await fetchCompanyAndListings(documentId);
+  const seoRedirectSlug = await resolveDocIdOrPhoneToSeoSlug(rawSlug);
+  if (seoRedirectSlug) {
+    permanentRedirect(`/manufacturers/${seoRedirectSlug}`);
+  }
+
+  const { company, listings } = await fetchCompanyAndListings(rawSlug);
   if (!company) notFound();
 
-  const canonical = toAbsoluteUrl(`/manufacturers/manufacturers-Profile-Page/${documentId}`);
-  const name = String(company?.name ?? "").trim() || `Manufacturer ${documentId}`;
+  const canonical = toAbsoluteUrl(`/manufacturers/manufacturers-Profile-Page/${rawSlug}`);
+  const name = String(company?.name ?? "").trim() || `Manufacturer ${rawSlug}`;
   const telephone = String(company?.phone ?? "").trim() || undefined;
   const logoUrl = typeof company?.logoUrl === "string" && company.logoUrl.trim() ? company.logoUrl.trim() : undefined;
 
