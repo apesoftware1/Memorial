@@ -103,7 +103,7 @@ async function resolveLegacyPhoneSlug(rawSlug: string): Promise<{ slug: string |
   }>(
     `
       query ManufacturerSeoPageByCompanyDoc($companyId: ID!) {
-        manufacturerSeoPages(filters: { documentId: { eq: $companyId } }, pagination: { limit: 1 }) {
+        manufacturerSeoPages(filters: { company: { documentId: { eq: $companyId } } }, pagination: { limit: 1 }) {
           documentId
           slug
           companyName

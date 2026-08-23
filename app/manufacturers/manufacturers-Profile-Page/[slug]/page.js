@@ -133,7 +133,7 @@ const PHONE_SLUG_RE = /^\d{7,15}$/;
 async function resolveCompanyDocIdToSeoSlug(companyDocumentId) {
   const seoData = await fetchGraphQL(
     `query SeoByCompany($companyId: ID!) {
-      manufacturerSeoPages(filters: { documentId: { eq: $companyId } }, pagination: { limit: 1 }) {
+      manufacturerSeoPages(filters: { company: { documentId: { eq: $companyId } } }, pagination: { limit: 1 }) {
         slug
       }
     }`,
