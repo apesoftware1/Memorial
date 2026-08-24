@@ -1,8 +1,27 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import ProductShowcase from "@/components/product-showcase";
 import { fetchGraphQL, toAbsoluteUrl } from "@/lib/serverGraphql";
 
-async function fetchListing(documentID) {
+function normalizeListingSlug(raw) {
+  const decoded = decodeURIComponent(typeof raw === "string" ? raw : "");
+  return decoded
+    .toLowerCase()
+    .trim()
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function cleanListingSlug(slug, title) {
+  const rawSlug = typeof slug === "string" ? slug.trim() : "";
+  if (!rawSlug) return normalizeListingSlug(title);
+  const stripped = rawSlug.replace(/(-copy-[a-z0-9]+)+/gi, "").trim();
+  if (!stripped || /^[-]*$/.test(stripped)) return normalizeListingSlug(title);
+  return normalizeListingSlug(stripped);
+}
+
+async function fetchListingById(documentID) {
   const data = await fetchGraphQL(
     `
       query ListingSpecialDetail($documentID: ID!) {
@@ -96,11 +115,38 @@ async function fetchListing(documentID) {
   return data?.listing || null;
 }
 
+function deriveCleanSlug(listing) {
+  return cleanListingSlug(listing?.slug, listing?.title);
+}
+
 export async function generateMetadata({ params }) {
   const id = (await params)?.id;
-  if (!id) return {};
-  const listing = await fetchListing(id);
-  if (!listing) return {};
+  if (!id) {
+    return {
+      title: "Special Offer Not Found | TombstoneFinder",
+      robots: { index: true, follow: true },
+    };
+  }
+  const listing = await fetchListingById(id);
+  if (!listing) {
+    return {
+      title: "Tombstone Not Found | TombstoneFinder",
+      description: "This tombstone special offer could not be found, or is no longer available.",
+      alternates: { canonical: toAbsoluteUrl(`/tombstones-on-special/${id}`) },
+      robots: { index: true, follow: true },
+    };
+  }
+
+  const cleanSlug = deriveCleanSlug(listing);
+  if (cleanSlug) {
+    const cleanCanonical = toAbsoluteUrl(`/tombstones/${cleanSlug}`);
+    permanentRedirect(`/tombstones/${cleanSlug}`);
+    return {
+      title: "Tombstone Redirect | TombstoneFinder",
+      alternates: { canonical: cleanCanonical },
+      robots: { index: true, follow: true },
+    };
+  }
 
   return {
     title: listing?.title ? `${listing.title} | Tombstones On Special` : "Tombstone Special Offer",
@@ -109,6 +155,7 @@ export async function generateMetadata({ params }) {
     alternates: {
       canonical: toAbsoluteUrl(`/tombstones-on-special/${id}`),
     },
+    robots: { index: true, follow: true },
   };
 }
 
@@ -116,8 +163,13 @@ export default async function SpecialTombstoneDetailPage({ params }) {
   const id = (await params)?.id;
   if (!id) notFound();
 
-  const listing = await fetchListing(id);
+  const listing = await fetchListingById(id);
   if (!listing) notFound();
+
+  const cleanSlug = deriveCleanSlug(listing);
+  if (cleanSlug) {
+    permanentRedirect(`/tombstones/${cleanSlug}`);
+  }
 
   const transformedListing = {
     ...listing,

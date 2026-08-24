@@ -1,5 +1,5 @@
 import ProductShowcase from '@/components/product-showcase';
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tombstonesfinder.co.za";
 const GRAPHQL_URL =
@@ -10,12 +10,31 @@ function toAbsoluteUrl(pathname) {
   return `${SITE_URL}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
 }
 
-async function fetchGraphQL(query, variables) {
+function normalizeListingSlug(raw) {
+  const decoded = decodeURIComponent(typeof raw === "string" ? raw : "");
+  return decoded
+    .toLowerCase()
+    .trim()
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function cleanListingSlug(slug, title) {
+  const rawSlug = typeof slug === "string" ? slug.trim() : "";
+  if (!rawSlug) return normalizeListingSlug(title);
+  const stripped = rawSlug.replace(/(-copy-[a-z0-9]+)+/gi, "").trim();
+  if (!stripped || /^[-]*$/.test(stripped)) return normalizeListingSlug(title);
+  return normalizeListingSlug(stripped);
+}
+
+async function fetchGraphQL(query, variables, revalidate = 3600) {
   const res = await fetch(GRAPHQL_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, variables }),
-    next: { revalidate: 3600 },
+    next: { revalidate },
   });
   if (!res.ok) return null;
   const json = await res.json();
@@ -23,35 +42,218 @@ async function fetchGraphQL(query, variables) {
   return json?.data ?? null;
 }
 
-async function fetchListingBySlug(slug) {
+async function fetchListingById(documentID) {
   const data = await fetchGraphQL(
     `
-      query ListingBySlugSeo($slug: String!) {
-        listings(filters: { slug: { eq: $slug } }, pagination: { limit: 1 }) {
+      query ListingFast($documentID: ID!) {
+        listing(documentId: $documentID) {
           documentId
           title
+          mainImageUrl
+          mainImagePublicId
+          thumbnailUrls
+          thumbnailPublicIds
           description
           price
           slug
-          mainImageUrl
-          thumbnailUrls
+          manufacturingTimeframe
           isOnSpecial
-          specials { active sale_price start_date end_date }
-          listing_category { documentId name }
+          specials {
+            active
+            sale_price
+            start_date
+            end_date
+          }
+          listing_category {
+            documentId
+            name
+          }
           productDetails {
             id
-            stoneType { id value }
-            style { id value }
-            overallStyle { id value }
-            color { id value }
+            color { id value icon }
+            style { id value icon }
+            overallStyle { id value icon }
+            stoneType { id value icon }
+            slabStyle { id value icon }
+            customization { id value icon }
           }
-          company { documentId name location }
+          additionalProductDetails {
+            id
+            transportAndInstallation { id value info }
+            foundationOptions { id value info }
+            warrantyOrGuarantee { id value info }
+            installationGuarantee { id value info }
+          }
+          inquiries_c { documentId }
+          branches(pagination: { limit: 25 }) {
+            documentId
+            name
+          }
+          company {
+            enableWhatsAppButton
+            documentId
+            phone
+            name
+            mapUrl
+            location
+            latitude
+            longitude
+            googleRating
+            logoUrl
+            logoUrlPublicId
+            operatingHours {
+              id
+              monToFri
+              saturday
+              sunday
+              publicHoliday
+            }
+            sales_reps {
+              call
+              whatsapp
+              name
+              avatar { url }
+            }
+            socialLinks {
+              id
+              facebook
+              website
+              instagram
+              tiktok
+              youtube
+              x
+              whatsapp
+              messenger
+            }
+          }
         }
       }
     `,
-    { slug }
+    { documentID },
+    300
   );
-  return Array.isArray(data?.listings) ? data.listings[0] : null;
+
+  return data?.listing || null;
+}
+
+async function fetchListingBySavedSlug(slug) {
+  const data = await fetchGraphQL(
+    `
+      query ListingBySavedSlug($slug: String!) {
+        listings(filters: { slug: { eq: $slug } }, pagination: { limit: 1 }) {
+          documentId
+          title
+          mainImageUrl
+          mainImagePublicId
+          thumbnailUrls
+          thumbnailPublicIds
+          description
+          price
+          slug
+          manufacturingTimeframe
+          isOnSpecial
+          specials {
+            active
+            sale_price
+            start_date
+            end_date
+          }
+          listing_category {
+            documentId
+            name
+          }
+          productDetails {
+            id
+            color { id value icon }
+            style { id value icon }
+            overallStyle { id value icon }
+            stoneType { id value icon }
+            slabStyle { id value icon }
+            customization { id value icon }
+          }
+          additionalProductDetails {
+            id
+            transportAndInstallation { id value info }
+            foundationOptions { id value info }
+            warrantyOrGuarantee { id value info }
+            installationGuarantee { id value info }
+          }
+          inquiries_c { documentId }
+          branches(pagination: { limit: 25 }) {
+            documentId
+            name
+          }
+          company {
+            enableWhatsAppButton
+            documentId
+            phone
+            name
+            mapUrl
+            location
+            latitude
+            longitude
+            googleRating
+            logoUrl
+            logoUrlPublicId
+            operatingHours {
+              id
+              monToFri
+              saturday
+              sunday
+              publicHoliday
+            }
+            sales_reps {
+              call
+              whatsapp
+              name
+              avatar { url }
+            }
+            socialLinks {
+              id
+              facebook
+              website
+              instagram
+              tiktok
+              youtube
+              x
+              whatsapp
+              messenger
+            }
+          }
+        }
+      }
+    `,
+    { slug },
+    300
+  );
+  return Array.isArray(data?.listings) && data.listings.length > 0 ? data.listings[0] : null;
+}
+
+function deriveCleanSlug(listing) {
+  return cleanListingSlug(listing?.slug, listing?.title);
+}
+
+async function resolveListingCanonicalSlug(rawParam) {
+  const raw = typeof rawParam === "string" ? rawParam.trim() : "";
+  if (!raw) return { listing: null, cleanSlug: null };
+
+  const paramLooksLikeDocId = /^[a-z0-9]{20,30}$/i.test(raw);
+
+  let listing = null;
+  if (!paramLooksLikeDocId) {
+    listing = await fetchListingBySavedSlug(raw);
+  }
+  if (!listing && paramLooksLikeDocId) {
+    listing = await fetchListingById(raw);
+  }
+  if (!listing && !paramLooksLikeDocId) {
+    listing = await fetchListingById(raw);
+  }
+
+  if (!listing) return { listing: null, cleanSlug: null };
+
+  const cleanSlug = deriveCleanSlug(listing);
+  return { listing, cleanSlug: cleanSlug || null };
 }
 
 function uniqStrings(list) {
@@ -71,19 +273,36 @@ function coercePrice(value) {
 }
 
 export async function generateMetadata({ params }) {
-  const slug = params?.slug;
-  if (!slug) return {};
+  const slug = (await params)?.slug;
+  if (!slug) {
+    return {
+      title: "Listing Not Found | TombstoneFinder",
+      robots: { index: true, follow: true },
+    };
+  }
 
-  const listing = await fetchListingBySlug(slug);
+  const { listing, cleanSlug } = await resolveListingCanonicalSlug(slug);
   if (!listing) {
     return {
       title: "Listing Not Found | TombstoneFinder",
       alternates: { canonical: toAbsoluteUrl(`/listing/${slug}`) },
+      robots: { index: true, follow: true },
+    };
+  }
+
+  const normalizedRaw = normalizeListingSlug(slug);
+  if (cleanSlug && normalizedRaw !== cleanSlug) {
+    const cleanCanonical = toAbsoluteUrl(`/tombstones/${cleanSlug}`);
+    permanentRedirect(`/tombstones/${cleanSlug}`);
+    return {
+      title: "Tombstone Redirect | TombstoneFinder",
+      alternates: { canonical: cleanCanonical },
+      robots: { index: true, follow: true },
     };
   }
 
   const documentId = listing?.documentId;
-  const canonical = documentId ? toAbsoluteUrl(`/tombstones-for-sale/${documentId}`) : toAbsoluteUrl(`/listing/${slug}`);
+  const canonical = cleanSlug ? toAbsoluteUrl(`/tombstones/${cleanSlug}`) : (documentId ? toAbsoluteUrl(`/tombstones-for-sale/${documentId}`) : toAbsoluteUrl(`/listing/${slug}`));
   const titleRaw = String(listing?.title ?? "").trim();
   const title = titleRaw ? `${titleRaw} | TombstoneFinder` : "Tombstone Listing | TombstoneFinder";
   const description = String(listing?.description ?? "").trim() || "View pricing and details for this tombstone.";
@@ -96,6 +315,7 @@ export async function generateMetadata({ params }) {
     title,
     description,
     alternates: { canonical },
+    robots: { index: true, follow: true },
     openGraph: {
       type: "website",
       url: canonical,
@@ -107,14 +327,19 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function ListingPage({ params }) {
-  const slug = params?.slug;
+  const slug = (await params)?.slug;
   if (!slug) notFound();
 
-  const listing = await fetchListingBySlug(slug);
+  const { listing, cleanSlug } = await resolveListingCanonicalSlug(slug);
   if (!listing) notFound();
 
+  const normalizedRaw = normalizeListingSlug(slug);
+  if (cleanSlug && normalizedRaw !== cleanSlug) {
+    permanentRedirect(`/tombstones/${cleanSlug}`);
+  }
+
   const documentId = listing?.documentId;
-  const canonical = documentId ? toAbsoluteUrl(`/tombstones-for-sale/${documentId}`) : toAbsoluteUrl(`/listing/${slug}`);
+  const canonical = cleanSlug ? toAbsoluteUrl(`/tombstones/${cleanSlug}`) : (documentId ? toAbsoluteUrl(`/tombstones-for-sale/${documentId}`) : toAbsoluteUrl(`/listing/${slug}`));
   const images = uniqStrings([listing?.mainImageUrl, ...(listing?.thumbnailUrls || [])])
     .slice(0, 8)
     .map((u) => (typeof u === "string" && u.startsWith("http") ? u : u ? toAbsoluteUrl(u) : null))

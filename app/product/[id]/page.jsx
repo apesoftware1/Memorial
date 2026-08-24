@@ -1,56 +1,193 @@
 import ProductShowcase from "@/components/product-showcase";
 import ProductStructuredData from "@/components/ProductStructuredData";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
-// This is a Server Component
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tombstonesfinder.co.za";
 
 function toAbsoluteUrl(pathname) {
   return `${SITE_URL}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
 }
 
-async function fetchListing(id) {
-  const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "https://api.tombstonesfinder.co.za/api";
-  const response = await fetch(`${baseUrl}/listings/${id}`, {
-    cache: "force-cache",
-    next: { revalidate: 3600 },
+const GRAPHQL_URL =
+  process.env.NEXT_PUBLIC_STRAPI_GRAPHQL_URL ||
+  `${process.env.STRAPI_API_URL || "https://api.tombstonesfinder.co.za"}/graphql`;
+
+function normalizeListingSlug(raw) {
+  const decoded = decodeURIComponent(typeof raw === "string" ? raw : "");
+  return decoded
+    .toLowerCase()
+    .trim()
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function cleanListingSlug(slug, title) {
+  const rawSlug = typeof slug === "string" ? slug.trim() : "";
+  if (!rawSlug) return normalizeListingSlug(title);
+  const stripped = rawSlug.replace(/(-copy-[a-z0-9]+)+/gi, "").trim();
+  if (!stripped || /^[-]*$/.test(stripped)) return normalizeListingSlug(title);
+  return normalizeListingSlug(stripped);
+}
+
+async function fetchGraphQL(query, variables, revalidate = 3600) {
+  const res = await fetch(GRAPHQL_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, variables }),
+    next: { revalidate },
   });
-  if (!response.ok) return null;
-  const data = await response.json();
-  return data?.data || data || null;
+  if (!res.ok) return null;
+  const json = await res.json();
+  if (json?.errors?.length) return null;
+  return json?.data ?? null;
+}
+
+async function fetchListingById(documentID) {
+  const data = await fetchGraphQL(
+    `
+      query ListingFast($documentID: ID!) {
+        listing(documentId: $documentID) {
+          documentId
+          title
+          mainImageUrl
+          mainImagePublicId
+          thumbnailUrls
+          thumbnailPublicIds
+          description
+          price
+          slug
+          manufacturingTimeframe
+          isOnSpecial
+          specials {
+            active
+            sale_price
+            start_date
+            end_date
+          }
+          listing_category {
+            documentId
+            name
+          }
+          productDetails {
+            id
+            color { id value icon }
+            style { id value icon }
+            overallStyle { id value icon }
+            stoneType { id value icon }
+            slabStyle { id value icon }
+            customization { id value icon }
+          }
+          additionalProductDetails {
+            id
+            transportAndInstallation { id value info }
+            foundationOptions { id value info }
+            warrantyOrGuarantee { id value info }
+            installationGuarantee { id value info }
+          }
+          inquiries_c { documentId }
+          branches(pagination: { limit: 25 }) {
+            documentId
+            name
+          }
+          company {
+            enableWhatsAppButton
+            documentId
+            phone
+            name
+            mapUrl
+            location
+            latitude
+            longitude
+            googleRating
+            logoUrl
+            logoUrlPublicId
+            operatingHours {
+              id
+              monToFri
+              saturday
+              sunday
+              publicHoliday
+            }
+            sales_reps {
+              call
+              whatsapp
+              name
+              avatar { url }
+            }
+            socialLinks {
+              id
+              facebook
+              website
+              instagram
+              tiktok
+              youtube
+              x
+              whatsapp
+              messenger
+            }
+          }
+        }
+      }
+    `,
+    { documentID },
+    300
+  );
+
+  return data?.listing || null;
+}
+
+function deriveCleanSlug(listing) {
+  return cleanListingSlug(listing?.slug, listing?.title);
+}
+
+function pickValue(v) {
+  if (!v) return "";
+  if (typeof v === "string") return v.trim();
+  if (Array.isArray(v)) {
+    const first = v.find(Boolean);
+    if (!first) return "";
+    if (typeof first === "string") return first.trim();
+    if (typeof first === "object") return String(first?.value ?? first?.name ?? "").trim();
+    return String(first).trim();
+  }
+  if (typeof v === "object") return String(v?.value ?? v?.name ?? "").trim();
+  return String(v).trim();
 }
 
 export async function generateMetadata({ params }) {
-  const id = params?.id;
-  if (!id) return {};
-
-  const listing = await fetchListing(id);
-  const canonical = toAbsoluteUrl(`/tombstones-for-sale/${id}`);
-
-  if (!listing) {
-    return { title: "Listing Not Found | TombstoneFinder", alternates: { canonical } };
+  const id = (await params)?.id;
+  if (!id) {
+    return {
+      title: "Listing Not Found | TombstoneFinder",
+      robots: { index: true, follow: true },
+    };
   }
 
-  const l = listing?.attributes && typeof listing?.attributes === "object"
-    ? {
-        ...listing.attributes,
-        documentId: listing?.documentId ?? listing?.id ?? listing?.attributes?.documentId ?? listing?.attributes?.id,
-      }
-    : listing;
+  const listing = await fetchListingById(id);
+  const fallbackCanonical = toAbsoluteUrl(`/tombstones-for-sale/${id}`);
 
-  const pickValue = (v) => {
-    if (!v) return "";
-    if (typeof v === "string") return v.trim();
-    if (Array.isArray(v)) {
-      const first = v.find(Boolean);
-      if (!first) return "";
-      if (typeof first === "string") return first.trim();
-      if (typeof first === "object") return String(first?.value ?? first?.name ?? "").trim();
-      return String(first).trim();
-    }
-    if (typeof v === "object") return String(v?.value ?? v?.name ?? "").trim();
-    return String(v).trim();
-  };
+  if (!listing) {
+    return {
+      title: "Listing Not Found | TombstoneFinder",
+      alternates: { canonical: fallbackCanonical },
+      robots: { index: true, follow: true },
+    };
+  }
+
+  const cleanSlug = deriveCleanSlug(listing);
+  if (cleanSlug) {
+    const cleanCanonical = toAbsoluteUrl(`/tombstones/${cleanSlug}`);
+    permanentRedirect(`/tombstones/${cleanSlug}`);
+    return {
+      title: "Tombstone Redirect | TombstoneFinder",
+      alternates: { canonical: cleanCanonical },
+      robots: { index: true, follow: true },
+    };
+  }
+
+  const l = listing;
 
   const colour = pickValue(l?.productDetails?.color);
   const stoneType = pickValue(l?.productDetails?.stoneType);
@@ -78,10 +215,11 @@ export async function generateMetadata({ params }) {
   return {
     title,
     description,
-    alternates: { canonical },
+    alternates: { canonical: fallbackCanonical },
+    robots: { index: true, follow: true },
     openGraph: {
       type: "product",
-      url: canonical,
+      url: fallbackCanonical,
       title,
       description,
       images: image ? [image] : undefined,
@@ -90,11 +228,16 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function ProductPage({ params }) {
-  const id = params?.id;
+  const id = (await params)?.id;
   if (!id) notFound();
 
-  const listing = await fetchListing(id);
+  const listing = await fetchListingById(id);
   if (!listing) notFound();
+
+  const cleanSlug = deriveCleanSlug(listing);
+  if (cleanSlug) {
+    permanentRedirect(`/tombstones/${cleanSlug}`);
+  }
 
   return (
     <>
