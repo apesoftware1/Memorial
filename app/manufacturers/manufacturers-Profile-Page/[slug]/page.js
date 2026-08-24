@@ -168,8 +168,16 @@ async function resolvePhoneToSeoSlug(rawSlug) {
 async function resolveDocIdOrPhoneToSeoSlug(rawSlug) {
   const phoneRedirect = await resolvePhoneToSeoSlug(rawSlug);
   if (phoneRedirect) return phoneRedirect;
+
   const directSeoSlug = await resolveCompanyDocIdToSeoSlug(rawSlug);
-  return directSeoSlug;
+  if (directSeoSlug) return directSeoSlug;
+
+  const { company } = await fetchCompanyAndListings(rawSlug);
+  if (company?.name) {
+    return normalizeManufacturerSlug(company.name);
+  }
+
+  return null;
 }
 
 export async function generateMetadata({ params }) {
