@@ -1,4 +1,5 @@
 import Link from "next/link";
+import FaqsLayout from "./faqs-layout-client";
 
 export const revalidate = 60;
 
@@ -168,49 +169,51 @@ export default async function FaqIndexPage() {
   const hasList = data && data.mode === "list" && Array.isArray(data.items) && data.items.length > 0;
 
   return (
-    <main className="container mx-auto px-4 py-8">
-      {hasRenderedHtml ? (
-        <>
-          {data.css ? (
-            <style data-faqs-live-categories dangerouslySetInnerHTML={{ __html: data.css }} />
-          ) : null}
-          <div
-            className="faqs-live-categories-payload"
-            dangerouslySetInnerHTML={{ __html: data.html }}
-          />
-        </>
-      ) : hasList ? (
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            Frequently Asked Questions
-          </h1>
-          <p className="text-slate-600 mb-8">
-            Answers to common questions about tombstone buying, installation, pricing, delivery,
-            and working with verified manufacturers across South Africa.
-          </p>
-          <div className="grid gap-4">
-            {data.items.map((faq) => (
-              <Link
-                key={faq.slug}
-                href={`/faqs/${encodeURIComponent(faq.slug)}`}
-                className="block p-6 bg-white rounded-xl border border-slate-200 hover:border-emerald-500 hover:shadow-md transition-all"
-              >
-                <h2 className="text-lg font-semibold text-slate-900 hover:text-emerald-600">
-                  {faq.title || faq.slug}
-                </h2>
-              </Link>
-            ))}
+    <FaqsLayout>
+      <main className="container mx-auto px-4 py-8">
+        {hasRenderedHtml ? (
+          <>
+            {data.css ? (
+              <style data-faqs-live-categories dangerouslySetInnerHTML={{ __html: data.css }} />
+            ) : null}
+            <div
+              className="faqs-live-categories-payload"
+              dangerouslySetInnerHTML={{ __html: data.html }}
+            />
+          </>
+        ) : hasList ? (
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">
+              Frequently Asked Questions
+            </h1>
+            <p className="text-slate-600 mb-8">
+              Answers to common questions about tombstone buying, installation, pricing, delivery,
+              and working with verified manufacturers across South Africa.
+            </p>
+            <div className="grid gap-4">
+              {data.items.map((faq) => (
+                <Link
+                  key={faq.slug}
+                  href={`/faqs/${encodeURIComponent(faq.slug)}`}
+                  className="block p-6 bg-white rounded-xl border border-slate-200 hover:border-emerald-500 hover:shadow-md transition-all"
+                >
+                  <h2 className="text-lg font-semibold text-slate-900 hover:text-emerald-600">
+                    {faq.title || faq.slug}
+                  </h2>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="text-center py-12 max-w-2xl mx-auto">
-          <h1 className="text-2xl font-bold mb-4">Frequently Asked Questions</h1>
-          <p className="text-gray-600">Unable to load FAQ categories at this time.</p>
-          <p className="mt-4 text-sm text-gray-500">
-            Please check back in a few minutes, or browse the rest of the site in the meantime.
-          </p>
-        </div>
-      )}
-    </main>
+        ) : (
+          <div className="text-center py-12 max-w-2xl mx-auto">
+            <h1 className="text-2xl font-bold mb-4">Frequently Asked Questions</h1>
+            <p className="text-gray-600">Unable to load FAQ categories at this time.</p>
+            <p className="mt-4 text-sm text-gray-500">
+              Please check back in a few minutes, or browse the rest of the site in the meantime.
+            </p>
+          </div>
+        )}
+      </main>
+    </FaqsLayout>
   );
 }

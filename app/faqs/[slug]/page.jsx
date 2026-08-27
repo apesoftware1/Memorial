@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import FaqsLayout from "../faqs-layout-client";
 
 export const revalidate = 300;
 
@@ -307,71 +308,73 @@ export default async function FaqPage({ params }) {
   const heading = render.meta?.question || extractFirstHeadingText(render.html) || "Frequently Asked Question";
 
   return (
-    <main className="w-full max-w-4xl mx-auto px-4 py-10 md:py-16">
-      <FaqStructuredData render={render} canonical={canonical} />
+    <FaqsLayout>
+      <main className="w-full max-w-4xl mx-auto px-4 py-10 md:py-16">
+        <FaqStructuredData render={render} canonical={canonical} />
 
-      {render.css ? (
-        <style data-faqs-live dangerouslySetInnerHTML={{ __html: render.css }} />
-      ) : null}
+        {render.css ? (
+          <style data-faqs-live dangerouslySetInnerHTML={{ __html: render.css }} />
+        ) : null}
 
-      <nav aria-label="Breadcrumb" className="mb-6 text-sm text-slate-500">
-        <Link href="/faqs" className="hover:text-slate-800">
-          All FAQs
-        </Link>
-        <span aria-hidden="true" className="mx-2">
-          /
-        </span>
-        <span className="text-slate-700">Question</span>
-      </nav>
-
-      <article>
-        <header className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight leading-tight mb-4">
-            {heading}
-          </h1>
-          <div className="text-sm text-slate-500">
-            {render.meta?.publishedAt ? (
-              <time dateTime={render.meta.publishedAt}>
-                Published {new Date(render.meta.publishedAt).toLocaleDateString("en-ZA")}
-              </time>
-            ) : null}
-            {render.meta?.updatedAt && render.meta.updatedAt !== render.meta?.publishedAt ? (
-              <>
-                {" · "}
-                <time dateTime={render.meta.updatedAt}>
-                  Updated {new Date(render.meta.updatedAt).toLocaleDateString("en-ZA")}
-                </time>
-              </>
-            ) : null}
-          </div>
-        </header>
-
-        <section className="prose prose-slate max-w-none text-slate-800 faqs-live-payload">
-          <div dangerouslySetInnerHTML={{ __html: render.html }} />
-        </section>
-
-        <footer className="mt-12 pt-8 border-t border-slate-200">
-          <Link
-            href="/faqs"
-            className="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900"
-          >
-            <svg
-              aria-hidden="true"
-              className="mr-1.5 w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M19 12H5" />
-              <path d="m12 19-7-7 7-7" />
-            </svg>
-            Back to all FAQs
+        <nav aria-label="Breadcrumb" className="mb-6 text-sm text-slate-500">
+          <Link href="/faqs" className="hover:text-slate-800">
+            All FAQs
           </Link>
-        </footer>
-      </article>
-    </main>
+          <span aria-hidden="true" className="mx-2">
+            /
+          </span>
+          <span className="text-slate-700">Question</span>
+        </nav>
+
+        <article>
+          <header className="mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight leading-tight mb-4">
+              {heading}
+            </h1>
+            <div className="text-sm text-slate-500">
+              {render.meta?.publishedAt ? (
+                <time dateTime={render.meta.publishedAt}>
+                  Published {new Date(render.meta.publishedAt).toLocaleDateString("en-ZA")}
+                </time>
+              ) : null}
+              {render.meta?.updatedAt && render.meta.updatedAt !== render.meta?.publishedAt ? (
+                <>
+                  {" · "}
+                  <time dateTime={render.meta.updatedAt}>
+                    Updated {new Date(render.meta.updatedAt).toLocaleDateString("en-ZA")}
+                  </time>
+                </>
+              ) : null}
+            </div>
+          </header>
+
+          <section className="prose prose-slate max-w-none text-slate-800 faqs-live-payload">
+            <div dangerouslySetInnerHTML={{ __html: render.html }} />
+          </section>
+
+          <footer className="mt-12 pt-8 border-t border-slate-200">
+            <Link
+              href="/faqs"
+              className="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900"
+            >
+              <svg
+                aria-hidden="true"
+                className="mr-1.5 w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M19 12H5" />
+                <path d="m12 19-7-7 7-7" />
+              </svg>
+              Back to all FAQs
+            </Link>
+          </footer>
+        </article>
+      </main>
+    </FaqsLayout>
   );
 }
