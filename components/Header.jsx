@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ChevronDown, X, Filter, Heart } from "lucide-react"
+import { ChevronDown, ChevronRight, X, Filter, Heart } from "lucide-react"
 import { useFavorites } from "@/context/favorites-context.jsx"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react";
@@ -298,6 +298,19 @@ export default function Header({
                       </div>
                     </div>
                   </div>
+
+                  {/* FAQ Direct Link */}
+                  <div className="relative">
+                    <Link
+                      href="/faqs"
+                      title="Frequently Asked Questions"
+                      aria-label="Frequently Asked Questions"
+                      className="group/faq py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors flex items-center relative"
+                    >
+                      FAQ
+                      <span className="absolute left-0 right-2 -bottom-0.5 h-0.5 bg-amber-500 origin-left scale-x-0 group-hover/faq:scale-x-100 transition-transform duration-200 ease-out" aria-hidden="true" />
+                    </Link>
+                  </div>
                 </nav>
               </div>
             </div>
@@ -548,6 +561,20 @@ export default function Header({
               </Link>
             </div>
           )}
+        </div>
+
+        {/* Mobile FAQ */}
+        <div className="py-2 border-t border-gray-100">
+          <Link
+            href="/faqs"
+            title="Frequently Asked Questions"
+            aria-label="Frequently Asked Questions"
+            className="flex items-center justify-between w-full text-gray-700 hover:text-gray-900 transition-colors"
+            onClick={handleMobileMenuToggle}
+          >
+            <span className="font-medium">FAQ</span>
+            <ChevronRight className="h-4 w-4 text-gray-400" />
+          </Link>
         </div>
       </nav>
     </>

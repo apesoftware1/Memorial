@@ -38,6 +38,22 @@ function extractFirstHeadingText(html) {
   return h ? stripHtml(h[1]) : "";
 }
 
+function stripBackToFaqsLink(html) {
+  if (typeof html !== "string") return html;
+  const arrowChars = "(?:←|←|&larr;|&#8592;)?";
+  const spaces = "\\s*";
+  const labelPattern = `${spaces}${arrowChars}${spaces}Back\\s+to\\s+all\\s+FAQs${spaces}`;
+  const pattern = new RegExp(
+    `<a\\b[^>]*href=["'][^"']*\\/faqs[^"']*["'][^>]*>\\s*${labelPattern}\\s*<\\/a>`,
+    "gi"
+  );
+  let next = html.replace(pattern, "");
+  next = next.replace(/<div[^>]*>\s*(?:<p[^>]*>\s*<\/p>|<br\s*\/?>|)\s*<\/div>/gi, "");
+  next = next.replace(/(<br\s*\/?>\s*){2,}/gi, "<br />");
+  next = next.replace(/(\s*\n){3,}/g, "\n\n");
+  return next;
+}
+
 function isLikelyJson(text) {
   if (typeof text !== "string") return false;
   const t = text.trim();
@@ -270,14 +286,26 @@ export async function generateMetadata({ params }) {
     };
   }
 
+  const cleanedHtml = stripBackToFaqsLink(render.html || "");
   const canonicalSlug = render.meta?.canonicalSlug || slug;
   const canonicalMeta = toAbsoluteUrl(`/faqs/${encodeURIComponent(canonicalSlug)}`);
-  const title = render.meta?.title || (render.meta?.question ? `${render.meta.question} | FAQ | TombstoneFinder` : fallback.title);
-  const description = render.meta?.description || fallback.description;
+  const metaDescription =
+    render.meta?.description ||
+    (cleanedHtml ? stripHtml(cleanedHtml).slice(0, 180).trim() : "") ||
+    fallback.description;
+  const title =
+    render.meta?.title ||
+    (render.meta?.question ? `${render.meta.question} | FAQ | TombstoneFinder` : null) ||
+    (cleanedHtml
+      ? extractFirstHeadingText(cleanedHtml)
+        ? `${extractFirstHeadingText(cleanedHtml)} | FAQ | TombstoneFinder`
+        : null
+      : null) ||
+    fallback.title;
 
   return {
     title,
-    description,
+    description: metaDescription,
     alternates: { canonical: canonicalMeta },
     robots: { index: true, follow: true },
     openGraph: {
@@ -303,14 +331,16 @@ export default async function FaqPage({ params }) {
   const render = await fetchLiveFaqRender(slug);
   if (!render.ok) return notFound();
 
+  const cleanedHtml = stripBackToFaqsLink(render.html || "");
+  const cleanedRender = { ...render, html: cleanedHtml };
   const canonicalSlug = render.meta?.canonicalSlug || slug;
   const canonical = toAbsoluteUrl(`/faqs/${encodeURIComponent(canonicalSlug)}`);
-  const heading = render.meta?.question || extractFirstHeadingText(render.html) || "Frequently Asked Question";
+  const heading = render.meta?.question || extractFirstHeadingText(cleanedHtml) || "Frequently Asked Question";
 
   return (
     <FaqsLayout>
       <main className="w-full max-w-4xl mx-auto px-4 py-10 md:py-16">
-        <FaqStructuredData render={render} canonical={canonical} />
+        <FaqStructuredData render={cleanedRender} canonical={canonical} />
 
         {render.css ? (
           <style data-faqs-live dangerouslySetInnerHTML={{ __html: render.css }} />
@@ -349,7 +379,7 @@ export default async function FaqPage({ params }) {
           </header>
 
           <section className="prose prose-slate max-w-none text-slate-800 faqs-live-payload">
-            <div dangerouslySetInnerHTML={{ __html: render.html }} />
+            <div dangerouslySetInnerHTML={{ __html: cleanedRender.html }} />
           </section>
 
           <footer className="mt-12 pt-8 border-t border-slate-200">
