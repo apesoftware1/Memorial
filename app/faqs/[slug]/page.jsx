@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import Link from "next/link";
 import FaqsLayout from "../faqs-layout-client";
 
@@ -52,6 +51,11 @@ function stripBackToFaqsLink(html) {
   next = next.replace(/(<br\s*\/?>\s*){2,}/gi, "<br />");
   next = next.replace(/(\s*\n){3,}/g, "\n\n");
   return next;
+}
+
+function stripScriptTags(html) {
+  if (typeof html !== "string") return html;
+  return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
 }
 
 function isLikelyJson(text) {
@@ -269,8 +273,8 @@ export async function generateMetadata({ params }) {
 
   if (!slug) {
     return {
-      title: "FAQ Not Found | TombstoneFinder",
-      description: "This FAQ could not be found.",
+      title: "Failed to load FAQ details",
+      description: "FAQ slug is missing from the URL.",
       alternates: { canonical },
       robots: { index: false, follow: false },
     };
@@ -278,9 +282,21 @@ export async function generateMetadata({ params }) {
 
   const render = await fetchLiveFaqRender(slug);
   if (!render.ok) {
+    const reason =
+      render.notFound
+        ? "Not found"
+        : render.empty
+          ? "Empty response"
+          : render.error === "network"
+            ? "Network error"
+            : render.error === "upstream"
+              ? `Upstream HTTP ${render.status ?? "?"}`
+              : render.error === "parse"
+                ? "Payload parse error"
+                : "Unknown error";
     return {
-      title: "FAQ Not Found | TombstoneFinder",
-      description: "This FAQ could not be found.",
+      title: "Failed to load FAQ details",
+      description: `${reason} — Slug: ${slug}`,
       alternates: { canonical },
       robots: { index: false, follow: false },
     };
@@ -326,16 +342,65 @@ export default async function FaqPage({ params }) {
   const rawSlug = (await params)?.slug;
   const slug = typeof rawSlug === "string" ? decodeURIComponent(rawSlug) : "";
 
-  if (!slug) return notFound();
+  if (!slug) {
+    return (
+      <FaqsLayout>
+        <main className="container mx-auto px-4 py-16 max-w-4xl">
+          <h1 className="text-xl font-bold mb-4 text-red-700">Failed to load FAQ details</h1>
+          <p className="text-gray-600">FAQ slug is missing from the URL.</p>
+          <Link href="/faqs" className="mt-6 inline-block text-sm text-emerald-600 hover:text-emerald-800 font-medium">
+            ← Back to all FAQs
+          </Link>
+        </main>
+      </FaqsLayout>
+    );
+  }
 
   const render = await fetchLiveFaqRender(slug);
-  if (!render.ok) return notFound();
+  if (!render.ok) {
+    const reason =
+      render.notFound
+        ? "Not found"
+        : render.empty
+          ? "Empty response"
+          : render.error === "network"
+            ? "Network error"
+            : render.error === "upstream"
+              ? `Upstream HTTP ${render.status ?? "?"}`
+              : render.error === "parse"
+                ? "Payload parse error"
+                : "Unknown error";
+
+    return (
+      <FaqsLayout>
+        <main className="container mx-auto px-4 py-16 max-w-4xl">
+          <h1 className="text-xl font-bold mb-4 text-red-700">Failed to load FAQ details</h1>
+          <dl className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm text-gray-700">
+            <dt className="text-gray-500 font-medium">Reason</dt>
+            <dd className="font-mono break-all">{reason}</dd>
+            <dt className="text-gray-500 font-medium">Slug</dt>
+            <dd className="font-mono break-all">{slug}</dd>
+            <dt className="text-gray-500 font-medium">Endpoint</dt>
+            <dd className="font-mono break-all">
+              {FAQS_LIVE_ENDPOINT}?slug={encodeURIComponent(slug)}
+            </dd>
+          </dl>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link href="/faqs" className="inline-flex items-center text-sm font-medium text-emerald-700 hover:text-emerald-900">
+              ← Back to all FAQs
+            </Link>
+          </div>
+        </main>
+      </FaqsLayout>
+    );
+  }
 
   const cleanedHtml = stripBackToFaqsLink(render.html || "");
-  const cleanedRender = { ...render, html: cleanedHtml };
+  const safeHtml = stripScriptTags(cleanedHtml);
+  const cleanedRender = { ...render, html: safeHtml };
   const canonicalSlug = render.meta?.canonicalSlug || slug;
   const canonical = toAbsoluteUrl(`/faqs/${encodeURIComponent(canonicalSlug)}`);
-  const heading = render.meta?.question || extractFirstHeadingText(cleanedHtml) || "Frequently Asked Question";
+  const heading = render.meta?.question || extractFirstHeadingText(safeHtml) || "Frequently Asked Question";
 
   return (
     <FaqsLayout>
