@@ -90,7 +90,7 @@ function normalizeRenderPayload(rawText, contentType, slug) {
 
   const looksJson = isLikelyJson(rawText);
   const ct = typeof contentType === "string" ? contentType.toLowerCase() : "";
-  const treatAsJson = looksJson && !ct.includes("text/html");
+  let treatAsJson = looksJson && !ct.includes("text/html");
 
   let html = "";
   let css = "";
@@ -310,14 +310,14 @@ export async function generateMetadata({ params }) {
     robots: { index: true, follow: true },
     openGraph: {
       title,
-      description,
+      description: metaDescription,
       url: canonicalMeta,
       type: "article",
     },
     twitter: {
       card: "summary",
       title,
-      description,
+      description: metaDescription,
     },
   };
 }
