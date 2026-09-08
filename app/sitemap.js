@@ -183,29 +183,137 @@ function safeSitemapEntries(entries) {
   return Array.from(map.values());
 }
 
+function pickFirstValue(v) {
+  if (!v) return "";
+  if (typeof v === "string") return v.trim();
+  if (Array.isArray(v)) {
+    const first = v.find((x) => x !== null && x !== undefined && x !== "");
+    if (first === undefined || first === null) return "";
+    if (typeof first === "string") return first.trim();
+    if (typeof first === "object") {
+      return String(
+        first.value ?? first.name ?? first.title ?? first.label ?? ""
+      ).trim();
+    }
+    return String(first).trim();
+  }
+  if (typeof v === "object") {
+    return String(
+      v.value ?? v.name ?? v.title ?? v.label ?? ""
+    ).trim();
+  }
+  return String(v).trim();
+}
+
+function pickListingTown(listing) {
+  if (!listing || typeof listing !== "object") return "";
+  const firstBranch = Array.isArray(listing.branches) ? listing.branches[0] : null;
+  const town1 = pickFirstValue(firstBranch?.location?.town);
+  if (town1) return town1.split(",")[0].trim();
+  const city1 = pickFirstValue(firstBranch?.location?.city);
+  if (city1) return city1.split(",")[0].trim();
+  const l1 = pickFirstValue(listing.location?.town);
+  if (l1) return l1.split(",")[0].trim();
+  const l2 = pickFirstValue(listing.location?.city);
+  if (l2) return l2.split(",")[0].trim();
+  const companyLoc = pickFirstValue(listing.company?.location);
+  if (companyLoc) {
+    const parts = companyLoc.split(",");
+    const townPart = parts.find((p) => /town|township|suburb/i.test(p) === false);
+    const clean = (townPart || parts[0] || "").trim();
+    if (clean) return clean;
+  }
+  const topLoc = pickFirstValue(listing.location);
+  if (topLoc && typeof topLoc === "string") {
+    return topLoc.split(",")[0].trim();
+  }
+  return "";
+}
+
+function buildListingCanonicalSegments(listing) {
+  const name = pickFirstValue(listing?.name ?? listing?.title);
+  const stoneType = pickFirstValue(listing?.productDetails?.stoneType);
+  const headStyle =
+    pickFirstValue(listing?.productDetails?.style) ||
+    pickFirstValue(listing?.productDetails?.overallStyle) ||
+    pickFirstValue(listing?.productDetails?.headstyle) ||
+    pickFirstValue(listing?.productDetails?.headstoneStyle);
+  const town = pickListingTown(listing);
+  const segName = toSlugSegment(name);
+  const segStone = toSlugSegment(stoneType);
+  const segHead = toSlugSegment(headStyle);
+  const segTown = toSlugSegment(town);
+  if (!segHead) {
+    return [segName, segStone, "tombstone", segTown].filter(Boolean);
+  }
+  return [segName, segStone, segHead, "tombstone", segTown].filter(Boolean);
+}
+
+function buildListingCanonicalSlug(listing) {
+  const segs = buildListingCanonicalSegments(listing);
+  if (segs.length === 0) return "";
+  return normalizeListingSlug(segs.join("-"));
+}
+
 async function fetchListingCanonicalEntries() {
   const data = await fetchGraphQL(
     `query SitemapListings {
       listings(pagination: { limit: -1 }, sort: "updatedAt:desc") {
         documentId
+        name
         title
         slug
         updatedAt
         publishedAt
+        location {
+          town
+          city
+          province
+          address
+        }
+        productDetails {
+          stoneType { value id }
+          style { value id }
+          overallStyle { value id }
+          headstyle { value id }
+          headstoneStyle { value id }
+        }
+        branches(pagination: { limit: 1 }) {
+          location { town city province address }
+        }
+        company { location }
       }
     }`
   );
   const rows = Array.isArray(data?.listings) ? data.listings : [];
   const entries = [];
+  const seenSlugs = new Map();
   for (const l of rows) {
     if (!l?.publishedAt) continue;
     if (!l?.documentId) continue;
-    const canonicalSlug = cleanListingSlug(l.slug, l.title);
-    if (!canonicalSlug) continue;
+    const canonicalSlug = buildListingCanonicalSlug(l);
+    if (!canonicalSlug) {
+      const fallback = cleanListingSlug(l.slug, l.name || l.title);
+      if (!fallback) continue;
+      const lastMod = pickBestCanonicalDate([l.updatedAt, l.publishedAt]);
+      entries.push(buildSiteMapEntry(`/tombstones/${fallback}`, lastMod, "weekly", 0.75));
+      continue;
+    }
     const lastMod = pickBestCanonicalDate([l.updatedAt, l.publishedAt]);
-    entries.push(
-      buildSiteMapEntry(`/tombstones/${canonicalSlug}`, lastMod, "weekly", 0.8)
-    );
+    const route = `/tombstones/${canonicalSlug}`;
+    if (!seenSlugs.has(canonicalSlug)) {
+      seenSlugs.set(canonicalSlug, lastMod || "");
+      entries.push(buildSiteMapEntry(route, lastMod, "weekly", 0.8));
+    } else {
+      const prev = entries.find(
+        (e) => e.url && new URL(e.url).pathname === route
+      );
+      if (prev) {
+        const prevTs = Date.parse(prev.lastModified || "");
+        const newTs = Date.parse(lastMod || "");
+        if (newTs > prevTs) prev.lastModified = lastMod;
+      }
+    }
   }
   return entries;
 }
