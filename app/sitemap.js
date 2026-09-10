@@ -387,18 +387,11 @@ async function fetchFaqCanonicalEntries() {
   }
   if (!raw || !raw.trim()) return [];
 
-  const contentType = "";
-  const looksJson =
-    raw.trim().startsWith("{") || raw.trim().startsWith("[");
-  const treatAsJson = looksJson && !contentType.includes("text/html");
-
   let payload = null;
-  if (treatAsJson) {
-    try {
-      payload = JSON.parse(raw);
-    } catch (_e) {
-      payload = null;
-    }
+  try {
+    payload = JSON.parse(raw);
+  } catch (_e) {
+    payload = null;
   }
 
   const arrays = payload
@@ -424,7 +417,7 @@ async function fetchFaqCanonicalEntries() {
       const slug = attrs.slug || attrs.canonicalSlug || row.slug || row.canonicalSlug || "";
       if (typeof slug === "string" && slug.trim()) {
         flatRows.push({
-          slug: slug.trim(),
+          slug: slug.trim(), // Keep exact slug string from Nick's API
           updatedAt:
             attrs.updatedAt || row.updatedAt || attrs.modifiedAt || row.modifiedAt || null,
           publishedAt:
@@ -437,12 +430,12 @@ async function fetchFaqCanonicalEntries() {
   const entries = [];
   const dedupe = new Set();
   for (const row of flatRows) {
-    const clean = toSlugSegment(row.slug);
-    if (!clean) continue;
-    if (dedupe.has(clean)) continue;
-    dedupe.add(clean);
+    const exactSlug = row.slug;
+    if (!exactSlug) continue;
+    if (dedupe.has(exactSlug)) continue;
+    dedupe.add(exactSlug);
     const lastMod = pickBestCanonicalDate([row.updatedAt, row.publishedAt]);
-    entries.push(buildSiteMapEntry(`/faqs/${clean}`, lastMod, "weekly", 0.7));
+    entries.push(buildSiteMapEntry(`/faqs/${exactSlug}`, lastMod, "weekly", 0.7));
   }
   return entries;
 }
