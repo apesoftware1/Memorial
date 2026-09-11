@@ -5,6 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Heart, Trash2 } from "lucide-react"
 import { cloudinaryOptimized } from "@/lib/cloudinary"
+import { buildListingCanonicalHref } from "@/lib/slugs"
 
 export function FavoritesContent() {
   const { favorites, removeFavorite, totalFavorites } = useFavorites()
@@ -27,9 +28,12 @@ export function FavoritesContent() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {favorites.map((product) => (
+      {favorites.map((product) => {
+        const canonicalHref = buildListingCanonicalHref(product);
+        const href = canonicalHref || `/tombstones-for-sale/${product.id}`;
+        return (
         <div key={product.id} className="bg-white border border-gray-200 overflow-hidden hover:shadow-md transition-shadow relative">
-          <Link href={`/tombstones-for-sale/${product.id}`}>
+          <Link href={href}>
             {/* Image Container */}
             <div className="relative h-56 bg-gray-100">
               <Image 
@@ -74,7 +78,8 @@ export function FavoritesContent() {
             <Trash2 className="h-5 w-5 text-red-500" />
           </button>
         </div>
-      ))}
+        );
+      })}
     </div>
   )
 }

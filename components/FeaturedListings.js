@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/priceUtils';
 import { cloudinaryOptimized } from '@/lib/cloudinary';
+import { buildListingCanonicalHref } from '@/lib/slugs';
 
 // Helper to map listing category fields to a user-friendly label
 function getCategoryLabel(listing) {
@@ -31,8 +32,11 @@ function getCategoryLabel(listing) {
   return raw.replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
-const FeaturedListings = ({ listing }) => (
-  <Link href={`/tombstones-for-sale/${listing.documentId}`} className="block group">
+const FeaturedListings = ({ listing }) => {
+  const canonicalHref = buildListingCanonicalHref(listing);
+  const href = canonicalHref || (listing.documentId ? `/tombstones-for-sale/${listing.documentId}` : "#");
+  return (
+    <Link href={href} className="block group">
     <div 
       className="bg-white border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
       onContextMenu={(e) => e.preventDefault()}
@@ -77,6 +81,7 @@ const FeaturedListings = ({ listing }) => (
       </div>
     </div>
   </Link>
-);
+  );
+};
 
 export default FeaturedListings;

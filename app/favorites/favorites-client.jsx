@@ -7,6 +7,7 @@ import { cloudinaryOptimized } from "@/lib/cloudinary"
 import { Facebook, Twitter, Linkedin, Mail, Loader2, AlertCircle, RefreshCw, Trash2, MessageCircle, Instagram } from "lucide-react"
 import { useFavorites } from "@/context/favorites-context.jsx"
 import { ConfirmationModal } from "@/components/ConfirmationModal.jsx"
+import { buildListingCanonicalHref } from "@/lib/slugs"
 
 // Constants for pagination
 const ITEMS_PER_PAGE = 12
@@ -233,7 +234,10 @@ export function FavoritesClientContent() {
 
       {/* Favorites grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-        {paginationData.items.map((favorite) => (
+        {paginationData.items.map((favorite) => {
+          const canonicalHref = buildListingCanonicalHref(favorite);
+          const href = canonicalHref || `/tombstones-for-sale/${favorite.id}`;
+          return (
           <div key={favorite.id} className="group">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
               {/* Product Image */}
@@ -262,7 +266,7 @@ export function FavoritesClientContent() {
               </div>
               
               {/* Product Info */}
-              <Link href={`/tombstones-for-sale/${favorite.id}`} className="block">
+              <Link href={href} className="block">
                 <div className="p-4">
                   <h3 className="font-bold text-gray-900 text-lg mb-3 group-hover:text-amber-600 transition-colors uppercase">
                     {favorite.title || favorite.name || "Untitled Product"}
@@ -329,7 +333,7 @@ export function FavoritesClientContent() {
               </Link>
             </div>
           </div>
-        ))}
+        )})}
       </div>
 
       {/* Pagination */}

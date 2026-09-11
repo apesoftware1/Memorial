@@ -7,6 +7,7 @@ import { StandardListingCard } from "@/components/standard-listing-card";
 import BannerAd from "@/components/BannerAd";
 import FeaturedListings from "@/components/FeaturedListings";
 import NoListingsFallback from "@/components/NoListingsFallback";
+import { buildListingCanonicalHref } from "@/lib/slugs";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { PageLoader, CardSkeleton } from "@/components/ui/loader";
 import { useQuery } from "@apollo/client";
@@ -253,11 +254,14 @@ const IndexRender = ({
           </div>
         </div>
         {premiumFirstHalf.length > 0
-          ? premiumFirstHalf.map((item, idx) => (
+          ? premiumFirstHalf.map((item, idx) => {
+              const canonicalHref = buildListingCanonicalHref(item);
+              const href = canonicalHref || `/tombstones-for-sale/${item.documentId}`;
+              return (
               <div key={item.documentId || idx} className={`${idx === 0 ? 'mb-4 -mt-2' : idx === 1 ? 'mb-6 mt-2' : 'mb-6'}`}>
-                <PremiumListingCard listing={item} />
+                <PremiumListingCard listing={item} href={href} />
               </div>
-            ))
+            );})
           : (!loading ? <NoListingsFallback message="No premium listings available" /> : null)}
       </section>
 
@@ -279,14 +283,17 @@ const IndexRender = ({
       {/* 7. Premium Listings Section (Part 2) */}
       <section className="mt-0 pt-0 pb-2 mb-0 bg-gray-50">
         {premiumSecondHalf.length > 0
-          ? premiumSecondHalf.map((item, idx) => (
+          ? premiumSecondHalf.map((item, idx) => {
+              const canonicalHref = buildListingCanonicalHref(item);
+              const href = canonicalHref || `/tombstones-for-sale/${item.documentId}`;
+              return (
               <div 
                 key={item.documentId || idx} 
                 className={idx === 0 ? "mb-4 -mt-2" : idx === 1 ? "mb-6 mt-2" : "mb-6"}
               >
-                <PremiumListingCard listing={item} />
+                <PremiumListingCard listing={item} href={href} />
               </div>
-            ))
+            );})
           : (!loading ? <NoListingsFallback message="No premium listings available" /> : null)}
       </section>
 

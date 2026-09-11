@@ -21,6 +21,9 @@ export const GET_LISTING_BY_ID = gql`
           latitude
           longitude
           mapUrl
+          town
+          city
+          province
         }
       }
       title

@@ -12,6 +12,7 @@ import LocationFaqSection from "@/app/locations/location-faq-section";
 import NearbyLocationsSection from "@/app/locations/nearby-locations-section";
 import { LOCATION_LANDING_PAGE_QUERY } from "@/graphql/queries/locationLandingPage";
 import { fetchGraphQL, toAbsoluteUrl } from "@/lib/serverGraphql";
+import { buildListingCanonicalHref } from "@/lib/slugs";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -481,7 +482,11 @@ function toInternalSlugPath(value?: string | null) {
   return normalizePath(value) || null;
 }
 
-function toListingHref(documentId?: string | null, slug?: string | null) {
+function toListingHref(listing: any) {
+  const canonical = buildListingCanonicalHref(listing);
+  if (canonical) return canonical;
+  const documentId = listing?.documentId;
+  const slug = listing?.slug;
   const idValue = typeof documentId === "string" ? documentId.trim() : "";
   if (idValue) return `/tombstones-for-sale/${idValue}`;
 
@@ -926,7 +931,7 @@ export default async function LocationLandingPage({
               const listing = item?.listing;
               const company = item?.company;
               const branch = item?.branch;
-              const listingHref = toListingHref(listing?.documentId, listing?.slug);
+              const listingHref = toListingHref(listing);
               const companyHref = toCompanyHref(company?.slug);
               const imageUrl =
                 typeof listing?.thumbnail?.url === "string" && listing.thumbnail.url.trim()

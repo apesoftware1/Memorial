@@ -48,6 +48,7 @@ function buildManufacturerProfileHref(listing, branch) {
 }
 import { GET_LISTING_BRANCHES_FOR_MODAL, GET_LISTING_EXTRAS_BY_ID } from "@/graphql/queries/getListingExtrasById";
 import { PageLoader } from "./ui/loader";
+import { buildListingCanonicalHref } from "@/lib/slugs";
 
 export default function ProductShowcase({ listing, id, allListings = [], currentIndex = 0, onNavigate }) {
   if (!listing) {
@@ -66,8 +67,6 @@ export default function ProductShowcase({ listing, id, allListings = [], current
   const [shouldFetchExtras, setShouldFetchExtras] = useState(false);
   const searchParams = useSearchParams();
   const branch = searchParams.get("branch"); // Prioritize branchId prop
-  const pathname = usePathname();
-  const basePath = pathname && pathname.includes('/tombstones-for-sale') ? '/tombstones-for-sale' : '/product';
   const listingDocumentId = id || listing?.documentId;
   const companyDocumentId = listing?.company?.documentId || listing?.companyId || null;
   const hideSpecialOffer =
@@ -154,9 +153,13 @@ export default function ProductShowcase({ listing, id, allListings = [], current
       setIsTransitioning(true);
       const prevIndex = (currentIndex - 1 + allListings.length) % allListings.length;
       const prevListing = allListings[prevIndex];
-      if (prevListing && (prevListing.documentId || prevListing.id)) {
+      if (prevListing) {
+        const canonicalHref = buildListingCanonicalHref(prevListing);
         const targetId = prevListing.documentId || prevListing.id;
-        window.location.href = `${basePath}/${targetId}${branch ? `?branch=${branch}` : ''}`;
+        const baseHref = canonicalHref || (targetId ? `/tombstones-for-sale/${targetId}` : null);
+        if (baseHref) {
+          window.location.href = `${baseHref}${branch ? `?branch=${branch}` : ''}`;
+        }
       }
     }
   };
@@ -170,9 +173,13 @@ export default function ProductShowcase({ listing, id, allListings = [], current
       setIsTransitioning(true);
       const nextIndex = (currentIndex + 1) % allListings.length;
       const nextListing = allListings[nextIndex];
-      if (nextListing && (nextListing.documentId || nextListing.id)) {
+      if (nextListing) {
+        const canonicalHref = buildListingCanonicalHref(nextListing);
         const targetId = nextListing.documentId || nextListing.id;
-        window.location.href = `${basePath}/${targetId}${branch ? `?branch=${branch}` : ''}`;
+        const baseHref = canonicalHref || (targetId ? `/tombstones-for-sale/${targetId}` : null);
+        if (baseHref) {
+          window.location.href = `${baseHref}${branch ? `?branch=${branch}` : ''}`;
+        }
       }
     }
   };
@@ -1066,10 +1073,13 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                   More Tombstones from this Manufacturer
                 </h3>
                 {Array.isArray(companyListingsFromExtras) && companyListingsFromExtras.length > 0 ? (
-                  companyListingsFromExtras.slice(0, 3).map((product) => (
+                  companyListingsFromExtras.slice(0, 3).map((product) => {
+                    const canonicalHref = buildListingCanonicalHref(product);
+                    const href = canonicalHref || `/tombstones-for-sale/${product.documentId}`;
+                    return (
                     <Link
                       key={product.documentId}
-                      href={`/tombstones-for-sale/${product.documentId}`}
+                      href={href}
                       className="block"
                     >
                       <div className="flex border-b border-gray-200 py-3 hover:bg-gray-50 transition">
@@ -1094,7 +1104,8 @@ export default function ProductShowcase({ listing, id, allListings = [], current
                         </div>
                       </div>
                     </Link>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-sm text-gray-600">
                     No similar products available.

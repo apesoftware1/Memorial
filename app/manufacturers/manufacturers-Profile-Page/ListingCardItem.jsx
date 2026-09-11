@@ -7,6 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { buildListingCanonicalHref } from "@/lib/slugs";
 
 const SettingsIcon = (props) => (
   <svg
@@ -151,9 +152,7 @@ const ListingCardItem = memo(({
                 enquiries: listing.inquiries?.length || 0,
                 }}
                 isFirstCard={isFirstCard}
-                href={`/tombstones-for-sale/${
-                listing.documentId || listing.id
-                }`}
+                href={(buildListingCanonicalHref(listing) || `/tombstones-for-sale/${listing.documentId || listing.id}`)}
                 isOwner={isOwner}
                 fixedHeight={fixedHeight}
             />

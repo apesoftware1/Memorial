@@ -6,6 +6,7 @@ import { cloudinaryOptimized } from "@/lib/cloudinary"
 import { FavoriteButton } from "./favorite-button"
 import { useFavorites } from "@/context/favorites-context.jsx"
 import { formatPrice } from "@/lib/priceUtils"
+import { buildListingCanonicalHref } from "@/lib/slugs"
 
 /**
  * @typedef {Object} ProductCardProps
@@ -32,13 +33,16 @@ export function ProductCard(props) {
     return null;
   }
 
+  const canonicalHref = buildListingCanonicalHref(product);
+  const href = canonicalHref || (id ? `/tombstones-for-sale/${id}` : "#");
+
   return (
     <div 
       className="bg-white rounded-lg shadow-md overflow-hidden transition-transform hover:shadow-lg"
       onContextMenu={(e) => e.preventDefault()}
       onDragStart={(e) => e.preventDefault()}
     >
-      <Link href={`/product/${id}`} className="block">
+      <Link href={href} className="block">
         <div className="relative h-48 w-full">
           <Image 
             src={cloudinaryOptimized(image, 400) || "/placeholder.svg"} 

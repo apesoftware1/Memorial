@@ -1,4 +1,9 @@
 import { fetchGraphQL, toAbsoluteUrl } from "@/lib/serverGraphql";
+import {
+  toSlugSegment,
+  cleanListingSlug,
+  buildListingCanonicalHref,
+} from "@/lib/slugs";
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
@@ -25,49 +30,6 @@ function stripProtocol(url) {
 
 function stripTrailingSlash(route) {
   return typeof route === "string" ? route.replace(/\/+$/, "") || "/" : "/";
-}
-
-function toSlugSegment(value) {
-  const raw = typeof value === "string" && value.trim() ? value.trim() : "";
-  if (!raw) return "";
-  const decoded = (() => {
-    try {
-      return decodeURIComponent(raw);
-    } catch (_e) {
-      return raw;
-    }
-  })();
-  return decoded
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-");
-}
-
-function normalizeListingSlug(raw) {
-  const base = typeof raw === "string" ? raw.trim() : "";
-  if (!base) return "";
-  const decoded = (() => {
-    try {
-      return decodeURIComponent(base);
-    } catch (_e) {
-      return base;
-    }
-  })();
-  return decoded
-    .toLowerCase()
-    .replace(/[\s_]+/g, "-")
-    .replace(/[^a-z0-9-]/g, "")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function cleanListingSlug(slug, title) {
-  const rawSlug = typeof slug === "string" ? slug.trim() : "";
-  if (!rawSlug) return normalizeListingSlug(title);
-  const stripped = rawSlug.replace(/(-copy-[a-z0-9]+)+/gi, "").trim();
-  if (!stripped || /^[-]*$/.test(stripped)) return normalizeListingSlug(title);
-  return normalizeListingSlug(stripped);
 }
 
 function normalizeManufacturerSlug(raw) {
@@ -183,105 +145,26 @@ function safeSitemapEntries(entries) {
   return Array.from(map.values());
 }
 
-function pickFirstValue(v) {
-  if (!v) return "";
-  if (typeof v === "string") return v.trim();
-  if (Array.isArray(v)) {
-    const first = v.find((x) => x !== null && x !== undefined && x !== "");
-    if (first === undefined || first === null) return "";
-    if (typeof first === "string") return first.trim();
-    if (typeof first === "object") {
-      return String(
-        first.value ?? first.name ?? first.title ?? first.label ?? ""
-      ).trim();
-    }
-    return String(first).trim();
-  }
-  if (typeof v === "object") {
-    return String(
-      v.value ?? v.name ?? v.title ?? v.label ?? ""
-    ).trim();
-  }
-  return String(v).trim();
-}
-
-function pickListingTown(listing) {
-  if (!listing || typeof listing !== "object") return "";
-  const firstBranch = Array.isArray(listing.branches) ? listing.branches[0] : null;
-  const town1 = pickFirstValue(firstBranch?.location?.town);
-  if (town1) return town1.split(",")[0].trim();
-  const city1 = pickFirstValue(firstBranch?.location?.city);
-  if (city1) return city1.split(",")[0].trim();
-  const l1 = pickFirstValue(listing.location?.town);
-  if (l1) return l1.split(",")[0].trim();
-  const l2 = pickFirstValue(listing.location?.city);
-  if (l2) return l2.split(",")[0].trim();
-  const companyLoc = pickFirstValue(listing.company?.location);
-  if (companyLoc) {
-    const parts = companyLoc.split(",");
-    const townPart = parts.find((p) => /town|township|suburb/i.test(p) === false);
-    const clean = (townPart || parts[0] || "").trim();
-    if (clean) return clean;
-  }
-  const topLoc = pickFirstValue(listing.location);
-  if (topLoc && typeof topLoc === "string") {
-    return topLoc.split(",")[0].trim();
-  }
-  return "";
-}
-
-function buildListingCanonicalSegments(listing) {
-  const name = pickFirstValue(listing?.name ?? listing?.title);
-  const stoneType = pickFirstValue(listing?.productDetails?.stoneType);
-  const headStyle =
-    pickFirstValue(listing?.productDetails?.style) ||
-    pickFirstValue(listing?.productDetails?.overallStyle) ||
-    pickFirstValue(listing?.productDetails?.headstyle) ||
-    pickFirstValue(listing?.productDetails?.headstoneStyle);
-  const town = pickListingTown(listing);
-  const segName = toSlugSegment(name);
-  const segStone = toSlugSegment(stoneType);
-  const segHead = toSlugSegment(headStyle);
-  const segTown = toSlugSegment(town);
-  if (!segHead) {
-    return [segName, segStone, "tombstone", segTown].filter(Boolean);
-  }
-  return [segName, segStone, segHead, "tombstone", segTown].filter(Boolean);
-}
-
-function buildListingCanonicalSlug(listing) {
-  const segs = buildListingCanonicalSegments(listing);
-  if (segs.length === 0) return "";
-  return normalizeListingSlug(segs.join("-"));
-}
-
 async function fetchListingCanonicalEntries() {
   const data = await fetchGraphQL(
     `query SitemapListings {
       listings(pagination: { limit: -1 }, sort: "updatedAt:desc") {
         documentId
-        name
         title
         slug
         updatedAt
         publishedAt
-        location {
-          town
-          city
-          province
-          address
-        }
         productDetails {
           stoneType { value id }
           style { value id }
           overallStyle { value id }
-          headstyle { value id }
-          headstoneStyle { value id }
+          slabStyle { value id }
         }
         branches(pagination: { limit: 1 }) {
+          name
           location { town city province address }
         }
-        company { location }
+        company { name location }
       }
     }`
   );
@@ -291,16 +174,17 @@ async function fetchListingCanonicalEntries() {
   for (const l of rows) {
     if (!l?.publishedAt) continue;
     if (!l?.documentId) continue;
-    const canonicalSlug = buildListingCanonicalSlug(l);
-    if (!canonicalSlug) {
-      const fallback = cleanListingSlug(l.slug, l.name || l.title);
+    const canonicalRoute = buildListingCanonicalHref(l);
+    if (!canonicalRoute) {
+      const fallback = cleanListingSlug(l.slug, l.title);
       if (!fallback) continue;
       const lastMod = pickBestCanonicalDate([l.updatedAt, l.publishedAt]);
       entries.push(buildSiteMapEntry(`/tombstones/${fallback}`, lastMod, "weekly", 0.75));
       continue;
     }
+    const canonicalSlug = canonicalRoute.replace(/^\/tombstones\//, "");
     const lastMod = pickBestCanonicalDate([l.updatedAt, l.publishedAt]);
-    const route = `/tombstones/${canonicalSlug}`;
+    const route = canonicalRoute;
     if (!seenSlugs.has(canonicalSlug)) {
       seenSlugs.set(canonicalSlug, lastMod || "");
       entries.push(buildSiteMapEntry(route, lastMod, "weekly", 0.8));

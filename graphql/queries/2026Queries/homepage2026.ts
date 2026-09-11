@@ -76,6 +76,16 @@ export const HOMEPAGE_2026_QUERY = gql`
           documentId
           name
         }
+        branches(pagination: { limit: 1 }) {
+          documentId
+          name
+          location {
+            town
+            city
+            province
+            address
+          }
+        }
         isFeatured
         isPremium
         isStandard

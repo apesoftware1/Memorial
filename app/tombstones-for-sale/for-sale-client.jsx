@@ -34,6 +34,7 @@ import { sanitizeLocationHierarchy } from "@/lib/locationHierarchySanitizer";
 import { useGuestLocation } from "@/hooks/useGuestLocation";
 import { GET_LISTING_BRANCHES_FOR_MODAL } from "@/graphql/queries/getListingExtrasById";
 import { trackAnalyticsEvent } from "@/lib/analytics";
+import { buildListingCanonicalHref } from "@/lib/slugs";
 
 const stableHash = (input) => {
   const s = String(input ?? "")
@@ -878,7 +879,8 @@ export default function TombstonesForSaleClient({
   const buildListingItem = useCallback(
     (listing) => {
       const listingId = listing?.documentId || listing?.id;
-      const href = listingId ? `/tombstones-for-sale/${listingId}` : "#";
+      const canonicalHref = buildListingCanonicalHref(listing);
+      const href = canonicalHref || (listingId ? `/tombstones-for-sale/${listingId}` : "#");
 
       const hideBranchesTag = selectedLocationTokens.length === 1;
       const listingForCard = { ...listing, __hideBranchesTag: hideBranchesTag };
@@ -1143,10 +1145,14 @@ export default function TombstonesForSaleClient({
     try {
       const listingId = selectedListing?.documentId || selectedListing?.id;
       const branchId = branch?.name || branch?.id || branch?.documentId;
-      if (listingId && branchId) {
+      if (selectedListing && branchId) {
         setShowBranchesModal(false);
         const branchData = encodeURIComponent(JSON.stringify(branch));
-        router.push(`/tombstones-for-sale/${listingId}?branch=${encodeURIComponent(branchId)}&branchData=${branchData}`);
+        const canonical = buildListingCanonicalHref(selectedListing);
+        const base = canonical || (listingId ? `/tombstones-for-sale/${listingId}` : null);
+        if (base) {
+          router.push(`${base}?branch=${encodeURIComponent(branchId)}&branchData=${branchData}`);
+        }
       }
     } catch (e) {
       console.error('Failed to navigate to product showcase from branch selection', e);

@@ -1,6 +1,14 @@
 import { notFound, permanentRedirect } from "next/navigation";
 import TombstonesForSaleClient from "../../tombstones-for-sale/for-sale-client";
 import ProductShowcase from "@/components/product-showcase";
+import {
+  normalizeListingSlug,
+  cleanListingSlug,
+  buildListingCanonicalSlug,
+  extractUrlTownSegment,
+  listingAvailableAtTown,
+  buildAllCanonicalSlugsForListing,
+} from "@/lib/slugs";
 
 const TombstonesForSaleClientAny = TombstonesForSaleClient as unknown as (props: any) => any;
 
@@ -11,25 +19,6 @@ const GRAPHQL_URL =
 
 function toAbsoluteUrl(pathname: string) {
   return `${SITE_URL}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
-}
-
-function normalizeListingSlug(raw: unknown) {
-  const decoded = decodeURIComponent(typeof raw === "string" ? raw : "");
-  return decoded
-    .toLowerCase()
-    .trim()
-    .replace(/[\s_]+/g, "-")
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-function cleanListingSlug(slug: unknown, title: unknown) {
-  const rawSlug = typeof slug === "string" ? slug.trim() : "";
-  if (!rawSlug) return normalizeListingSlug(title);
-  const stripped = rawSlug.replace(/(-copy-[a-z0-9]+)+/gi, "").trim();
-  if (!stripped || /^[-]*$/.test(stripped)) return normalizeListingSlug(title);
-  return normalizeListingSlug(stripped);
 }
 
 function normalizeLower(v: unknown) {
@@ -143,6 +132,12 @@ async function fetchListingBySavedSlug(slug: string) {
           branches(pagination: { limit: 25 }) {
             documentId
             name
+            location {
+              town
+              city
+              province
+              address
+            }
           }
           company {
             enableWhatsAppButton
@@ -190,6 +185,119 @@ async function fetchListingBySavedSlug(slug: string) {
   return Array.isArray(data?.listings) && data.listings.length > 0 ? data.listings[0] : null;
 }
 
+const LISTING_RESULT_FRAGMENT = `
+  documentId
+  title
+  slug
+  mainImageUrl
+  thumbnailUrls
+  thumbnailPublicIds
+  description
+  price
+  manufacturingTimeframe
+  isOnSpecial
+  specials {
+    active
+    sale_price
+    start_date
+    end_date
+  }
+  listing_category {
+    documentId
+    name
+  }
+  productDetails {
+    id
+    color { id value icon }
+    style { id value icon }
+    overallStyle { id value icon }
+    stoneType { id value icon }
+    slabStyle { id value icon }
+    customization { id value icon }
+  }
+  additionalProductDetails {
+    id
+    transportAndInstallation { id value info }
+    foundationOptions { id value info }
+    warrantyOrGuarantee { id value info }
+    installationGuarantee { id value info }
+  }
+  inquiries_c { documentId }
+  branches(pagination: { limit: 25 }) {
+    documentId
+    name
+    location { town city province address }
+  }
+  company {
+    enableWhatsAppButton
+    documentId
+    phone
+    name
+    mapUrl
+    location
+    latitude
+    longitude
+    googleRating
+    logoUrl
+    logoUrlPublicId
+    operatingHours {
+      id
+      monToFri
+      saturday
+      sunday
+      publicHoliday
+    }
+    sales_reps {
+      call
+      whatsapp
+      name
+      avatar { url }
+    }
+    socialLinks {
+      id
+      facebook
+      website
+      instagram
+      tiktok
+      youtube
+      x
+      whatsapp
+      messenger
+    }
+  }
+`;
+
+const PRODUCT_KEYWORDS = [
+  "granite", "marble", "sandstone", "limestone", "slate", "travertine", "stone",
+  "pillars", "pillar", "pillared", "column", "columns", "obelisk",
+  "arch", "arched", "dome", "domed", "mausoleum", "teddybear", "teddy",
+  "tombstone", "gravestone", "headstone", "memorial", "tomb",
+  "executive", "heart", "book", "openbook", "classic", "modern",
+  "double", "single", "family", "child", "infant", "pet",
+  "standard", "premium", "luxury", "economy", "budget", "value",
+];
+
+function extractListingNamePrefixes(normalized: string): string[] {
+  if (!normalized) return [];
+  const tokens = normalized.split("-").filter(Boolean);
+  const stopIdx = tokens.findIndex((t) => PRODUCT_KEYWORDS.includes(t.toLowerCase()));
+  const nameEndIdx = stopIdx === -1 ? Math.min(tokens.length, 5) : stopIdx;
+  if (nameEndIdx <= 0) return [tokens[0] || ""].filter(Boolean);
+  const variants: string[] = [];
+  for (let len = nameEndIdx; len >= 1; len -= 1) {
+    variants.push(tokens.slice(0, len).join("-"));
+  }
+  const compact = variants[0]?.replace(/-+/g, "") || "";
+  if (compact && !variants.includes(compact)) variants.push(compact);
+  const spaced = variants[0]?.replace(/-+/g, " ") || "";
+  if (spaced && !variants.includes(spaced)) variants.push(spaced);
+  return variants.filter(Boolean);
+}
+
+function extractListingNamePrefix(normalized: string): string {
+  return extractListingNamePrefixes(normalized)[0] || "";
+}
+
 async function fetchListingsByTitleNormalized(normalizedTitle: string) {
   if (!normalizedTitle) return [];
   const dashToSpace = normalizedTitle.replace(/-+/g, " ");
@@ -197,83 +305,7 @@ async function fetchListingsByTitleNormalized(normalizedTitle: string) {
     `
       query ListingsByTitleFragment($q: String!) {
         listings(filters: { title: { containsi: $q } }, pagination: { limit: 20 }) {
-          documentId
-          title
-          slug
-          mainImageUrl
-          thumbnailUrls
-          description
-          price
-          manufacturingTimeframe
-          isOnSpecial
-          specials {
-            active
-            sale_price
-            start_date
-            end_date
-          }
-          listing_category {
-            documentId
-            name
-          }
-          productDetails {
-            id
-            color { id value icon }
-            style { id value icon }
-            overallStyle { id value icon }
-            stoneType { id value icon }
-            slabStyle { id value icon }
-            customization { id value icon }
-          }
-          additionalProductDetails {
-            id
-            transportAndInstallation { id value info }
-            foundationOptions { id value info }
-            warrantyOrGuarantee { id value info }
-            installationGuarantee { id value info }
-          }
-          inquiries_c { documentId }
-          branches(pagination: { limit: 25 }) {
-            documentId
-            name
-          }
-          company {
-            enableWhatsAppButton
-            documentId
-            phone
-            name
-            mapUrl
-            location
-            latitude
-            longitude
-            googleRating
-            logoUrl
-            logoUrlPublicId
-            operatingHours {
-              id
-              monToFri
-              saturday
-              sunday
-              publicHoliday
-            }
-            sales_reps {
-              call
-              whatsapp
-              name
-              avatar { url }
-            }
-            socialLinks {
-              id
-              facebook
-              website
-              instagram
-              tiktok
-              youtube
-              x
-              whatsapp
-              messenger
-            }
-          }
+          ${LISTING_RESULT_FRAGMENT}
         }
       }
     `,
@@ -283,43 +315,365 @@ async function fetchListingsByTitleNormalized(normalizedTitle: string) {
   return Array.isArray(data?.listings) ? data.listings : [];
 }
 
+async function fetchListingsBySimplePrefixSearch(prefixes: string[]) {
+  const safe = Array.isArray(prefixes) ? prefixes.filter((p) => typeof p === "string" && p.length >= 1).slice(0, 6) : [];
+  if (safe.length === 0) return [];
+  const bySlugEq: any[] = [];
+  const byNameRows: any[] = [];
+  for (const prefix of safe) {
+    const dashToSpace = prefix.replace(/-+/g, " ");
+    const compact = prefix.replace(/-+/g, "");
+    const data = await fetchGraphQL<{ bySlug?: any[]; byName?: any[] }>(
+      `
+        query ListingsBySimplePrefix($prefix: String!, $dashPrefix: String!, $compact: String!, $slugEq: String!) {
+          bySlug: listings(filters: { slug: { eq: $slugEq } }, pagination: { limit: 1 }) {
+            ${LISTING_RESULT_FRAGMENT}
+          }
+          byName: listings(
+            filters: {
+              or: [
+                { title: { containsi: $prefix } }
+                { title: { containsi: $dashPrefix } }
+                { title: { containsi: $compact } }
+                { title: { startsWith: $dashPrefix } }
+                { slug: { containsi: $prefix } }
+                { slug: { startsWith: $prefix } }
+                { slug: { containsi: $compact } }
+                { slug: { startsWith: $compact } }
+              ]
+            },
+            pagination: { limit: 20 },
+            sort: "updatedAt:desc"
+          ) {
+            ${LISTING_RESULT_FRAGMENT}
+          }
+        }
+      `,
+      { prefix, dashPrefix: dashToSpace, compact, slugEq: prefix },
+      300
+    );
+    if (Array.isArray(data?.bySlug)) bySlugEq.push(...data.bySlug);
+    if (Array.isArray(data?.byName)) byNameRows.push(...data.byName);
+  }
+  const seen = new Set<string>();
+  const merged: any[] = [];
+  for (const row of [...bySlugEq, ...byNameRows]) {
+    const key = String(row?.documentId || row?.id || "");
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(row);
+  }
+  return merged;
+}
+
+async function fetchListingsByNamePrefix(prefix: string, fullNormalized: string) {
+  if (!prefix) return [];
+  const prefixVariants = extractListingNamePrefixes(fullNormalized);
+  const dashToSpace = prefix.replace(/-+/g, " ");
+  const compact = prefix.replace(/-+/g, "");
+  const variantsForGql = prefixVariants.length ? prefixVariants.slice(0, 4) : [prefix];
+  const data = await fetchGraphQL<{ bySlug?: any[]; byName?: any[] }>(
+    `
+      query ListingsByNamePrefix($prefix: String!, $dashPrefix: String!, $compact: String!, $fullNormalized: String!, $p0: String!, $p1: String!, $p2: String!, $p3: String!) {
+        bySlug: listings(filters: { slug: { eq: $fullNormalized } }, pagination: { limit: 1 }) {
+          ${LISTING_RESULT_FRAGMENT}
+        }
+        byName: listings(
+          filters: {
+            or: [
+              { title: { containsi: $prefix } }
+              { title: { containsi: $dashPrefix } }
+              { title: { containsi: $compact } }
+              { title: { containsi: $p0 } }
+              { title: { containsi: $p1 } }
+              { title: { startsWith: $dashPrefix } }
+              { title: { startsWith: $p0 } }
+              { slug: { containsi: $prefix } }
+              { slug: { startsWith: $prefix } }
+              { slug: { containsi: $compact } }
+              { slug: { containsi: $p0 } }
+              { slug: { startsWith: $p0 } }
+            ]
+          },
+          pagination: { limit: 30 },
+          sort: "updatedAt:desc"
+        ) {
+          ${LISTING_RESULT_FRAGMENT}
+        }
+      }
+    `,
+    {
+      prefix,
+      dashPrefix: dashToSpace,
+      compact,
+      fullNormalized,
+      p0: variantsForGql[0] || prefix,
+      p1: variantsForGql[1] || prefix,
+      p2: variantsForGql[2] || prefix,
+      p3: variantsForGql[3] || prefix,
+    },
+    300
+  );
+  const bySlug = Array.isArray(data?.bySlug) ? data.bySlug : [];
+  const byName = Array.isArray(data?.byName) ? data.byName : [];
+  const seen = new Set<string>();
+  const merged: any[] = [];
+  for (const row of [...bySlug, ...byName]) {
+    const key = String(row?.documentId || row?.id || "");
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(row);
+  }
+  return merged;
+}
+
+function candidateMatchesAnyPrefix(candidate: any, prefixVariants: string[]): boolean {
+  if (!candidate || !prefixVariants.length) return false;
+  const cTitle = normalizeLower(candidate?.title ?? "");
+  const cSlug = normalizeLower(candidate?.slug ?? "");
+  const cCompact = (cTitle || cSlug).replace(/[\s-]+/g, "");
+  return prefixVariants.some((p) => {
+    const pLower = normalizeLower(p);
+    const pCompact = pLower.replace(/[\s-]+/g, "");
+    if (!pLower) return false;
+    if (cTitle && (cTitle === pLower || cTitle.startsWith(pLower) || cTitle.includes(pLower))) return true;
+    if (cSlug && (cSlug.startsWith(pLower) || cSlug.includes(pLower))) return true;
+    if (pCompact && cCompact && (cCompact === pCompact || cCompact.startsWith(pCompact) || cCompact.includes(pCompact))) return true;
+    return false;
+  });
+}
+
+function productSegmentsMatchNormalizedUrl(listing: any, normalized: string): boolean {
+  if (!listing || !normalized) return false;
+  const listingCanonical = normalizeListingSlug(buildListingCanonicalSlug(listing) || "");
+  const listingClean = normalizeListingSlug(cleanListingSlug(listing?.slug, listing?.title) || "");
+  if (listingCanonical === normalized || listingClean === normalized) return true;
+  const urlTokens = normalized.split("-").filter(Boolean);
+  const allListing = buildAllCanonicalSlugsForListing(listing);
+  if (Array.isArray(allListing)) {
+    for (const altSlug of allListing) {
+      if (normalizeListingSlug(altSlug) === normalized) return true;
+    }
+  }
+  const urlPrefix = extractListingNamePrefix(normalized);
+  const lCanonicalPrefix = extractListingNamePrefix(listingCanonical);
+  const lCleanPrefix = extractListingNamePrefix(listingClean);
+  const matchPrefix =
+    (urlPrefix && lCanonicalPrefix && urlPrefix === lCanonicalPrefix) ||
+    (urlPrefix && lCleanPrefix && urlPrefix === lCleanPrefix);
+  if (!matchPrefix) return false;
+  const stone = normalizeLower(Array.isArray(listing?.productDetails?.stoneType) ? listing.productDetails.stoneType[0]?.value : "");
+  const head = normalizeLower(
+    (Array.isArray(listing?.productDetails?.style) ? listing.productDetails.style[0]?.value : "") ||
+    (Array.isArray(listing?.productDetails?.overallStyle) ? listing.productDetails.overallStyle[0]?.value : "")
+  );
+  const coreTokens = [urlPrefix, stone, head].filter(Boolean);
+  for (const tok of coreTokens) {
+    if (!urlTokens.includes(tok)) {
+      const compacted = tok.replace(/[\s-]+/g, "");
+      const found = urlTokens.some((t) => t === compacted || t.startsWith(compacted) || compacted.startsWith(t));
+      if (!found) return false;
+    }
+  }
+  return true;
+}
+
+function isListingMatchForUrl(
+  listing: any,
+  normalized: string,
+  urlTown: string
+): "strict" | "alternate" | "wrong-town" | "no-match" {
+  if (!listing) return "no-match";
+  const listingCanonical = normalizeListingSlug(buildListingCanonicalSlug(listing) || "");
+  const listingClean = normalizeListingSlug(cleanListingSlug(listing?.slug, listing?.title) || "");
+  if (listingCanonical === normalized || listingClean === normalized) return "strict";
+  const allSlugs = buildAllCanonicalSlugsForListing(listing);
+  if (Array.isArray(allSlugs) && allSlugs.some((s) => normalizeListingSlug(s) === normalized)) {
+    return "alternate";
+  }
+  const productOk = productSegmentsMatchNormalizedUrl(listing, normalized);
+  if (!productOk) return "no-match";
+  if (!urlTown) return "alternate";
+  const townOk = listingAvailableAtTown(listing, urlTown);
+  if (townOk) return "alternate";
+  return "wrong-town";
+}
+
 async function fetchListingByNormalizedSlug(rawSlug: string) {
   const normalized = normalizeListingSlug(rawSlug);
   if (!normalized) return null;
+  const urlTown = extractUrlTownSegment(normalized);
+  console.log("[RESOLVER] rawSlug:", rawSlug, "normalized:", normalized, "urlTown:", JSON.stringify(urlTown));
 
   const bySaved = await fetchListingBySavedSlug(normalized);
-  if (bySaved) return bySaved;
+  if (bySaved) {
+    console.log("[RESOLVER] ✅ TIER 1 HIT (bySaved DB slug=normalized):", bySaved.documentId, bySaved.title || bySaved.name);
+    return bySaved;
+  }
+  console.log("[RESOLVER] tier1 bySaved miss");
 
   const bySavedOriginal = await fetchListingBySavedSlug(rawSlug);
   if (bySavedOriginal) {
     const target = cleanListingSlug(bySavedOriginal.slug, bySavedOriginal.title);
+    console.log("[RESOLVER] ✅ TIER 2 HIT (bySaved rawSlug):", bySavedOriginal.documentId, bySavedOriginal.slug, bySavedOriginal.title || bySavedOriginal.name, "redirectTarget=", target);
     if (target && target !== normalized) {
       return { __redirectSlug: target, listing: bySavedOriginal };
     }
     return bySavedOriginal;
   }
+  console.log("[RESOLVER] tier2 bySavedOriginal miss");
 
-  const candidates = await fetchListingsByTitleNormalized(normalized);
-  let bestMatch: any = null;
-  let bestScore = 0;
-  for (const c of candidates) {
+  const namePrefix = extractListingNamePrefix(normalized);
+  const prefixVariants = extractListingNamePrefixes(normalized);
+  console.log("[RESOLVER] namePrefix=", namePrefix, "prefixVariants=", JSON.stringify(prefixVariants));
+
+  const prefixCandidates = namePrefix
+    ? await fetchListingsByNamePrefix(namePrefix, normalized)
+    : [];
+  console.log("[RESOLVER] tier3 prefixCandidates count=", prefixCandidates.length);
+  for (const c of prefixCandidates) {
     const cNorm = cleanListingSlug(c.slug, c.title);
-    if (!cNorm) continue;
-    if (cNorm === normalized) {
+    const canonical = buildListingCanonicalSlug(c);
+    const result = isListingMatchForUrl(c, normalized, urlTown);
+    if (result === "strict" || result === "alternate") {
+      console.log("[RESOLVER] ✅ TIER 3ab HIT (Option B " + result + "):", c.documentId, c.title || c.name, "canonical=", canonical);
       return c;
     }
+    if (result === "wrong-town") {
+      console.log("[RESOLVER] tier3 candidate prefix matches but town invalid:", c.documentId, "=> redirect to canonical:", canonical);
+      return { __redirectSlug: canonical || cNorm || null, listing: c };
+    }
+  }
+  for (const c of prefixCandidates) {
+    if (candidateMatchesAnyPrefix(c, prefixVariants)) {
+      const exact = isListingMatchForUrl(c, normalized, urlTown);
+      if (exact === "wrong-town") {
+        const canonical = buildListingCanonicalSlug(c) || cleanListingSlug(c.slug, c.title);
+        console.log("[RESOLVER] tier3c candidateMatchesAnyPrefix but wrong town, redirect:", c.documentId, canonical);
+        return { __redirectSlug: canonical || null, listing: c };
+      }
+      console.log("[RESOLVER] ✅ TIER 3c HIT (candidateMatchesAnyPrefix):", c.documentId, "title=", c.title, "slug=", c.slug, "matchQuality=", exact);
+      return c;
+    }
+  }
+  console.log("[RESOLVER] tier3 no exact/canonical/prefix match in candidates, pass thru to titleGql tier");
+
+  const titleCandidates = await fetchListingsByTitleNormalized(normalized);
+  console.log("[RESOLVER] tier4 titleCandidates count=", titleCandidates.length);
+  const titleSeen = new Set<string>();
+  const combinedCandidates: any[] = [];
+  for (const c of prefixCandidates) {
+    const key = String(c?.documentId || c?.id || "");
+    if (key) {
+      titleSeen.add(key);
+      combinedCandidates.push(c);
+    }
+  }
+  for (const c of titleCandidates) {
+    const key = String(c?.documentId || c?.id || "");
+    if (!key || titleSeen.has(key)) continue;
+    titleSeen.add(key);
+    combinedCandidates.push(c);
+  }
+  console.log("[RESOLVER] combinedCandidates deduped count=", combinedCandidates.length);
+
+  for (const c of combinedCandidates) {
+    const cNorm = cleanListingSlug(c.slug, c.title);
+    const canonical = buildListingCanonicalSlug(c);
+    const result = isListingMatchForUrl(c, normalized, urlTown);
+    if (result === "strict" || result === "alternate") {
+      console.log("[RESOLVER] ✅ TIER 5ab HIT (Option B " + result + "):", c.documentId, c.title || c.name);
+      return c;
+    }
+    if (result === "wrong-town") {
+      console.log("[RESOLVER] tier5 product matches but town invalid; redirect to canonical:", c.documentId, canonical);
+      return { __redirectSlug: canonical || cNorm || null, listing: c };
+    }
+  }
+  console.log("[RESOLVER] tier5 combined exact/cleanSlug/canonical misses");
+
+  let bestMatch: any = null;
+  let bestScore = 0;
+  let bestWrongTown: any = null;
+  let bestWrongTownScore = 0;
+  const allTokens = normalized.split("-").filter(Boolean);
+  const headTokens = allTokens.slice(0, Math.min(5, allTokens.length));
+  for (const c of combinedCandidates) {
+    const cNorm = cleanListingSlug(c.slug, c.title);
+    const canonical = buildListingCanonicalSlug(c);
+    if (!cNorm && !canonical) continue;
     let score = 0;
-    const tokens = normalized.split("-").filter(Boolean);
-    for (const t of tokens) {
-      if (cNorm.includes(t)) score += 1;
+    for (const t of allTokens) {
+      if (cNorm && cNorm.includes(t)) score += 1;
+      if (canonical && canonical.includes(t)) score += 1;
+    }
+    for (const t of headTokens) {
+      const cTitle = normalizeLower(c?.title ?? c?.name ?? "");
+      if (cTitle.includes(normalizeLower(t))) score += 2;
+    }
+    const cFirst = extractListingNamePrefix(cNorm || "");
+    if (cFirst && cFirst === namePrefix) score += 5;
+    const check = isListingMatchForUrl(c, normalized, urlTown);
+    if (check === "wrong-town") {
+      if (score > bestWrongTownScore) {
+        bestWrongTownScore = score;
+        bestWrongTown = c;
+      }
     }
     if (score > bestScore) {
       bestScore = score;
       bestMatch = c;
     }
   }
-  const minTokens = Math.max(2, Math.floor(normalized.split("-").filter(Boolean).length * 0.6));
-  return bestScore >= minTokens ? bestMatch : null;
+  const minTokens = Math.max(2, Math.floor(Math.min(5, allTokens.length) * 0.5));
+  if (bestScore >= minTokens) {
+    const bestCheck = isListingMatchForUrl(bestMatch, normalized, urlTown);
+    if (bestCheck === "wrong-town" && bestWrongTown) {
+      const c = bestWrongTown;
+      const canonical = buildListingCanonicalSlug(c) || cleanListingSlug(c.slug, c.title);
+      console.log("[RESOLVER] tier6 fuzzy matches product but invalid town; redirect to canonical:", c?.documentId, canonical);
+      return { __redirectSlug: canonical || null, listing: c };
+    }
+    console.log("[RESOLVER] ✅ TIER 6 HIT (scored fuzzy bestMatch=", bestScore, ">= min=", minTokens, "):", bestMatch?.documentId, bestMatch?.title || bestMatch?.name || null);
+    return bestMatch;
+  }
+  console.log("[RESOLVER] tier6 fuzzy FAILED: best=", bestScore, "min=", minTokens, "bestMatch docId=", bestMatch?.documentId || null);
+
+  const fallbackPrefixes = prefixVariants.length ? prefixVariants : [namePrefix].filter(Boolean);
+  if (fallbackPrefixes.length) {
+    console.log("[RESOLVER] tier7 LAST RESORT: fetchListingsBySimplePrefixSearch(", JSON.stringify(fallbackPrefixes), ")");
+    const lastResortCandidates = await fetchListingsBySimplePrefixSearch(fallbackPrefixes);
+    console.log("[RESOLVER] tier7 lastResortCandidates count=", lastResortCandidates.length);
+    for (const c of lastResortCandidates) {
+      const cNorm = cleanListingSlug(c.slug, c.title);
+      const canonical = buildListingCanonicalSlug(c);
+      const result = isListingMatchForUrl(c, normalized, urlTown);
+      if (result === "strict" || result === "alternate") {
+        console.log("[RESOLVER] ✅ TIER 7ab HIT (Option B " + result + "):", c.documentId, c.title || c.name);
+        return c;
+      }
+      if (result === "wrong-town") {
+        console.log("[RESOLVER] tier7 product matches but town invalid; redirect to canonical:", c.documentId, canonical);
+        return { __redirectSlug: canonical || cNorm || null, listing: c };
+      }
+    }
+    for (const c of lastResortCandidates) {
+      if (candidateMatchesAnyPrefix(c, fallbackPrefixes)) {
+        const exact = isListingMatchForUrl(c, normalized, urlTown);
+        if (exact === "wrong-town") {
+          const canonical = buildListingCanonicalSlug(c) || cleanListingSlug(c.slug, c.title);
+          console.log("[RESOLVER] tier7c candidateMatchesAnyPrefix but wrong town; redirect:", c.documentId, canonical);
+          return { __redirectSlug: canonical || null, listing: c };
+        }
+        console.log("[RESOLVER] ✅ TIER 7c HIT (last-resort candidateMatchesAnyPrefix):", c.documentId, c.title, c.slug);
+        return c;
+      }
+    }
+    console.log("[RESOLVER] tier7 last-resort had", lastResortCandidates.length, "candidates but none matched prefix/title/slug");
+  }
+
+  console.log("[RESOLVER] ❌ ALL 7 TIERS FAILED — returning null → 404 notFound()");
+  return null;
 }
 
 async function fetchListingsByIds(ids: string[]) {
@@ -355,6 +709,16 @@ async function fetchListingsByIds(ids: string[]) {
             foundationOptions { id value }
             warrantyOrGuarantee { id value }
             installationGuarantee { id value }
+          }
+          branches(pagination: { limit: -1 }) {
+            documentId
+            name
+            location {
+              town
+              city
+              province
+              address
+            }
           }
           company {
             documentId
@@ -514,13 +878,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     };
   }
 
-  const canonicalListingSlug = cleanListingSlug(listing.slug, listing.title);
-  const listingCanonical = canonicalListingSlug
-    ? toAbsoluteUrl(`/tombstones/${canonicalListingSlug}`)
+  const urlTown = extractUrlTownSegment(normalized || rawSlug);
+  const primaryCanonicalSlug = buildListingCanonicalSlug(listing) || cleanListingSlug(listing.slug, listing.title);
+  const listingCanonical = primaryCanonicalSlug
+    ? toAbsoluteUrl(`/tombstones/${primaryCanonicalSlug}`)
     : canonical;
-
-  if (canonicalListingSlug && normalized !== canonicalListingSlug) {
-    permanentRedirect(`/tombstones/${canonicalListingSlug}`);
+  const townMatchesAlternateBranch = listingAvailableAtTown(listing, urlTown);
+  if (
+    primaryCanonicalSlug &&
+    normalized !== primaryCanonicalSlug &&
+    urlTown &&
+    !townMatchesAlternateBranch
+  ) {
+    permanentRedirect(`/tombstones/${primaryCanonicalSlug}`);
     return {
       title: "Tombstone Redirect | TombstoneFinder",
       alternates: { canonical: listingCanonical },
@@ -644,13 +1014,20 @@ export default async function LocationTombstonesPage({ params }: { params: Promi
     permanentRedirect(`/tombstones/${redirectSlug}`);
   }
 
-  const canonicalListingSlug = cleanListingSlug(listing.slug, listing.title);
-  if (canonicalListingSlug && normalized !== canonicalListingSlug) {
-    permanentRedirect(`/tombstones/${canonicalListingSlug}`);
+  const urlTown = extractUrlTownSegment(normalized || rawSlug);
+  const primaryCanonicalSlug = buildListingCanonicalSlug(listing) || cleanListingSlug(listing.slug, listing.title);
+  const townMatchesAlternateBranch = listingAvailableAtTown(listing, urlTown);
+  if (
+    primaryCanonicalSlug &&
+    normalized !== primaryCanonicalSlug &&
+    urlTown &&
+    !townMatchesAlternateBranch
+  ) {
+    permanentRedirect(`/tombstones/${primaryCanonicalSlug}`);
   }
 
-  const canonical = canonicalListingSlug
-    ? toAbsoluteUrl(`/tombstones/${canonicalListingSlug}`)
+  const canonical = primaryCanonicalSlug
+    ? toAbsoluteUrl(`/tombstones/${primaryCanonicalSlug}`)
     : toAbsoluteUrl(`/tombstones-for-sale/${listing.documentId || rawSlug}`);
   const images = uniqStrings([listing?.mainImageUrl, ...(listing?.thumbnailUrls || [])])
     .slice(0, 8)
