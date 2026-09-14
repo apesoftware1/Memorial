@@ -95,6 +95,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       
       <head>
+        {/* Google Search Console Site Verification */}
+        <meta name="google-site-verification" content="jPs7jS8KmLoIEbgoHGYwr3HFokzuuKLk-lIoNhvMe4g" />
         {/* Preconnect to media origins to speed up image loading */}
         <link rel="preconnect" href="https://typical-car-e0b66549b3.media.strapiapp.com" crossOrigin="anonymous" />
         {gaId ? (
