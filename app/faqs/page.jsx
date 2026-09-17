@@ -1,7 +1,7 @@
 import Link from "next/link";
 import FaqsLayout from "./faqs-layout-client";
 
-export const revalidate = 60;
+export const revalidate = 10;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tombstonesfinder.co.za";
 const FAQS_LIVE_INDEX =
@@ -134,7 +134,7 @@ async function getFaqCategories() {
     const finalUrl = baseUrl.toString();
     const res = await fetch(finalUrl, {
       headers: { Accept: "application/json, text/html;q=0.9, */*;q=0.8" },
-      next: { revalidate: 60 },
+      next: { revalidate: 10 },
     });
 
     if (res.status === 404 || res.status === 410) return null;

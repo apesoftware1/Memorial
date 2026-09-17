@@ -153,7 +153,7 @@ async function fetchForSaleInitialData() {
           branchListingsPageSize: 10,
         },
       }),
-      next: { revalidate: 300 },
+      next: { revalidate: 15 },
     });
 
     if (!res.ok) return { initialListings: [], initialCategories: [] };

@@ -29,7 +29,7 @@ function cleanListingSlug(slug, title) {
   return normalizeListingSlug(stripped);
 }
 
-async function fetchGraphQL(query, variables, revalidate = 3600) {
+async function fetchGraphQL(query, variables, revalidate = 30) {
   const res = await fetch(GRAPHQL_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

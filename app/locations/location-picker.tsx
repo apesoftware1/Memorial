@@ -83,18 +83,13 @@ function slugifySegment(value: string) {
 
 function buildLocationPath(
   province?: string | null,
-  city?: string | null,
+  _city?: string | null,
   town?: string | null
 ) {
   const provinceValue = typeof province === "string" ? province.trim() : "";
-  const cityValue = typeof city === "string" ? city.trim() : "";
   const townValue = typeof town === "string" ? town.trim() : "";
 
   if (!provinceValue || !townValue) return "";
-
-  if (cityValue && normalize(cityValue) !== normalize(townValue)) {
-    return `/locations/${slugifySegment(provinceValue)}/${slugifySegment(cityValue)}/${slugifySegment(townValue)}`;
-  }
 
   return `/locations/${slugifySegment(provinceValue)}/${slugifySegment(townValue)}`;
 }
@@ -105,47 +100,64 @@ function provinceShortLabel(value?: string | null) {
   return PROVINCE_ABBREVIATIONS[normalized] || value?.trim() || "";
 }
 
-function buildLocationGroups(rows: BackendLocationLandingSeo[] | null | undefined): LocationProvinceGroup[] {
+function buildLocationGroups(
+  rows: BackendLocationLandingSeo[] | null | undefined
+): LocationProvinceGroup[] {
   const provinceMap = new Map<
     string,
     { province: string; cities: Map<string, { name: string | null; towns: Map<string, LocationTownOption> }> }
   >();
+
+  const addTown = (province: string, city: string | null, town: string) => {
+    if (!province || !town) return;
+    if (!provinceMap.has(province)) {
+      provinceMap.set(province, { province, cities: new Map() });
+    }
+    const provinceGroup = provinceMap.get(province)!;
+    const cityKey = city || "__NO_CITY__";
+    if (!provinceGroup.cities.has(cityKey)) {
+      provinceGroup.cities.set(cityKey, { name: city, towns: new Map() });
+    }
+    const cityGroup = provinceGroup.cities.get(cityKey)!;
+    const slug = buildLocationPath(province, city, town);
+    if (!cityGroup.towns.has(slug)) {
+      cityGroup.towns.set(slug, { town, city, slug });
+    }
+  };
 
   for (const row of rows || []) {
     const province = normalizeText(row?.province);
     const locationType = normalizeText(row?.locationType);
     const town = normalizeText(row?.locationValue);
     const city = collapseCity(normalizeText(row?.cityContext), town);
-
-    if (!province || !town || normalize(locationType) !== "town") continue;
-
-    if (!provinceMap.has(province)) {
-      provinceMap.set(province, { province, cities: new Map() });
-    }
-
-    const provinceGroup = provinceMap.get(province)!;
-    const cityKey = city || "__NO_CITY__";
-    if (!provinceGroup.cities.has(cityKey)) {
-      provinceGroup.cities.set(cityKey, { name: city, towns: new Map() });
-    }
-
-    const cityGroup = provinceGroup.cities.get(cityKey)!;
-    const slug = buildLocationPath(province, city, town);
-    if (!cityGroup.towns.has(slug)) {
-      cityGroup.towns.set(slug, { town, city, slug });
-    }
+    if (!province || !town) continue;
+    const typeNorm = normalize(locationType);
+    if (typeNorm && typeNorm !== "town" && typeNorm !== "city") continue;
+    addTown(province, city, town);
   }
 
   return Array.from(provinceMap.values())
-    .map((provinceGroup) => ({
-      name: provinceGroup.province,
-      cities: Array.from(provinceGroup.cities.values())
-        .map((cityGroup) => ({
-          name: cityGroup.name,
-          towns: Array.from(cityGroup.towns.values()).sort((left, right) => left.town.localeCompare(right.town)),
-        }))
-        .sort((left, right) => String(left.name || "").localeCompare(String(right.name || ""))),
-    }))
+    .map((provinceGroup) => {
+      const rawCities = Array.from(provinceGroup.cities.values());
+      const nullGroup = rawCities.find((g) => g.name === null);
+      const otherCities: LocationCityGroup[] = rawCities
+        .filter((g) => g.name !== null)
+        .map((g) => ({
+          name: g.name,
+          towns: Array.from(g.towns.values()).sort((l, r) => l.town.localeCompare(r.town)),
+        }));
+      const splitFromNull: LocationCityGroup[] = nullGroup
+        ? Array.from(nullGroup.towns.values()).map((town) => ({
+            name: town.town,
+            towns: [town],
+          }))
+        : [];
+      const merged: LocationCityGroup[] = [...otherCities, ...splitFromNull];
+      return {
+        name: provinceGroup.province,
+        cities: merged.sort((l, r) => String(l.name || "").localeCompare(String(r.name || ""))),
+      };
+    })
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
@@ -170,14 +182,16 @@ function useLocationSelection(
 ) {
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement | null>(null);
-  const { data, loading } = useQuery<LocationLandingSeoOptionsData>(LOCATION_LANDING_SEO_OPTIONS_QUERY, {
-    fetchPolicy: "cache-first",
+  const { data, loading: seoLoading } = useQuery<LocationLandingSeoOptionsData>(LOCATION_LANDING_SEO_OPTIONS_QUERY, {
+    fetchPolicy: "cache-and-network",
   });
 
   const provinces = useMemo(
     () => buildLocationGroups(data?.locationLandingSeos),
     [data]
   );
+
+  const loading = seoLoading;
 
   const derivedSelection = useMemo(() => {
     const province = provinces.find((item) => normalize(item.name) === normalize(currentProvince)) || null;

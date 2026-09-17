@@ -318,7 +318,7 @@ export default function DashboardClient() {
     const loadMaintenance = async () => {
       try {
         setMaintenanceLoading(true);
-        const res = await fetch("/api/maintenance-mode", { next: { revalidate: 60 } });
+        const res = await fetch("/api/maintenance-mode", { next: { revalidate: 15 } });
         if (!res.ok) return;
         const data = await res.json();
         setMaintenanceEnabled(!!data?.enabled);

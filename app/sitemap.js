@@ -261,7 +261,7 @@ async function fetchFaqCanonicalEntries() {
   let raw = null;
   try {
     const res = await fetch(faqUrl.toString(), {
-      next: { revalidate: 300 },
+      next: { revalidate: 15 },
       headers: { Accept: "application/json, text/html;q=0.9, */*;q=0.8" },
     });
     if (!res.ok) return [];

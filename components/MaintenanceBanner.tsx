@@ -19,7 +19,7 @@ export default function MaintenanceBanner() {
       try {
         const res = await fetch("/api/maintenance-mode", { 
           method: "GET",
-          next: { revalidate: 300 } 
+          next: { revalidate: 15 } 
         });
         if (!res.ok) return;
         const data = await res.json();

@@ -1,6 +1,8 @@
 import TombstonesOnSpecialClient from "./tombstones-on-special-client";
 import { fetchGraphQL, toAbsoluteUrl } from "@/lib/serverGraphql";
 
+export const revalidate = 15;
+
 export const metadata = {
   title: "Tombstones On Special | Compare Current Deals",
   description:

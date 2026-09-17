@@ -49,7 +49,7 @@ async function fetchManufacturerSeoSlugMap() {
       url.searchParams.set(`fields[${index}]`, field);
     });
 
-    const res = await fetch(url.toString(), { next: { revalidate: 300 } });
+    const res = await fetch(url.toString(), { next: { revalidate: 15 } });
     if (!res.ok) return {};
     const json = await res.json();
     const rows = Array.isArray(json?.data) ? json.data : [];

@@ -111,7 +111,7 @@ async function fetchHomeInitialData() {
           standardPageSize: 5,
         },
       }),
-      next: { revalidate: 300 },
+      next: { revalidate: 15 },
     })
 
     if (!res.ok) return { initialListings: [], initialCategories: [] }

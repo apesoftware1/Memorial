@@ -2,7 +2,7 @@ import { Fragment, cache } from "react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import Footer from "@/components/Footer";
@@ -131,6 +131,7 @@ type ResolvedLocationOption = {
   province: string;
   city?: string;
   town: string;
+  isLegacy3Segment?: boolean;
   title?: string | null;
   intro?: string | null;
   metaTitle?: string | null;
@@ -376,7 +377,16 @@ function collapseCity(city?: string | null, town?: string | null) {
   return cityValue.toLowerCase() === townValue.toLowerCase() ? null : cityValue;
 }
 
-function buildLocationPath(province?: string | null, city?: string | null, town?: string | null) {
+function buildLocationPath(province?: string | null, _city?: string | null, town?: string | null) {
+  const provinceValue = normalizeText(province);
+  const townValue = normalizeText(town);
+
+  if (!provinceValue || !townValue) return "";
+
+  return `/locations/${slugifySegment(provinceValue)}/${slugifySegment(townValue)}`;
+}
+
+function buildLocationPath3Segment(province?: string | null, city?: string | null, town?: string | null) {
   const provinceValue = normalizeText(province);
   const cityValue = normalizeText(city);
   const townValue = normalizeText(town);
@@ -398,6 +408,7 @@ function resolveLocationInput(segments: string[]) {
       province,
       city: undefined,
       town,
+      isLegacy3Segment: false,
       title: null,
       intro: null,
       metaTitle: null,
@@ -414,6 +425,7 @@ function resolveLocationInput(segments: string[]) {
       province,
       city,
       town,
+      isLegacy3Segment: true,
       title: null,
       intro: null,
       metaTitle: null,
@@ -434,6 +446,7 @@ const fetchLocationLandingSeoRows = cache(async () => {
 const resolveLocationOption = cache(async (segments: string[]): Promise<ResolvedLocationOption | null> => {
   const pathname = normalizePath(`/locations/${segments.join("/")}`);
   if (!pathname) return null;
+  const pathnameLower = pathname.toLowerCase();
 
   const rows = await fetchLocationLandingSeoRows();
   for (const row of rows) {
@@ -444,11 +457,17 @@ const resolveLocationOption = cache(async (segments: string[]): Promise<Resolved
 
     if (!province || !town || locationType?.toLowerCase() !== "town") continue;
 
-    if (buildLocationPath(province, city, town) === pathname) {
+    const built2 = buildLocationPath(province, city, town);
+    const built3 = buildLocationPath3Segment(province, city, town);
+    if (
+      (built2 && built2.toLowerCase() === pathnameLower) ||
+      (built3 && built3.toLowerCase() === pathnameLower)
+    ) {
       return {
         province,
         city: city || undefined,
         town,
+        isLegacy3Segment: Boolean(built3 && built3.toLowerCase() === pathnameLower && segments.length === 3),
         title: row?.title ?? null,
         intro: row?.intro ?? null,
         metaTitle: row?.metaTitle ?? null,
@@ -530,19 +549,69 @@ function shuffleItems<T>(items: T[]) {
 
 const fetchLocationLandingPage = cache(
   async (province: string, city: string | undefined, town: string, page: number) => {
-    const data = await fetchGraphQL(
-      LOCATION_LANDING_PAGE_QUERY,
-      {
-        province,
-        city: city ?? null,
-        town,
-        page,
-        pageSize: LISTINGS_OVERFETCH_COUNT,
-      },
-      revalidate
-    );
+    const run = async (p: string, c: string | undefined, t: string) => {
+      const data = await fetchGraphQL(
+        LOCATION_LANDING_PAGE_QUERY,
+        {
+          province: p,
+          city: c ?? null,
+          town: t,
+          page,
+          pageSize: LISTINGS_OVERFETCH_COUNT,
+        },
+        revalidate
+      );
+      return (data?.locationLandingPage as LocationLandingPageModel) ?? null;
+    };
 
-    return (data?.locationLandingPage as LocationLandingPageModel) ?? null;
+    const direct = await run(province, city, town);
+    if (direct?.location?.town) return direct;
+
+    const provToks = province.split(/\s+/).filter(Boolean);
+    const townToks = town.split(/\s+/).filter(Boolean);
+    const provSpaceToHyphen = province.replace(/\s+/g, "-");
+    const provHyphenToSpace = province.replace(/-+/g, " ");
+    const provU = provToks.map(p => p.toUpperCase()).join(" ");
+    const provT = provToks.map(p => p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : "").join(" ");
+    const provL = provToks.map(p => p.toLowerCase()).join(" ");
+    const provUH = provU.replace(/\s+/g, "-");
+    const provTH = provT.replace(/\s+/g, "-");
+    const provLH = provL.replace(/\s+/g, "-");
+    const townU = townToks.map(p => p.toUpperCase()).join(" ");
+    const townT = townToks.map(p => p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : "").join(" ");
+    const townL = townToks.map(p => p.toLowerCase()).join(" ");
+    const townUH = townU.replace(/\s+/g, "-");
+    const townTH = townT.replace(/\s+/g, "-");
+    const townLH = townL.replace(/\s+/g, "-");
+    const townHU = town.replace(/-+/g, " ");
+    const townSHyphen = town.replace(/\s+/g, "-");
+
+    const provinceVariants = [province, provSpaceToHyphen, provHyphenToSpace, provU, provT, provL, provUH, provTH, provLH].filter(Boolean);
+    const townVariants = [town, townHU, townSHyphen, townU, townT, townL, townUH, townTH, townLH].filter(Boolean);
+    const cityVariants = city
+      ? (() => {
+          const cts = city.split(/[\s-]+/).filter(Boolean);
+          const u = cts.map(p => p.toUpperCase()).join(" ");
+          const t = cts.map(p => p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : "").join(" ");
+          const l = cts.map(p => p.toLowerCase()).join(" ");
+          return [city, city.replace(/\s+/g, "-"), city.replace(/-+/g, " "), u, t, l, u.replace(/\s+/g,"-"), t.replace(/\s+/g,"-"), l.replace(/\s+/g,"-")].filter(Boolean);
+        })()
+      : [undefined];
+
+    const seen = new Set<string>();
+    for (const p2 of provinceVariants) {
+      for (const c2 of cityVariants) {
+        for (const t2 of townVariants) {
+          const key = `${p2}::${c2 ?? ""}::${t2}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const r = await run(p2, c2, t2);
+          if (r?.location?.town) return r;
+        }
+      }
+    }
+
+    return null;
   }
 );
 
@@ -666,7 +735,11 @@ export async function generateMetadata({
 
   const title = firstNonEmpty(page.seo?.metaTitle, locationInput.metaTitle, page.seo?.title, locationInput.title) || undefined;
   const description = firstNonEmpty(page.seo?.metaDescription, locationInput.metaDescription);
-  const canonicalPath = normalizePath(page.location?.slug);
+  const canonicalPath = buildLocationPath(
+    page.location?.province || locationInput.province,
+    page.location?.city ?? locationInput.city,
+    page.location?.town || locationInput.town
+  ) || normalizePath(page.location?.slug);
   const heroImage = firstNonEmpty(page.seo?.heroImageUrl, locationInput.heroImageUrl) || undefined;
 
   return {
@@ -708,9 +781,15 @@ export default async function LocationLandingPage({
   if (!page) notFound();
 
   const currentPath = normalizePath(`/locations/${segments.join("/")}`);
-  const canonicalPath = normalizePath(page.location?.slug);
-  if (canonicalPath && canonicalPath !== currentPath) {
-    redirect(canonicalPath);
+  const canonicalPath = buildLocationPath(
+    page.location?.province || locationInput.province,
+    page.location?.city ?? locationInput.city,
+    page.location?.town || locationInput.town
+  ) || normalizePath(page.location?.slug);
+  const isLegacy3SegmentUrl = Boolean(locationInput.isLegacy3Segment || segments.length === 3);
+
+  if (canonicalPath && (canonicalPath.toLowerCase() !== currentPath.toLowerCase() || isLegacy3SegmentUrl)) {
+    permanentRedirect(canonicalPath);
   }
   if (requestedPage > 1) {
     redirect(canonicalPath || currentPath || "/locations");
@@ -745,7 +824,14 @@ export default async function LocationLandingPage({
     answer: stripHtml(item?.answer),
   }));
   const nearbyLocations = Array.isArray(page.nearbyLocations) ? page.nearbyLocations : [];
-  const breadcrumbItems = Array.isArray(page.location?.breadcrumb) ? page.location.breadcrumb : [];
+  const provinceLabel = page.location?.province || locationInput.province;
+  const townLabel = page.location?.town || locationInput.town;
+  const breadcrumbItems: Array<{ label: string; href: string; active?: boolean }> = [
+    { label: "Home", href: "/" },
+    { label: "Locations", href: "/locations" },
+    { label: provinceLabel, href: `/locations/${slugifySegment(provinceLabel)}` },
+    { label: townLabel, href: canonicalPath || currentPath || "/locations", active: true },
+  ];
   const statLine = buildStatLine(page.statistics, fallbackMinimumListingPrice);
   const manufacturerOptions = collectManufacturerOptions(branches, listingItemsNonZeroPrice);
   const locationLabel = [page.location?.town, page.location?.city, page.location?.province]
@@ -805,7 +891,8 @@ export default async function LocationLandingPage({
             {breadcrumbItems.map((item, index) => {
               const label = typeof item?.label === "string" ? item.label.trim() : "";
               if (!label) return null;
-              const href = toInternalSlugPath(item?.slug);
+              const hrefValue = (item as any)?.href ?? (item as any)?.slug;
+              const href = toInternalSlugPath(hrefValue);
               const isLast = index === breadcrumbItems.length - 1;
 
               return (

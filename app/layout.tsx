@@ -160,6 +160,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             })();
           `}
         </Script>
+        <Script
+          src="https://iepsllggdwhcggkiixll.supabase.co/functions/v1/tracker-js?site_id=81f5236a-65a8-47b0-9e66-bf11f8e09222"
+          strategy="afterInteractive"
+        />
         
         <MaintenanceBanner />
         <Suspense fallback={<div />}>

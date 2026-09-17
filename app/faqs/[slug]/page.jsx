@@ -1,7 +1,7 @@
 import Link from "next/link";
 import FaqsLayout from "../faqs-layout-client";
 
-export const revalidate = 300;
+export const revalidate = 15;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tombstonesfinder.co.za";
 const FAQS_LIVE_ENDPOINT = "https://api.tombstonesfinder.co.za/api/faqs-live/render";
@@ -198,7 +198,7 @@ async function fetchLiveFaqRender(rawSlug) {
     url.searchParams.set("slug", slug);
 
     const res = await fetch(url.toString(), {
-      next: { revalidate: 300 },
+      next: { revalidate: 15 },
       headers: { Accept: "text/html, application/json;q=0.9, */*;q=0.8" },
     });
 

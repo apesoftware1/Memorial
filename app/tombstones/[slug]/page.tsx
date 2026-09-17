@@ -37,7 +37,7 @@ function coercePrice(value: unknown) {
   return Number.isFinite(num) ? num : null;
 }
 
-async function fetchGraphQL<TData>(query: string, variables: Record<string, unknown>, revalidate = 3600) {
+async function fetchGraphQL<TData>(query: string, variables: Record<string, unknown>, revalidate = 30) {
   const res = await fetch(GRAPHQL_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
