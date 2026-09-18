@@ -10,6 +10,22 @@ function toAbsoluteUrl(pathname) {
   return `${SITE_URL}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
 }
 
+function withSearchParams(pathname, searchParams) {
+  if (!searchParams) return pathname;
+  const entries = Object.entries(searchParams).filter(([, v]) => v !== undefined && v !== null && v !== "");
+  if (!entries.length) return pathname;
+  const params = new URLSearchParams();
+  for (const [k, v] of entries) {
+    if (Array.isArray(v)) {
+      for (const item of v) params.append(k, item);
+    } else {
+      params.set(k, v);
+    }
+  }
+  const qs = params.toString();
+  return qs ? `${pathname}?${qs}` : pathname;
+}
+
 function normalizeManufacturerSlug(raw) {
   const decoded = decodeURIComponent(raw);
   return decoded
@@ -180,7 +196,7 @@ async function resolveDocIdOrPhoneToSeoSlug(rawSlug) {
   return null;
 }
 
-export async function generateMetadata({ params }) {
+export async function generateMetadata({ params, searchParams }) {
   const rawSlug = (await params)?.slug;
   if (!rawSlug) {
     return {
@@ -192,7 +208,7 @@ export async function generateMetadata({ params }) {
   const seoRedirectSlug = await resolveDocIdOrPhoneToSeoSlug(rawSlug);
   if (seoRedirectSlug) {
     const cleanCanonical = toAbsoluteUrl(`/manufacturers/${seoRedirectSlug}`);
-    permanentRedirect(`/manufacturers/${seoRedirectSlug}`);
+    permanentRedirect(withSearchParams(`/manufacturers/${seoRedirectSlug}`, searchParams));
     return {
       title: "Manufacturer Redirect | TombstoneFinder",
       alternates: { canonical: cleanCanonical },
@@ -234,13 +250,13 @@ export async function generateMetadata({ params }) {
   };
 }
 
-export default async function ManufacturerProfilePage({ params }) {
+export default async function ManufacturerProfilePage({ params, searchParams }) {
   const rawSlug = (await params)?.slug;
   if (!rawSlug) notFound();
 
   const seoRedirectSlug = await resolveDocIdOrPhoneToSeoSlug(rawSlug);
   if (seoRedirectSlug) {
-    permanentRedirect(`/manufacturers/${seoRedirectSlug}`);
+    permanentRedirect(withSearchParams(`/manufacturers/${seoRedirectSlug}`, searchParams));
   }
 
   const { company, listings } = await fetchCompanyAndListings(rawSlug);

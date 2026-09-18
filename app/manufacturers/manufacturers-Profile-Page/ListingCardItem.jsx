@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from "react";
+import React, { memo, useCallback, useMemo } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PremiumListingCard } from "@/components/premium-listing-card";
 import {
@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { buildListingCanonicalHref } from "@/lib/slugs";
+import { useSearchParams } from "next/navigation";
 
 const SettingsIcon = (props) => (
   <svg
@@ -54,9 +55,23 @@ const ListingCardItem = memo(({
   allSelected,
   fixedHeight = true
 }) => {
+    const searchParams = useSearchParams();
     const handleToggle = useCallback(() => {
         onToggleSelection(listing.documentId || listing.id);
     }, [onToggleSelection, listing.documentId, listing.id]);
+
+    const resolvedHref = useMemo(() => {
+      const base = buildListingCanonicalHref(listing) || `/tombstones-for-sale/${listing.documentId || listing.id}`;
+      const branchName = searchParams?.get?.("branch") || branchFromUrl?.name;
+      const branchData = searchParams?.get?.("branchData");
+      if (!branchName && !branchData) return base;
+      const [urlBase, existingQs] = base.split("?");
+      const params = new URLSearchParams(existingQs || "");
+      if (branchName && !params.has("branch")) params.set("branch", branchName);
+      if (branchData && !params.has("branchData")) params.set("branchData", branchData);
+      const qs = params.toString();
+      return qs ? `${urlBase}?${qs}` : urlBase;
+    }, [listing, searchParams, branchFromUrl?.name]);
 
     return (
         <div
@@ -152,7 +167,7 @@ const ListingCardItem = memo(({
                 enquiries: listing.inquiries?.length || 0,
                 }}
                 isFirstCard={isFirstCard}
-                href={(buildListingCanonicalHref(listing) || `/tombstones-for-sale/${listing.documentId || listing.id}`)}
+                href={resolvedHref}
                 isOwner={isOwner}
                 fixedHeight={fixedHeight}
             />

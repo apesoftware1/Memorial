@@ -8,6 +8,7 @@ import {
   extractUrlTownSegment,
   listingAvailableAtTown,
   buildAllCanonicalSlugsForListing,
+  normalizeTownCompare,
 } from "@/lib/slugs";
 
 const TombstonesForSaleClientAny = TombstonesForSaleClient as unknown as (props: any) => any;
@@ -499,6 +500,119 @@ function isListingMatchForUrl(
   return "wrong-town";
 }
 
+async function fetchListingByCodePrefix(rawSlug: string, normalized: string) {
+  if (!rawSlug || !normalized) return null;
+  const tokens = normalized.split("-").filter(Boolean);
+  const headToken = tokens[0] || "";
+  if (!headToken) return null;
+  const compact = headToken.replace(/[^a-z0-9]/g, "");
+  const padded = headToken.replace(/([a-z]+)(\d+)/i, "$1 $2");
+  const alnumOnly = normalized.replace(/[^a-z0-9]/g, "");
+  const variants = [headToken, compact, padded].filter(Boolean);
+  const uniqueVariants = Array.from(new Set(variants)).slice(0, 5);
+
+  const orFilters: Record<string, any>[] = [
+    { slug: { eq: normalized } },
+    { slug: { startsWith: headToken } },
+    { slug: { containsi: headToken } },
+    { title: { startsWith: padded || headToken } },
+    { title: { containsi: headToken } },
+    { title: { containsi: compact } },
+  ];
+  // High-priority fallback: match mfgCode eqI + title containsi against the
+  // extracted code prefix and its variants (e.g. mfg44 → matches listing's
+  // mfgCode or mfg44 inside the title, even if slug/title in DB don't literally
+  // contain the token "mfg44").
+  const orCodeFilters: Record<string, any>[] = [];
+  for (const v of uniqueVariants) {
+    orCodeFilters.push({ mfgCode: { eqi: v } });
+    orCodeFilters.push({ title: { containsi: v } });
+  }
+  orFilters.push(...orCodeFilters);
+  for (const v of uniqueVariants) {
+    orFilters.push({ slug: { eq: v } });
+    orFilters.push({ slug: { containsi: v } });
+    orFilters.push({ title: { containsi: v } });
+  }
+  if (alnumOnly && alnumOnly !== headToken) {
+    orFilters.push({ slug: { containsi: alnumOnly } });
+    orFilters.push({ title: { containsi: alnumOnly } });
+  }
+  // Try each head-segment as a potential documentId match (legacy URL format: /tombstones/{id}-...)
+  orFilters.push({ documentId: { eq: headToken } });
+
+  const data = await fetchGraphQL<{ listings?: any[] }>(
+    `
+      query ListingByCodePrefix($or: [ListingsFiltersInput]) {
+        listings(filters: { or: $or }, pagination: { page: 1, pageSize: 10 }, sort: "updatedAt:desc") {
+          ${LISTING_RESULT_FRAGMENT}
+        }
+      }
+    `,
+    { or: orFilters },
+    300
+  );
+  const rows = Array.isArray(data?.listings) ? data.listings : [];
+  if (!rows.length) return null;
+
+  const urlTown = extractUrlTownSegment(normalized);
+  // 1) Strict / alternate exact match
+  for (const c of rows) {
+    const check = isListingMatchForUrl(c, normalized, urlTown);
+    if (check === "strict" || check === "alternate") return c;
+    if (check === "wrong-town") {
+      const canonical = buildListingCanonicalSlug(c) || cleanListingSlug(c.slug, c.title);
+      return { __redirectSlug: canonical || null, listing: c };
+    }
+  }
+  // 2) Fuzzy best-scored match inside these rows
+  const allTokens = normalized.split("-").filter(Boolean);
+  const headTokens = allTokens.slice(0, Math.min(5, allTokens.length));
+  let best: any = null;
+  let bestScore = 0;
+  let bestWrongTown: any = null;
+  let bestWrongTownScore = 0;
+  const namePrefix = extractListingNamePrefix(normalized);
+  for (const c of rows) {
+    const cNorm = cleanListingSlug(c.slug, c.title);
+    const canonical = buildListingCanonicalSlug(c);
+    if (!cNorm && !canonical) continue;
+    let score = 0;
+    for (const t of allTokens) {
+      if (cNorm && cNorm.includes(t)) score += 1;
+      if (canonical && canonical.includes(t)) score += 1;
+    }
+    for (const t of headTokens) {
+      const cTitle = normalizeLower(c?.title ?? c?.name ?? "");
+      if (cTitle.includes(normalizeLower(t))) score += 2;
+    }
+    const cFirst = extractListingNamePrefix(cNorm || "");
+    if (cFirst && cFirst === namePrefix) score += 5;
+    const check = isListingMatchForUrl(c, normalized, urlTown);
+    if (check === "wrong-town") {
+      if (score > bestWrongTownScore) {
+        bestWrongTownScore = score;
+        bestWrongTown = c;
+      }
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+  const minScore = Math.max(2, Math.floor(Math.min(5, allTokens.length) * 0.5));
+  if (bestScore >= minScore) {
+    const bestCheck = isListingMatchForUrl(best, normalized, urlTown);
+    if (bestCheck === "wrong-town" && bestWrongTown) {
+      const c = bestWrongTown;
+      const canonical = buildListingCanonicalSlug(c) || cleanListingSlug(c.slug, c.title);
+      return { __redirectSlug: canonical || null, listing: c };
+    }
+    return best;
+  }
+  return null;
+}
+
 async function fetchListingByNormalizedSlug(rawSlug: string) {
   const normalized = normalizeListingSlug(rawSlug);
   if (!normalized) return null;
@@ -522,6 +636,24 @@ async function fetchListingByNormalizedSlug(rawSlug: string) {
     return bySavedOriginal;
   }
   console.log("[RESOLVER] tier2 bySavedOriginal miss");
+
+  // NEW TIER 2b — Code / Prefix lookup. Resolves mfg07-style prefixes when slug
+  // column stores a different (non-prefixed) canonical slug.
+  const byCodePrefix = await fetchListingByCodePrefix(rawSlug, normalized);
+  if (byCodePrefix) {
+    if (typeof byCodePrefix === "object" && "__redirectSlug" in byCodePrefix) {
+      console.log(
+        "[RESOLVER] ✅ TIER 2b HIT (byCodePrefix redirect):",
+        byCodePrefix.listing?.documentId,
+        "-> canonical:",
+        byCodePrefix.__redirectSlug
+      );
+      return byCodePrefix;
+    }
+    console.log("[RESOLVER] ✅ TIER 2b HIT (byCodePrefix direct):", byCodePrefix.documentId, byCodePrefix.title || byCodePrefix.name);
+    return byCodePrefix;
+  }
+  console.log("[RESOLVER] tier2b byCodePrefix miss");
 
   const namePrefix = extractListingNamePrefix(normalized);
   const prefixVariants = extractListingNamePrefixes(normalized);
@@ -1023,7 +1155,27 @@ export default async function LocationTombstonesPage({ params }: { params: Promi
     urlTown &&
     !townMatchesAlternateBranch
   ) {
-    permanentRedirect(`/tombstones/${primaryCanonicalSlug}`);
+    // Prefer the best alternate-town canonical (e.g. mfg07-granite-pillars-tombstone-richardsbay)
+    // before falling back to the primary canonical slug. Never throw a 404 on town mismatch.
+    const alternateSlugs = buildAllCanonicalSlugsForListing(listing);
+    const hasAnyTown = Array.isArray(alternateSlugs) && alternateSlugs.length > 0;
+    const urlTownSlug = normalizeTownCompare(urlTown);
+    const matchingAlternate =
+      hasAnyTown && urlTownSlug
+        ? alternateSlugs.find((s) => {
+            const t = extractUrlTownSegment(s);
+            return t && normalizeTownCompare(t) === urlTownSlug;
+          })
+        : undefined;
+    const anyAlternateWithTown = hasAnyTown
+      ? alternateSlugs.find((s) => !!extractUrlTownSegment(s))
+      : undefined;
+    const redirectTarget = matchingAlternate || anyAlternateWithTown || primaryCanonicalSlug;
+    if (redirectTarget && redirectTarget !== normalized) {
+      permanentRedirect(`/tombstones/${redirectTarget}`);
+    } else {
+      permanentRedirect(`/tombstones/${primaryCanonicalSlug}`);
+    }
   }
 
   const canonical = primaryCanonicalSlug

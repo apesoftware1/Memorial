@@ -82,7 +82,7 @@ const BackArrowIcon = (props) => (
   </svg>
 );
 
-export default function BranchButton({ company }) {
+export default function BranchButton({ company, onBranchSelect }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -92,16 +92,28 @@ export default function BranchButton({ company }) {
   
   // Check URL for branch parameter on component mount and updates
   useEffect(() => {
-    if (searchParams.has('branch')) {
+    const branchName = searchParams.get('branch');
+    if (branchName) {
       setBranchSwitched(true);
+      if (company?.branches?.length && !selectedBranch) {
+        const matched = company.branches.find(b => b.name === branchName || b.documentId === branchName);
+        if (matched) setSelectedBranch(matched);
+      }
     } else {
       setBranchSwitched(false);
     }
-  }, [searchParams]);
+  }, [searchParams, company?.branches, selectedBranch]);
 
   const handleBranchSelect = (branch) => {
     setSelectedBranch(branch);
     setBranchSwitched(true);
+    if (typeof onBranchSelect === "function") onBranchSelect(branch);
+    // Also ensure ?branch= is on the URL immediately for non-BranchSelector flows:
+    if (branch?.name || branch?.documentId) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("branch", branch.name || branch.documentId);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
   };
 
   // Function to handle going back to previous state
@@ -211,6 +223,9 @@ export default function BranchButton({ company }) {
         companyId={company?.documentId}
         branches={company?.branches}
         onBranchSelect={handleBranchSelect}
+        paramKey="branch"
+        basePath={pathname}
+        preservePathname={true}
       />
     </>
   );

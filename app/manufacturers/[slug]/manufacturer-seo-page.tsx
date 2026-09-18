@@ -23,6 +23,22 @@ type ManufacturerSeoPage = {
   }>;
 } | null;
 
+function withSearchParams(pathname: string, searchParams?: { [key: string]: string | string[] | undefined } | null) {
+  if (!searchParams) return pathname;
+  const entries = Object.entries(searchParams).filter(([, v]) => v !== undefined && v !== null && v !== "");
+  if (!entries.length) return pathname;
+  const params = new URLSearchParams();
+  for (const [k, v] of entries) {
+    if (Array.isArray(v)) {
+      for (const item of v) params.append(k, item);
+    } else {
+      params.set(k, v);
+    }
+  }
+  const qs = params.toString();
+  return qs ? `${pathname}?${qs}` : pathname;
+}
+
 function normalizeManufacturerSlug(raw: string) {
   const decoded = decodeURIComponent(raw);
   return decoded
@@ -220,11 +236,18 @@ async function fetchCompanyAndListings(documentId: string) {
   return { company, listings };
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+export async function generateMetadata({
+  params,
+  searchParams: rawSearchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const rawSlug = (await params)?.slug;
+  const sp = rawSearchParams ? await rawSearchParams : undefined;
   const slug = typeof rawSlug === "string" && rawSlug.trim() ? normalizeManufacturerSlug(rawSlug) : "";
   if (rawSlug && slug && rawSlug !== slug) {
-    permanentRedirect(`/manufacturers/${slug}`);
+    permanentRedirect(withSearchParams(`/manufacturers/${slug}`, sp));
   }
   if (!slug) {
     return {
@@ -237,7 +260,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const legacy = await resolveLegacyPhoneSlug(rawSlug);
   if (legacy?.slug) {
     const cleanCanonical = toAbsoluteUrl(`/manufacturers/${legacy.slug}`);
-    permanentRedirect(`/manufacturers/${legacy.slug}`);
+    permanentRedirect(withSearchParams(`/manufacturers/${legacy.slug}`, sp));
     return {
       title: "Manufacturer Redirect | TombstoneFinder",
       alternates: { canonical: cleanCanonical },
@@ -284,19 +307,22 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function ManufacturerSeoProfilePage({
   params,
+  searchParams: rawSearchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const rawSlug = (await params)?.slug;
+  const sp = rawSearchParams ? await rawSearchParams : undefined;
   const slug = typeof rawSlug === "string" && rawSlug.trim() ? normalizeManufacturerSlug(rawSlug) : "";
   if (rawSlug && slug && rawSlug !== slug) {
-    permanentRedirect(`/manufacturers/${slug}`);
+    permanentRedirect(withSearchParams(`/manufacturers/${slug}`, sp));
   }
   if (!slug) notFound();
 
   const legacy = await resolveLegacyPhoneSlug(rawSlug);
   if (legacy?.slug) {
-    permanentRedirect(`/manufacturers/${legacy.slug}`);
+    permanentRedirect(withSearchParams(`/manufacturers/${legacy.slug}`, sp));
   }
 
   const seoPage = await fetchManufacturerSeoPage(slug);

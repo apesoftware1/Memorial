@@ -11,6 +11,7 @@ import { cloudinaryOptimized } from "@/lib/cloudinary";
 import { FavoriteButton } from "./favorite-button";
 import LocationTrigger from "./LocationTrigger";
 import { useGuestLocation } from "@/hooks/useGuestLocation";
+import { useSearchParams } from "next/navigation";
 // Remove this line: import { calculateDistanceFrom } from "@/lib/locationUtil";
 import { formatPrice } from "@/lib/priceUtils";
 import { trackAnalyticsEvent } from "@/lib/analytics";
@@ -42,6 +43,8 @@ export function PremiumListingCard({
   fixedHeight = false,
 }: PremiumListingCardProps & { fixedHeight?: boolean }): React.ReactElement {
   const router = useRouter();
+  const pathname = usePathname();
+  const currentSearchParams = useSearchParams();
   const [distanceInfo, setDistanceInfo] = useState<DistanceInfo | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [hasFetchedDistance, setHasFetchedDistance] = useState(false);
@@ -98,7 +101,24 @@ export function PremiumListingCard({
   ];
   const mobileThumbnails = thumbnails.slice(0, 3);
 
-  const productUrl = href || `/tombstones-for-sale/${listing.documentId}`;
+  const baseProductUrl = href || `/tombstones-for-sale/${listing.documentId}`;
+  // When the current page already has ?branch=<name>, preserve it on the
+  // destination listing URL so the destination page shows the same branch
+  // context (address header, breadcrumbs, distance, shareability).
+  const pageBranchName = currentSearchParams?.get?.("branch");
+  const pageBranchData = currentSearchParams?.get?.("branchData");
+  const productUrl = (() => {
+    const [urlBase, existingQs] = baseProductUrl.split("?");
+    const params = new URLSearchParams(existingQs || "");
+    if (pageBranchName && !params.has("branch")) {
+      params.set("branch", pageBranchName);
+    }
+    if (pageBranchData && !params.has("branchData")) {
+      params.set("branchData", pageBranchData);
+    }
+    const qs = params.toString();
+    return qs ? `${urlBase}?${qs}` : urlBase;
+  })();
 
   const pickSeoValue = (v: any) => {
     if (!v) return "";
@@ -258,8 +278,6 @@ export function PremiumListingCard({
   const locationText = branchAddress || companyLocationText || "location not set";
   const isDistanceUnavailable =
     hasFetchedDistance && !(distanceInfo && distanceInfo.distance && distanceInfo.distance.text);
-  
-  const pathname = usePathname();
   
   // Check if we're on the tombstones-for-sale page and not on the home page
   const isTombstonesForSalePage = pathname?.includes('tombstones-for-sale') && pathname !== '/';

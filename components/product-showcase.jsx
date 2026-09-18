@@ -30,7 +30,7 @@ import CompanyInfoCard from "./CompanyInfoCard";
 import SocialShare from "./SocialShare";
 import RelatedProducts from "./RelatedProducts";
 import WhatsAppContactDrawer from "./WhatsAppContactDrawer";
-import { useSearchParams, usePathname } from "next/navigation";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@apollo/client";
 import { GET_BRANCHES_BY_NAME } from "@/graphql/queries/getBranchesByName";
 
@@ -66,6 +66,8 @@ export default function ProductShowcase({ listing, id, allListings = [], current
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [shouldFetchExtras, setShouldFetchExtras] = useState(false);
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const branch = searchParams.get("branch"); // Prioritize branchId prop
   const listingDocumentId = id || listing?.documentId;
   const companyDocumentId = listing?.company?.documentId || listing?.companyId || null;
@@ -1168,6 +1170,11 @@ export default function ProductShowcase({ listing, id, allListings = [], current
             onBranchSelect={(branch) => {
               setSelectedBranch(branch);
               setShowBranchesModal(false);
+              if (branch?.name) {
+                const params = new URLSearchParams(searchParams.toString());
+                params.set("branch", branch.name);
+                router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+              }
             }}
           />
         )}

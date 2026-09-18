@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
 import BranchCard from "./BranchCard";
 
 // Custom wrapper component for BranchCard with sticky branches label
@@ -9,25 +8,14 @@ const PremiumBranchCard = ({
   branch,
   listing,
   onSelect,
-  branchCount 
 }: {
   branch: any;
   listing: any;
   onSelect: (branch: any) => void;
-  branchCount: number;
+  branchCount?: number;
 }) => {
-  const router = useRouter();
-  
-  const handleBranchSelect = (selectedBranch: any, listingData: any = null) => {
-    // First call the provided onSelect function
+  const handleBranchSelect = (selectedBranch: any) => {
     onSelect(selectedBranch);
-    
-    // Then navigate to the product showcase page
-    // Use the passed listing data or fall back to the component's listing prop
-    const targetListing = listingData || listing;
-    if (targetListing && targetListing.documentId) {
-      router.push(`/tombstones-for-sale/${targetListing.documentId}?branch=${selectedBranch.name}`);
-    }
   };
   
   return (

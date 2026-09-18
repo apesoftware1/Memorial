@@ -7,7 +7,12 @@ export default function BranchSelectorModal({
   onClose, 
   companyId, 
   branches, 
-  onBranchSelect 
+  onBranchSelect,
+  paramKey,
+  basePath,
+  preservePathname,
+  showMainBranchOption = false,
+  mainBranchLabel,
 }) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -22,7 +27,11 @@ export default function BranchSelectorModal({
           <BranchSelector
             companyId={companyId}
             branches={branches}
-            showMainBranchOption={false}
+            showMainBranchOption={showMainBranchOption}
+            mainBranchLabel={mainBranchLabel}
+            paramKey={paramKey}
+            basePath={basePath}
+            preservePathname={preservePathname}
             onBranchSelect={(branch) => {
               onBranchSelect(branch);
               onClose(false);

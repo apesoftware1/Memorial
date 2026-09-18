@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useCallback } from "react";
 import BranchButton from "@/components/BranchButton";
 import VideoModal from "@/components/VideoModal";
 import Footer from "@/components/Footer";
@@ -12,6 +12,18 @@ export default function ManufacturerProfileClient({ company, listings, isFullLoa
 
   const handleVideoClick = () => setShowVideoModal(true);
 
+  const handleBranchSelect = useCallback((branch) => {
+    // ManufacturerProfileEditor reads branch state via searchParams useEffect;
+    // BranchButton also writes ?branch= into the URL (see handleBranchSelect there),
+    // so the editor's useEffect at L423 will auto-sync selectedBranch + branchFromUrl.
+    if (typeof window !== "undefined") {
+      // Force a microtask refresh so listeners downstream fire even without re-render timing
+      const evt = new Event("manufacturer:branch-selected", { bubbles: false });
+      evt.detail = branch;
+      window.dispatchEvent(evt);
+    }
+  }, []);
+
   return (
     <div>
       <Suspense fallback={<PageLoader text="Loading profile..." />}>
@@ -21,7 +33,8 @@ export default function ManufacturerProfileClient({ company, listings, isFullLoa
           listings={Array.isArray(listings) ? listings : []}
           isFullLoaded={Boolean(isFullLoaded)}
           onVideoClick={handleVideoClick}
-          branchButton={<BranchButton company={company} />}
+          externalBranchSelect={handleBranchSelect}
+          branchButton={<BranchButton company={company} onBranchSelect={handleBranchSelect} />}
         />
       </Suspense>
 

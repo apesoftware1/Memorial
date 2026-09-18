@@ -169,6 +169,7 @@ export default function ManufacturerProfileEditor({
   autoRefreshEnabled,
   onToggleAutoRefresh,
   isFullLoaded,
+  externalBranchSelect,
 }) {
   // Removed useApolloClient hook as requested to disable cache manipulation in this editor
   const router = useRouter();
@@ -252,7 +253,24 @@ export default function ManufacturerProfileEditor({
   const [loadingListings, setLoadingListings] = useState(false);
   const handleBranchSelect = (branch) => {
     setSelectedBranch(branch);
+    if (branch) {
+      setBranchFromUrl(branch);
+      if (typeof externalBranchSelect === "function") externalBranchSelect(branch);
+    }
   };
+
+  // Listen to in-page branch selection events so BranchButton's choice
+  // is reflected instantly in both Store Location header regions and listings.
+  useEffect(() => {
+    const handler = (e) => {
+      const branch = e?.detail;
+      if (!branch) return;
+      setSelectedBranch(branch);
+      setBranchFromUrl(branch);
+    };
+    window.addEventListener("manufacturer:branch-selected", handler);
+    return () => window.removeEventListener("manufacturer:branch-selected", handler);
+  }, []);
   const [branchFromUrl, setBranchFromUrl] = useState(null);
   const [filteredListings, setFilteredListings] = useState(listings || []);
   const [companyListings, setCompanyListings] = useState(listings || []);
@@ -752,7 +770,7 @@ export default function ManufacturerProfileEditor({
       <div className="bg-white rounded-lg shadow-md p-4 mb-2">
         <h3 className="text-lg font-semibold flex items-center">
           <MapPin className="w-5 h-5 mr-2 text-primary" />
-          {branchFromUrl.location.address}
+          {branchFromUrl?.location?.address || company?.location || "Address not set"}
           {distanceText && (
             <span className="ml-2 text-sm text-gray-600">- {distanceText} away from you</span>
           )}
