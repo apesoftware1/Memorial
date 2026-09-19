@@ -138,12 +138,16 @@ async function resolveLegacyPhoneSlug(rawSlug: string): Promise<{ slug: string |
 }
 
 async function fetchCompanyAndListings(documentId: string) {
-  const data = await fetchGraphQL<{
+  const PAGE_SIZE = 100;
+  const initial = await fetchGraphQL<{
     companies?: any[];
-    listings?: any[];
+    listings_connection?: {
+      nodes?: any[] | null;
+      pageInfo?: { page: number; pageSize: number; pageCount: number; total: number } | null;
+    } | null;
   }>(
     `
-      query CompanySeo($documentId: ID!) {
+      query CompanySeoPaginated1($documentId: ID!, $pageSize: Int!, $page: Int!) {
         companies(filters: { documentId: { eq: $documentId } }) {
           documentId
           updatedAt
@@ -159,7 +163,7 @@ async function fetchCompanyAndListings(documentId: string) {
           logoUrl
           bannerAdUrl
           videoUrl
-          branches(pagination: { limit: -1 }) {
+          branches(pagination: { page: 1, pageSize: 200 }) {
             documentId
             name
             location {
@@ -190,50 +194,144 @@ async function fetchCompanyAndListings(documentId: string) {
           packageType
           isFeatured
         }
-        listings(
+        listings_connection(
           filters: { company: { documentId: { eq: $documentId } } }
-          pagination: { limit: 100 }
+          pagination: { page: $page, pageSize: $pageSize }
         ) {
-          documentId
-          updatedAt
-          title
-          slug
-          price
-          adFlasher
-          adFlasherColor
-          isFeatured
-          isOnSpecial
-          isPremium
-          isStandard
-          manufacturingTimeframe
-          mainImageUrl
-          thumbnailUrls
-          listing_category { documentId name }
-          productDetails {
-            id
-            stoneType { id value }
-            style { id value }
-            overallStyle { id value }
-            color { id value }
-          }
-          branches(pagination: { limit: -1 }) {
+          nodes {
             documentId
-            name
-            location { province city town }
-          }
-          branch_listings(pagination: { limit: -1 }) {
-            branch { documentId location { province city town } }
+            updatedAt
+            title
+            slug
             price
+            adFlasher
+            adFlasherColor
+            isFeatured
+            isOnSpecial
+            isPremium
+            isStandard
+            manufacturingTimeframe
+            mainImageUrl
+            thumbnailUrls
+            listing_category { documentId name }
+            productDetails {
+              id
+              stoneType { id value }
+              style { id value }
+              overallStyle { id value }
+              color { id value }
+            }
+            branches(pagination: { page: 1, pageSize: 200 }) {
+              documentId
+              name
+              location { province city town }
+            }
+            branch_listings(pagination: { page: 1, pageSize: 500 }) {
+              branch { documentId location { province city town } }
+              price
+            }
+          }
+          pageInfo {
+            page
+            pageSize
+            pageCount
+            total
           }
         }
       }
     `,
-    { documentId }
+    { documentId, page: 1, pageSize: PAGE_SIZE }
   );
 
-  const company = Array.isArray(data?.companies) ? data?.companies?.[0] : null;
-  const listings = Array.isArray(data?.listings) ? data?.listings : [];
-  return { company, listings };
+  const company = Array.isArray(initial?.companies) ? initial?.companies?.[0] : null;
+  const nodes = Array.isArray(initial?.listings_connection?.nodes) ? initial.listings_connection.nodes : [];
+  const pageInfo = initial?.listings_connection?.pageInfo || null;
+  const pageCount = Number.isFinite(Number(pageInfo?.pageCount)) ? Number(pageInfo.pageCount) : 1;
+  const total = Number.isFinite(Number(pageInfo?.total)) ? Number(pageInfo.total) : nodes.length;
+
+  const seenIds = new Set<string>();
+  const listings: any[] = [];
+  for (const node of nodes) {
+    const id = String(node?.documentId ?? "");
+    if (id && !seenIds.has(id)) {
+      seenIds.add(id);
+      listings.push(node);
+    }
+  }
+
+  if (pageCount > 1) {
+    const pages = [];
+    for (let p = 2; p <= pageCount; p++) {
+      pages.push(p);
+    }
+    const remainder = await Promise.all(
+      pages.map((page) =>
+        fetchGraphQL<{
+          listings_connection?: {
+            nodes?: any[] | null;
+          } | null;
+        }>(
+          `
+            query CompanySeoPaginatedRest($documentId: ID!, $pageSize: Int!, $page: Int!) {
+              listings_connection(
+                filters: { company: { documentId: { eq: $documentId } } }
+                pagination: { page: $page, pageSize: $pageSize }
+              ) {
+                nodes {
+                  documentId
+                  updatedAt
+                  title
+                  slug
+                  price
+                  adFlasher
+                  adFlasherColor
+                  isFeatured
+                  isOnSpecial
+                  isPremium
+                  isStandard
+                  manufacturingTimeframe
+                  mainImageUrl
+                  thumbnailUrls
+                  listing_category { documentId name }
+                  productDetails {
+                    id
+                    stoneType { id value }
+                    style { id value }
+                    overallStyle { id value }
+                    color { id value }
+                  }
+                  branches(pagination: { page: 1, pageSize: 200 }) {
+                    documentId
+                    name
+                    location { province city town }
+                  }
+                  branch_listings(pagination: { page: 1, pageSize: 500 }) {
+                    branch { documentId location { province city town } }
+                    price
+                  }
+                }
+              }
+            }
+          `,
+          { documentId, page, pageSize: PAGE_SIZE }
+        ).then((res) => (Array.isArray(res?.listings_connection?.nodes) ? res.listings_connection.nodes : []))
+      )
+    );
+    for (const batch of remainder) {
+      for (const node of batch) {
+        const id = String(node?.documentId ?? "");
+        if (id && !seenIds.has(id)) {
+          seenIds.add(id);
+          listings.push(node);
+        }
+      }
+    }
+  }
+
+  if (company) {
+    company.totalListingCount = Number.isFinite(total) ? total : listings.length;
+  }
+  return { company, listings, totalListingCount: Number.isFinite(total) ? total : listings.length };
 }
 
 export async function generateMetadata({
@@ -328,7 +426,7 @@ export default async function ManufacturerSeoProfilePage({
   const seoPage = await fetchManufacturerSeoPage(slug);
   if (!seoPage?.documentId) notFound();
 
-  const { company, listings } = await fetchCompanyAndListings(seoPage.documentId);
+  const { company, listings, totalListingCount: paginatedTotal } = await fetchCompanyAndListings(seoPage.documentId);
   if (!company) notFound();
 
   const canonical = toAbsoluteUrl(`/manufacturers/${slug}`);
@@ -340,6 +438,14 @@ export default async function ManufacturerSeoProfilePage({
   const branches = Array.isArray(seoPage?.branches) ? seoPage.branches : [];
   const website =
     (typeof company?.socialLinks?.website === "string" && company.socialLinks.website.trim()) || canonical;
+
+  const nestedLen = Array.isArray(listings) ? listings.length : 0;
+  const totalListingCount = Math.max(
+    Number.isFinite(Number(paginatedTotal)) ? Number(paginatedTotal) : 0,
+    Number.isFinite(Number(seoPage?.listingCount)) ? Number(seoPage.listingCount) : 0,
+    Number.isFinite(Number(company?.totalListingCount)) ? Number(company.totalListingCount) : 0,
+    nestedLen
+  );
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -380,7 +486,12 @@ export default async function ManufacturerSeoProfilePage({
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <ManufacturerProfileClient company={company} listings={listings} isFullLoaded={true} />
+      <ManufacturerProfileClient
+        company={company}
+        listings={listings}
+        isFullLoaded={true}
+        totalListingCount={totalListingCount}
+      />
     </>
   );
 }

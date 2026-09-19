@@ -4,17 +4,59 @@ import ManufacturerCard from '../components/ManufacturerCard';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Pagination from "@/components/Pagination";
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, MapPin, Search, Check } from "lucide-react";
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import locationsData from '@/sa_locations_expanded.json';
 import { useProgressiveQuery } from "@/hooks/useProgressiveQuery"
+import { useApolloClient, useQuery } from '@apollo/client';
 import {
   MANUFACTURERS_INITIAL_QUERY,
   MANUFACTURERS_FULL_QUERY,
   MANUFACTURERS_DELTA_QUERY,
+  LISTING_COUNT_SCOPED_QUERY,
 } from '@/graphql/queries/getManufacturers';
+
+function extractUniqueCompanyIds(fromInitial, fromApollo) {
+  const set = new Set();
+  const push = (arr) => {
+    if (!Array.isArray(arr)) return;
+    for (const c of arr) {
+      if (c && typeof c === "object" && c.documentId) set.add(c.documentId);
+    }
+  };
+  push(fromInitial);
+  push(fromApollo);
+  return Array.from(set);
+}
+
+async function fetchAllCounts(apolloClient, companyDocumentIds) {
+  const ids = Array.isArray(companyDocumentIds) ? companyDocumentIds : [];
+  if (ids.length === 0) return {};
+  const results = await Promise.all(
+    ids.map((companyId) =>
+      apolloClient
+        .query({
+          query: LISTING_COUNT_SCOPED_QUERY,
+          variables: { companyDocId: companyId, pageSize: 1, page: 1 },
+          fetchPolicy: "network-only",
+        })
+        .then((resp) => {
+          const total = Number(resp?.data?.listings_connection?.pageInfo?.total);
+          return Number.isFinite(total) ? [companyId, total] : null;
+        })
+        .catch(() => null)
+    )
+  );
+  const merged = {};
+  for (const entry of results) {
+    if (!entry) continue;
+    const [companyId, total] = entry;
+    merged[companyId] = total;
+  }
+  return merged;
+}
 
 export default function ManufacturersClient({
   initialCompanies = [],
@@ -30,6 +72,55 @@ export default function ManufacturersClient({
     refreshInterval: 60000,
     staleTime: 1000 * 60 * 5,
   });
+
+  const apolloClient = useApolloClient();
+
+  const [companiesListingCounts, setCompaniesListingCounts] = useState({});
+
+  const knownCompanyIds = useMemo(
+    () => extractUniqueCompanyIds(initialCompanies, data?.companies),
+    [initialCompanies, data?.companies]
+  );
+
+  useEffect(() => {
+    if (!apolloClient) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const counts = await fetchAllCounts(apolloClient, knownCompanyIds);
+        if (!cancelled) setCompaniesListingCounts(counts);
+      } catch {
+        // swallow
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apolloClient, knownCompanyIds]);
+
+  useEffect(() => {
+    if (!apolloClient) return;
+    let cancelled = false;
+    let attempt = 0;
+    const interval = setInterval(async () => {
+      attempt += 1;
+      if (cancelled) return clearInterval(interval);
+      if (attempt > 6) return clearInterval(interval);
+      try {
+        const counts = await fetchAllCounts(apolloClient, knownCompanyIds);
+        if (!cancelled) {
+          setCompaniesListingCounts(counts);
+          clearInterval(interval);
+        }
+      } catch {
+        // swallow and retry
+      }
+    }, 1500);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [apolloClient, knownCompanyIds]);
   const [manufacturerSeoSlugMap, setManufacturerSeoSlugMap] = useState(
     initialManufacturerSeoSlugMap || {}
   );
@@ -261,7 +352,9 @@ export default function ManufacturersClient({
     const locationFilter = (searchFilters.location || '').toLowerCase().replace(/\s*,\s*/g, ',').split(',').pop().trim();
 
     
-    const filtered = companies.filter(company => {
+    const filtered = companies
+      .filter((c) => c && typeof c === "object")
+      .filter((company) => {
       const nameMatch = nameFilter === '' || 
         (company.name && company.name.toLowerCase().includes(nameFilter));
       
@@ -351,15 +444,48 @@ export default function ManufacturersClient({
     }));
   }, []);
 
-  const companies = Array.isArray(data?.companies) ? data.companies : initialCompanies;
+  const baseCompanies = Array.isArray(data?.companies) && data.companies.length > 0 ? data.companies : initialCompanies;
+  const initialByDocId = useMemo(() => new Map(
+    (initialCompanies || [])
+      .filter(c => c && typeof c === "object")
+      .map(c => [c.documentId, c])
+  ), [initialCompanies]);
+  const companies = Array.isArray(baseCompanies)
+    ? baseCompanies
+        .filter(c => c && typeof c === "object")
+        .map(c => {
+          const init = initialByDocId.get(c.documentId);
+          const hasDirect = Number.isFinite(Number(c.listingCount));
+          const initCount = Number.isFinite(Number(init?.listingCount)) ? Number(init.listingCount) : null;
+          if (!hasDirect && initCount !== null) return { ...c, listingCount: initCount };
+          return c;
+        })
+    : [];
   const hasInitialCompanies = Array.isArray(initialCompanies) && initialCompanies.length > 0;
 
   if (loading && !hasInitialCompanies) return <div>Loading manufacturers...</div>;
   if (error) return <div>Error loading manufacturers{console.error("GraphQL Error:", error)}</div>;
 
+  const applyListingCount = useCallback((company) => {
+    if (!company || typeof company !== "object") return company;
+    const directCount = Number.isFinite(Number(company.listingCount))
+      ? Number(company.listingCount)
+      : null;
+    const aggregatedCount = companiesListingCounts?.[company.documentId];
+    const nestedLen = Array.isArray(company.listings) ? company.listings.length : 0;
+    const listingCount = Math.max(
+      directCount ?? 0,
+      Number.isFinite(Number(aggregatedCount)) ? Number(aggregatedCount) : 0,
+      nestedLen ?? 0
+    );
+    return { ...company, listingCount };
+  }, [companiesListingCounts]);
+
   // Prepare sorted manufacturers and results count
-  let sortedManufacturers = Array.isArray(companies) ? [...companies] : [];
-  
+  let sortedManufacturers = Array.isArray(companies)
+    ? companies.filter((c) => c && typeof c === "object").map(applyListingCount)
+    : [];
+
   // Apply sorting logic based on sortOrder
   if (sortOrder === "Alphabetical: A-Z") {
     sortedManufacturers.sort((a, b) => {
@@ -375,23 +501,48 @@ export default function ManufacturersClient({
     });
   } else if (sortOrder === "Listings: Most to Least") {
     sortedManufacturers.sort((a, b) => {
-      const listingsA = a.listings ? a.listings.length : 0;
-      const listingsB = b.listings ? b.listings.length : 0;
+      const listingsA = Number.isFinite(Number(a.listingCount)) ? Number(a.listingCount) : (a.listings ? a.listings.length : 0);
+      const listingsB = Number.isFinite(Number(b.listingCount)) ? Number(b.listingCount) : (b.listings ? b.listings.length : 0);
       return listingsB - listingsA;
     });
   } else if (sortOrder === "Distance: Nearest First") {
     // For now, keep default order as we don't have distance calculation
     // This could be implemented later with geolocation
   }
-  
+
   const resultsCount = sortedManufacturers.length;
 
-  // Determine visible list and paginate
-  const visibleManufacturers = isFiltered ? filteredManufacturers : sortedManufacturers;
+  const totalVisibleManufacturers = useMemo(
+    () => (isFiltered ? filteredManufacturers.map(applyListingCount) : sortedManufacturers),
+    [isFiltered, filteredManufacturers, sortedManufacturers, applyListingCount]
+  );
+
+  const visibleManufacturers = totalVisibleManufacturers;
   const totalPages = Math.ceil((visibleManufacturers?.length || 0) / PAGE_SIZE) || 1;
   const startIdx = (currentPage - 1) * PAGE_SIZE;
   const endIdx = startIdx + PAGE_SIZE;
   const paginatedManufacturers = visibleManufacturers.slice(startIdx, endIdx);
+
+  const visibleRemainingCount = Math.max(0, (visibleManufacturers?.length || 0) - endIdx);
+  const loadMoreSentinelRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const node = loadMoreSentinelRef?.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry?.isIntersecting && visibleRemainingCount > 0) {
+            setCurrentPage((p) => Math.min(p + 1, totalPages));
+          }
+        });
+      },
+      { rootMargin: "240px 0px 240px 0px", threshold: 0.01 }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [visibleRemainingCount, totalPages]);
 
   return (
     <div className="min-h-screen bg-gray-50 overflow-x-hidden">
@@ -728,9 +879,26 @@ export default function ManufacturersClient({
                     logo: company.logoUrl || '',
                     rating: company.googleRating,
                     seoSlug: manufacturerSeoSlugMap?.[company.documentId] || "",
+                    listingCount: company.listingCount,
                   }}
                 />
               ))}
+            {visibleRemainingCount > 0 && (
+              <div className="w-full flex flex-col items-center gap-3 py-6">
+                <button
+                  ref={loadMoreSentinelRef}
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                  className="inline-flex items-center justify-center px-6 py-3 rounded-md border border-blue-200 bg-white text-blue-700 hover:bg-blue-50 hover:text-blue-800 font-semibold shadow-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={countsQuery.loading}
+                >
+                  Load more manufacturers ({visibleRemainingCount} remaining)
+                </button>
+                <div className="text-xs text-gray-500">
+                  Showing {Math.min(endIdx, visibleManufacturers.length || 0)} of {visibleManufacturers.length || 0}
+                </div>
+              </div>
+            )}
             {visibleManufacturers.length > PAGE_SIZE && (
               <div className="mt-8 flex justify-start w-auto">
                 <Pagination

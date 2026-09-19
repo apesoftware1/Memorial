@@ -64,14 +64,20 @@ const ListingCardItem = memo(({
       const base = buildListingCanonicalHref(listing) || `/tombstones-for-sale/${listing.documentId || listing.id}`;
       const branchName = searchParams?.get?.("branch") || branchFromUrl?.name;
       const branchData = searchParams?.get?.("branchData");
-      if (!branchName && !branchData) return base;
+      const companySlug =
+        searchParams?.get?.("company") ||
+        listing?.company?.slug ||
+        company?.slug ||
+        (typeof company?.companySlug === "string" ? company.companySlug : undefined);
+      if (!branchName && !branchData && !companySlug) return base;
       const [urlBase, existingQs] = base.split("?");
       const params = new URLSearchParams(existingQs || "");
       if (branchName && !params.has("branch")) params.set("branch", branchName);
       if (branchData && !params.has("branchData")) params.set("branchData", branchData);
+      if (companySlug && !params.has("company")) params.set("company", companySlug);
       const qs = params.toString();
       return qs ? `${urlBase}?${qs}` : urlBase;
-    }, [listing, searchParams, branchFromUrl?.name]);
+    }, [listing, searchParams, branchFromUrl?.name, company?.slug, company?.companySlug]);
 
     return (
         <div

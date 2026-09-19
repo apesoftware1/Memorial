@@ -1,7 +1,5 @@
 "use client";
 
-import { useQuery } from '@apollo/client';
-import { GET_MANUFACTURERS } from '@/graphql/queries/getManufacturers';
 import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { Search, LogOut, Moon, Sun, PanelLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -20,11 +18,52 @@ import { Checkbox } from "@/components/ui/checkbox";
 import ListingCategoryManager from "./ListingCategoryManager";
 import { useProgressiveQuery } from "@/hooks/useProgressiveQuery"
 import { cloudinaryOptimized } from "@/lib/cloudinary";
+import { useApolloClient } from '@apollo/client';
 import {
   MANUFACTURERS_INITIAL_QUERY,
   MANUFACTURERS_FULL_QUERY,
   MANUFACTURERS_DELTA_QUERY,
+  LISTING_COUNT_SCOPED_QUERY,
 } from '@/graphql/queries/getManufacturers';
+
+function extractUniqueCompanyIds(fromApollo) {
+  const set = new Set();
+  const push = (arr) => {
+    if (!Array.isArray(arr)) return;
+    for (const c of arr) {
+      if (c && typeof c === "object" && c.documentId) set.add(c.documentId);
+    }
+  };
+  push(fromApollo);
+  return Array.from(set);
+}
+
+async function fetchAllCounts(apolloClient, companyDocumentIds) {
+  const ids = Array.isArray(companyDocumentIds) ? companyDocumentIds : [];
+  if (ids.length === 0) return {};
+  const results = await Promise.all(
+    ids.map((companyId) =>
+      apolloClient
+        .query({
+          query: LISTING_COUNT_SCOPED_QUERY,
+          variables: { companyDocId: companyId, pageSize: 1, page: 1 },
+          fetchPolicy: "network-only",
+        })
+        .then((resp) => {
+          const total = Number(resp?.data?.listings_connection?.pageInfo?.total);
+          return Number.isFinite(total) ? [companyId, total] : null;
+        })
+        .catch(() => null)
+    )
+  );
+  const merged = {};
+  for (const entry of results) {
+    if (!entry) continue;
+    const [companyId, total] = entry;
+    merged[companyId] = total;
+  }
+  return merged;
+}
 
 const FILTER_OPTIONS = [
   { key: "minPrice", label: "Min Price" },
@@ -174,6 +213,65 @@ export default function DashboardClient() {
       storageKey: 'manufacturers:lastUpdated',
       refreshInterval: 60000,
     });
+
+  const apolloClient = useApolloClient();
+  const [companiesListingCounts, setCompaniesListingCounts] = useState({});
+  const knownCompanyIds = useMemo(
+    () => extractUniqueCompanyIds(data?.companies),
+    [data?.companies]
+  );
+  const applyListingCount = useMemo(() => {
+    return (company) => {
+      if (!company || typeof company !== "object") return company;
+      const fromCounts = companiesListingCounts && typeof companiesListingCounts === "object"
+        ? companiesListingCounts[company.documentId]
+        : undefined;
+      const listingCount = Number.isFinite(Number(fromCounts))
+        ? Number(fromCounts)
+        : (Array.isArray(company?.listings) ? company.listings.length : 0);
+      return { ...company, listingCount };
+    };
+  }, [companiesListingCounts]);
+
+  useEffect(() => {
+    if (!apolloClient) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const counts = await fetchAllCounts(apolloClient, knownCompanyIds);
+        if (!cancelled) setCompaniesListingCounts(counts);
+      } catch {
+        // swallow
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apolloClient, knownCompanyIds]);
+
+  useEffect(() => {
+    if (!apolloClient) return;
+    let cancelled = false;
+    let attempt = 0;
+    const interval = setInterval(async () => {
+      attempt += 1;
+      if (cancelled) return clearInterval(interval);
+      if (attempt > 6) return clearInterval(interval);
+      try {
+        const counts = await fetchAllCounts(apolloClient, knownCompanyIds);
+        if (!cancelled) {
+          setCompaniesListingCounts(counts);
+          clearInterval(interval);
+        }
+      } catch {
+        // swallow and retry
+      }
+    }, 1500);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [apolloClient, knownCompanyIds]);
   // Local dark-mode state scoped to this page
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -426,17 +524,19 @@ export default function DashboardClient() {
   // Update filtered manufacturers when data changes or filters change
   useEffect(() => {
     if (data?.companies) {
-      const filtered = data.companies.filter(manufacturer => {
-        const nameMatch = manufacturer.name.toLowerCase().includes(searchFilters.manufacturerName.toLowerCase());
-        const locationMatch = searchFilters.location === "" || 
-          manufacturer.location.toLowerCase().includes(searchFilters.location.toLowerCase());
-        return nameMatch && locationMatch;
-      });
+      const filtered = data.companies
+        .filter(manufacturer => {
+          const nameMatch = manufacturer.name.toLowerCase().includes(searchFilters.manufacturerName.toLowerCase());
+          const locationMatch = searchFilters.location === "" || 
+            manufacturer.location.toLowerCase().includes(searchFilters.location.toLowerCase());
+          return nameMatch && locationMatch;
+        })
+        .map(applyListingCount);
       
       setFilteredManufacturers(filtered);
       setDisplayedManufacturers(filtered.slice(0, displayCount));
     }
-  }, [data, searchFilters, displayCount]);
+  }, [data, searchFilters, displayCount, applyListingCount]);
 
   const handleSearchChange = (e) => {
     const { name, value } = e.target;
@@ -1019,6 +1119,9 @@ export default function DashboardClient() {
 function ManufacturerCard({ manufacturer }) {
   // Change the profile URL to point to the company performance page
   const profileUrl = `/regan-dashboard/${manufacturer.documentId}`;
+  const tombstoneCount = Number.isFinite(Number(manufacturer?.listingCount))
+    ? Number(manufacturer.listingCount)
+    : (Array.isArray(manufacturer?.listings) ? manufacturer.listings.length : 0);
   
   return (
     <Link href={profileUrl} className="block h-full">
@@ -1044,7 +1147,7 @@ function ManufacturerCard({ manufacturer }) {
           
           <div className="mt-auto">
             <div className="text-primary font-semibold text-sm mb-2">
-              {manufacturer.listings?.length || 0} Tombstones Listed
+              {tombstoneCount} Tombstones Listed
             </div>
             
             <div className="flex items-center text-muted-foreground text-xs">

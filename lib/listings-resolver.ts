@@ -1,6 +1,3 @@
-import { notFound, permanentRedirect } from "next/navigation";
-import TombstonesForSaleClient from "../../tombstones-for-sale/for-sale-client";
-import ProductShowcase from "@/components/product-showcase";
 import {
   normalizeListingSlug,
   cleanListingSlug,
@@ -11,34 +8,48 @@ import {
   normalizeTownCompare,
 } from "@/lib/slugs";
 
-const TombstonesForSaleClientAny = TombstonesForSaleClient as unknown as (props: any) => any;
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tombstonesfinder.co.za";
-const GRAPHQL_URL =
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tombstonesfinder.co.za";
+export const GRAPHQL_URL =
   process.env.NEXT_PUBLIC_STRAPI_GRAPHQL_URL ||
   `${process.env.STRAPI_API_URL || "https://api.tombstonesfinder.co.za"}/graphql`;
 
-function toAbsoluteUrl(pathname: string) {
+export function toAbsoluteUrl(pathname: string) {
   return `${SITE_URL}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
 }
 
-function normalizeLower(v: unknown) {
-  return typeof v === "string" ? v.trim().toLowerCase() : "";
+export function withSearchParams(pathname: string, searchParams: { [key: string]: string | string[] | undefined } | null | undefined) {
+  if (!searchParams) return pathname;
+  const entries = Object.entries(searchParams).filter(([, v]) => v !== undefined && v !== null && v !== "");
+  if (!entries.length) return pathname;
+  const params = new URLSearchParams();
+  for (const [k, v] of entries) {
+    if (Array.isArray(v)) {
+      for (const item of v) params.append(k, item);
+    } else if (typeof v === "string") {
+      params.set(k, v);
+    }
+  }
+  const qs = params.toString();
+  return qs ? `${pathname}?${qs}` : pathname;
 }
 
-function uniqStrings(list: unknown[]) {
+export function normalizeLower(s: any): string {
+  return typeof s === "string" ? s.trim().toLowerCase() : "";
+}
+
+export function uniqStrings(list: unknown[]) {
   return Array.from(
     new Set(list.map((v) => String(v ?? "").trim()).filter(Boolean))
   );
 }
 
-function coercePrice(value: unknown) {
+export function coercePrice(value: unknown) {
   if (value == null) return null;
   const num = typeof value === "number" ? value : Number(String(value).replace(/[^0-9.]+/g, ""));
   return Number.isFinite(num) ? num : null;
 }
 
-async function fetchGraphQL<TData>(query: string, variables: Record<string, unknown>, revalidate = 30) {
+export async function fetchGraphQL<TData>(query: string, variables: Record<string, unknown>, revalidate = 30) {
   const res = await fetch(GRAPHQL_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -51,7 +62,7 @@ async function fetchGraphQL<TData>(query: string, variables: Record<string, unkn
   return (json?.data as TData) ?? null;
 }
 
-type LocationSeoPage = {
+export type LocationSeoPage = {
   name?: string;
   slug?: string;
   locationType?: string;
@@ -63,7 +74,7 @@ type LocationSeoPage = {
   heroImage?: { url?: string } | null;
 } | null;
 
-async function fetchLocationSeoPage(slug: string): Promise<LocationSeoPage> {
+export async function fetchLocationSeoPage(slug: string): Promise<LocationSeoPage> {
   const data = await fetchGraphQL<{
     locationSeoPageBySlug?: LocationSeoPage;
   }>(
@@ -87,11 +98,15 @@ async function fetchLocationSeoPage(slug: string): Promise<LocationSeoPage> {
   return (data?.locationSeoPageBySlug as LocationSeoPage) ?? null;
 }
 
-async function fetchListingBySavedSlug(slug: string) {
+export async function fetchListingBySavedSlug(slug: string, companySlug?: string) {
+  const companyFilter = companySlug ? `, company: { slug: { eqi: $companySlug } }` : "";
+  const companyVar = companySlug ? `, $companySlug: String!` : "";
+  const variables: any = { slug };
+  if (companySlug) variables.companySlug = companySlug;
   const data = await fetchGraphQL<{ listings?: any[] }>(
     `
-      query ListingBySavedSlug($slug: String!) {
-        listings(filters: { slug: { eq: $slug } }, pagination: { limit: 1 }) {
+      query ListingBySavedSlug($slug: String!${companyVar}) {
+        listings(filters: { slug: { eq: $slug }${companyFilter} }, pagination: { limit: 1 }) {
           documentId
           title
           mainImageUrl
@@ -143,6 +158,7 @@ async function fetchListingBySavedSlug(slug: string) {
           company {
             enableWhatsAppButton
             documentId
+            slug
             phone
             name
             mapUrl
@@ -180,13 +196,13 @@ async function fetchListingBySavedSlug(slug: string) {
         }
       }
     `,
-    { slug },
+    variables,
     300
   );
   return Array.isArray(data?.listings) && data.listings.length > 0 ? data.listings[0] : null;
 }
 
-const LISTING_RESULT_FRAGMENT = `
+export const LISTING_RESULT_FRAGMENT = `
   documentId
   title
   slug
@@ -232,6 +248,7 @@ const LISTING_RESULT_FRAGMENT = `
   company {
     enableWhatsAppButton
     documentId
+    slug
     phone
     name
     mapUrl
@@ -268,7 +285,7 @@ const LISTING_RESULT_FRAGMENT = `
   }
 `;
 
-const PRODUCT_KEYWORDS = [
+export const PRODUCT_KEYWORDS = [
   "granite", "marble", "sandstone", "limestone", "slate", "travertine", "stone",
   "pillars", "pillar", "pillared", "column", "columns", "obelisk",
   "arch", "arched", "dome", "domed", "mausoleum", "teddybear", "teddy",
@@ -278,7 +295,7 @@ const PRODUCT_KEYWORDS = [
   "standard", "premium", "luxury", "economy", "budget", "value",
 ];
 
-function extractListingNamePrefixes(normalized: string): string[] {
+export function extractListingNamePrefixes(normalized: string): string[] {
   if (!normalized) return [];
   const tokens = normalized.split("-").filter(Boolean);
   const stopIdx = tokens.findIndex((t) => PRODUCT_KEYWORDS.includes(t.toLowerCase()));
@@ -295,39 +312,47 @@ function extractListingNamePrefixes(normalized: string): string[] {
   return variants.filter(Boolean);
 }
 
-function extractListingNamePrefix(normalized: string): string {
+export function extractListingNamePrefix(normalized: string): string {
   return extractListingNamePrefixes(normalized)[0] || "";
 }
 
-async function fetchListingsByTitleNormalized(normalizedTitle: string) {
+export async function fetchListingsByTitleNormalized(normalizedTitle: string, companySlug?: string) {
   if (!normalizedTitle) return [];
   const dashToSpace = normalizedTitle.replace(/-+/g, " ");
+  const companyFilter = companySlug ? `, company: { slug: { eqi: $companySlug } }` : "";
+  const companyVar = companySlug ? `, $companySlug: String!` : "";
+  const variables: any = { q: dashToSpace };
+  if (companySlug) variables.companySlug = companySlug;
   const data = await fetchGraphQL<{ listings?: any[] }>(
     `
-      query ListingsByTitleFragment($q: String!) {
-        listings(filters: { title: { containsi: $q } }, pagination: { limit: 20 }) {
+      query ListingsByTitleFragment($q: String!${companyVar}) {
+        listings(filters: { title: { containsi: $q }${companyFilter} }, pagination: { limit: 20 }) {
           ${LISTING_RESULT_FRAGMENT}
         }
       }
     `,
-    { q: dashToSpace },
+    variables,
     300
   );
   return Array.isArray(data?.listings) ? data.listings : [];
 }
 
-async function fetchListingsBySimplePrefixSearch(prefixes: string[]) {
+export async function fetchListingsBySimplePrefixSearch(prefixes: string[], companySlug?: string) {
   const safe = Array.isArray(prefixes) ? prefixes.filter((p) => typeof p === "string" && p.length >= 1).slice(0, 6) : [];
   if (safe.length === 0) return [];
+  const companyFilter = companySlug ? `, company: { slug: { eqi: $companySlug } }` : "";
+  const companyVar = companySlug ? `, $companySlug: String!` : "";
   const bySlugEq: any[] = [];
   const byNameRows: any[] = [];
   for (const prefix of safe) {
     const dashToSpace = prefix.replace(/-+/g, " ");
     const compact = prefix.replace(/-+/g, "");
+    const variables: any = { prefix, dashPrefix: dashToSpace, compact, slugEq: prefix };
+    if (companySlug) variables.companySlug = companySlug;
     const data = await fetchGraphQL<{ bySlug?: any[]; byName?: any[] }>(
       `
-        query ListingsBySimplePrefix($prefix: String!, $dashPrefix: String!, $compact: String!, $slugEq: String!) {
-          bySlug: listings(filters: { slug: { eq: $slugEq } }, pagination: { limit: 1 }) {
+        query ListingsBySimplePrefix($prefix: String!, $dashPrefix: String!, $compact: String!, $slugEq: String!${companyVar}) {
+          bySlug: listings(filters: { slug: { eq: $slugEq }${companyFilter} }, pagination: { limit: 1 }) {
             ${LISTING_RESULT_FRAGMENT}
           }
           byName: listings(
@@ -341,7 +366,7 @@ async function fetchListingsBySimplePrefixSearch(prefixes: string[]) {
                 { slug: { startsWith: $prefix } }
                 { slug: { containsi: $compact } }
                 { slug: { startsWith: $compact } }
-              ]
+              ]${companySlug ? ", company: { slug: { eqi: $companySlug } }" : ""}
             },
             pagination: { limit: 20 },
             sort: "updatedAt:desc"
@@ -350,7 +375,7 @@ async function fetchListingsBySimplePrefixSearch(prefixes: string[]) {
           }
         }
       `,
-      { prefix, dashPrefix: dashToSpace, compact, slugEq: prefix },
+      variables,
       300
     );
     if (Array.isArray(data?.bySlug)) bySlugEq.push(...data.bySlug);
@@ -367,16 +392,29 @@ async function fetchListingsBySimplePrefixSearch(prefixes: string[]) {
   return merged;
 }
 
-async function fetchListingsByNamePrefix(prefix: string, fullNormalized: string) {
+export async function fetchListingsByNamePrefix(prefix: string, fullNormalized: string, companySlug?: string) {
   if (!prefix) return [];
   const prefixVariants = extractListingNamePrefixes(fullNormalized);
   const dashToSpace = prefix.replace(/-+/g, " ");
   const compact = prefix.replace(/-+/g, "");
   const variantsForGql = prefixVariants.length ? prefixVariants.slice(0, 4) : [prefix];
+  const companyFilter = companySlug ? `, company: { slug: { eqi: $companySlug } }` : "";
+  const companyVar = companySlug ? `, $companySlug: String!` : "";
+  const variables: any = {
+    prefix,
+    dashPrefix: dashToSpace,
+    compact,
+    fullNormalized,
+    p0: variantsForGql[0] || prefix,
+    p1: variantsForGql[1] || prefix,
+    p2: variantsForGql[2] || prefix,
+    p3: variantsForGql[3] || prefix,
+  };
+  if (companySlug) variables.companySlug = companySlug;
   const data = await fetchGraphQL<{ bySlug?: any[]; byName?: any[] }>(
     `
-      query ListingsByNamePrefix($prefix: String!, $dashPrefix: String!, $compact: String!, $fullNormalized: String!, $p0: String!, $p1: String!, $p2: String!, $p3: String!) {
-        bySlug: listings(filters: { slug: { eq: $fullNormalized } }, pagination: { limit: 1 }) {
+      query ListingsByNamePrefix($prefix: String!, $dashPrefix: String!, $compact: String!, $fullNormalized: String!, $p0: String!, $p1: String!, $p2: String!, $p3: String!${companyVar}) {
+        bySlug: listings(filters: { slug: { eq: $fullNormalized }${companyFilter} }, pagination: { limit: 1 }) {
           ${LISTING_RESULT_FRAGMENT}
         }
         byName: listings(
@@ -394,7 +432,7 @@ async function fetchListingsByNamePrefix(prefix: string, fullNormalized: string)
               { slug: { containsi: $compact } }
               { slug: { containsi: $p0 } }
               { slug: { startsWith: $p0 } }
-            ]
+            ]${companySlug ? ", company: { slug: { eqi: $companySlug } }" : ""}
           },
           pagination: { limit: 30 },
           sort: "updatedAt:desc"
@@ -403,16 +441,7 @@ async function fetchListingsByNamePrefix(prefix: string, fullNormalized: string)
         }
       }
     `,
-    {
-      prefix,
-      dashPrefix: dashToSpace,
-      compact,
-      fullNormalized,
-      p0: variantsForGql[0] || prefix,
-      p1: variantsForGql[1] || prefix,
-      p2: variantsForGql[2] || prefix,
-      p3: variantsForGql[3] || prefix,
-    },
+    variables,
     300
   );
   const bySlug = Array.isArray(data?.bySlug) ? data.bySlug : [];
@@ -428,7 +457,7 @@ async function fetchListingsByNamePrefix(prefix: string, fullNormalized: string)
   return merged;
 }
 
-function candidateMatchesAnyPrefix(candidate: any, prefixVariants: string[]): boolean {
+export function candidateMatchesAnyPrefix(candidate: any, prefixVariants: string[]): boolean {
   if (!candidate || !prefixVariants.length) return false;
   const cTitle = normalizeLower(candidate?.title ?? "");
   const cSlug = normalizeLower(candidate?.slug ?? "");
@@ -444,7 +473,7 @@ function candidateMatchesAnyPrefix(candidate: any, prefixVariants: string[]): bo
   });
 }
 
-function productSegmentsMatchNormalizedUrl(listing: any, normalized: string): boolean {
+export function productSegmentsMatchNormalizedUrl(listing: any, normalized: string): boolean {
   if (!listing || !normalized) return false;
   const listingCanonical = normalizeListingSlug(buildListingCanonicalSlug(listing) || "");
   const listingClean = normalizeListingSlug(cleanListingSlug(listing?.slug, listing?.title) || "");
@@ -479,7 +508,7 @@ function productSegmentsMatchNormalizedUrl(listing: any, normalized: string): bo
   return true;
 }
 
-function isListingMatchForUrl(
+export function isListingMatchForUrl(
   listing: any,
   normalized: string,
   urlTown: string
@@ -500,7 +529,7 @@ function isListingMatchForUrl(
   return "wrong-town";
 }
 
-async function fetchListingByCodePrefix(rawSlug: string, normalized: string) {
+export async function fetchListingByCodePrefix(rawSlug: string, normalized: string, companySlug?: string) {
   if (!rawSlug || !normalized) return null;
   const tokens = normalized.split("-").filter(Boolean);
   const headToken = tokens[0] || "";
@@ -519,13 +548,12 @@ async function fetchListingByCodePrefix(rawSlug: string, normalized: string) {
     { title: { containsi: headToken } },
     { title: { containsi: compact } },
   ];
-  // High-priority fallback: match mfgCode eqI + title containsi against the
-  // extracted code prefix and its variants (e.g. mfg44 → matches listing's
-  // mfgCode or mfg44 inside the title, even if slug/title in DB don't literally
-  // contain the token "mfg44").
+  // High-priority fallback: match extracted code-prefix against the
+  // title and slug text fields (the CMS may embed product-code strings
+  // like mfg44 or GCB8 inside title/slug even if no dedicated mfgCode
+  // schema field exists).
   const orCodeFilters: Record<string, any>[] = [];
   for (const v of uniqueVariants) {
-    orCodeFilters.push({ mfgCode: { eqi: v } });
     orCodeFilters.push({ title: { containsi: v } });
   }
   orFilters.push(...orCodeFilters);
@@ -541,15 +569,19 @@ async function fetchListingByCodePrefix(rawSlug: string, normalized: string) {
   // Try each head-segment as a potential documentId match (legacy URL format: /tombstones/{id}-...)
   orFilters.push({ documentId: { eq: headToken } });
 
+  const companyFilterFragment = companySlug ? `, company: { slug: { eqi: $companySlug } }` : "";
+  const companyVarFragment = companySlug ? `, $companySlug: String!` : "";
+  const variables: any = { or: orFilters };
+  if (companySlug) variables.companySlug = companySlug;
   const data = await fetchGraphQL<{ listings?: any[] }>(
     `
-      query ListingByCodePrefix($or: [ListingsFiltersInput]) {
-        listings(filters: { or: $or }, pagination: { page: 1, pageSize: 10 }, sort: "updatedAt:desc") {
+      query ListingByCodePrefix($or: [ListingFiltersInput]${companyVarFragment}) {
+        listings(filters: { or: $or${companyFilterFragment} }, pagination: { page: 1, pageSize: 10 }, sort: "updatedAt:desc") {
           ${LISTING_RESULT_FRAGMENT}
         }
       }
     `,
-    { or: orFilters },
+    variables,
     300
   );
   const rows = Array.isArray(data?.listings) ? data.listings : [];
@@ -613,20 +645,20 @@ async function fetchListingByCodePrefix(rawSlug: string, normalized: string) {
   return null;
 }
 
-async function fetchListingByNormalizedSlug(rawSlug: string) {
+export async function fetchListingByNormalizedSlug(rawSlug: string, targetCompanySlug?: string) {
   const normalized = normalizeListingSlug(rawSlug);
   if (!normalized) return null;
   const urlTown = extractUrlTownSegment(normalized);
-  console.log("[RESOLVER] rawSlug:", rawSlug, "normalized:", normalized, "urlTown:", JSON.stringify(urlTown));
+  console.log("[RESOLVER] rawSlug:", rawSlug, "normalized:", normalized, "urlTown:", JSON.stringify(urlTown), "targetCompanySlug:", targetCompanySlug || "(none)");
 
-  const bySaved = await fetchListingBySavedSlug(normalized);
+  const bySaved = await fetchListingBySavedSlug(normalized, targetCompanySlug);
   if (bySaved) {
     console.log("[RESOLVER] ✅ TIER 1 HIT (bySaved DB slug=normalized):", bySaved.documentId, bySaved.title || bySaved.name);
     return bySaved;
   }
   console.log("[RESOLVER] tier1 bySaved miss");
 
-  const bySavedOriginal = await fetchListingBySavedSlug(rawSlug);
+  const bySavedOriginal = await fetchListingBySavedSlug(rawSlug, targetCompanySlug);
   if (bySavedOriginal) {
     const target = cleanListingSlug(bySavedOriginal.slug, bySavedOriginal.title);
     console.log("[RESOLVER] ✅ TIER 2 HIT (bySaved rawSlug):", bySavedOriginal.documentId, bySavedOriginal.slug, bySavedOriginal.title || bySavedOriginal.name, "redirectTarget=", target);
@@ -639,7 +671,7 @@ async function fetchListingByNormalizedSlug(rawSlug: string) {
 
   // NEW TIER 2b — Code / Prefix lookup. Resolves mfg07-style prefixes when slug
   // column stores a different (non-prefixed) canonical slug.
-  const byCodePrefix = await fetchListingByCodePrefix(rawSlug, normalized);
+  const byCodePrefix = await fetchListingByCodePrefix(rawSlug, normalized, targetCompanySlug);
   if (byCodePrefix) {
     if (typeof byCodePrefix === "object" && "__redirectSlug" in byCodePrefix) {
       console.log(
@@ -660,7 +692,7 @@ async function fetchListingByNormalizedSlug(rawSlug: string) {
   console.log("[RESOLVER] namePrefix=", namePrefix, "prefixVariants=", JSON.stringify(prefixVariants));
 
   const prefixCandidates = namePrefix
-    ? await fetchListingsByNamePrefix(namePrefix, normalized)
+    ? await fetchListingsByNamePrefix(namePrefix, normalized, targetCompanySlug)
     : [];
   console.log("[RESOLVER] tier3 prefixCandidates count=", prefixCandidates.length);
   for (const c of prefixCandidates) {
@@ -690,7 +722,7 @@ async function fetchListingByNormalizedSlug(rawSlug: string) {
   }
   console.log("[RESOLVER] tier3 no exact/canonical/prefix match in candidates, pass thru to titleGql tier");
 
-  const titleCandidates = await fetchListingsByTitleNormalized(normalized);
+  const titleCandidates = await fetchListingsByTitleNormalized(normalized, targetCompanySlug);
   console.log("[RESOLVER] tier4 titleCandidates count=", titleCandidates.length);
   const titleSeen = new Set<string>();
   const combinedCandidates: any[] = [];
@@ -774,7 +806,7 @@ async function fetchListingByNormalizedSlug(rawSlug: string) {
   const fallbackPrefixes = prefixVariants.length ? prefixVariants : [namePrefix].filter(Boolean);
   if (fallbackPrefixes.length) {
     console.log("[RESOLVER] tier7 LAST RESORT: fetchListingsBySimplePrefixSearch(", JSON.stringify(fallbackPrefixes), ")");
-    const lastResortCandidates = await fetchListingsBySimplePrefixSearch(fallbackPrefixes);
+    const lastResortCandidates = await fetchListingsBySimplePrefixSearch(fallbackPrefixes, targetCompanySlug);
     console.log("[RESOLVER] tier7 lastResortCandidates count=", lastResortCandidates.length);
     for (const c of lastResortCandidates) {
       const cNorm = cleanListingSlug(c.slug, c.title);
@@ -808,7 +840,7 @@ async function fetchListingByNormalizedSlug(rawSlug: string) {
   return null;
 }
 
-async function fetchListingsByIds(ids: string[]) {
+export async function fetchListingsByIds(ids: string[]) {
   if (!ids.length) return [];
   const data = await fetchGraphQL<{
     listings?: any[];
@@ -854,6 +886,7 @@ async function fetchListingsByIds(ids: string[]) {
           }
           company {
             documentId
+            slug
             name
             location
             logoUrl
@@ -870,7 +903,7 @@ async function fetchListingsByIds(ids: string[]) {
   return Array.isArray(data?.listings) ? data.listings : [];
 }
 
-async function fetchListingCategories() {
+export async function fetchListingCategories() {
   const data = await fetchGraphQL<{
     listingCategories?: any[];
   }>(
@@ -892,7 +925,7 @@ async function fetchListingCategories() {
   return Array.isArray(data?.listingCategories) ? data.listingCategories : [];
 }
 
-async function fetchLocationListingIdsBySeo(locationType: string, locationValue: string) {
+export async function fetchLocationListingIdsBySeo(locationType: string, locationValue: string) {
   const type = normalizeLower(locationType);
   const value = typeof locationValue === "string" ? locationValue.trim() : "";
   const token = `|${value.toLowerCase()}|`;
@@ -930,290 +963,4 @@ async function fetchLocationListingIdsBySeo(locationType: string, locationValue:
   const total = data?.listingSearchIndices_connection?.pageInfo?.total ?? 0;
   const ids = uniqStrings(nodes.map((n) => n?.listing_document_id).filter(Boolean));
   return { ids, total };
-}
-
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-  const rawSlug = (await params)?.slug;
-  if (!rawSlug) {
-    return {
-      title: "Tombstones | TombstoneFinder",
-      description: "Browse tombstones by province, city or town in South Africa.",
-      robots: { index: true, follow: true },
-    };
-  }
-
-  const canonical = toAbsoluteUrl(`/tombstones/${rawSlug}`);
-  const normalized = normalizeListingSlug(rawSlug);
-  if (normalized && rawSlug !== normalized) {
-    const cleanCanonical = toAbsoluteUrl(`/tombstones/${normalized}`);
-    permanentRedirect(`/tombstones/${normalized}`);
-    return {
-      title: "Tombstone Redirect | TombstoneFinder",
-      alternates: { canonical: cleanCanonical },
-      robots: { index: true, follow: true },
-    };
-  }
-
-  const seoPage = await fetchLocationSeoPage(rawSlug);
-  if (seoPage) {
-    const titleRaw =
-      (typeof seoPage?.metaTitle === "string" && seoPage.metaTitle.trim()) ||
-      (typeof seoPage?.seoTitle === "string" && seoPage.seoTitle.trim()) ||
-      "";
-    const descriptionRaw =
-      (typeof seoPage?.metaDescription === "string" && seoPage.metaDescription.trim()) ||
-      (typeof seoPage?.seoDescription === "string" && seoPage.seoDescription.trim()) ||
-      "";
-    const heroUrl = typeof seoPage?.heroImage?.url === "string" ? seoPage.heroImage.url.trim() : "";
-
-    return {
-      title: titleRaw || undefined,
-      description: descriptionRaw || undefined,
-      robots: { index: true, follow: true },
-      alternates: { canonical },
-      openGraph: {
-        type: "website",
-        url: canonical,
-        title: titleRaw || undefined,
-        description: descriptionRaw || undefined,
-        images: heroUrl ? [heroUrl] : undefined,
-      },
-    };
-  }
-
-  const listingResolved = await fetchListingByNormalizedSlug(rawSlug);
-  const listing: any =
-    listingResolved && typeof listingResolved === "object" && "__redirectSlug" in listingResolved
-      ? (listingResolved as any).listing
-      : listingResolved;
-  const redirectSlug =
-    listingResolved && typeof listingResolved === "object" && "__redirectSlug" in listingResolved
-      ? (listingResolved as any).__redirectSlug
-      : null;
-
-  if (!listing) {
-    return {
-      title: "Not Found | TombstoneFinder",
-      description: "This page could not be found, or is no longer available.",
-      alternates: { canonical },
-      robots: { index: true, follow: true },
-    };
-  }
-
-  if (redirectSlug) {
-    const cleanCanonical = toAbsoluteUrl(`/tombstones/${redirectSlug}`);
-    permanentRedirect(`/tombstones/${redirectSlug}`);
-    return {
-      title: "Tombstone Redirect | TombstoneFinder",
-      alternates: { canonical: cleanCanonical },
-      robots: { index: true, follow: true },
-    };
-  }
-
-  const urlTown = extractUrlTownSegment(normalized || rawSlug);
-  const primaryCanonicalSlug = buildListingCanonicalSlug(listing) || cleanListingSlug(listing.slug, listing.title);
-  const listingCanonical = primaryCanonicalSlug
-    ? toAbsoluteUrl(`/tombstones/${primaryCanonicalSlug}`)
-    : canonical;
-  const townMatchesAlternateBranch = listingAvailableAtTown(listing, urlTown);
-  if (
-    primaryCanonicalSlug &&
-    normalized !== primaryCanonicalSlug &&
-    urlTown &&
-    !townMatchesAlternateBranch
-  ) {
-    permanentRedirect(`/tombstones/${primaryCanonicalSlug}`);
-    return {
-      title: "Tombstone Redirect | TombstoneFinder",
-      alternates: { canonical: listingCanonical },
-      robots: { index: true, follow: true },
-    };
-  }
-
-  const images = uniqStrings([listing?.mainImageUrl, ...(listing?.thumbnailUrls || [])])
-    .slice(0, 6)
-    .map((u) => (typeof u === "string" && u.startsWith("http") ? u : u ? toAbsoluteUrl(u) : null))
-    .filter(Boolean);
-
-  const title = listing?.title ? `${listing.title} | Tombstones For Sale` : "Tombstone Listing";
-  const description =
-    listing?.description || "View this tombstone listing, pricing and branch availability.";
-  const sellerName = String(listing?.company?.name ?? "").trim() || undefined;
-  const categoryName = String(listing?.listing_category?.name ?? "").trim() || undefined;
-  const stoneType = String(listing?.productDetails?.stoneType?.[0]?.value ?? "").trim() || undefined;
-
-  return {
-    title,
-    description,
-    alternates: { canonical: listingCanonical },
-    robots: { index: true, follow: true },
-    openGraph: {
-      type: "website",
-      url: listingCanonical,
-      title,
-      description,
-      images: images.length ? images : undefined,
-      siteName: "TombstoneFinder",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: images.length ? images : undefined,
-    },
-    other: {
-      "product:price:amount": coercePrice(listing?.price) ?? undefined,
-      "product:price:currency": "ZAR",
-      "product:brand": sellerName || undefined,
-      "product:category": categoryName || undefined,
-      "product:material": stoneType || undefined,
-      "og:image:alt": title,
-    },
-  };
-}
-
-export default async function LocationTombstonesPage({ params }: { params: Promise<{ slug: string }> }) {
-  const rawSlug = (await params)?.slug;
-  if (!rawSlug) notFound();
-
-  const normalized = normalizeListingSlug(rawSlug);
-  if (normalized && rawSlug !== normalized) {
-    permanentRedirect(`/tombstones/${normalized}`);
-  }
-
-  const seoPage = await fetchLocationSeoPage(normalized || rawSlug);
-  if (seoPage) {
-    const locationType = typeof seoPage?.locationType === "string" ? seoPage.locationType : "";
-    const locationValue = typeof seoPage?.locationValue === "string" ? seoPage.locationValue : "";
-
-    const [categories, locationIndex] = await Promise.all([
-      fetchListingCategories(),
-      fetchLocationListingIdsBySeo(locationType, locationValue),
-    ]);
-
-    const { ids, total } = locationIndex;
-    const listings = await fetchListingsByIds(ids);
-    const canonical = toAbsoluteUrl(`/tombstones/${normalized || rawSlug}`);
-
-    const jsonLd = {
-      "@context": "https://schema.org",
-      "@type": "ItemList",
-      name:
-        (typeof seoPage?.seoTitle === "string" && seoPage.seoTitle.trim()) ||
-        (typeof seoPage?.name === "string" && seoPage.name.trim()) ||
-        `Tombstones in ${normalized || rawSlug}`,
-      url: canonical,
-      numberOfItems: typeof total === "number" ? total : listings.length,
-      itemListElement: listings.slice(0, 10).map((l: any, idx: number) => ({
-        "@type": "ListItem",
-        position: idx + 1,
-        url: toAbsoluteUrl(`/tombstones-for-sale/${l.documentId}`),
-        name: String(l?.title ?? "").trim() || undefined,
-      })),
-    };
-
-    return (
-      <>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-        <TombstonesForSaleClientAny
-          initialListings={listings}
-          initialCategories={categories}
-          initialFilters={{ location: locationValue || null }}
-          initialTotalCount={typeof total === "number" ? total : null}
-          disableLocationUrlSync={true}
-          forcedLocationSeo={{ locationType, locationValue }}
-          seoTitle={seoPage?.seoTitle || null}
-          seoDescription={seoPage?.seoDescription || null}
-          seoHeroImageUrl={seoPage?.heroImage?.url || null}
-        />
-      </>
-    );
-  }
-
-  const listingResolved = await fetchListingByNormalizedSlug(normalized || rawSlug);
-  const listing: any =
-    listingResolved && typeof listingResolved === "object" && "__redirectSlug" in listingResolved
-      ? (listingResolved as any).listing
-      : listingResolved;
-  const redirectSlug =
-    listingResolved && typeof listingResolved === "object" && "__redirectSlug" in listingResolved
-      ? (listingResolved as any).__redirectSlug
-      : null;
-
-  if (!listing) notFound();
-
-  if (redirectSlug) {
-    permanentRedirect(`/tombstones/${redirectSlug}`);
-  }
-
-  const urlTown = extractUrlTownSegment(normalized || rawSlug);
-  const primaryCanonicalSlug = buildListingCanonicalSlug(listing) || cleanListingSlug(listing.slug, listing.title);
-  const townMatchesAlternateBranch = listingAvailableAtTown(listing, urlTown);
-  if (
-    primaryCanonicalSlug &&
-    normalized !== primaryCanonicalSlug &&
-    urlTown &&
-    !townMatchesAlternateBranch
-  ) {
-    // Prefer the best alternate-town canonical (e.g. mfg07-granite-pillars-tombstone-richardsbay)
-    // before falling back to the primary canonical slug. Never throw a 404 on town mismatch.
-    const alternateSlugs = buildAllCanonicalSlugsForListing(listing);
-    const hasAnyTown = Array.isArray(alternateSlugs) && alternateSlugs.length > 0;
-    const urlTownSlug = normalizeTownCompare(urlTown);
-    const matchingAlternate =
-      hasAnyTown && urlTownSlug
-        ? alternateSlugs.find((s) => {
-            const t = extractUrlTownSegment(s);
-            return t && normalizeTownCompare(t) === urlTownSlug;
-          })
-        : undefined;
-    const anyAlternateWithTown = hasAnyTown
-      ? alternateSlugs.find((s) => !!extractUrlTownSegment(s))
-      : undefined;
-    const redirectTarget = matchingAlternate || anyAlternateWithTown || primaryCanonicalSlug;
-    if (redirectTarget && redirectTarget !== normalized) {
-      permanentRedirect(`/tombstones/${redirectTarget}`);
-    } else {
-      permanentRedirect(`/tombstones/${primaryCanonicalSlug}`);
-    }
-  }
-
-  const canonical = primaryCanonicalSlug
-    ? toAbsoluteUrl(`/tombstones/${primaryCanonicalSlug}`)
-    : toAbsoluteUrl(`/tombstones-for-sale/${listing.documentId || rawSlug}`);
-  const images = uniqStrings([listing?.mainImageUrl, ...(listing?.thumbnailUrls || [])])
-    .slice(0, 8)
-    .map((u) => (typeof u === "string" && u.startsWith("http") ? u : u ? toAbsoluteUrl(u) : null))
-    .filter(Boolean);
-  const price = coercePrice(listing?.price);
-  const sellerName = String(listing?.company?.name ?? "").trim() || undefined;
-  const categoryName = String(listing?.listing_category?.name ?? "").trim() || undefined;
-  const stoneType = String(listing?.productDetails?.stoneType?.[0]?.value ?? "").trim() || undefined;
-
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: String(listing?.title ?? "").trim() || `Tombstone ${listing.documentId || rawSlug}`,
-    description: String(listing?.description ?? "").trim() || undefined,
-    image: images.length ? images : undefined,
-    sku: String(listing.documentId || rawSlug),
-    category: categoryName,
-    material: stoneType,
-    brand: sellerName ? { "@type": "Organization", name: sellerName } : undefined,
-    offers: {
-      "@type": "Offer",
-      url: canonical,
-      priceCurrency: "ZAR",
-      price: price ?? undefined,
-      availability: "https://schema.org/InStock",
-      seller: sellerName ? { "@type": "Organization", name: sellerName } : undefined,
-    },
-  };
-
-  return (
-    <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <ProductShowcase listing={listing} id={listing.documentId} onNavigate={undefined as any} />
-    </>
-  );
 }

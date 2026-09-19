@@ -57,6 +57,7 @@ query GetListings {
     inquiries_c { documentId }
     inquiries { documentId }
     company {
+      slug
       phone
       name
       isFeatured

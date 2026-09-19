@@ -93,7 +93,7 @@ export const COMPANY_FULL_QUERY = gql`
       bannerAd {
         url
       }
-      branches(pagination: { limit: -1 }) {
+      branches(pagination: { page: 1, pageSize: 1000 }) {
         documentId
         name
         location {
@@ -133,12 +133,12 @@ export const COMPANY_FULL_QUERY = gql`
     }
     listings(
       filters: { company: { documentId: { eq: $documentId } } }
-      pagination: { limit: -1 }
+      pagination: { page: 1, pageSize: 2000 }
     ) {
       publishedAt
       createdAt
       updatedAt
-      branches(pagination: { limit: -1 }) {
+      branches(pagination: { page: 1, pageSize: 1000 }) {
         documentId
         name
         location {
@@ -148,7 +148,7 @@ export const COMPANY_FULL_QUERY = gql`
           mapUrl
         }
       }
-      branch_listings(pagination: { limit: -1 }) {
+      branch_listings(pagination: { page: 1, pageSize: 2000 }) {
         branch {
           documentId
         }
@@ -209,7 +209,7 @@ export const COMPANY_DELTA_QUERY = gql`
         company: { documentId: { eq: $documentId } },
         updatedAt: { gt: $since } 
       }
-      pagination: { limit: -1 }
+      pagination: { page: 1, pageSize: 2000 }
     ) {
       documentId
       title
@@ -226,7 +226,7 @@ export const COMPANY_DELTA_QUERY = gql`
       manufacturingTimeframe
       thumbnailUrls
       thumbnailPublicIds
-      branches(pagination: { limit: -1 }) {
+      branches(pagination: { page: 1, pageSize: 1000 }) {
         documentId
         name
         location {
@@ -236,7 +236,7 @@ export const COMPANY_DELTA_QUERY = gql`
           mapUrl
         }
       }
-      branch_listings(pagination: { limit: -1 }) {
+      branch_listings(pagination: { page: 1, pageSize: 2000 }) {
         branch {
           documentId
         }

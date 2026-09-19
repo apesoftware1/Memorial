@@ -1,5 +1,6 @@
 import ProductShowcase from '@/components/product-showcase';
 import { notFound, permanentRedirect } from "next/navigation";
+import { normalizeListingSlug, cleanListingSlug, buildListingCanonicalHref } from "@/lib/slugs";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tombstonesfinder.co.za";
 const GRAPHQL_URL =
@@ -8,25 +9,6 @@ const GRAPHQL_URL =
 
 function toAbsoluteUrl(pathname) {
   return `${SITE_URL}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
-}
-
-function normalizeListingSlug(raw) {
-  const decoded = decodeURIComponent(typeof raw === "string" ? raw : "");
-  return decoded
-    .toLowerCase()
-    .trim()
-    .replace(/[\s_]+/g, "-")
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-function cleanListingSlug(slug, title) {
-  const rawSlug = typeof slug === "string" ? slug.trim() : "";
-  if (!rawSlug) return normalizeListingSlug(title);
-  const stripped = rawSlug.replace(/(-copy-[a-z0-9]+)+/gi, "").trim();
-  if (!stripped || /^[-]*$/.test(stripped)) return normalizeListingSlug(title);
-  return normalizeListingSlug(stripped);
 }
 
 async function fetchGraphQL(query, variables, revalidate = 30) {
@@ -92,6 +74,7 @@ async function fetchListingById(documentID) {
           company {
             enableWhatsAppButton
             documentId
+            slug
             phone
             name
             mapUrl
@@ -186,6 +169,7 @@ async function fetchListingBySavedSlug(slug) {
           company {
             enableWhatsAppButton
             documentId
+            slug
             phone
             name
             mapUrl
@@ -291,18 +275,30 @@ export async function generateMetadata({ params }) {
   }
 
   const normalizedRaw = normalizeListingSlug(slug);
-  if (cleanSlug && normalizedRaw !== cleanSlug) {
-    const cleanCanonical = toAbsoluteUrl(`/tombstones/${cleanSlug}`);
-    permanentRedirect(`/tombstones/${cleanSlug}`);
+  const scopedHref = buildListingCanonicalHref(listing);
+  if (scopedHref && normalizedRaw !== cleanSlug) {
+    const scopedCanonical = toAbsoluteUrl(scopedHref);
+    permanentRedirect(scopedHref);
     return {
       title: "Tombstone Redirect | TombstoneFinder",
-      alternates: { canonical: cleanCanonical },
+      alternates: { canonical: scopedCanonical },
+      robots: { index: true, follow: true },
+    };
+  }
+  if (scopedHref && cleanSlug) {
+    const scopedCanonical = toAbsoluteUrl(scopedHref);
+    permanentRedirect(scopedHref);
+    return {
+      title: "Tombstone Redirect | TombstoneFinder",
+      alternates: { canonical: scopedCanonical },
       robots: { index: true, follow: true },
     };
   }
 
   const documentId = listing?.documentId;
-  const canonical = cleanSlug ? toAbsoluteUrl(`/tombstones/${cleanSlug}`) : (documentId ? toAbsoluteUrl(`/tombstones-for-sale/${documentId}`) : toAbsoluteUrl(`/listing/${slug}`));
+  const canonical = scopedHref
+    ? toAbsoluteUrl(scopedHref)
+    : (documentId ? toAbsoluteUrl(`/tombstones-for-sale/${documentId}`) : toAbsoluteUrl(`/listing/${slug}`));
   const titleRaw = String(listing?.title ?? "").trim();
   const title = titleRaw ? `${titleRaw} | TombstoneFinder` : "Tombstone Listing | TombstoneFinder";
   const description = String(listing?.description ?? "").trim() || "View pricing and details for this tombstone.";
@@ -334,12 +330,18 @@ export default async function ListingPage({ params }) {
   if (!listing) notFound();
 
   const normalizedRaw = normalizeListingSlug(slug);
-  if (cleanSlug && normalizedRaw !== cleanSlug) {
-    permanentRedirect(`/tombstones/${cleanSlug}`);
+  const scopedHref = buildListingCanonicalHref(listing);
+  if (scopedHref && normalizedRaw !== cleanSlug) {
+    permanentRedirect(scopedHref);
+  }
+  if (scopedHref && cleanSlug) {
+    permanentRedirect(scopedHref);
   }
 
   const documentId = listing?.documentId;
-  const canonical = cleanSlug ? toAbsoluteUrl(`/tombstones/${cleanSlug}`) : (documentId ? toAbsoluteUrl(`/tombstones-for-sale/${documentId}`) : toAbsoluteUrl(`/listing/${slug}`));
+  const canonical = scopedHref
+    ? toAbsoluteUrl(scopedHref)
+    : (documentId ? toAbsoluteUrl(`/tombstones-for-sale/${documentId}`) : toAbsoluteUrl(`/listing/${slug}`));
   const images = uniqStrings([listing?.mainImageUrl, ...(listing?.thumbnailUrls || [])])
     .slice(0, 8)
     .map((u) => (typeof u === "string" && u.startsWith("http") ? u : u ? toAbsoluteUrl(u) : null))

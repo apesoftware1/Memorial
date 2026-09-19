@@ -7,7 +7,7 @@ export const GET_COMPANY_WITH_ANALYTICS = gql`
       documentId
       name
       logoUrl
-      listings(pagination: { limit: -1 }) {
+      listings(pagination: { page: 1, pageSize: 1000 }) {
         documentId
         title
         price
@@ -32,7 +32,7 @@ export const GET_COMPANY_WITH_ANALYTICS_EXTENDED = gql`
       documentId
       name
       logoUrl
-      listings(pagination: { limit: -1 }) {
+      listings(pagination: { page: 1, pageSize: 1000 }) {
         documentId
         title
         price

@@ -47,7 +47,7 @@ export default function RelatedProducts({ currentProductId, categoryId }) {
         {products.map((product) => (
           <Link 
             key={product.id} 
-            href={`/product/${product.id}`}
+            href={`/tombstones-for-sale/${product.id}`}
             className="group block border rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
           >
             <div className="relative h-48 bg-gray-100">

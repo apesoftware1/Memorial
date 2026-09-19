@@ -16,6 +16,7 @@ export const MANUFACTURERS_INITIAL_QUERY = gql`
     ) {
       documentId
       updatedAt
+      slug
       name
       location
       latitude
@@ -38,6 +39,7 @@ export const MANUFACTURERS_FULL_QUERY = gql`
     ) {
       documentId
       updatedAt
+      slug
       name
       phone
       googleRating
@@ -55,7 +57,7 @@ export const MANUFACTURERS_FULL_QUERY = gql`
       socialLinks { id facebook website instagram tiktok youtube x whatsapp messenger }
       packageType
       isFeatured
-      listings(pagination: { limit: -1 }) { 
+      listings(pagination: { page: 1, pageSize: 1000 }) { 
         documentId
       }
     }
@@ -72,6 +74,7 @@ export const MANUFACTURERS_DELTA_QUERY = gql`
     ){
       documentId
       updatedAt
+      slug
       name
       phone
       googleRating
@@ -89,8 +92,45 @@ export const MANUFACTURERS_DELTA_QUERY = gql`
       socialLinks { id facebook website instagram tiktok youtube x whatsapp messenger }
       packageType
       isFeatured
-      listings(pagination: { limit: -1 }) { 
+      listings(pagination: { page: 1, pageSize: 1000 }) { 
         documentId
+      }
+    }
+  }
+`;
+
+export const COMPANIES_LISTING_COUNTS_QUERY = gql`
+  query CompaniesListingCounts($pageSize: Int! = 100, $page: Int! = 1) {
+    listings_connection(
+      pagination: { page: $page, pageSize: $pageSize }
+    ) {
+      nodes {
+        documentId
+        company {
+          documentId
+        }
+      }
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
+      }
+    }
+  }
+`;
+
+export const LISTING_COUNT_SCOPED_QUERY = gql`
+  query ListingCountScoped($companyDocId: ID!, $pageSize: Int! = 1, $page: Int! = 1) {
+    listings_connection(
+      pagination: { page: $page, pageSize: $pageSize }
+      filters: { company: { documentId: { eq: $companyDocId } } }
+    ) {
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
       }
     }
   }

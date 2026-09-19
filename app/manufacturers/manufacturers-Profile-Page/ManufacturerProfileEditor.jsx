@@ -170,6 +170,7 @@ export default function ManufacturerProfileEditor({
   onToggleAutoRefresh,
   isFullLoaded,
   externalBranchSelect,
+  totalListingCount,
 }) {
   // Removed useApolloClient hook as requested to disable cache manipulation in this editor
   const router = useRouter();
@@ -275,6 +276,11 @@ export default function ManufacturerProfileEditor({
   const [filteredListings, setFilteredListings] = useState(listings || []);
   const [companyListings, setCompanyListings] = useState(listings || []);
   const [notificationCount, setNotificationCount] = useState(0);
+
+  const LISTINGS_PER_PAGE_OPTIONS = [10, 20, 50, 100];
+  const [listingsPerPage, setListingsPerPage] = useState(20);
+  const [currentListingsPage, setCurrentListingsPage] = useState(1);
+
   // Single-step Operating Hours editor state
 
   const [operatingDayIndex, setOperatingDayIndex] = useState(0); // 0..3
@@ -560,7 +566,7 @@ export default function ManufacturerProfileEditor({
              return;
           }
           
-          await fetchBatch(-1); // Fetch all
+          await fetchBatch(2000);
           if (isActive) setLoadingListings(false);
 
         } else {
@@ -644,7 +650,7 @@ export default function ManufacturerProfileEditor({
                     return;
                  }
                  
-                 await fetchCompanyListings(-1);
+                 await fetchCompanyListings(2000);
                  if (isActive) {
                     setLoadingListings(false);
                     companyListingsLoaded.current = true;
@@ -1689,15 +1695,76 @@ export default function ManufacturerProfileEditor({
     });
   }, [branchFromUrl, filteredListings, companyListings, sortBy, debouncedSearchQuery, categoryFilter, viewMode]);
 
+  useEffect(() => {
+    setCurrentListingsPage(1);
+  }, [
+    sortedAndFilteredListings.length,
+    listingsPerPage,
+    debouncedSearchQuery,
+    categoryFilter,
+    sortBy,
+    branchFromUrl,
+    viewMode,
+  ]);
+
+  const totalListings = useMemo(() => {
+    if (
+      Boolean(branchFromUrl) ||
+      Boolean(debouncedSearchQuery) ||
+      categoryFilter !== "All Categories" ||
+      viewMode === "bin"
+    ) {
+      return sortedAndFilteredListings.length;
+    }
+    const loadedCount = sortedAndFilteredListings.length;
+    const explicitCount = [
+      totalListingCount,
+      initialCompany?.listingCount,
+      company?.totalListingCount,
+      company?.listingCount,
+    ]
+      .map((v) => Number(v))
+      .find((v) => Number.isFinite(v) && v > 0) || null;
+    return Math.max(loadedCount, explicitCount ?? 0);
+  }, [
+    branchFromUrl,
+    debouncedSearchQuery,
+    categoryFilter,
+    viewMode,
+    sortedAndFilteredListings.length,
+    totalListingCount,
+    initialCompany?.listingCount,
+    company?.totalListingCount,
+    company?.listingCount,
+  ]);
+
+  const totalListingsPages = useMemo(() => {
+    const itemsPerPage = Number.isFinite(Number(listingsPerPage)) ? Number(listingsPerPage) : 20;
+    const total = Math.max(totalListings, sortedAndFilteredListings.length, 0);
+    return Math.max(1, Math.ceil(total / Math.max(1, itemsPerPage)));
+  }, [totalListings, sortedAndFilteredListings.length, listingsPerPage]);
+
+  const pageStartIdx = (Number.isFinite(currentListingsPage) ? currentListingsPage - 1 : 0) *
+    (Number.isFinite(listingsPerPage) ? listingsPerPage : 20);
+  const pageEndIdx = pageStartIdx + (Number.isFinite(listingsPerPage) ? listingsPerPage : 20);
+  const showPaginationBelowGrid = totalListings > Number(Number.isFinite(listingsPerPage) ? listingsPerPage : 20);
+
+  const pagedVirtuosoTotal = showPaginationBelowGrid
+    ? Math.max(0, Math.min(sortedAndFilteredListings.length, pageEndIdx) - pageStartIdx)
+    : sortedAndFilteredListings.length;
+
   const handleSelectAll = useCallback((checked) => {
     if (checked) {
       if (!selectionMode) setSelectionMode(true);
-      const allIds = new Set(sortedAndFilteredListings.map(l => l.documentId || l.id));
+      const base = showPaginationBelowGrid
+        ? sortedAndFilteredListings.slice(pageStartIdx, pageEndIdx)
+        : sortedAndFilteredListings;
+      const allIds = new Set(base.map((l) => l.documentId || l.id));
       setSelectedListingIds(allIds);
     } else {
       setSelectedListingIds(new Set());
     }
-  }, [selectionMode, sortedAndFilteredListings]);
+  }, [selectionMode, sortedAndFilteredListings, showPaginationBelowGrid, pageStartIdx, pageEndIdx]);
 
   // Location check hook with company update callback
   const locationUpdateCallback = useCallback((updatedCompany) => {
@@ -3631,8 +3698,14 @@ export default function ManufacturerProfileEditor({
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
 
-            <div style={{ fontSize: 15, fontWeight: 700 }}>
-              {filteredListings.length} Active Listings
+              <div style={{ fontSize: 15, fontWeight: 700 }}>
+              {(() => {
+                const shown = Math.min(totalListings, pageEndIdx);
+                if (showPaginationBelowGrid) {
+                  return `${Math.min(totalListings, pageStartIdx + 1)} - ${shown} of ${totalListings} Active Listings`;
+                }
+                return `${totalListings} Active Listings`;
+              })()}
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -3970,7 +4043,16 @@ export default function ManufacturerProfileEditor({
               <BranchLocationInfo />
               <div className="col-span-full mb-4">
                 <p className="text-gray-600">
-                  Showing {sortedAndFilteredListings.length} listing{sortedAndFilteredListings.length !== 1 ? 's' : ''} for {branchFromUrl.name} branch
+                  {(() => {
+                    const total = sortedAndFilteredListings.length;
+                    if (showPaginationBelowGrid) {
+                      return `Showing ${Math.min(total, pageStartIdx + 1)} - ${Math.min(
+                        pageEndIdx,
+                        total
+                      )} of ${total} listing${total !== 1 ? "s" : ""} for ${branchFromUrl.name} branch`;
+                    }
+                    return `Showing ${total} listing${total !== 1 ? "s" : ""} for ${branchFromUrl.name} branch`;
+                  })()}
                 </p>
               </div>
             </>
@@ -3983,9 +4065,12 @@ export default function ManufacturerProfileEditor({
           ) : mobile ? (
             <Virtuoso
               useWindowScroll
-              totalCount={sortedAndFilteredListings.length}
+              totalCount={showPaginationBelowGrid ? pagedVirtuosoTotal : sortedAndFilteredListings.length}
               itemContent={(index) => {
-                const listing = sortedAndFilteredListings[index];
+                const listing = showPaginationBelowGrid
+                  ? sortedAndFilteredListings[pageStartIdx + index]
+                  : sortedAndFilteredListings[index];
+                if (!listing) return null;
                 return (
                   <ListingCardItem
                     key={listing.documentId || listing.id}
@@ -4013,10 +4098,13 @@ export default function ManufacturerProfileEditor({
           ) : (
             <VirtuosoGrid
             useWindowScroll
-            totalCount={sortedAndFilteredListings.length}
+            totalCount={showPaginationBelowGrid ? pagedVirtuosoTotal : sortedAndFilteredListings.length}
             components={gridComponents}
             itemContent={(index) => {
-              const listing = sortedAndFilteredListings[index];
+              const listing = showPaginationBelowGrid
+                ? sortedAndFilteredListings[pageStartIdx + index]
+                : sortedAndFilteredListings[index];
+              if (!listing) return null;
               return (
                 <ListingCardItem
                   key={listing.documentId || listing.id}
@@ -4041,6 +4129,108 @@ export default function ManufacturerProfileEditor({
               );
             }}
           />
+          )}
+
+          {!loadingListings && showPaginationBelowGrid && (
+            <div className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-6 pb-4 mt-4">
+              <div className="text-sm text-gray-600">
+                Showing {pageStartIdx + 1} - {Math.min(pageEndIdx, totalListings)} of {totalListings} listings
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <label className="text-sm text-gray-600 flex items-center gap-2">
+                  <span>Show:</span>
+                  <select
+                    value={listingsPerPage}
+                    onChange={(e) => {
+                      const next = Number(e.target.value);
+                      setListingsPerPage(next);
+                      setCurrentListingsPage(1);
+                    }}
+                    className="px-2 py-1 border border-gray-200 rounded-md text-sm"
+                  >
+                    {LISTINGS_PER_PAGE_OPTIONS.map((size) => (
+                      <option key={size} value={size}>
+                        {size} per page
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentListingsPage(1)}
+                    disabled={currentListingsPage <= 1}
+                    className="px-2 py-1 text-sm rounded-md border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    «
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentListingsPage((p) => Math.max(1, p - 1))}
+                    disabled={currentListingsPage <= 1}
+                    className="px-2 py-1 text-sm rounded-md border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    ‹ Prev
+                  </button>
+                  {(() => {
+                    const pages = new Set([
+                      1,
+                      totalListingsPages,
+                      currentListingsPage - 1,
+                      currentListingsPage,
+                      currentListingsPage + 1,
+                    ]);
+                    const ordered = [...pages]
+                      .filter((p) => Number.isFinite(p) && p >= 1 && p <= totalListingsPages)
+                      .sort((a, b) => a - b);
+                    const items = [];
+                    for (let i = 0; i < ordered.length; i++) {
+                      const page = ordered[i];
+                      const prev = ordered[i - 1];
+                      if (prev && page - prev > 1) {
+                        items.push(
+                          <span key={`gap-${page}`} className="px-2 text-sm text-gray-400">
+                            …
+                          </span>
+                        );
+                      }
+                      items.push(
+                        <button
+                          key={page}
+                          type="button"
+                          onClick={() => setCurrentListingsPage(page)}
+                          aria-current={page === currentListingsPage ? "page" : undefined}
+                          className={`px-3 py-1 text-sm rounded-md border ${
+                            page === currentListingsPage
+                              ? "border-blue-500 bg-blue-500 text-white"
+                              : "border-gray-200 hover:bg-gray-50"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    }
+                    return items;
+                  })()}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentListingsPage((p) => Math.min(totalListingsPages, p + 1))}
+                    disabled={currentListingsPage >= totalListingsPages}
+                    className="px-2 py-1 text-sm rounded-md border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Next ›
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentListingsPage(totalListingsPages)}
+                    disabled={currentListingsPage >= totalListingsPages}
+                    className="px-2 py-1 text-sm rounded-md border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    »
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 

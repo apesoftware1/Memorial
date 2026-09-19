@@ -114,7 +114,7 @@ export const GET_LISTING_BY_SLUG = gql`
           whatsapp
           messenger
         }
-        listings(pagination: { limit: -1 }) {
+        listings(pagination: { page: 1, pageSize: 1000 }) {
           title
           price
           documentId

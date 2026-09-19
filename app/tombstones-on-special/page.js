@@ -71,6 +71,7 @@ async function fetchSpecialListings() {
           inquiries_c { documentId }
           inquiries { documentId }
           company {
+            slug
             phone
             name
             isFeatured

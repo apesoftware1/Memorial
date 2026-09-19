@@ -2,10 +2,14 @@ import ManufacturersClient from "./manufacturers-client";
 import { fetchGraphQL } from "@/lib/serverGraphql";
 
 async function fetchManufacturers() {
-  const data = await fetchGraphQL(
-    `
-      query ManufacturersSeoIndex {
-        companies(pagination: { limit: 100 }) {
+  const PAGE_SIZE_COMPANIES = 100;
+
+  const companyQuery = `
+    query ManufacturersSeoIndexPaginated($pageSize: Int!, $page: Int!) {
+      companies_connection(
+        pagination: { page: $page, pageSize: $pageSize }
+      ) {
+        nodes {
           documentId
           updatedAt
           name
@@ -20,22 +24,109 @@ async function fetchManufacturers() {
           bannerAdUrl
           bannerAdPublicId
           bannerAd { url }
-          branches { documentId }
+          branches(pagination: { page: 1, pageSize: 200 }) { documentId }
           operatingHours { id monToFri saturday sunday publicHoliday }
           socialLinks { id facebook website instagram tiktok youtube x whatsapp messenger }
           packageType
           isFeatured
-          listings(pagination: { limit: 100 }) {
+          listings(pagination: { page: 1, pageSize: 1000 }) {
             documentId
           }
         }
+        pageInfo {
+          page
+          pageSize
+          pageCount
+          total
+        }
       }
-    `,
-    {},
-    300
-  );
+    }
+  `;
 
-  return Array.isArray(data?.companies) ? data.companies : [];
+  const listingsCountQuery = `
+    query ListingCountByCompanyScoped($pageSize: Int!, $page: Int!, $companyDocId: ID!) {
+      listings_connection(
+        pagination: { page: $page, pageSize: $pageSize }
+        filters: { company: { documentId: { eq: $companyDocId } } }
+      ) {
+        pageInfo {
+          page
+          pageSize
+          pageCount
+          total
+        }
+      }
+    }
+  `;
+
+  const firstCompanies = await fetchGraphQL(companyQuery, { page: 1, pageSize: PAGE_SIZE_COMPANIES }, 300);
+
+  const mergeDedupe = (acc, nodes) => {
+    const arr = Array.isArray(nodes) ? nodes : [];
+    const seen = acc._seen || new Set();
+    const list = acc._nodes || [];
+    for (const n of arr) {
+      const id = String(n?.documentId ?? "");
+      if (id && !seen.has(id)) {
+        seen.add(id);
+        list.push(n);
+      }
+    }
+    return { _seen: seen, _nodes: list };
+  };
+
+  const companiesConn = firstCompanies?.companies_connection || {};
+  const companiesPageInfo = companiesConn.pageInfo || null;
+  const companiesPageCount = Number.isFinite(Number(companiesPageInfo?.pageCount))
+    ? Number(companiesPageInfo.pageCount)
+    : 1;
+  let cAcc = mergeDedupe({}, companiesConn.nodes);
+  if (companiesPageCount > 1) {
+    const pages = [];
+    for (let p = 2; p <= companiesPageCount; p++) pages.push(p);
+    const rest = await Promise.all(
+      pages.map((page) =>
+        fetchGraphQL(companyQuery, { page, pageSize: PAGE_SIZE_COMPANIES }, 300).then(
+          (res) => res?.companies_connection?.nodes || []
+        )
+      )
+    );
+    for (const batch of rest) cAcc = mergeDedupe(cAcc, batch);
+  }
+
+  const allCompanies = Array.isArray(cAcc._nodes) ? cAcc._nodes : [];
+
+  const scopedCounts = {};
+  if (allCompanies.length > 0) {
+    const countPromises = allCompanies
+      .filter(c => c && typeof c === "object" && c.documentId)
+      .map(company =>
+        fetchGraphQL(
+          listingsCountQuery,
+          { page: 1, pageSize: 1, companyDocId: company.documentId },
+          300
+        )
+          .then(res => {
+            const total = Number(res?.listings_connection?.pageInfo?.total);
+            if (Number.isFinite(total)) {
+              scopedCounts[company.documentId] = total;
+            }
+          })
+          .catch(() => {})
+      );
+    await Promise.all(countPromises);
+  }
+
+  return allCompanies
+    .filter((c) => c && typeof c === "object")
+    .map((c) => {
+      const nestedLen = Array.isArray(c.listings) ? c.listings.length : 0;
+      const scopedCount = Number.isFinite(Number(scopedCounts[c.documentId]))
+        ? Number(scopedCounts[c.documentId])
+        : 0;
+      const listingCount = Math.max(scopedCount, nestedLen);
+      return { ...c, listingCount };
+    });
 }
 
 async function fetchManufacturerSeoSlugMap() {

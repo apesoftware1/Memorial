@@ -7,7 +7,7 @@ const ANALYTICS_QUERY = `
     companies(pagination: { limit: -1 }) {
       documentId
       name
-      listings(pagination: { limit: -1 }) {
+      listings(pagination: { page: 1, pageSize: 1000 }) {
         documentId
         title
         slug

@@ -15,6 +15,7 @@ import { useSearchParams } from "next/navigation";
 // Remove this line: import { calculateDistanceFrom } from "@/lib/locationUtil";
 import { formatPrice } from "@/lib/priceUtils";
 import { trackAnalyticsEvent } from "@/lib/analytics";
+import { buildListingCanonicalHref } from "@/lib/slugs";
 
 type DistanceInfo = {
   distance: { text: string; value: number };
@@ -101,7 +102,8 @@ export function PremiumListingCard({
   ];
   const mobileThumbnails = thumbnails.slice(0, 3);
 
-  const baseProductUrl = href || `/tombstones-for-sale/${listing.documentId}`;
+  const canonicalHref = buildListingCanonicalHref(listing);
+  const baseProductUrl = href || canonicalHref || (listing.documentId ? `/tombstones-for-sale/${listing.documentId}` : null);
   // When the current page already has ?branch=<name>, preserve it on the
   // destination listing URL so the destination page shows the same branch
   // context (address header, breadcrumbs, distance, shareability).

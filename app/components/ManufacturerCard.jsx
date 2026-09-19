@@ -53,11 +53,19 @@ const ManufacturerCard = ({ manufacturer }) => {
         </div>
         <p className="text-xs sm:text-sm text-gray-700 mt-1 truncate">{manufacturer.description}</p>
         <div className="flex flex-col gap-1 mt-3">
-            {manufacturer.listings && (
-              <Link href="#" className="text-blue-600 font-semibold text-xs sm:text-sm hover:underline">
-                {manufacturer.listings.length} Tombstones Listed
-              </Link>
-            )}
+            {(() => {
+              const totalListings = Number.isFinite(Number(manufacturer?.listingCount))
+                ? Number(manufacturer.listingCount)
+                : Array.isArray(manufacturer?.listings)
+                  ? manufacturer.listings.length
+                  : 0;
+              if (!totalListings) return null;
+              return (
+                <Link href="#" className="text-blue-600 font-semibold text-xs sm:text-sm hover:underline">
+                  {totalListings} Tombstones Listed
+                </Link>
+              );
+            })()}
             <div className="flex items-center text-gray-500 text-xs mt-1">
             <MapPin className="h-4 w-4 mr-1" />
             <span>{manufacturer.location} • {manufacturer.distance}</span>

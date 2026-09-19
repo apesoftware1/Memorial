@@ -1,25 +1,7 @@
 import { notFound, permanentRedirect } from "next/navigation";
 import ProductShowcase from "@/components/product-showcase";
 import { fetchGraphQL, toAbsoluteUrl } from "@/lib/serverGraphql";
-
-function normalizeListingSlug(raw) {
-  const decoded = decodeURIComponent(typeof raw === "string" ? raw : "");
-  return decoded
-    .toLowerCase()
-    .trim()
-    .replace(/[\s_]+/g, "-")
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-function cleanListingSlug(slug, title) {
-  const rawSlug = typeof slug === "string" ? slug.trim() : "";
-  if (!rawSlug) return normalizeListingSlug(title);
-  const stripped = rawSlug.replace(/(-copy-[a-z0-9]+)+/gi, "").trim();
-  if (!stripped || /^[-]*$/.test(stripped)) return normalizeListingSlug(title);
-  return normalizeListingSlug(stripped);
-}
+import { normalizeListingSlug, cleanListingSlug, buildListingCanonicalHref } from "@/lib/slugs";
 
 async function fetchListingById(documentID) {
   const data = await fetchGraphQL(
@@ -71,6 +53,7 @@ async function fetchListingById(documentID) {
           company {
             enableWhatsAppButton
             documentId
+            slug
             phone
             name
             mapUrl
@@ -137,23 +120,24 @@ export async function generateMetadata({ params }) {
     };
   }
 
-  const cleanSlug = deriveCleanSlug(listing);
-  if (cleanSlug) {
-    const cleanCanonical = toAbsoluteUrl(`/tombstones/${cleanSlug}`);
-    permanentRedirect(`/tombstones/${cleanSlug}`);
+  const scopedHref = buildListingCanonicalHref(listing);
+  if (scopedHref) {
+    const scopedCanonical = toAbsoluteUrl(scopedHref);
+    permanentRedirect(scopedHref);
     return {
       title: "Tombstone Redirect | TombstoneFinder",
-      alternates: { canonical: cleanCanonical },
+      alternates: { canonical: scopedCanonical },
       robots: { index: true, follow: true },
     };
   }
 
+  const notFoundCanonical = toAbsoluteUrl(`/tombstones-on-special/${id}`);
   return {
     title: listing?.title ? `${listing.title} | Tombstones On Special` : "Tombstone Special Offer",
     description:
       listing?.description || "View this tombstone special offer and compare branch availability.",
     alternates: {
-      canonical: toAbsoluteUrl(`/tombstones-on-special/${id}`),
+      canonical: notFoundCanonical,
     },
     robots: { index: true, follow: true },
   };
@@ -166,9 +150,9 @@ export default async function SpecialTombstoneDetailPage({ params }) {
   const listing = await fetchListingById(id);
   if (!listing) notFound();
 
-  const cleanSlug = deriveCleanSlug(listing);
-  if (cleanSlug) {
-    permanentRedirect(`/tombstones/${cleanSlug}`);
+  const scopedHref = buildListingCanonicalHref(listing);
+  if (scopedHref) {
+    permanentRedirect(scopedHref);
   }
 
   const transformedListing = {

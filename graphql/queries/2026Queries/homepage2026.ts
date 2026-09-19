@@ -66,6 +66,7 @@ export const HOMEPAGE_2026_QUERY = gql`
           }
         }
         company {
+          slug
           name
           location
           logoUrl

@@ -164,13 +164,13 @@ async function fetchListingCanonicalEntries() {
           name
           location { town city province address }
         }
-        company { name location }
+        company { slug name location }
       }
     }`
   );
   const rows = Array.isArray(data?.listings) ? data.listings : [];
   const entries = [];
-  const seenSlugs = new Map();
+  const seenCanonicalRoutes = new Map();
   for (const l of rows) {
     if (!l?.publishedAt) continue;
     if (!l?.documentId) continue;
@@ -179,14 +179,17 @@ async function fetchListingCanonicalEntries() {
       const fallback = cleanListingSlug(l.slug, l.title);
       if (!fallback) continue;
       const lastMod = pickBestCanonicalDate([l.updatedAt, l.publishedAt]);
-      entries.push(buildSiteMapEntry(`/tombstones/${fallback}`, lastMod, "weekly", 0.75));
+      const route = `/tombstones/${fallback}`;
+      if (!seenCanonicalRoutes.has(route)) {
+        seenCanonicalRoutes.set(route, lastMod || "");
+        entries.push(buildSiteMapEntry(route, lastMod, "weekly", 0.75));
+      }
       continue;
     }
-    const canonicalSlug = canonicalRoute.replace(/^\/tombstones\//, "");
     const lastMod = pickBestCanonicalDate([l.updatedAt, l.publishedAt]);
     const route = canonicalRoute;
-    if (!seenSlugs.has(canonicalSlug)) {
-      seenSlugs.set(canonicalSlug, lastMod || "");
+    if (!seenCanonicalRoutes.has(route)) {
+      seenCanonicalRoutes.set(route, lastMod || "");
       entries.push(buildSiteMapEntry(route, lastMod, "weekly", 0.8));
     } else {
       const prev = entries.find(
@@ -368,6 +371,7 @@ async function fetchLocationCanonicalEntries() {
   })();
 
   for (const p of provinceOptions) {
+    // Province aggregate landing page (not a scoped listing URL)
     const route = `/tombstones/${p.slug}`;
     if (seenRoutes.has(route)) continue;
     seenRoutes.add(route);
@@ -375,6 +379,7 @@ async function fetchLocationCanonicalEntries() {
   }
 
   for (const c of cityOptions) {
+    // City aggregate landing page (not a scoped listing URL)
     const route = `/tombstones/${c.slug}`;
     if (seenRoutes.has(route)) continue;
     seenRoutes.add(route);

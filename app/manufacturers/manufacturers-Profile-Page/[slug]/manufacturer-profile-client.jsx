@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import { PageLoader } from "@/components/ui/loader";
 import ManufacturerProfileEditor from "../ManufacturerProfileEditor";
 
-export default function ManufacturerProfileClient({ company, listings, isFullLoaded }) {
+export default function ManufacturerProfileClient({ company, listings, isFullLoaded, totalListingCount }) {
   const [showVideoModal, setShowVideoModal] = useState(false);
 
   const handleVideoClick = () => setShowVideoModal(true);
@@ -35,6 +35,7 @@ export default function ManufacturerProfileClient({ company, listings, isFullLoa
           onVideoClick={handleVideoClick}
           externalBranchSelect={handleBranchSelect}
           branchButton={<BranchButton company={company} onBranchSelect={handleBranchSelect} />}
+          totalListingCount={totalListingCount}
         />
       </Suspense>
 

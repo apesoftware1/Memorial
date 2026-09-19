@@ -13,6 +13,7 @@ import LocationTrigger from "./LocationTrigger";
 import { useGuestLocation } from "@/hooks/useGuestLocation";
 
 import { formatPrice } from "@/lib/priceUtils";
+import { buildListingCanonicalHref } from "@/lib/slugs";
 
 type DistanceInfo = {
   distance: { text: string; value: number };
@@ -89,7 +90,8 @@ export function StandardListingCard({
     return "";
   };
 
-  const productUrl = href || `/tombstones-for-sale/${listing.documentId}`;
+  const canonicalHref = buildListingCanonicalHref(listing);
+  const productUrl = href || canonicalHref || (listing.documentId ? `/tombstones-for-sale/${listing.documentId}` : null);
 
   const pickSeoValue = (v: any) => {
     if (!v) return "";

@@ -60,6 +60,7 @@ const FOR_SALE_INITIAL_QUERY = `
       }
       company {
         documentId
+        slug
         name
         location
         logoUrl
@@ -112,6 +113,7 @@ const FOR_SALE_INITIAL_QUERY = `
       }
       company {
         documentId
+        slug
         name
         location
         logoUrl

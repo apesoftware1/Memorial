@@ -2,13 +2,14 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
-import { useQuery } from '@apollo/client';
+import { useQuery, useApolloClient } from '@apollo/client';
 import { GET_COMPANY_ID_BY_USER } from '@/graphql/queries/getCompany';
 import {
   COMPANY_INITIAL_QUERY,
   COMPANY_FULL_QUERY,
   COMPANY_DELTA_QUERY,
 } from '@/graphql/queries/getCompanyById';
+import { LISTING_COUNT_SCOPED_QUERY } from '@/graphql/queries/getManufacturers';
 import { useProgressiveQuery } from "@/hooks/useProgressiveQuery";
 import dynamic from 'next/dynamic';
 import Footer from '@/components/Footer';
@@ -22,9 +23,11 @@ const ManufacturerProfileEditor = dynamic(() => import('./ManufacturerProfileEdi
 export default function OwnerProfilePage() {
   const { data: session } = useSession();
   const userDocumentId = session?.user?.documentId;
+  const apolloClient = useApolloClient();
   // Add state to control auto-refresh behavior
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
   const [isMobileSmall, setIsMobileSmall] = useState(false);
+  const [totalListingCount, setTotalListingCount] = useState(null);
   
   // Check if screen is too small
   useEffect(() => {
@@ -71,6 +74,25 @@ export default function OwnerProfilePage() {
     refreshInterval: 60000,
     staleTime: 1000 * 60 * 5,
   });
+
+  // 3. Scoped per-company true total count (avoids nested listings limit:-1 cap of 50)
+  useEffect(() => {
+    if (!companyDocumentId || !apolloClient) return;
+    let cancelled = false;
+    apolloClient
+      .query({
+        query: LISTING_COUNT_SCOPED_QUERY,
+        variables: { companyDocId: companyDocumentId },
+        fetchPolicy: 'network-only',
+      })
+      .then((r) => {
+        if (cancelled) return;
+        const total = r?.data?.listings_connection?.pageInfo?.total;
+        if (Number.isFinite(total)) setTotalListingCount(total);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [companyDocumentId, apolloClient]);
 
   const loading = idLoading || (companyLoading && !data);
 
@@ -128,6 +150,7 @@ export default function OwnerProfilePage() {
           autoRefreshEnabled={autoRefreshEnabled}
           onToggleAutoRefresh={() => setAutoRefreshEnabled(prev => !prev)}
           isFullLoaded={isFullLoaded}
+          totalListingCount={totalListingCount}
         />
       </Suspense>
       <Footer />

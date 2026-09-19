@@ -8,7 +8,8 @@ export async function GET(request, { params }) {
     const { documentId } = await params;
     const { searchParams } = new URL(request.url);
     const limitParam = searchParams.get('limit');
-    const limit = limitParam ? parseInt(limitParam) : -1;
+    const parsed = limitParam ? parseInt(limitParam) : 2000;
+    const limit = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 2000) : 2000;
 
     if (!documentId) {
       return NextResponse.json(
@@ -18,80 +19,141 @@ export async function GET(request, { params }) {
     }
 
     const graphqlUrl = process.env.NEXT_PUBLIC_STRAPI_GRAPHQL_URL;
+
     const query = `
-      query GetCompanyListings($documentId: ID!, $limit: Int) {
-        listings(
+      query GetCompanyListingsConnection($documentId: ID!, $pageSize: Int!, $page: Int!) {
+        listings_connection(
           filters: { company: { documentId: { eq: $documentId } } }
-          pagination: { limit: $limit }
+          pagination: { page: $page, pageSize: $pageSize }
           publicationState: PREVIEW
         ) {
-          documentId
-          publishedAt
-          title
-          slug
-          price
-          adFlasher
-          isFeatured
-          isOnSpecial
-          isPremium
-          isStandard
-          manufacturingTimeframe
-          mainImageUrl
-          mainImagePublicId
-          thumbnailUrls
-          thumbnailPublicIds
-          listing_category {
-            name
-          }
-          branches {
+          nodes {
             documentId
-            name
-            location {
-              province
-              city
-              town
-            }
-          }
-          branch_listings {
-            branch {
-              documentId
+            publishedAt
+            title
+            slug
+            price
+            adFlasher
+            isFeatured
+            isOnSpecial
+            isPremium
+            isStandard
+            manufacturingTimeframe
+            mainImageUrl
+            mainImagePublicId
+            thumbnailUrls
+            thumbnailPublicIds
+            listing_category {
               name
             }
-            price
+            branches(pagination: { page: 1, pageSize: 200 }) {
+              documentId
+              name
+              location {
+                province
+                city
+                town
+              }
+            }
+            branch_listings(pagination: { page: 1, pageSize: 500 }) {
+              branch {
+                documentId
+                name
+              }
+              price
+            }
+            inquiries {
+              documentId
+            }
+            inquiries_c {
+              documentId
+            }
           }
-          inquiries {
-            documentId
-          }
-          inquiries_c {
-            documentId
+          pageInfo {
+            page
+            pageSize
+            pageCount
+            total
           }
         }
       }
     `;
 
-    const response = await fetch(graphqlUrl, {
+    const PAGE_SIZE = 100;
+
+    const firstPage = await fetch(graphqlUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         query,
-        variables: { documentId, limit },
+        variables: { documentId, page: 1, pageSize: PAGE_SIZE },
       }),
       next: { revalidate: 15 },
     });
 
-    const result = await response.json();
-
-    if (result.errors) {
-      console.error('GraphQL errors:', result.errors);
+    const firstResult = await firstPage.json();
+    if (firstResult.errors) {
+      console.error('GraphQL errors:', firstResult.errors);
       return NextResponse.json(
         { error: 'Failed to fetch listings from Strapi' },
         { status: 500 }
       );
     }
 
-    return NextResponse.json(result.data);
+    const connection = firstResult?.data?.listings_connection || {};
+    const pageInfo = connection.pageInfo || null;
+    const pageCount = Number.isFinite(Number(pageInfo?.pageCount)) ? Number(pageInfo.pageCount) : 1;
+    const totalCount = Number.isFinite(Number(pageInfo?.total)) ? Number(pageInfo.total) : 0;
+
+    const seen = new Set();
+    const merged = [];
+    const addNodes = (nodes) => {
+      const list = Array.isArray(nodes) ? nodes : [];
+      for (const node of list) {
+        const id = String(node?.documentId ?? '');
+        if (id && !seen.has(id)) {
+          seen.add(id);
+          merged.push(node);
+        }
+      }
+    };
+    addNodes(connection.nodes);
+
+    if (pageCount > 1) {
+      const pages = [];
+      for (let p = 2; p <= pageCount; p++) pages.push(p);
+      const rest = await Promise.all(
+        pages.map((page) =>
+          fetch(graphqlUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query,
+              variables: { documentId, page, pageSize: PAGE_SIZE },
+            }),
+            next: { revalidate: 15 },
+          }).then((r) => (r.ok ? r.json() : null))
+        )
+      );
+      for (const res of rest) {
+        addNodes(res?.data?.listings_connection?.nodes);
+      }
+    }
+
+    const payload = limit > 0 ? merged.slice(0, Math.min(limit, merged.length)) : merged;
+    return NextResponse.json({
+      listings: payload,
+      meta: {
+        pagination: {
+          page: 1,
+          pageSize: payload.length,
+          pageCount: 1,
+          total: totalCount,
+        },
+      },
+    });
   } catch (error) {
     console.error('API route error:', error);
     return NextResponse.json(
