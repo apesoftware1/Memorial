@@ -110,6 +110,7 @@ export function PremiumListingCard({
   const pageBranchName = currentSearchParams?.get?.("branch");
   const pageBranchData = currentSearchParams?.get?.("branchData");
   const productUrl = (() => {
+    if (!baseProductUrl) return "";
     const [urlBase, existingQs] = baseProductUrl.split("?");
     const params = new URLSearchParams(existingQs || "");
     if (pageBranchName && !params.has("branch")) {

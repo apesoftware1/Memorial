@@ -117,7 +117,7 @@ export function StandardListingCard({
   const seoImageAlt = `${seoSpec ? `${seoSpec} tombstone` : "Tombstone"}${seoPlace ? ` in ${seoPlace}` : ""}`;
 
   const handleClick = () => {
-    router.push(productUrl);
+    router.push(productUrl || "");
   };
 
   // UPDATED: flat lat/lng object (not nested in coords)

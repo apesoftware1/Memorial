@@ -196,6 +196,29 @@ function deriveCleanSlug(listing) {
   return cleanListingSlug(listing?.slug, listing?.title);
 }
 
+function buildQueryStringPreserve(searchParams) {
+  const params = new URLSearchParams();
+  if (typeof searchParams?.company === "string" && searchParams.company.trim()) {
+    params.set("company", searchParams.company.trim());
+  }
+  if (typeof searchParams?.branch === "string" && searchParams.branch.trim()) {
+    params.set("branch", searchParams.branch.trim());
+  }
+  const q = params.toString();
+  return q ? `?${q}` : "";
+}
+
+function appendQueryToPath(path, queryString) {
+  if (!queryString) return path;
+  const [existingPath, existingQuery = ""] = path.split("#")[0].split("?");
+  const outParams = new URLSearchParams(existingQuery || "");
+  new URLSearchParams(queryString.replace(/^\?/, "")).forEach((v, k) => {
+    outParams.set(k, v);
+  });
+  const q = outParams.toString();
+  return `${existingPath}${q ? `?${q}` : ""}`;
+}
+
 async function resolveListingCanonicalSlug(rawParam) {
   const raw = typeof rawParam === "string" ? rawParam.trim() : "";
   if (!raw) return { listing: null, cleanSlug: null };
@@ -235,7 +258,7 @@ function coercePrice(value) {
   return Number.isFinite(num) ? num : null;
 }
 
-export async function generateMetadata({ params }) {
+export async function generateMetadata({ params, searchParams }) {
   const rawParam = (await params)?.slug;
   if (!rawParam) {
     return {
@@ -244,12 +267,14 @@ export async function generateMetadata({ params }) {
     };
   }
 
+  const queryString = buildQueryStringPreserve(searchParams);
+
   const { listing, cleanSlug } = await resolveListingCanonicalSlug(rawParam);
   if (!listing) {
     return {
       title: "Tombstone Not Found | TombstoneFinder",
       description: "This tombstone listing could not be found, or is no longer available.",
-      alternates: { canonical: toAbsoluteUrl(`/tombstones-for-sale/${rawParam}`) },
+      alternates: { canonical: toAbsoluteUrl(appendQueryToPath(`/tombstones-for-sale/${rawParam}`, queryString)) },
       robots: { index: true, follow: true },
     };
   }
@@ -257,8 +282,9 @@ export async function generateMetadata({ params }) {
   const normalizedRaw = normalizeListingSlug(rawParam);
   const scopedHref = buildListingCanonicalHref(listing);
   if (scopedHref && normalizedRaw !== cleanSlug) {
-    const scopedCanonical = toAbsoluteUrl(scopedHref);
-    permanentRedirect(scopedHref);
+    const target = appendQueryToPath(scopedHref, queryString);
+    const scopedCanonical = toAbsoluteUrl(target);
+    permanentRedirect(target);
     return {
       title: "Tombstone Redirect | TombstoneFinder",
       alternates: { canonical: scopedCanonical },
@@ -266,8 +292,9 @@ export async function generateMetadata({ params }) {
     };
   }
   if (scopedHref && cleanSlug) {
-    const scopedCanonical = toAbsoluteUrl(scopedHref);
-    permanentRedirect(scopedHref);
+    const target = appendQueryToPath(scopedHref, queryString);
+    const scopedCanonical = toAbsoluteUrl(target);
+    permanentRedirect(target);
     return {
       title: "Tombstone Redirect | TombstoneFinder",
       alternates: { canonical: scopedCanonical },
@@ -284,8 +311,8 @@ export async function generateMetadata({ params }) {
   const description =
     listing?.description || "View this tombstone listing, pricing and branch availability.";
   const canonical = scopedHref
-    ? toAbsoluteUrl(scopedHref)
-    : toAbsoluteUrl(`/tombstones-for-sale/${listing.documentId || rawParam}`);
+    ? toAbsoluteUrl(appendQueryToPath(scopedHref, queryString))
+    : toAbsoluteUrl(appendQueryToPath(`/tombstones-for-sale/${listing.documentId || rawParam}`, queryString));
   const sellerName = String(listing?.company?.name ?? "").trim() || undefined;
   const categoryName = String(listing?.listing_category?.name ?? "").trim() || undefined;
   const stoneType = String(listing?.productDetails?.stoneType?.[0]?.value ?? "").trim() || undefined;
@@ -320,9 +347,11 @@ export async function generateMetadata({ params }) {
   };
 }
 
-export default async function TombstoneDetailPage({ params }) {
+export default async function TombstoneDetailPage({ params, searchParams }) {
   const rawParam = (await params)?.slug;
   if (!rawParam) notFound();
+
+  const queryString = buildQueryStringPreserve(searchParams);
 
   const { listing, cleanSlug } = await resolveListingCanonicalSlug(rawParam);
   if (!listing) notFound();
@@ -330,15 +359,15 @@ export default async function TombstoneDetailPage({ params }) {
   const normalizedRaw = normalizeListingSlug(rawParam);
   const scopedHref = buildListingCanonicalHref(listing);
   if (scopedHref && normalizedRaw !== cleanSlug) {
-    permanentRedirect(scopedHref);
+    permanentRedirect(appendQueryToPath(scopedHref, queryString));
   }
   if (scopedHref && cleanSlug) {
-    permanentRedirect(scopedHref);
+    permanentRedirect(appendQueryToPath(scopedHref, queryString));
   }
 
   const canonical = scopedHref
-    ? toAbsoluteUrl(scopedHref)
-    : toAbsoluteUrl(`/tombstones-for-sale/${listing.documentId || rawParam}`);
+    ? toAbsoluteUrl(appendQueryToPath(scopedHref, queryString))
+    : toAbsoluteUrl(appendQueryToPath(`/tombstones-for-sale/${listing.documentId || rawParam}`, queryString));
   const images = uniqStrings([listing?.mainImageUrl, ...(listing?.thumbnailUrls || [])])
     .slice(0, 8)
     .map((u) => (typeof u === "string" && u.startsWith("http") ? u : u ? toAbsoluteUrl(u) : null))
