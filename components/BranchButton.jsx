@@ -2,12 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
 import BranchSelectorModal from "./BranchSelectorModal";
 
 // SVG Branch Options icon component
@@ -127,18 +121,17 @@ export default function BranchButton({ company, onBranchSelect }) {
     }
   };
 
-  // Function to handle non-logged-in users switching to main branch
-  const handleSwitchToMainBranch = () => {
-    // For non-logged-in users, redirect to the main branch
-    if (company?.documentId) {
-      // Check if we're already on a tombstone listing page
-      if (pathname.includes('/tombstones-for-sale/')) {
-        // Stay on the current page - we're already on a listing
-        setBranchSwitched(true);
-        return;
-      } else {
-        // Navigate to the main branch page
+  // On clicking the blue "Switch Branch" button directly:
+  //   - If company has branches → open the Branch Selector Modal (owner/admin flow)
+  //   - Otherwise → redirect to main branch profile (non-logged-in fallback)
+  const handleSwitchBranchClick = () => {
+    if (company?.branches && company.branches.length > 0) {
+      setShowBranchSelectorModal(true);
+    } else {
+      if (company?.documentId && !pathname.includes('/tombstones-for-sale/')) {
         router.push(`/manufacturers/manufacturers-Profile-Page/${company.documentId}`);
+      } else {
+        setBranchSwitched(true);
       }
     }
   };
@@ -172,49 +165,32 @@ export default function BranchButton({ company, onBranchSelect }) {
     );
   }
 
-  // Render branch button if branch was not switched
+  // Render single blue "Switch Branch" button (no intermediate dropdown menu)
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            style={{
-              background: "#4a6cf7",
-              color: "#fff",
-              borderRadius: 8,
-              padding: "12px 16px",
-              fontWeight: 700,
-              fontSize: 15,
-              border: "none",
-              cursor: "pointer",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
-              transition: "background 0.2s",
-              marginBottom: 8,
-              marginRight: 8,
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <BranchOptionsIcon />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onClick={() => {
-              // Check if user is logged in (based on branches availability)
-              if (company?.branches && company.branches.length > 0) {
-                setShowBranchSelectorModal(true);
-              } else {
-                // For non-logged-in users, go to main branch
-                handleSwitchToMainBranch();
-              }
-            }}
-          >
-            Switch Branch
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <button
+        onClick={handleSwitchBranchClick}
+        style={{
+          background: "#4a6cf7",
+          color: "#fff",
+          borderRadius: 8,
+          padding: "12px 16px",
+          fontWeight: 700,
+          fontSize: 15,
+          border: "none",
+          cursor: "pointer",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
+          transition: "background 0.2s",
+          marginBottom: 8,
+          marginRight: 8,
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+        }}
+      >
+        <BranchOptionsIcon />
+        <span>Switch Branch</span>
+      </button>
 
       {/* Branch Selector Modal */}
       <BranchSelectorModal

@@ -1,8 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
-import { useQuery } from "@apollo/client";
-import { GET_COMPANY_WITH_ANALYTICS } from "@/graphql/queries/GetCompanyPerformance";
+import { useMemo, useState, useEffect, useSyncExternalStore } from "react";
 import CompanyHeader from "../CompanyHeader";
 import ListingCard from "../ListingCard";
 import PdfExporterButton from "../PDFExportButtons";
@@ -16,14 +14,17 @@ import {
   classifyPerformance,
   monthToRange,
 } from "../useCompanyPerformance";
-// Remove Moon/Sun import since we no longer use a toggle on this page
-// import { Moon, Sun } from 'lucide-react';
 
 export default function CompanyPerformancePage() {
   const params = useParams();
   const documentId = (params?.slug ?? "") || "";
   // Local dark-mode state scoped to this page
   const [isDark, setIsDark] = useState(false);
+  const isMounted = useSyncExternalStore(
+    (cb) => () => {},
+    () => true,
+    () => false
+  );
 
   // Initialize dark mode from the dashboard's stored preference
   useEffect(() => {
@@ -38,55 +39,43 @@ export default function CompanyPerformancePage() {
   const [monthYear, setMonthYear] = useState("");
   const [search, setSearch] = useState("");
   const [visible, setVisible] = useState(10);
-
-  // build variables for query (format as YYYY-MM-DD)
-  const { eventsStart, eventsEnd } = useMemo(() => {
-    // helper to format as YYYY-MM-DD without timezone issues
-    const format = (d) => {
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    };
-
+  const queryRange = useMemo(() => {
     if (period === "month" && monthYear) {
       const { start, end } = monthToRange(monthYear);
+      // Strapi GraphQL declares the timestamp filter variable as Date type
+      // (YYYY-MM-DD), not DateTime. ISO 8601 strings with "T" fail with
+      // BAD_USER_INPUT and the entire query returns null → header/cards 0.
+      // Slice to YYYY-MM-DD day-granularity which is the valid Date value.
       return {
         eventsStart: start ? start.slice(0, 10) : null,
         eventsEnd: end ? end.slice(0, 10) : null,
       };
     }
 
-    // New behavior for "All time": last 12 months up to today
-    if (period === "all") {
-      const today = new Date();
-      const endStr = format(today);
-      const startDate = new Date(today);
-      startDate.setFullYear(startDate.getFullYear() - 1);
-      const startStr = format(startDate);
-      return { eventsStart: startStr, eventsEnd: endStr };
-    }
-
     return { eventsStart: null, eventsEnd: null };
   }, [period, monthYear]);
 
-  // Log current analytics range to test the values
-  useEffect(() => {
-    console.log("Analytics range -> eventsStart:", eventsStart, "eventsEnd:", eventsEnd);
-  }, [eventsStart, eventsEnd]);
+  const { eventsStart, eventsEnd } = queryRange;
 
   // Always call hook; it internally skips when documentId is empty
-  const { data, loading, error } = useCompanyPerformance(
-    documentId,
-    eventsStart,
-    eventsEnd
-  );
+  const perf = useCompanyPerformance(documentId, eventsStart, eventsEnd);
+  const { data, loading, error } = perf;
+  const {
+    totalListings,
+    headerTotals,
+  } = perf;
 
   // Safe defaults
-  const company = data?.companies[0]?? null;
+  const company = data?.companies[0] ?? null;
   
   const listings = company?.listings ?? [];
- 
+
+  // When period, month, or company changes, reset the visible card count
+  // back to the initial 10 so the scroll position and UX feel consistent.
+  useEffect(() => {
+    setVisible(10);
+  }, [period, monthYear, documentId]);
+
   // search filter
   const filteredListings = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -103,11 +92,12 @@ export default function CompanyPerformancePage() {
   }, [filteredListings]);
 
   const companyTotals = useMemo(() => {
+    if (headerTotals) return { ...headerTotals };
     return listingWithCounts.reduce(
       (acc, l) => sumCounts(acc, l._counts),
       Object.fromEntries(EVENT_KEYS.map((k) => [k, 0]))
     );
-  }, [listingWithCounts]);
+  }, [headerTotals, listingWithCounts]);
 
   const companyAvg = useMemo(() => {
     const n = listingWithCounts.length || 1;
@@ -180,26 +170,30 @@ export default function CompanyPerformancePage() {
 
   const visibleItems = listingWithCounts.slice(0, visible);
 
+  const handleLoadMore = () => {
+    setVisible((v) => Math.min(listingWithCounts.length, v + 10));
+  };
+
   // Single return with conditional UI
   return (
     <div className={isDark ? "dark" : ""}>
       <div className="p-6 bg-background text-foreground min-h-screen">
         <div className="mx-auto max-w-7xl">
-          {loading ? (
-            <div className="animate-pulse space-y-4">
-              <div className="h-10 w-64 bg-gray-200 rounded" />
-              <div className="h-8 w-48 bg-gray-200 rounded" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-56 bg-gray-100 rounded" />
-                ))}
-              </div>
-            </div>
-          ) : error ? (
-            <div className="mx-auto max-w-3xl text-red-600">
-              Error loading data: {error.message}
-            </div>
-          ) : (
+              {!isMounted || loading ? (
+                <div className="animate-pulse space-y-4">
+                  <div className="h-10 w-64 bg-gray-200 rounded" />
+                  <div className="h-8 w-48 bg-gray-200 rounded" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="h-56 bg-gray-100 rounded" />
+                    ))}
+                  </div>
+                </div>
+              ) : error ? (
+                <div className="mx-auto max-w-3xl text-red-600">
+                  Error loading data: {error.message}
+                </div>
+              ) : (
             <>
               {/* Back Arrow only, remove theme toggle here */}
               <div className="mb-3">
@@ -244,7 +238,7 @@ export default function CompanyPerformancePage() {
                     onChange={(e) => setSearch(e.target.value)}
                   />
                   <span className="text-sm text-gray-500">
-                    Showing {visibleItems.length} of {listings.length}
+                    Showing {visibleItems.length} of {listings.length}{totalListings > 0 ? ` / ${totalListings} total` : ""}
                   </span>
                 </div>
 
@@ -282,12 +276,15 @@ export default function CompanyPerformancePage() {
               </div>
 
               {visible < listingWithCounts.length && (
-                <div className="flex justify-center mt-8">
+                <div className="flex flex-col md:flex-row justify-center items-center mt-8 gap-4">
                   <button
-                    onClick={() => setVisible((v) => v + 10)}
-                    className="px-5 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                    disabled={loading}
+                    onClick={handleLoadMore}
+                    className="px-5 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
                   >
-                    Load 10 more
+                    {loading
+                      ? `Loading data…`
+                      : `Load more (${visible}/${listingWithCounts.length} shown${totalListings ? ` of ${totalListings} total` : ""})`}
                   </button>
                 </div>
               )}
